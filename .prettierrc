@@ -1,6 +1,6 @@
 {
 	"useTabs": true,
-	"singleQuote": true,
+	"singleQuote": false,
 	"trailingComma": "es5",
 	"printWidth": 100,
 	"htmlWhitespaceSensitivity": "ignore",
@@ -17,6 +17,6 @@
 			}
 		}
 	],
-	"importOrder": ["^@", "<THIRD_PARTY_MODULES>", "", "^\\$(?!lib/)", "", "^\\$lib/", "", "^[.]"],
-	"tailwindStylesheet": "./src/app.css"
+	"tailwindStylesheet": "./src/app.css",
+	"importOrder": ["^@", "<THIRD_PARTY_MODULES>", "", "^\\$(?!lib/)", "", "^\\$lib/", "", "^[.]"]
 }
