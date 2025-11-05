@@ -27,7 +27,7 @@
 
 	<div class="flex w-full justify-center">
 		<form method="post" use:enhance class="flex w-72 flex-col items-center gap-3">
-			<TextInput {superform} field="email" type="email" label="Email" />
+			<TextInput {superform} field="handle" label="Handle" />
 			<TextInput {superform} field="password" type="password" label="Password" />
 
 			<button class="btn btn-block btn-primary" type="submit">Login</button>

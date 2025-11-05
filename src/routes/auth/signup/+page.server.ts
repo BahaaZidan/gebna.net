@@ -15,7 +15,8 @@ import type { Actions, PageServerLoad } from "./$types";
 
 const schema = v.pipe(
 	v.object({
-		email: v.pipe(v.string(), v.nonEmpty("Email is required!"), v.email("Email is invalid!")),
+		// TODO: tighter validation
+		handle: v.pipe(v.string(), v.nonEmpty("Handle is required!")),
 		password: v.pipe(v.string(), v.minLength(8, "Password is too short!")),
 		passwordConfirm: v.string(),
 	}),
@@ -41,7 +42,7 @@ export const actions: Actions = {
 	default: async (event) => {
 		const form = await superValidate(event.request, valibot(schema));
 		if (!form.valid) {
-			return message(form, "Invalid email or password!");
+			return message(form, "Invalid handle or password!");
 		}
 
 		const userId = generateUserId();
@@ -55,7 +56,7 @@ export const actions: Actions = {
 
 		try {
 			const db = getDB(event.platform?.env.DB);
-			await db.insert(table.user).values({ id: userId, email: form.data.email, passwordHash });
+			await db.insert(table.user).values({ id: userId, handle: form.data.handle, passwordHash });
 
 			const sessionToken = auth.generateSessionToken();
 			const session = await auth.createSession(sessionToken, userId, event.platform?.env.DB);
