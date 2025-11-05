@@ -11,7 +11,8 @@ import type { Actions, PageServerLoad } from "./$types";
 
 const schema = v.pipe(
 	v.object({
-		email: v.pipe(v.string(), v.nonEmpty("Email is required!"), v.email("Email is invalid!")),
+		// TODO: tighter validation
+		handle: v.pipe(v.string(), v.nonEmpty("Handle is required!")),
 		password: v.pipe(v.string(), v.minLength(8, "Password is too short!")),
 	})
 );
@@ -27,14 +28,14 @@ export const load: PageServerLoad = async (event) => {
 export const actions: Actions = {
 	default: async (event) => {
 		const form = await superValidate(event.request, valibot(schema));
-		if (!form.valid) return message(form, "Invalid email or password!");
+		if (!form.valid) return message(form, "Invalid handle or password!");
 
 		const db = getDB(event.platform?.env.DB);
 
 		const existingUser = await db.query.user.findFirst({
-			where: (users, { eq }) => eq(users.email, form.data.email),
+			where: (users, { eq }) => eq(users.handle, form.data.handle),
 		});
-		if (!existingUser) return message(form, "Incorrect username or password", { status: 400 });
+		if (!existingUser) return message(form, "Incorrect handle or password", { status: 400 });
 
 		const validPassword = await verify(existingUser.passwordHash, form.data.password, {
 			memoryCost: 19456,
@@ -42,7 +43,7 @@ export const actions: Actions = {
 			outputLen: 32,
 			parallelism: 1,
 		});
-		if (!validPassword) return message(form, "Incorrect username or password", { status: 400 });
+		if (!validPassword) return message(form, "Incorrect handle or password", { status: 400 });
 
 		const sessionToken = auth.generateSessionToken();
 		const session = await auth.createSession(sessionToken, existingUser.id, event.platform?.env.DB);

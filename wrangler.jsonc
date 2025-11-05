@@ -19,6 +19,7 @@
 		{
 			"binding": "DB",
 			"database_name": "gebna_db",
+			"database_id": "cd0020e2-8df5-4537-9599-668bed5e871f",
 			"migrations_dir": "drizzle",
 		},
 	],

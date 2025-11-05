@@ -35,7 +35,7 @@ export async function validateSessionToken(token: string, db_?: D1Database) {
 	const [result] = await db
 		.select({
 			// Adjust user table here to tweak returned data
-			user: { id: table.user.id, email: table.user.email },
+			user: { id: table.user.id, handle: table.user.handle },
 			session: table.session,
 		})
 		.from(table.session)
