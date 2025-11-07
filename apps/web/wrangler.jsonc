@@ -15,4 +15,10 @@
 	"observability": {
 		"enabled": true,
 	},
+	"routes": [
+		{
+			"pattern": "gebna.net",
+			"custom_domain": true,
+		},
+	],
 }
