@@ -8,4 +8,5 @@ export const email: NonNullable<
 	const email = await parser.parse(await rawEmail.arrayBuffer());
 
 	console.log(email);
+	console.log(bindings);
 };
