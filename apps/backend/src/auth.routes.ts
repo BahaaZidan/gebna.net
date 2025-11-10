@@ -1,3 +1,5 @@
+import { v } from "@gebna/validation";
+import { registerSchema } from "@gebna/validation/auth";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { jwt } from "hono/jwt";
@@ -14,22 +16,38 @@ type Variables = {
 export const auth = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 
 auth.post("/register", async (c) => {
-	const { username, password } = await c.req.json<{ username: string; password: string }>();
-	if (!username || !password) return c.json({ error: "missing fields" }, 400);
+	const input = await c.req.json();
+	const inputValidation = v.safeParse(registerSchema, input);
+	if (!inputValidation.success) return c.json({ errors: inputValidation.issues }, 400);
 
-	console.log(c);
 	const db = getDB(c.env);
-	const exists = await db.query.userTable.findFirst({
-		where: (t, { eq }) => eq(t.username, username),
-	});
-	if (exists) return c.json({ error: "username taken" }, 409);
 
-	const phc = await hashPassword(password);
-	await db.insert(userTable).values({ id: crypto.randomUUID(), username, passwordHash: phc });
-	return c.json({ ok: true });
+	const isTaken = !!(await db.query.userTable.findFirst({
+		columns: { id: true },
+		where: (t, { eq }) => eq(t.username, inputValidation.output.username),
+	}));
+	if (isTaken) return c.json({ error: "Username taken!" }, 409);
+
+	const phc = await hashPassword(inputValidation.output.password);
+	const [user] = await db
+		.insert(userTable)
+		.values({
+			id: crypto.randomUUID(),
+			username: inputValidation.output.username,
+			passwordHash: phc,
+		})
+		.returning();
+	if (!user) return c.json({ error: "Unexpected failure!" }, 500);
+
+	const session = await createSession(c.env, {
+		userId: user.id,
+		ip: c.req.header("CF-Connecting-IP"),
+		userAgent: c.req.header("User-Agent"),
+	});
+
+	return c.json(session);
 });
 
-// POST /auth/login { username, password }
 auth.post("/login", async (c) => {
 	const { username, password } = await c.req.json<{ username: string; password: string }>();
 	const db = getDB(c.env);
@@ -39,29 +57,13 @@ auth.post("/login", async (c) => {
 	const ok = await verifyPassword(u.passwordHash, password);
 	if (!ok) return c.json({ error: "invalid credentials" }, 401);
 
-	const sid = crypto.randomUUID();
-	const refresh = randomHex(64);
-	const refreshHash = await hmacRefresh(c.env, refresh);
-
-	await db.insert(sessionTable).values({
-		id: sid,
+	const session = await createSession(c.env, {
 		userId: u.id,
-		refreshHash,
-		userAgent: c.req.header("User-Agent") ?? null,
-		ip: c.req.header("CF-Connecting-IP") ?? null,
-		createdAt: nowSec(),
-		expiresAt: nowSec() + REFRESH_TTL,
-		revoked: false,
+		ip: c.req.header("CF-Connecting-IP"),
+		userAgent: c.req.header("User-Agent"),
 	});
 
-	const access = await signAccessJWT(c.env, u.id, sid);
-
-	return c.json({
-		access_token: access,
-		token_type: "Bearer",
-		expires_in: ACCESS_TTL,
-		refresh_token: refresh,
-	});
+	return c.json(session);
 });
 
 auth.post("/refresh", requireRefreshBearer, async (c) => {
@@ -112,3 +114,39 @@ auth.get(
 		return c.json({ id: u.id, username: u.username });
 	}
 );
+
+async function createSession(
+	env: CloudflareBindings,
+	data: {
+		userId: string;
+		userAgent?: string | null;
+		ip?: string | null;
+	}
+) {
+	const { userId, userAgent = null, ip = null } = data;
+	const id = crypto.randomUUID();
+	const refresh = randomHex(64);
+	const refreshHash = await hmacRefresh(env, refresh);
+
+	const db = getDB(env);
+
+	await db.insert(sessionTable).values({
+		id,
+		userId,
+		refreshHash,
+		userAgent,
+		ip,
+		createdAt: nowSec(),
+		expiresAt: nowSec() + REFRESH_TTL,
+		revoked: false,
+	});
+
+	const access = await signAccessJWT(env, userId, id);
+
+	return {
+		access_token: access,
+		token_type: "Bearer",
+		expires_in: ACCESS_TTL,
+		refresh_token: refresh,
+	};
+}
