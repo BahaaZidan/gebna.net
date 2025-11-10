@@ -6,6 +6,8 @@
 		"build": "vite build",
 		"preview": "$npm_execpath run build && vite preview",
 		"deploy": "$npm_execpath run build && wrangler deploy",
+		"lint": "eslint .",
+		"format": "prettier --write .",
 		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
 		"tail": "wrangler tail",
 		"db:dev": "turso dev --db-file local.db",

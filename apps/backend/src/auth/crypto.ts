@@ -2,7 +2,7 @@ import { argon2id, argon2Verify, setWASMModules } from "argon2-wasm-edge";
 // IMPORTANT: CF Workers import of wasm modules has no ?module
 // @ts-expect-error: .wasm imports are provided by bundler
 import argon2WASM from "argon2-wasm-edge/wasm/argon2.wasm";
-// @ts-expect-error
+// @ts-expect-error .wasm import is required for the code to work in workers
 import blake2bWASM from "argon2-wasm-edge/wasm/blake2b.wasm";
 
 setWASMModules({ argon2WASM, blake2bWASM }); // required on Workers per README. :contentReference[oaicite:1]{index=1}
