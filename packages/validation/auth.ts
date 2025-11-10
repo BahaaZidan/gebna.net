@@ -1,5 +1,9 @@
 import * as v from "valibot";
 
+const localRegex = /^(?![.])(?!.*\.\.)[a-z0-9.]{1,30}(?<![.])$/;
+// Full Gebna email: <local>@gebna.net
+const gebnaEmailRegex = new RegExp(`^(?![.])(?!.*\\.\\.)[a-z0-9.]{1,30}(?<![.])@gebna\\.net$`);
+
 export const registerSchema = v.pipe(
 	v.object({
 		username: v.pipe(
@@ -8,7 +12,7 @@ export const registerSchema = v.pipe(
 			v.trim(),
 			v.toLowerCase(),
 			v.regex(
-				/^(?![.])(?!.*\.\.)[a-z0-9.]{1,30}(?<![.])$/,
+				localRegex,
 				"Username must only contain letters, digits, and dots with no leading, trailing, or consecutive dots."
 			)
 		),
@@ -43,4 +47,22 @@ export const registerSchema = v.pipe(
 		),
 		["password"]
 	)
+);
+
+export const loginSchema = v.pipe(
+	v.object({
+		identifier: v.pipe(
+			v.string(),
+			v.trim(),
+			v.toLowerCase(),
+			v.check(
+				(s) => localRegex.test(s) || gebnaEmailRegex.test(s),
+				"Enter your username or your @gebna.net email."
+			),
+			v.transform((s) => (s.includes("@") ? s.split("@", 1)[0] : s))
+		),
+		password: v.pipe(v.string(), v.nonEmpty("Password is required!")),
+	}),
+	// Rename the normalized field to `username` for clarity downstream
+	v.transform(({ identifier, ...rest }) => ({ username: identifier, ...rest }))
 );
