@@ -95,10 +95,10 @@ auth.post("/refresh", requireRefreshBearer, async (c) => {
 	});
 });
 
-// POST /auth/logout    (Authorization: Bearer <refresh>)
 auth.post("/logout", requireRefreshBearer, async (c) => {
 	const row = c.get("sessionRow");
 	const db = getDB(c.env);
+	// TODO: why not remove the session row completely ?
 	await db.update(sessionTable).set({ revoked: true }).where(eq(sessionTable.id, row.id));
 	return c.json({ ok: true });
 });
