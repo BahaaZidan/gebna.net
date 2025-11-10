@@ -1,5 +1,4 @@
 import { bearerAuth } from "hono/bearer-auth";
-import { jwt } from "hono/jwt";
 
 import { getDB } from "../db";
 import { hmacRefresh, nowSec } from "./crypto";
