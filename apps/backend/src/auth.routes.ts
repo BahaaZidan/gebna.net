@@ -8,7 +8,10 @@ import { ACCESS_TTL, REFRESH_TTL, signAccessJWT } from "./auth/token";
 import { getDB } from "./db";
 import { sessionTable, userTable } from "./db/schema";
 
-export const auth = new Hono<{ Bindings: CloudflareBindings }>();
+type Variables = {
+	sessionRow: typeof sessionTable.$inferSelect;
+};
+export const auth = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 
 auth.post("/register", async (c) => {
 	const { username, password } = await c.req.json<{ username: string; password: string }>();
@@ -62,7 +65,7 @@ auth.post("/login", async (c) => {
 });
 
 auth.post("/refresh", requireRefreshBearer, async (c) => {
-	const row = c.get("sessionRow") as { id: string; userId: string };
+	const row = c.get("sessionRow");
 	const newRefresh = randomHex(64);
 	const newHash = await hmacRefresh(c.env, newRefresh);
 
@@ -84,7 +87,7 @@ auth.post("/refresh", requireRefreshBearer, async (c) => {
 
 // POST /auth/logout    (Authorization: Bearer <refresh>)
 auth.post("/logout", requireRefreshBearer, async (c) => {
-	const row = c.get("sessionRow") as { id: string };
+	const row = c.get("sessionRow");
 	const db = getDB(c.env);
 	await db.update(sessionTable).set({ revoked: true }).where(eq(sessionTable.id, row.id));
 	return c.json({ ok: true });
