@@ -13,7 +13,8 @@
 		"db:dev": "turso dev --db-file local.db",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "drizzle-kit migrate",
+		"db:migrate:local": "dotenv -e .env.local -- drizzle-kit migrate",
+		"db:migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
@@ -29,6 +30,7 @@
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.2.3",
 		"@eslint/js": "^9.39.1",
+		"dotenv-cli": "^11.0.0",
 		"drizzle-kit": "^0.31.6",
 		"eslint": "^9.39.1",
 		"globals": "^16.5.0",
