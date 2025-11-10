@@ -1,6 +1,6 @@
 import { customType, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export const citext = customType<{
+const citext = customType<{
 	data: string;
 	notNull: true;
 	default: true;
