@@ -1,8 +1,19 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { customType, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const citext = customType<{
+	data: string;
+	notNull: true;
+	default: true;
+	config: { length?: number };
+}>({
+	dataType(config) {
+		return `text${config?.length ? `(${config.length})` : ""} COLLATE NOCASE`;
+	},
+});
 
 export const userTable = sqliteTable("user", {
 	id: text().primaryKey(),
-	username: text().notNull().unique(),
+	username: citext().notNull().unique(),
 	passwordHash: text().notNull(),
 });
 

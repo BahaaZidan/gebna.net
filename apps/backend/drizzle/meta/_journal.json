@@ -15,6 +15,13 @@
       "when": 1762701924782,
       "tag": "0001_secret_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1762776563721,
+      "tag": "0002_great_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }
