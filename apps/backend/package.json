@@ -26,7 +26,11 @@
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.2.3",
+		"@eslint/js": "^9.39.1",
 		"drizzle-kit": "^0.31.6",
+		"eslint": "^9.39.1",
+		"globals": "^16.5.0",
+		"typescript-eslint": "^8.46.3",
 		"vite": "^6.3.5",
 		"vite-ssr-components": "^0.5.1",
 		"wrangler": "^4.17.0"
