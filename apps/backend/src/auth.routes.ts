@@ -1,5 +1,5 @@
 import { v } from "@gebna/validation";
-import { registerSchema } from "@gebna/validation/auth";
+import { loginSchema, registerSchema } from "@gebna/validation/auth";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { jwt } from "hono/jwt";
@@ -49,16 +49,24 @@ auth.post("/register", async (c) => {
 });
 
 auth.post("/login", async (c) => {
-	const { username, password } = await c.req.json<{ username: string; password: string }>();
-	const db = getDB(c.env);
-	const u = await db.query.userTable.findFirst({ where: (t, { eq }) => eq(t.username, username) });
-	if (!u) return c.json({ error: "invalid credentials" }, 401);
+	const input = await c.req.json();
+	const inputValidation = v.safeParse(loginSchema, input);
+	if (!inputValidation.success) return c.json({ errors: inputValidation.issues }, 400);
 
-	const ok = await verifyPassword(u.passwordHash, password);
-	if (!ok) return c.json({ error: "invalid credentials" }, 401);
+	const db = getDB(c.env);
+	const user = await db.query.userTable.findFirst({
+		where: (t, { eq }) => eq(t.username, inputValidation.output.username),
+	});
+	if (!user) return c.json({ error: "Invalid credentials!" }, 401);
+
+	const isPasswordMatching = await verifyPassword(
+		user.passwordHash,
+		inputValidation.output.password
+	);
+	if (!isPasswordMatching) return c.json({ error: "Invalid credentials!" }, 401);
 
 	const session = await createSession(c.env, {
-		userId: u.id,
+		userId: user.id,
 		ip: c.req.header("CF-Connecting-IP"),
 		userAgent: c.req.header("User-Agent"),
 	});
