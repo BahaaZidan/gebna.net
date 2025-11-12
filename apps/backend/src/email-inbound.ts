@@ -35,7 +35,7 @@ export const email: NonNullable<
 		.select()
 		.from(userTable)
 		.where(eq(userTable.username, message.to.split("@")[0]));
-	if (!recipientUser) message.setReject("Invalid recipient.");
+	if (!recipientUser) return message.setReject("Invalid recipient.");
 
 	await db.insert(messageTable).values({
 		id: crypto.randomUUID(),
