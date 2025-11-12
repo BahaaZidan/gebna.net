@@ -22,6 +22,20 @@
       "when": 1762776563721,
       "tag": "0002_great_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1762860700640,
+      "tag": "0003_happy_morg",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1762966844157,
+      "tag": "0004_volatile_snowbird",
+      "breakpoints": true
     }
   ]
 }
