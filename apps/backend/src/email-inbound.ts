@@ -16,6 +16,8 @@ export const email: NonNullable<
 	const rawEmailBuffer = await rawEmail.arrayBuffer();
 	const email = await parser.parse(rawEmailBuffer);
 
+	console.log("MESSAGE_ID =>", email.messageId);
+
 	const rawFrom = email.headers.find((h) => h.key.toLowerCase() === "from")?.value.split(",");
 	if (rawFrom?.length !== 1) return message.setReject("Message have more than one sender.");
 
