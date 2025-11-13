@@ -1,5 +1,12 @@
 import { desc } from "drizzle-orm";
-import { customType, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+	customType,
+	index,
+	integer,
+	sqliteTable,
+	text,
+	uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 const citext = customType<{
 	data: string;
@@ -31,6 +38,11 @@ export const sessionTable = sqliteTable("session", {
 	revoked: integer({ mode: "boolean" }).notNull().default(false),
 });
 
+export const blobTable = sqliteTable("blob", {
+	sha256: text().primaryKey(), // hex sha256 of the *full raw MIME*
+	size: integer().notNull(),
+});
+
 export const messageTable = sqliteTable(
 	"message",
 	{
@@ -52,8 +64,9 @@ export const messageTable = sqliteTable(
 		headersRaw: text(), // entire header block if you want
 
 		// Content in R2
-		// rawR2Key: text().notNull(), // R2 key for full raw MIME
-		// rawSha256: text().notNull(), // integrity check + dedup
+		rawSha256: text()
+			.notNull()
+			.references(() => blobTable.sha256), // integrity check + dedup
 		size: integer().notNull().default(0),
 		// hasAttachment: integer({ mode: "boolean" }).notNull().default(false),
 
@@ -62,6 +75,7 @@ export const messageTable = sqliteTable(
 	},
 	(self) => [
 		index("msg_user_date_idx").on(self.receiver, desc(self.receivedTimestamp)),
-		// uniqueIndex("msg_user_rawsha_uniq").on(self.receiver, self.rawSha256),
+		// TO PREVENT PER USER DUPLICATES IN CASE THE MTA DECIDES TO RETRY ON A FALSE NEGATIVE
+		uniqueIndex("msg_user_rawsha_uniq").on(self.receiver, self.rawSha256),
 	]
 );

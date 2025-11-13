@@ -17,4 +17,10 @@
 			"persist": true,
 		},
 	},
+	"r2_buckets": [
+		{
+			"binding": "R2_EMAILS",
+			"bucket_name": "gebna-emails",
+		},
+	],
 }
