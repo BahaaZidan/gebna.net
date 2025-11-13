@@ -43,6 +43,13 @@
       "when": 1763026318966,
       "tag": "0005_burly_shiva",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1763034615656,
+      "tag": "0006_lovely_devos",
+      "breakpoints": true
     }
   ]
 }
