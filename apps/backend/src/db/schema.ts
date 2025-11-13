@@ -19,6 +19,10 @@ const citext = customType<{
 	},
 });
 
+// ───────────────────────────────────────────────────────────
+// User + Session
+// ───────────────────────────────────────────────────────────
+
 export const userTable = sqliteTable("user", {
 	id: text().primaryKey(),
 	username: citext().notNull().unique(),
@@ -29,28 +33,31 @@ export const sessionTable = sqliteTable("session", {
 	id: text().primaryKey(),
 	userId: text()
 		.notNull()
-		.references(() => userTable.id),
+		.references(() => userTable.id, { onDelete: "cascade" }),
+
 	refreshHash: text().notNull(),
 	userAgent: text(),
 	ip: text(),
-	createdAt: integer().notNull(), // epoch seconds
-	expiresAt: integer().notNull(), // epoch seconds
+	createdAt: integer().notNull(),
+	expiresAt: integer().notNull(),
 	revoked: integer({ mode: "boolean" }).notNull().default(false),
 });
 
 // ───────────────────────────────────────────────────────────
-// Account (mail identity, per address, not auth user)
+// Account (mail identity)
 // ───────────────────────────────────────────────────────────
 
 export const accountTable = sqliteTable(
 	"account",
 	(t) => ({
-		id: t.text().primaryKey(), // ulid/cuid
-		address: t.text().notNull(), // "user@gebna.net"
+		id: t.text().primaryKey(),
+		address: t.text().notNull(),
+
 		userId: t
 			.text()
 			.notNull()
-			.references(() => userTable.id), // FK to your auth user table
+			.references(() => userTable.id, { onDelete: "cascade" }),
+
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 	}),
 	(self) => [
@@ -60,21 +67,21 @@ export const accountTable = sqliteTable(
 );
 
 // ───────────────────────────────────────────────────────────
-// Mailboxes (folders/labels) per account
+// Mailboxes
 // ───────────────────────────────────────────────────────────
 
 export const mailboxTable = sqliteTable(
 	"mailbox",
 	(t) => ({
-		id: t.text().primaryKey(), // ulid/cuid
+		id: t.text().primaryKey(),
+
 		accountId: t
 			.text()
 			.notNull()
 			.references(() => accountTable.id, { onDelete: "cascade" }),
 
-		name: t.text().notNull(), // "Inbox", "Sent", etc.
-		role: t.text(), // "inbox" | "sent" | "trash" | ...
-
+		name: t.text().notNull(),
+		role: t.text(),
 		sortOrder: t.integer().notNull().default(0),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 	}),
@@ -92,14 +99,14 @@ export const mailboxTable = sqliteTable(
 export const threadTable = sqliteTable(
 	"thread",
 	(t) => ({
-		id: t.text().primaryKey(), // ulid/cuid
+		id: t.text().primaryKey(),
+
 		accountId: t
 			.text()
 			.notNull()
 			.references(() => accountTable.id, { onDelete: "cascade" }),
 
 		subject: t.text(),
-
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 		latestMessageAt: t.integer({ mode: "timestamp" }).notNull(),
 	}),
@@ -107,30 +114,29 @@ export const threadTable = sqliteTable(
 );
 
 // ───────────────────────────────────────────────────────────
-// Blob (raw MIME + attachment blobs) — dedupe by sha256
+// Blob (dedup)
 // ───────────────────────────────────────────────────────────
 
 export const blobTable = sqliteTable(
 	"blob",
 	(t) => ({
-		sha256: t.text().primaryKey(), // hex sha256(raw bytes)
-		size: t.integer().notNull(), // bytes
-		r2Key: t.text(), // if R2 key differs from sha256
+		sha256: t.text().primaryKey(),
+		size: t.integer().notNull(),
+		r2Key: t.text(),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 	}),
 	(_self) => []
 );
 
 // ───────────────────────────────────────────────────────────
-// Canonical message (shared content, no per-account flags)
+// Canonical message (shared)
 // ───────────────────────────────────────────────────────────
 
 export const messageTable = sqliteTable(
 	"message",
 	(t) => ({
-		id: t.text().primaryKey(), // ulid/cuid
+		id: t.text().primaryKey(),
 
-		// idempotency key for the inbound event
 		ingestId: t.text().notNull(),
 
 		rawBlobSha256: t
@@ -138,16 +144,15 @@ export const messageTable = sqliteTable(
 			.notNull()
 			.references(() => blobTable.sha256, { onDelete: "restrict" }),
 
-		// RFC 5322 Message-ID + threading headers
-		messageId: t.text(), // NOT unique
+		messageId: t.text(),
 		inReplyTo: t.text(),
-		referencesJson: t.text(), // JSON array of Message-IDs
+		referencesJson: t.text(),
 
 		subject: t.text(),
-		snippet: t.text(), // preview for list view
+		snippet: t.text(),
 
-		sentAt: t.integer({ mode: "timestamp" }), // Date header
-		createdAt: t.integer({ mode: "timestamp" }).notNull(), // stored-at time
+		sentAt: t.integer({ mode: "timestamp" }),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 
 		size: t.integer(),
 	}),
@@ -159,13 +164,13 @@ export const messageTable = sqliteTable(
 );
 
 // ───────────────────────────────────────────────────────────
-// Per-account message listing (flags, thread, internal date)
+// Per-account message listing (flags)
 // ───────────────────────────────────────────────────────────
 
 export const accountMessageTable = sqliteTable(
 	"account_message",
 	(t) => ({
-		id: t.text().primaryKey(), // ulid/cuid
+		id: t.text().primaryKey(),
 
 		accountId: t
 			.text()
@@ -194,17 +199,14 @@ export const accountMessageTable = sqliteTable(
 		updatedAt: t.integer({ mode: "timestamp" }).notNull(),
 	}),
 	(self) => [
-		// one row per (account, canonical message)
 		uniqueIndex("ux_account_message_account_msg").on(self.accountId, self.messageId),
-
 		index("idx_account_message_account_date").on(self.accountId, self.internalDate),
-
 		index("idx_account_message_thread").on(self.accountId, self.threadId, self.internalDate),
 	]
 );
 
 // ───────────────────────────────────────────────────────────
-// Mailbox mapping (many mailboxes per accountMessage)
+// Mailbox mapping
 // ───────────────────────────────────────────────────────────
 
 export const mailboxMessageTable = sqliteTable(
@@ -232,13 +234,13 @@ export const mailboxMessageTable = sqliteTable(
 );
 
 // ───────────────────────────────────────────────────────────
-// Attachments — tied to canonical message, dedup via blob
+// Attachments
 // ───────────────────────────────────────────────────────────
 
 export const attachmentTable = sqliteTable(
 	"attachment",
 	(t) => ({
-		id: t.text().primaryKey(), // ulid/cuid
+		id: t.text().primaryKey(),
 
 		messageId: t
 			.text()
@@ -252,9 +254,8 @@ export const attachmentTable = sqliteTable(
 
 		filename: t.text(),
 		mimeType: t.text().notNull(),
-
-		disposition: t.text(), // "attachment" | "inline" | null
-		contentId: t.text(), // for cid: URLs
+		disposition: t.text(),
+		contentId: t.text(),
 		related: t.integer({ mode: "boolean" }).notNull().default(false),
 
 		position: t.integer().notNull().default(0),
@@ -263,13 +264,13 @@ export const attachmentTable = sqliteTable(
 );
 
 // ───────────────────────────────────────────────────────────
-// Addresses (normalized) + message ↔ address relation
+// Addresses + Message → Address relation
 // ───────────────────────────────────────────────────────────
 
 export const addressTable = sqliteTable(
 	"address",
 	(t) => ({
-		id: t.text().primaryKey(), // ulid/cuid
+		id: t.text().primaryKey(),
 		email: t.text().notNull(),
 		name: t.text(),
 	}),
@@ -289,9 +290,7 @@ export const messageAddressTable = sqliteTable(
 			.notNull()
 			.references(() => addressTable.id, { onDelete: "cascade" }),
 
-		// "from" | "sender" | "to" | "cc" | "bcc" | "reply-to"
 		kind: t.text().notNull(),
-
 		position: t.integer().notNull().default(0),
 	}),
 	(self) => [
