@@ -68,7 +68,10 @@ export const messageTable = sqliteTable(
 			.notNull()
 			.references(() => blobTable.sha256), // integrity check + dedup
 		size: integer().notNull().default(0),
-		// hasAttachment: integer({ mode: "boolean" }).notNull().default(false),
+		attachmentsPreview: text({ mode: "json" })
+			.$type<ReadonlyArray<{ filename: string | null; mimeType: string }>>() // JSON
+			.notNull()
+			.default([]),
 
 		// Optional plain-text snippet or preview
 		snippet: text(),
@@ -77,5 +80,35 @@ export const messageTable = sqliteTable(
 		index("msg_user_date_idx").on(self.receiver, desc(self.receivedTimestamp)),
 		// TO PREVENT PER USER DUPLICATES IN CASE THE MTA DECIDES TO RETRY ON A FALSE NEGATIVE
 		uniqueIndex("msg_user_rawsha_uniq").on(self.receiver, self.rawSha256),
+	]
+);
+
+export const attachmentTable = sqliteTable(
+	"attachment",
+	{
+		id: text().primaryKey(),
+
+		messageId: text()
+			.notNull()
+			.references(() => messageTable.id, { onDelete: "cascade" }),
+
+		// Metadata as seen in headers
+		filename: text(), // Content-Disposition filename / Content-Type name
+		mime: text().notNull(), // e.g. "image/png", "application/pdf"
+		size: integer().notNull(), // size of this part in bytes
+		cid: text(), // Content-ID for inline resolution (cid:)
+		disposition: text({ enum: ["inline", "attachment"] })
+			.notNull()
+			.default("attachment"),
+
+		// Content-address pointer to R2 object (derived from sha256)
+		sha256: text()
+			.notNull()
+			.references(() => blobTable.sha256),
+	},
+	(self) => [
+		index("att_msg_idx").on(self.messageId),
+		// Prevent duplicate attachment blobs on the same message
+		uniqueIndex("att_msg_sha_uniq").on(self.messageId, self.sha256),
 	]
 );
