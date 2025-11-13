@@ -8,7 +8,7 @@ import { hashPassword, hmacRefresh, nowSec, randomHex, verifyPassword } from "./
 import { requireRefreshBearer } from "./auth/guards";
 import { ACCESS_TTL, REFRESH_TTL, signAccessJWT } from "./auth/token";
 import { getDB } from "./db";
-import { sessionTable, userTable } from "./db/schema";
+import { accountTable, mailboxTable, sessionTable, userTable } from "./db/schema";
 
 type Variables = {
 	sessionRow: typeof sessionTable.$inferSelect;
@@ -18,34 +18,94 @@ export const auth = new Hono<{ Bindings: CloudflareBindings; Variables: Variable
 auth.post("/register", async (c) => {
 	const input = await c.req.json();
 	const inputValidation = v.safeParse(registerSchema, input);
-	if (!inputValidation.success) return c.json({ errors: inputValidation.issues }, 400);
+	if (!inputValidation.success) {
+		return c.json({ errors: inputValidation.issues }, 400);
+	}
 
 	const db = getDB(c.env);
+	const username = inputValidation.output.username;
+	const emailAddress = `${username}@gebna.net`;
+	const now = new Date();
 
-	const isTaken = !!(await db.query.userTable.findFirst({
-		columns: { id: true },
-		where: (t, { eq }) => eq(t.username, inputValidation.output.username),
-	}));
-	if (isTaken) return c.json({ error: "Username taken!" }, 409);
+	try {
+		const result = await db.transaction(async (tx) => {
+			// 1) check username
+			const existingUser = await tx.query.userTable.findFirst({
+				columns: { id: true },
+				where: (t, { eq }) => eq(t.username, username),
+			});
+			if (existingUser) {
+				return { type: "USERNAME_TAKEN" as const };
+			}
 
-	const phc = await hashPassword(inputValidation.output.password);
-	const [user] = await db
-		.insert(userTable)
-		.values({
-			id: crypto.randomUUID(),
-			username: inputValidation.output.username,
-			passwordHash: phc,
-		})
-		.returning();
-	if (!user) return c.json({ error: "Unexpected failure!" }, 500);
+			// 2) create user
+			const phc = await hashPassword(inputValidation.output.password);
 
-	const session = await createSession(c.env, {
-		userId: user.id,
-		ip: c.req.header("CF-Connecting-IP"),
-		userAgent: c.req.header("User-Agent"),
-	});
+			const [user] = await tx
+				.insert(userTable)
+				.values({
+					id: crypto.randomUUID(),
+					username,
+					passwordHash: phc,
+					// createdAt: now, // if you have this column
+				})
+				.returning();
 
-	return c.json(session);
+			if (!user) {
+				throw new Error("USER_INSERT_FAILED");
+			}
+
+			// 3) create mail account
+			const accountId = crypto.randomUUID();
+
+			await tx.insert(accountTable).values({
+				id: accountId,
+				address: emailAddress,
+				userId: user.id,
+				createdAt: now,
+			});
+
+			// 4) default mailboxes for this account
+			const mkBox = (name: string, role?: string | null, sortOrder = 0) => ({
+				id: crypto.randomUUID(),
+				accountId,
+				name,
+				role: role ?? null,
+				sortOrder,
+				createdAt: now,
+			});
+
+			await tx.insert(mailboxTable).values([
+				mkBox("Inbox", "inbox", 10),
+				mkBox("Sent", "sent", 20),
+				mkBox("Drafts", "drafts", 30),
+				mkBox("Archive", "archive", 40),
+				mkBox("Trash", "trash", 50),
+				mkBox("Spam", "spam", 60),
+				// later: mkBox("Paper Trail", "paper-trail", 70),
+				// later: mkBox("The Feed", "feed", 80),
+			]);
+
+			return { type: "OK" as const, userId: user.id };
+		});
+
+		if (result.type === "USERNAME_TAKEN") {
+			return c.json({ error: "Username taken!" }, 409);
+		}
+
+		// 5) create session as before
+		const session = await createSession(c.env, {
+			userId: result.userId,
+			ip: c.req.header("CF-Connecting-IP"),
+			userAgent: c.req.header("User-Agent"),
+		});
+
+		return c.json(session);
+	} catch (err) {
+		// optional: detect unique violation on accountTable.address and map to 409
+		console.error(err);
+		return c.json({ error: "Unexpected failure!" }, 500);
+	}
 });
 
 auth.post("/login", async (c) => {

@@ -25,7 +25,8 @@
 		"argon2-wasm-edge": "^1.0.23",
 		"drizzle-orm": "^0.44.7",
 		"hono": "^4.10.4",
-		"postal-mime": "^2.6.0"
+		"postal-mime": "^2.6.0",
+		"ulid": "^3.0.1"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.2.3",
