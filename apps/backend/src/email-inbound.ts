@@ -4,11 +4,13 @@ import * as PostalMime from "postal-mime";
 
 import { getDB } from "./db";
 import { blobTable, messageTable, userTable } from "./db/schema";
-import { getR2KeyFromHash } from "./email";
+import { getR2KeyFromHash, sha256Hex, storeAttachmentsForMessage } from "./email";
 
 export const email: NonNullable<
 	ExportedHandler<CloudflareBindings, unknown, unknown>["email"]
 > = async (message, bindings, _context) => {
+	console.log("MESSAGE =>", { from: message.from, to: message.to });
+
 	const parser = new PostalMime.default();
 	const rawEmail = new Response(message.raw);
 	const rawEmailBuffer = await rawEmail.arrayBuffer();
@@ -24,10 +26,7 @@ export const email: NonNullable<
 		.where(eq(userTable.username, message.to.split("@")[0]));
 	if (!recipientUser) return message.setReject("Invalid recipient.");
 
-	const hashBuf = await crypto.subtle.digest("SHA-256", rawEmailBuffer);
-	const rawSha256 = [...new Uint8Array(hashBuf)]
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("");
+	const rawSha256 = await sha256Hex(rawEmailBuffer);
 
 	await bindings.R2_EMAILS.put(getR2KeyFromHash(rawSha256), rawEmailBuffer, {
 		httpMetadata: { contentType: "message/rfc822" },
@@ -40,11 +39,7 @@ export const email: NonNullable<
 		.values({ sha256: rawSha256, size: message.rawSize })
 		.onConflictDoNothing();
 
-	const { from, to, cc, bcc, deliveredTo, sender } = email;
-	console.log("POSTAL MIME =>", { from, to, cc, bcc, deliveredTo, sender });
-	console.log("MESSAGE =>", { from: message.from, to: message.to });
-
-	await db
+	const [newMessage] = await db
 		.insert(messageTable)
 		.values({
 			id: crypto.randomUUID(),
@@ -58,10 +53,22 @@ export const email: NonNullable<
 			size: message.rawSize,
 			subject: email.subject,
 			messageIdHeader: email.messageId,
+			attachmentsPreview: (email.attachments ?? []).map((a) => ({
+				filename: a.filename,
+				mimeType: a.mimeType,
+			})),
 		})
 		.onConflictDoNothing({
 			target: [messageTable.receiver, messageTable.rawSha256],
-		});
+		})
+		.returning();
+
+	await storeAttachmentsForMessage({
+		attachments: email.attachments,
+		messageId: newMessage.id,
+		db,
+		attachmentsBucket: bindings.R2_EMAILS,
+	});
 };
 
 // const cf_auth_test_header_names = [
