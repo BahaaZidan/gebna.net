@@ -1,4 +1,3 @@
-// src/email-worker.ts
 import { and, asc, eq, inArray } from "drizzle-orm";
 import PostalMime, {
 	Address as ParsedAddress,
