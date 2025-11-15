@@ -3,6 +3,7 @@ import { loginSchema, registerSchema } from "@gebna/validation/auth";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { jwt } from "hono/jwt";
+import type { JwtVariables } from "hono/jwt";
 
 import { hashPassword, hmacRefresh, nowSec, randomHex, verifyPassword } from "./auth/crypto";
 import { requireRefreshBearer } from "./auth/guards";
@@ -10,7 +11,7 @@ import { ACCESS_TTL, REFRESH_TTL, signAccessJWT } from "./auth/token";
 import { getDB } from "./db";
 import { accountTable, mailboxTable, sessionTable, userTable } from "./db/schema";
 
-type Variables = {
+type Variables = JwtVariables & {
 	sessionRow: typeof sessionTable.$inferSelect;
 };
 export const auth = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
