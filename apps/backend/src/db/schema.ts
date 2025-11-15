@@ -128,6 +128,25 @@ export const blobTable = sqliteTable(
 	(_self) => []
 );
 
+export const accountBlobTable = sqliteTable(
+	"account_blob",
+	(t) => ({
+		accountId: t
+			.text()
+			.notNull()
+			.references(() => accountTable.id, { onDelete: "cascade" }),
+		sha256: t
+			.text()
+			.notNull()
+			.references(() => blobTable.sha256, { onDelete: "cascade" }),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
+	}),
+	(t) => [
+		// each (accountId, sha256) pair is unique
+		primaryKey({ columns: [t.accountId, t.sha256] }),
+	]
+);
+
 // ───────────────────────────────────────────────────────────
 // Canonical message (shared)
 // ───────────────────────────────────────────────────────────
