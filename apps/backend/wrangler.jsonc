@@ -23,4 +23,10 @@
 			"bucket_name": "gebna-emails",
 		},
 	],
+	"vars": {
+		"BASE_API_URL": "https://api.gebna.net",
+		"JMAP_BASE_PATH": "/jmap",
+		"JMAP_UPLOAD_PATH": "/blobs/upload/{accountId}/{type}",
+		"JMAP_DOWNLOAD_PATH": "/blobs/download/{accountId}/{blobId}/{name}",
+	},
 }

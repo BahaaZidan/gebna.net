@@ -3,9 +3,13 @@ import { Hono } from "hono";
 
 import { auth } from "./auth.routes";
 import { email } from "./email-inbound";
+import { jmapFilesApp } from "./jmap-blob.routes";
+import { jmapApp } from "./jmap.routes";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 app.route("/auth", auth);
+app.route("/blobs", jmapFilesApp);
+app.route("/", jmapApp);
 
 app.get("/lolo", (c) => {
 	const lolo = { lolo: "lolo" };
