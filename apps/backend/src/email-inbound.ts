@@ -18,6 +18,7 @@ import {
 	messageTable,
 	threadTable,
 } from "./db/schema";
+import { sha256HexFromArrayBuffer } from "./lib/utils";
 
 // ───────────────────────────────────────────────────────────
 // Helpers
@@ -26,13 +27,6 @@ import {
 function normalizeEmail(addr: string | null | undefined): string | null {
 	if (!addr) return null;
 	return addr.trim().toLowerCase();
-}
-
-async function sha256HexFromArrayBuffer(buffer: ArrayBuffer): Promise<string> {
-	const hash = await crypto.subtle.digest("SHA-256", buffer);
-	return Array.from(new Uint8Array(hash))
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("");
 }
 
 function parseSentAt(email: ParsedEmail): Date | null {
