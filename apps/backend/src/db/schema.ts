@@ -137,6 +137,7 @@ export const messageTable = sqliteTable(
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 		size: t.integer().notNull(),
 		hasAttachment: t.integer({ mode: "boolean" }).notNull().default(false),
+		bodyStructureJson: t.text(),
 	}),
 	(self) => [
 		uniqueIndex("ux_message_ingest").on(self.ingestId),
@@ -228,7 +229,7 @@ export const addressTable = sqliteTable(
 		email: t.text().notNull(),
 		name: t.text(),
 	}),
-	(self) => [index("idx_address_email").on(self.email)]
+	(self) => [uniqueIndex("ux_address_email").on(self.email)]
 );
 
 export const messageAddressTable = sqliteTable(
@@ -370,3 +371,39 @@ export const vacationResponseTable = sqliteTable("vacation_response", (t) => ({
 	createdAt: t.integer({ mode: "timestamp" }).notNull(),
 	updatedAt: t.integer({ mode: "timestamp" }),
 }));
+
+export const changeLogTable = sqliteTable(
+	"change_log",
+	(t) => ({
+		id: t.text().primaryKey(),
+		accountId: t
+			.text()
+			.notNull()
+			.references(() => accountTable.id, { onDelete: "cascade" }),
+		type: t.text().notNull(), // "Email" | "Mailbox" | "Thread" | ...
+		objectId: t.text().notNull(),
+		modSeq: t.integer().notNull(),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
+	}),
+	(self) => [
+		index("idx_change_log_account_type_modseq").on(self.accountId, self.type, self.modSeq),
+		index("idx_change_log_account_modseq").on(self.accountId, self.modSeq),
+	]
+);
+
+export const messageHeaderTable = sqliteTable(
+	"message_header",
+	(t) => ({
+		messageId: t
+			.text()
+			.notNull()
+			.references(() => messageTable.id, { onDelete: "cascade" }),
+		name: t.text().notNull(), // original case
+		lowerName: t.text().notNull(), // for search
+		value: t.text().notNull(),
+	}),
+	(self) => [
+		index("idx_message_header_msg").on(self.messageId),
+		index("idx_message_header_name").on(self.lowerName),
+	]
+);
