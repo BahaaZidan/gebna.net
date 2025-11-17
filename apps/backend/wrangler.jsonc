@@ -28,5 +28,6 @@
 		"JMAP_BASE_PATH": "/jmap",
 		"JMAP_UPLOAD_PATH": "/blobs/upload/{accountId}/{type}",
 		"JMAP_DOWNLOAD_PATH": "/blobs/download/{accountId}/{blobId}/{name}",
+		"AWS_SES_REGION": "eu-central-1",
 	},
 }
