@@ -1,9 +1,75 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "1951d38c-9c24-40cd-b622-566c5850130b",
+  "id": "8b15b2b4-ec7f-4b86-b411-ab2875e5f730",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
+    "account_blob": {
+      "name": "account_blob",
+      "columns": {
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "account_blob_accountId_account_id_fk": {
+          "name": "account_blob_accountId_account_id_fk",
+          "tableFrom": "account_blob",
+          "tableTo": "account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "account_blob_sha256_blob_sha256_fk": {
+          "name": "account_blob_sha256_blob_sha256_fk",
+          "tableFrom": "account_blob",
+          "tableTo": "blob",
+          "columnsFrom": [
+            "sha256"
+          ],
+          "columnsTo": [
+            "sha256"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "account_blob_accountId_sha256_pk": {
+          "columns": [
+            "accountId",
+            "sha256"
+          ],
+          "name": "account_blob_accountId_sha256_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "account_message": {
       "name": "account_message",
       "columns": {
@@ -93,7 +159,7 @@
           "name": "updatedAt",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         }
       },
@@ -217,7 +283,21 @@
           "isUnique": false
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "account_userId_user_id_fk": {
+          "name": "account_userId_user_id_fk",
+          "tableFrom": "account",
+          "tableTo": "user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -248,12 +328,12 @@
         }
       },
       "indexes": {
-        "idx_address_email": {
-          "name": "idx_address_email",
+        "ux_address_email": {
+          "name": "ux_address_email",
           "columns": [
             "email"
           ],
-          "isUnique": false
+          "isUnique": true
         }
       },
       "foreignKeys": {},
@@ -410,6 +490,449 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "change_log": {
+      "name": "change_log",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "objectId": {
+          "name": "objectId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modSeq": {
+          "name": "modSeq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_change_log_account_type_modseq": {
+          "name": "idx_change_log_account_type_modseq",
+          "columns": [
+            "accountId",
+            "type",
+            "modSeq"
+          ],
+          "isUnique": false
+        },
+        "idx_change_log_account_modseq": {
+          "name": "idx_change_log_account_modseq",
+          "columns": [
+            "accountId",
+            "modSeq"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "change_log_accountId_account_id_fk": {
+          "name": "change_log_accountId_account_id_fk",
+          "tableFrom": "change_log",
+          "tableTo": "account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "email_keyword": {
+      "name": "email_keyword",
+      "columns": {
+        "accountMessageId": {
+          "name": "accountMessageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "keyword": {
+          "name": "keyword",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_email_keyword_keyword": {
+          "name": "idx_email_keyword_keyword",
+          "columns": [
+            "keyword"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "email_keyword_accountMessageId_account_message_id_fk": {
+          "name": "email_keyword_accountMessageId_account_message_id_fk",
+          "tableFrom": "email_keyword",
+          "tableTo": "account_message",
+          "columnsFrom": [
+            "accountMessageId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "email_keyword_accountMessageId_keyword_pk": {
+          "columns": [
+            "accountMessageId",
+            "keyword"
+          ],
+          "name": "email_keyword_accountMessageId_keyword_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "email_submission": {
+      "name": "email_submission",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "emailId": {
+          "name": "emailId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "identityId": {
+          "name": "identityId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "envelopeJson": {
+          "name": "envelopeJson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sendAt": {
+          "name": "sendAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "deliveryStatusJson": {
+          "name": "deliveryStatusJson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "undoStatus": {
+          "name": "undoStatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_email_submission_account": {
+          "name": "idx_email_submission_account",
+          "columns": [
+            "accountId"
+          ],
+          "isUnique": false
+        },
+        "idx_email_submission_email": {
+          "name": "idx_email_submission_email",
+          "columns": [
+            "emailId"
+          ],
+          "isUnique": false
+        },
+        "idx_email_submission_send_at": {
+          "name": "idx_email_submission_send_at",
+          "columns": [
+            "sendAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "email_submission_accountId_account_id_fk": {
+          "name": "email_submission_accountId_account_id_fk",
+          "tableFrom": "email_submission",
+          "tableTo": "account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "email_submission_emailId_account_message_id_fk": {
+          "name": "email_submission_emailId_account_message_id_fk",
+          "tableFrom": "email_submission",
+          "tableTo": "account_message",
+          "columnsFrom": [
+            "emailId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "email_submission_identityId_identity_id_fk": {
+          "name": "email_submission_identityId_identity_id_fk",
+          "tableFrom": "email_submission",
+          "tableTo": "identity",
+          "columnsFrom": [
+            "identityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "identity": {
+      "name": "identity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "replyToJson": {
+          "name": "replyToJson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bccJson": {
+          "name": "bccJson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "textSignature": {
+          "name": "textSignature",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "htmlSignature": {
+          "name": "htmlSignature",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "isDefault": {
+          "name": "isDefault",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_identity_account": {
+          "name": "idx_identity_account",
+          "columns": [
+            "accountId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "identity_accountId_account_id_fk": {
+          "name": "identity_accountId_account_id_fk",
+          "tableFrom": "identity",
+          "tableTo": "account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "jmap_state": {
+      "name": "jmap_state",
+      "columns": {
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modSeq": {
+          "name": "modSeq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "jmap_state_accountId_account_id_fk": {
+          "name": "jmap_state_accountId_account_id_fk",
+          "tableFrom": "jmap_state",
+          "tableTo": "account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "jmap_state_accountId_type_pk": {
+          "columns": [
+            "accountId",
+            "type"
+          ],
+          "name": "jmap_state_accountId_type_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "mailbox_message": {
       "name": "mailbox_message",
       "columns": {
@@ -528,6 +1051,13 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         }
       },
@@ -661,6 +1191,73 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "message_header": {
+      "name": "message_header",
+      "columns": {
+        "messageId": {
+          "name": "messageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lowerName": {
+          "name": "lowerName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_message_header_msg": {
+          "name": "idx_message_header_msg",
+          "columns": [
+            "messageId"
+          ],
+          "isUnique": false
+        },
+        "idx_message_header_name": {
+          "name": "idx_message_header_name",
+          "columns": [
+            "lowerName"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "message_header_messageId_message_id_fk": {
+          "name": "message_header_messageId_message_id_fk",
+          "tableFrom": "message_header",
+          "tableTo": "message",
+          "columnsFrom": [
+            "messageId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "message": {
       "name": "message",
       "columns": {
@@ -737,6 +1334,21 @@
         "size": {
           "name": "size",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hasAttachment": {
+          "name": "hasAttachment",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "bodyStructureJson": {
+          "name": "bodyStructureJson",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -857,7 +1469,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -889,6 +1501,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "latestMessageAt": {
+          "name": "latestMessageAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "integer",
@@ -896,11 +1515,11 @@
           "notNull": true,
           "autoincrement": false
         },
-        "latestMessageAt": {
-          "name": "latestMessageAt",
+        "updatedAt": {
+          "name": "updatedAt",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         }
       },
@@ -924,6 +1543,114 @@
           ],
           "columnsTo": [
             "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "upload": {
+      "name": "upload",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "blobSha256": {
+          "name": "blobSha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_upload_account": {
+          "name": "idx_upload_account",
+          "columns": [
+            "accountId"
+          ],
+          "isUnique": false
+        },
+        "idx_upload_expires": {
+          "name": "idx_upload_expires",
+          "columns": [
+            "expiresAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "upload_accountId_account_id_fk": {
+          "name": "upload_accountId_account_id_fk",
+          "tableFrom": "upload",
+          "tableTo": "account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "upload_blobSha256_blob_sha256_fk": {
+          "name": "upload_blobSha256_blob_sha256_fk",
+          "tableFrom": "upload",
+          "tableTo": "blob",
+          "columnsFrom": [
+            "blobSha256"
+          ],
+          "columnsTo": [
+            "sha256"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
@@ -968,6 +1695,94 @@
         }
       },
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "vacation_response": {
+      "name": "vacation_response",
+      "columns": {
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "isEnabled": {
+          "name": "isEnabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "fromDate": {
+          "name": "fromDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "toDate": {
+          "name": "toDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "textBody": {
+          "name": "textBody",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "htmlBody": {
+          "name": "htmlBody",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "vacation_response_accountId_account_id_fk": {
+          "name": "vacation_response_accountId_account_id_fk",
+          "tableFrom": "vacation_response",
+          "tableTo": "account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
