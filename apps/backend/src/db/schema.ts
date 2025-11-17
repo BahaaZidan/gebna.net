@@ -8,6 +8,8 @@ import {
 	uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
+import { DeliveryStatusRecord } from "../lib/types";
+
 const citext = customType<{
 	data: string;
 	notNull: true;
@@ -346,7 +348,7 @@ export const emailSubmissionTable = sqliteTable(
 			.references(() => identityTable.id, { onDelete: "restrict" }),
 		envelopeJson: t.text().notNull(),
 		sendAt: t.integer({ mode: "timestamp" }),
-		deliveryStatusJson: t.text(),
+		deliveryStatusJson: t.text({ mode: "json" }).notNull().$type<DeliveryStatusRecord>(),
 		undoStatus: t.text(),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 		updatedAt: t.integer({ mode: "timestamp" }),
@@ -354,6 +356,7 @@ export const emailSubmissionTable = sqliteTable(
 	(self) => [
 		index("idx_email_submission_account").on(self.accountId),
 		index("idx_email_submission_email").on(self.emailId),
+		index("idx_email_submission_send_at").on(self.sendAt),
 	]
 );
 
