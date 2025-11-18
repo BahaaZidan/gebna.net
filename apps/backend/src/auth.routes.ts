@@ -2,7 +2,6 @@ import { v } from "@gebna/validation";
 import { loginSchema, registerSchema } from "@gebna/validation/auth";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { jwt } from "hono/jwt";
 import type { JwtVariables } from "hono/jwt";
 
 import { hashPassword, hmacRefresh, nowSec, randomHex, verifyPassword } from "./auth/crypto";
@@ -10,6 +9,7 @@ import { requireRefreshBearer } from "./auth/guards";
 import { ACCESS_TTL, REFRESH_TTL, signAccessJWT } from "./auth/token";
 import { getDB } from "./db";
 import { accountTable, mailboxTable, sessionTable, userTable } from "./db/schema";
+import { requireJWT } from "./lib/jmap/middlewares";
 
 type Variables = JwtVariables & {
 	sessionRow: typeof sessionTable.$inferSelect;
@@ -164,25 +164,13 @@ auth.post("/logout", requireRefreshBearer, async (c) => {
 	return c.json({ ok: true });
 });
 
-auth.get(
-	"/me",
-	// TODO: modularize
-	(c, next) => {
-		const requireAuth = jwt({
-			secret: c.env.JWT_SECRET,
-			alg: "HS256",
-		});
-
-		return requireAuth(c, next);
-	},
-	async (c) => {
-		const { sub } = c.get("jwtPayload") as { sub: string };
-		const db = getDB(c.env);
-		const u = await db.query.userTable.findFirst({ where: (t, { eq }) => eq(t.id, sub) });
-		if (!u) return c.json({ error: "not found" }, 404);
-		return c.json({ id: u.id, username: u.username });
-	}
-);
+auth.get("/me", requireJWT, async (c) => {
+	const { sub } = c.get("jwtPayload") as { sub: string };
+	const db = getDB(c.env);
+	const u = await db.query.userTable.findFirst({ where: (t, { eq }) => eq(t.id, sub) });
+	if (!u) return c.json({ error: "not found" }, 404);
+	return c.json({ id: u.id, username: u.username });
+});
 
 async function createSession(
 	env: CloudflareBindings,
