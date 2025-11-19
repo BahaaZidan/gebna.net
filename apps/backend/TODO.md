@@ -4,19 +4,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. Upload Token Workflow (`uploadTable`)
-
-**Module:** `jmap-blob.routes.ts`  
-**Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
-
-### Remaining Tasks
-- Add background cleanup for expired tokens (current implementation prunes opportunistically).
-- Expose a dedicated API to list/inspect active uploads if needed.
-- Enforce per-account quotas before issuing new tokens.
-
----
-
-## 4. Identity API (`Identity/get`, `Identity/set`)
+## 1. Identity API (`Identity/get`, `Identity/set`)
 
 **Tables:** `identityTable`
 
@@ -27,7 +15,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 5. Vacation Response
+## 2. Vacation Response
 
 **Tables:** `vacationResponseTable`
 
@@ -38,19 +26,9 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 6. Changelog Logging Everywhere
+## 3. Full Capability Advertisement
 
-**Tables:** `changeLogTable`, `jmapStateTable`
-
-### Tasks
-- Ensure all future mutations write changelog rows.
-- Increment modSeq atomically.
-
----
-
-## 7. Full Capability Advertisement
-
-Add to session response:
+Ensure the session document advertises every capability implemented:
 
 ```ts
 accountCapabilities: {
@@ -63,22 +41,44 @@ accountCapabilities: {
 
 ---
 
-## 8. Outbound Email Layer
+## 4. Changelog Logging Everywhere
+
+**Tables:** `changeLogTable`, `jmapStateTable`
+
+### Tasks
+- Ensure all future mutations write changelog rows.
+- Increment modSeq atomically.
+
+---
+
+## 5. Outbound Email Layer
 
 - Current SES transport exists; extend with queued retries + webhook ingestion.
 - Track provider delivery events in `emailSubmissionTable`.
 
 ---
 
-## 9. Search (Optional Phase)
+## 6. Upload Token Workflow (`uploadTable`)
 
-- Implement subject/snippet search.
-- Add FTS table or SQLite trigram indexing.
+**Module:** `jmap-blob.routes.ts`  
+**Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
+
+### Remaining Tasks
+- Add background cleanup for expired tokens (current implementation prunes opportunistically).
+- Expose a dedicated API to list/inspect active uploads if needed.
+- Enforce per-account quotas before issuing new tokens.
 
 ---
 
-## 10. Cleanup Cron
+## 7. Cleanup Cron
 
 - Delete expired `uploadTable` rows.
 - GC orphaned blobs.
 - Enforce mailbox role constraints.
+
+---
+
+## 8. Search (Optional Phase)
+
+- Implement subject/snippet search.
+- Add FTS table or SQLite trigram indexing.
