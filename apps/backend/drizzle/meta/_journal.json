@@ -15,6 +15,13 @@
       "when": 1763568534682,
       "tag": "0001_concerned_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1763579962047,
+      "tag": "0002_fast_gunslinger",
+      "breakpoints": true
     }
   ]
 }
