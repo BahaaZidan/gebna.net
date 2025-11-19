@@ -11,6 +11,8 @@ import { handleEmailGet } from "./lib/jmap/method-handlers/email-get";
 import { handleEmailQuery } from "./lib/jmap/method-handlers/email-query";
 import { handleEmailSet } from "./lib/jmap/method-handlers/email-set";
 import { handleEmailSubmissionSet } from "./lib/jmap/method-handlers/email-submission-set";
+import { handleIdentityGet } from "./lib/jmap/method-handlers/identity-get";
+import { handleIdentitySet } from "./lib/jmap/method-handlers/identity-set";
 import { handleMailboxChanges } from "./lib/jmap/method-handlers/mailbox-changes";
 import { handleMailboxGet } from "./lib/jmap/method-handlers/mailbox-get";
 import { handleMailboxQuery } from "./lib/jmap/method-handlers/mailbox-query";
@@ -99,6 +101,8 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Mailbox/changes": handleMailboxChanges,
 	"Email/set": handleEmailSet,
 	"EmailSubmission/set": handleEmailSubmissionSet,
+	"Identity/get": handleIdentityGet,
+	"Identity/set": handleIdentitySet,
 };
 
 async function handleJmap(c: Context<JMAPHonoAppEnv>) {

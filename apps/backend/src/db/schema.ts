@@ -375,7 +375,7 @@ export const vacationResponseTable = sqliteTable("vacation_response", (t) => ({
 	updatedAt: t.integer({ mode: "timestamp" }),
 }));
 
-export const changeLogTypeValues = ["Email", "Mailbox", "Thread"] as const;
+export const changeLogTypeValues = ["Email", "Mailbox", "Thread", "Identity"] as const;
 export type ChangeLogType = (typeof changeLogTypeValues)[number];
 
 export const changeLogOpValues = ["create", "update", "destroy"] as const;
