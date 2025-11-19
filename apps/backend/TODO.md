@@ -4,24 +4,14 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. Changelog Logging Everywhere
-
-**Tables:** `changeLogTable`, `jmapStateTable`
-
-### Tasks
-- Ensure all future mutations write changelog rows.
-- Increment modSeq atomically.
-
----
-
-## 2. Outbound Email Layer
+## 1. Outbound Email Layer
 
 - Current SES transport exists; extend with queued retries + webhook ingestion.
 - Track provider delivery events in `emailSubmissionTable`.
 
 ---
 
-## 3. Upload Token Workflow (`uploadTable`)
+## 2. Upload Token Workflow (`uploadTable`)
 
 **Module:** `jmap-blob.routes.ts`  
 **Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
@@ -33,7 +23,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 4. Cleanup Cron
+## 3. Cleanup Cron
 
 - Delete expired `uploadTable` rows.
 - GC orphaned blobs.
@@ -41,7 +31,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 5. Search (Optional Phase)
+## 4. Search (Optional Phase)
 
 - Implement subject/snippet search.
 - Add FTS table or SQLite trigram indexing.

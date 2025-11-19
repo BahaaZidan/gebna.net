@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type {
 	Address as ParsedAddress,
 	Attachment as ParsedAttachment,
@@ -9,9 +9,7 @@ import { getDB, type TransactionInstance } from "./db";
 import {
 	accountMessageTable,
 	accountTable,
-	changeLogTable,
 	identityTable,
-	jmapStateTable,
 	mailboxMessageTable,
 	mailboxTable,
 	vacationResponseLogTable,
@@ -33,6 +31,7 @@ import {
 	upsertBlob,
 	upsertCanonicalMessage,
 } from "./lib/mail/ingest";
+import { recordEmailCreateChanges } from "./lib/jmap/change-log";
 import { createOutboundTransport } from "./lib/outbound";
 import { sha256HexFromArrayBuffer } from "./lib/utils";
 
@@ -86,75 +85,6 @@ async function getInboxMailboxId(
 		.limit(1);
 
 	return byName?.id ?? null;
-}
-
-async function bumpState(
-	tx: TransactionInstance,
-	accountId: string,
-	type: "Email" | "Mailbox" | "Thread"
-): Promise<number> {
-	const [row] = await tx
-		.insert(jmapStateTable)
-		.values({
-			accountId,
-			type,
-			modSeq: 1,
-		})
-		.onConflictDoUpdate({
-			target: [jmapStateTable.accountId, jmapStateTable.type],
-			set: { modSeq: sql`${jmapStateTable.modSeq} + 1` },
-		})
-		.returning({ modSeq: jmapStateTable.modSeq });
-
-	return row.modSeq;
-}
-
-async function recordInboundChanges(opts: {
-	tx: TransactionInstance;
-	accountId: string;
-	accountMessageId: string;
-	threadId: string;
-	mailboxIds: string[];
-	now: Date;
-}): Promise<void> {
-	const { tx, accountId, accountMessageId, threadId, mailboxIds, now } = opts;
-
-	const emailModSeq = await bumpState(tx, accountId, "Email");
-	await tx.insert(changeLogTable).values({
-		id: crypto.randomUUID(),
-		accountId,
-		type: "Email",
-		objectId: accountMessageId,
-		op: "create",
-		modSeq: emailModSeq,
-		createdAt: now,
-	});
-
-	const threadModSeq = await bumpState(tx, accountId, "Thread");
-	await tx.insert(changeLogTable).values({
-		id: crypto.randomUUID(),
-		accountId,
-		type: "Thread",
-		objectId: threadId,
-		op: "create",
-		modSeq: threadModSeq,
-		createdAt: now,
-	});
-
-	if (mailboxIds.length > 0) {
-		const mailboxModSeq = await bumpState(tx, accountId, "Mailbox");
-		for (const mailboxId of mailboxIds) {
-			await tx.insert(changeLogTable).values({
-				id: crypto.randomUUID(),
-				accountId,
-				type: "Mailbox",
-				objectId: mailboxId,
-				op: "create",
-				modSeq: mailboxModSeq,
-				createdAt: now,
-			});
-		}
-	}
 }
 
 function encodeDisplayName(name: string): string {
@@ -484,7 +414,7 @@ export async function email(
 			}
 
 			// Record JMAP changes for /changes
-			await recordInboundChanges({
+			await recordEmailCreateChanges({
 				tx,
 				accountId,
 				accountMessageId,
