@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { type DBInstance, type TransactionInstance } from "../../db";
 import {
@@ -113,4 +113,157 @@ export async function getGlobalAccountStateString(db: DBLike, accountId: string)
 		if (row.modSeq > max) max = row.modSeq;
 	}
 	return String(max);
+}
+
+type EmailChangeParams = {
+	tx: DBLike;
+	accountId: string;
+	accountMessageId: string;
+	threadId: string;
+	mailboxIds: string[];
+	now: Date;
+};
+
+async function bumpStateTx(
+	db: DBLike,
+	accountId: string,
+	type: JmapStateType
+): Promise<number> {
+	const [row] = await db
+		.insert(jmapStateTable)
+		.values({
+			accountId,
+			type,
+			modSeq: 1,
+		})
+		.onConflictDoUpdate({
+			target: [jmapStateTable.accountId, jmapStateTable.type],
+			set: { modSeq: sql`${jmapStateTable.modSeq} + 1` },
+		})
+		.returning({ modSeq: jmapStateTable.modSeq });
+
+	return row.modSeq;
+}
+
+export async function recordEmailCreateChanges(params: EmailChangeParams): Promise<void> {
+	const { tx, accountId, accountMessageId, threadId, mailboxIds, now } = params;
+
+	const emailModSeq = await bumpStateTx(tx, accountId, "Email");
+	await tx.insert(changeLogTable).values({
+		id: crypto.randomUUID(),
+		accountId,
+		type: "Email",
+		objectId: accountMessageId,
+		op: "create",
+		modSeq: emailModSeq,
+		createdAt: now,
+	});
+
+	const threadModSeq = await bumpStateTx(tx, accountId, "Thread");
+	await tx.insert(changeLogTable).values({
+		id: crypto.randomUUID(),
+		accountId,
+		type: "Thread",
+		objectId: threadId,
+		op: "create",
+		modSeq: threadModSeq,
+		createdAt: now,
+	});
+
+	if (mailboxIds.length > 0) {
+		const mailboxModSeq = await bumpStateTx(tx, accountId, "Mailbox");
+		for (const mailboxId of mailboxIds) {
+			await tx.insert(changeLogTable).values({
+				id: crypto.randomUUID(),
+				accountId,
+				type: "Mailbox",
+				objectId: mailboxId,
+				op: "create",
+				modSeq: mailboxModSeq,
+				createdAt: now,
+			});
+		}
+	}
+}
+
+export async function recordEmailUpdateChanges(params: EmailChangeParams): Promise<void> {
+	const { tx, accountId, accountMessageId, threadId, mailboxIds, now } = params;
+
+	const emailModSeq = await bumpStateTx(tx, accountId, "Email");
+	await tx.insert(changeLogTable).values({
+		id: crypto.randomUUID(),
+		accountId,
+		type: "Email",
+		objectId: accountMessageId,
+		op: "update",
+		modSeq: emailModSeq,
+		createdAt: now,
+	});
+
+	const threadModSeq = await bumpStateTx(tx, accountId, "Thread");
+	await tx.insert(changeLogTable).values({
+		id: crypto.randomUUID(),
+		accountId,
+		type: "Thread",
+		objectId: threadId,
+		op: "update",
+		modSeq: threadModSeq,
+		createdAt: now,
+	});
+
+	if (mailboxIds.length > 0) {
+		const mailboxModSeq = await bumpStateTx(tx, accountId, "Mailbox");
+		for (const mailboxId of mailboxIds) {
+			await tx.insert(changeLogTable).values({
+				id: crypto.randomUUID(),
+				accountId,
+				type: "Mailbox",
+				objectId: mailboxId,
+				op: "update",
+				modSeq: mailboxModSeq,
+				createdAt: now,
+			});
+		}
+	}
+}
+
+export async function recordEmailDestroyChanges(params: EmailChangeParams): Promise<void> {
+	const { tx, accountId, accountMessageId, threadId, mailboxIds, now } = params;
+
+	const emailModSeq = await bumpStateTx(tx, accountId, "Email");
+	await tx.insert(changeLogTable).values({
+		id: crypto.randomUUID(),
+		accountId,
+		type: "Email",
+		objectId: accountMessageId,
+		op: "destroy",
+		modSeq: emailModSeq,
+		createdAt: now,
+	});
+
+	const threadModSeq = await bumpStateTx(tx, accountId, "Thread");
+	await tx.insert(changeLogTable).values({
+		id: crypto.randomUUID(),
+		accountId,
+		type: "Thread",
+		objectId: threadId,
+		op: "update",
+		modSeq: threadModSeq,
+		createdAt: now,
+	});
+
+	if (mailboxIds.length > 0) {
+		const mailboxModSeq = await bumpStateTx(tx, accountId, "Mailbox");
+		for (const mailboxId of mailboxIds) {
+			await tx.insert(changeLogTable).values({
+				id: crypto.randomUUID(),
+				accountId,
+				type: "Mailbox",
+				objectId: mailboxId,
+				op: "update",
+				modSeq: mailboxModSeq,
+				createdAt: now,
+			});
+		}
+	}
 }
