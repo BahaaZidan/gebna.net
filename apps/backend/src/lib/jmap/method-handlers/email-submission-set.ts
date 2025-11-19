@@ -14,10 +14,10 @@ import {
 } from "../../../db/schema";
 import { createOutboundTransport } from "../../outbound";
 import { DeliveryStatusRecord } from "../../types";
+import { recordEmailUpdateChanges } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountMailboxes, getAccountState, isRecord } from "../utils";
-import { recordEmailUpdateChanges } from "../change-log";
 
 export async function handleEmailSubmissionSet(
 	c: Context<JMAPHonoAppEnv>,
@@ -51,6 +51,7 @@ export async function handleEmailSubmissionSet(
 				oldState: result.oldState ?? state,
 				newState: result.newState ?? state,
 				created: result.created,
+				notCreated: result.notCreated,
 				updated: result.updated,
 				destroyed: result.destroyed,
 			},
@@ -71,6 +72,7 @@ async function applyEmailSubmissionSet(
 	const createMap = args.create ?? {};
 
 	const created: Record<string, unknown> = {};
+	const notCreated: Record<string, EmailSubmissionFailure> = {};
 	const updated: Record<string, unknown> = {};
 	const destroyed: string[] = [];
 
@@ -82,6 +84,7 @@ async function applyEmailSubmissionSet(
 			accountId,
 			oldState: await getAccountState(db, accountId, "Email"),
 			created,
+			notCreated: {},
 			updated,
 			destroyed,
 		};
@@ -97,8 +100,16 @@ async function applyEmailSubmissionSet(
 	let emailStateChanged = false;
 
 	for (const [createId, raw] of createEntries) {
-		const parsed = parseEmailSubmissionCreate(raw);
-
+		let parsed: EmailSubmissionCreate;
+		try {
+			parsed = parseEmailSubmissionCreate(raw);
+		} catch (err) {
+			if (err instanceof EmailSubmissionProblem) {
+				notCreated[createId] = { type: err.jmapType, description: err.message };
+				continue;
+			}
+			throw err;
+		}
 		const [identity] = await db
 			.select({
 				id: identityTable.id,
@@ -109,7 +120,11 @@ async function applyEmailSubmissionSet(
 			.limit(1);
 
 		if (!identity) {
-			throw new Error("EmailSubmission/create.identityId does not belong to this account");
+			notCreated[createId] = {
+				type: "invalidProperties",
+				description: "identityId does not belong to this account",
+			};
+			continue;
 		}
 
 		const [accountMessage] = await db
@@ -128,7 +143,11 @@ async function applyEmailSubmissionSet(
 			.limit(1);
 
 		if (!accountMessage) {
-			throw new Error("EmailSubmission/create.emailId not found for this account");
+			notCreated[createId] = {
+				type: "notFound",
+				description: "emailId not found",
+			};
+			continue;
 		}
 
 		const [messageRow] = await db
@@ -142,15 +161,28 @@ async function applyEmailSubmissionSet(
 			.limit(1);
 
 		if (!messageRow) {
-			throw new Error("Canonical message for EmailSubmission/create.emailId not found");
+			notCreated[createId] = {
+				type: "serverError",
+				description: "Canonical message missing",
+			};
+			continue;
 		}
 
-		const envelope = await resolveEnvelopeForSubmission({
-			db,
-			messageId: messageRow.id,
-			identityEmail: identity.email,
-			override: parsed.envelope,
-		});
+		let envelope: ResolvedEnvelope;
+		try {
+			envelope = await resolveEnvelopeForSubmission({
+				db,
+				messageId: messageRow.id,
+				identityEmail: identity.email,
+				override: parsed.envelope,
+			});
+		} catch (err) {
+			notCreated[createId] = {
+				type: err instanceof EmailSubmissionProblem ? err.jmapType : "invalidProperties",
+				description: err instanceof Error ? err.message : "Failed to resolve envelope",
+			};
+			continue;
+		}
 
 		const submissionId = crypto.randomUUID();
 
@@ -223,13 +255,16 @@ async function applyEmailSubmissionSet(
 		};
 	}
 
-	const newState = emailStateChanged ? await getAccountState(db, accountId, "Email") : undefined;
+	const newState = emailStateChanged
+		? await getAccountState(db, accountId, "Email")
+		: oldStateValue;
 
 	return {
 		accountId,
 		oldState: oldStateValue,
 		newState,
 		created,
+		notCreated,
 		updated,
 		destroyed,
 	};
@@ -347,7 +382,10 @@ async function resolveEnvelopeForSubmission(options: {
 	}
 
 	if (rcptTo.length === 0) {
-		throw new Error("EmailSubmission/create has no recipients; rcptTo is empty");
+		throw new EmailSubmissionProblem(
+			"invalidProperties",
+			"EmailSubmission/create has no recipients; rcptTo is empty"
+		);
 	}
 
 	return { mailFrom, rcptTo };
@@ -355,17 +393,26 @@ async function resolveEnvelopeForSubmission(options: {
 
 function parseEmailSubmissionCreate(raw: unknown): EmailSubmissionCreate {
 	if (!isRecord(raw)) {
-		throw new Error("EmailSubmission/create must be an object");
+		throw new EmailSubmissionProblem(
+			"invalidProperties",
+			"EmailSubmission/create must be an object"
+		);
 	}
 
 	const emailIdValue = raw.emailId;
 	if (typeof emailIdValue !== "string" || emailIdValue.length === 0) {
-		throw new Error("EmailSubmission/create.emailId must be a non-empty string");
+		throw new EmailSubmissionProblem(
+			"invalidProperties",
+			"EmailSubmission/create.emailId must be a non-empty string"
+		);
 	}
 
 	const identityIdValue = raw.identityId;
 	if (typeof identityIdValue !== "string" || identityIdValue.length === 0) {
-		throw new Error("EmailSubmission/create.identityId must be a non-empty string");
+		throw new EmailSubmissionProblem(
+			"invalidProperties",
+			"EmailSubmission/create.identityId must be a non-empty string"
+		);
 	}
 
 	const result: EmailSubmissionCreate = {
@@ -376,7 +423,10 @@ function parseEmailSubmissionCreate(raw: unknown): EmailSubmissionCreate {
 	const envelopeValue = raw.envelope;
 	if (envelopeValue !== undefined) {
 		if (!isRecord(envelopeValue)) {
-			throw new Error("EmailSubmission/create.envelope must be an object when present");
+			throw new EmailSubmissionProblem(
+				"invalidProperties",
+				"EmailSubmission/create.envelope must be an object when present"
+			);
 		}
 
 		const envelope: EmailSubmissionEnvelopeOverride = {};
@@ -384,7 +434,8 @@ function parseEmailSubmissionCreate(raw: unknown): EmailSubmissionCreate {
 		const mailFromValue = envelopeValue.mailFrom;
 		if (mailFromValue !== undefined) {
 			if (!isRecord(mailFromValue) || typeof mailFromValue.email !== "string") {
-				throw new Error(
+				throw new EmailSubmissionProblem(
+					"invalidProperties",
 					"EmailSubmission/create.envelope.mailFrom.email must be a string when present"
 				);
 			}
@@ -394,12 +445,16 @@ function parseEmailSubmissionCreate(raw: unknown): EmailSubmissionCreate {
 		const rcptToValue = envelopeValue.rcptTo;
 		if (rcptToValue !== undefined) {
 			if (!Array.isArray(rcptToValue)) {
-				throw new Error("EmailSubmission/create.envelope.rcptTo must be an array when present");
+				throw new EmailSubmissionProblem(
+					"invalidProperties",
+					"EmailSubmission/create.envelope.rcptTo must be an array when present"
+				);
 			}
 			const rcptTo: { email: string }[] = [];
 			for (const item of rcptToValue) {
 				if (!isRecord(item) || typeof item.email !== "string") {
-					throw new Error(
+					throw new EmailSubmissionProblem(
+						"invalidProperties",
 						"EmailSubmission/create.envelope.rcptTo items must have an email string property"
 					);
 				}
@@ -443,6 +498,7 @@ type EmailSubmissionSetResult = {
 	oldState?: string;
 	newState?: string;
 	created: Record<string, unknown>;
+	notCreated: Record<string, EmailSubmissionFailure>;
 	updated: Record<string, unknown>;
 	destroyed: string[];
 };
@@ -451,3 +507,17 @@ type EmailSubmissionEnvelopeOverride = {
 	mailFrom?: { email: string };
 	rcptTo?: { email: string }[];
 };
+
+type EmailSubmissionFailure = {
+	type: string;
+	description?: string;
+};
+
+class EmailSubmissionProblem extends Error {
+	readonly jmapType: string;
+
+	constructor(type: string, message: string) {
+		super(message);
+		this.jmapType = type;
+	}
+}
