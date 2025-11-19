@@ -17,7 +17,6 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 **Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
 
 ### Remaining Tasks
-- Add background cleanup for expired tokens (current implementation prunes opportunistically).
 - Expose a dedicated API to list/inspect active uploads if needed.
 - Enforce per-account quotas before issuing new tokens.
 
