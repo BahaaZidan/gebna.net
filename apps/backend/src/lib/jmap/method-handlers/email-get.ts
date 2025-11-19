@@ -5,6 +5,7 @@ import { getDB } from "../../../db";
 import {
 	accountMessageTable,
 	addressTable,
+	emailKeywordTable,
 	mailboxMessageTable,
 	messageAddressTable,
 	messageTable,
@@ -41,6 +42,14 @@ export async function handleEmailGet(
 			subject: messageTable.subject,
 			snippet: messageTable.snippet,
 			sentAt: messageTable.sentAt,
+			rawBlobSha256: messageTable.rawBlobSha256,
+			size: messageTable.size,
+			hasAttachment: messageTable.hasAttachment,
+			bodyStructureJson: messageTable.bodyStructureJson,
+			isSeen: accountMessageTable.isSeen,
+			isFlagged: accountMessageTable.isFlagged,
+			isAnswered: accountMessageTable.isAnswered,
+			isDraft: accountMessageTable.isDraft,
 		})
 		.from(accountMessageTable)
 		.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
@@ -73,6 +82,26 @@ export async function handleEmailGet(
 		const arr = mailboxMap.get(row.emailId) ?? [];
 		arr.push(row.mailboxId);
 		mailboxMap.set(row.emailId, arr);
+	}
+
+	const keywordRows = await db
+		.select({
+			emailId: emailKeywordTable.accountMessageId,
+			keyword: emailKeywordTable.keyword,
+		})
+		.from(emailKeywordTable)
+		.where(
+			inArray(
+				emailKeywordTable.accountMessageId,
+				rows.map((r) => r.emailId)
+			)
+		);
+
+	const customKeywords = new Map<string, string[]>();
+	for (const row of keywordRows) {
+		const arr = customKeywords.get(row.emailId) ?? [];
+		arr.push(row.keyword);
+		customKeywords.set(row.emailId, arr);
 	}
 
 	const addressRows = await db
@@ -114,6 +143,26 @@ export async function handleEmailGet(
 		const cc = addrKinds["cc"] ?? [];
 		const bcc = addrKinds["bcc"] ?? [];
 
+		const keywords: Record<string, boolean> = {};
+		if (row.isSeen) keywords["$seen"] = true;
+		if (row.isFlagged) keywords["$flagged"] = true;
+		if (row.isAnswered) keywords["$answered"] = true;
+		if (row.isDraft) keywords["$draft"] = true;
+
+		const customList = customKeywords.get(row.emailId) ?? [];
+		for (const keyword of customList) {
+			keywords[keyword] = true;
+		}
+
+		let bodyStructure: unknown = null;
+		if (row.bodyStructureJson) {
+			try {
+				bodyStructure = JSON.parse(row.bodyStructureJson);
+			} catch {
+				bodyStructure = null;
+			}
+		}
+
 		return {
 			id: row.emailId,
 			threadId: row.threadId,
@@ -122,6 +171,11 @@ export async function handleEmailGet(
 			sentAt: row.sentAt ? new Date(row.sentAt).toISOString() : null,
 			receivedAt: new Date(row.internalDate).toISOString(),
 			preview: row.snippet,
+			size: row.size,
+			blobId: row.rawBlobSha256,
+			hasAttachment: row.hasAttachment,
+			bodyStructure,
+			keywords,
 			from,
 			to,
 			cc,
