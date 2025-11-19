@@ -1,18 +1,15 @@
 import { v } from "@gebna/validation";
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { getDB } from "./db";
 import { accountBlobTable, blobTable, uploadTable } from "./db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "./lib/jmap/constants";
 import { attachUserFromJwt, JMAPHonoAppEnv, requireJWT } from "./lib/jmap/middlewares";
+import { cleanupExpiredUploadTokens } from "./lib/maintenance/upload-cleanup";
 import { sha256HexFromArrayBuffer } from "./lib/utils";
 
 const UPLOAD_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-async function cleanupExpiredUploadTokens(db: ReturnType<typeof getDB>, now: Date): Promise<void> {
-	await db.delete(uploadTable).where(lt(uploadTable.expiresAt, now));
-}
 
 export const jmapFilesApp = new Hono<JMAPHonoAppEnv>();
 jmapFilesApp.use(requireJWT);
