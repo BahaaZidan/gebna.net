@@ -1,12 +1,18 @@
 import { v } from "@gebna/validation";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { getDB } from "./db";
-import { accountBlobTable, blobTable } from "./db/schema";
+import { accountBlobTable, blobTable, uploadTable } from "./db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "./lib/jmap/constants";
 import { attachUserFromJwt, JMAPHonoAppEnv, requireJWT } from "./lib/jmap/middlewares";
 import { sha256HexFromArrayBuffer } from "./lib/utils";
+
+const UPLOAD_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function cleanupExpiredUploadTokens(db: ReturnType<typeof getDB>, now: Date): Promise<void> {
+	await db.delete(uploadTable).where(lt(uploadTable.expiresAt, now));
+}
 
 export const jmapFilesApp = new Hono<JMAPHonoAppEnv>();
 jmapFilesApp.use(requireJWT);
@@ -96,6 +102,10 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 
 		const db = getDB(c.env);
 		const now = new Date();
+		await cleanupExpiredUploadTokens(db, now);
+		const uploadNameHeader = c.req.header("X-File-Name");
+		let uploadTokenId: string | null = null;
+		let uploadTokenExpiresAt: Date | null = null;
 
 		await db.transaction(async (tx) => {
 			await tx
@@ -122,6 +132,19 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 					createdAt: now,
 				})
 				.onConflictDoNothing();
+
+			uploadTokenId = crypto.randomUUID();
+			uploadTokenExpiresAt = new Date(now.getTime() + UPLOAD_TOKEN_TTL_MS);
+			await tx.insert(uploadTable).values({
+				id: uploadTokenId,
+				accountId: paramsValidation.output.accountId,
+				blobSha256: blobId,
+				type: paramsValidation.output.type,
+				name: uploadNameHeader ?? null,
+				size: body.byteLength,
+				expiresAt: uploadTokenExpiresAt,
+				createdAt: now,
+			});
 		});
 
 		return c.json(
@@ -130,6 +153,8 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 				blobId,
 				type: contentType,
 				size: body.byteLength,
+				uploadToken: uploadTokenId,
+				uploadTokenExpiresAt: uploadTokenExpiresAt?.toISOString(),
 			},
 			201,
 			{
