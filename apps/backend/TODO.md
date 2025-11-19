@@ -6,8 +6,8 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ## 1. Outbound Email Layer
 
-- Current SES transport exists; extend with queued retries + webhook ingestion.
-- Track provider delivery events in `emailSubmissionTable`.
+- Queued retries now run via the submission queue; next add SES webhook ingestion for final delivery/bounce events.
+- Track provider delivery events in `emailSubmissionTable` so clients see final state transitions.
 
 ---
 
