@@ -105,7 +105,7 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 		await cleanupExpiredUploadTokens(db, now);
 		const uploadNameHeader = c.req.header("X-File-Name");
 		let uploadTokenId: string | null = null;
-		let uploadTokenExpiresAt: Date | null = null;
+		let uploadTokenExpiresAtIso: string | null = null;
 
 		await db.transaction(async (tx) => {
 			await tx
@@ -134,7 +134,8 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 				.onConflictDoNothing();
 
 			uploadTokenId = crypto.randomUUID();
-			uploadTokenExpiresAt = new Date(now.getTime() + UPLOAD_TOKEN_TTL_MS);
+			const uploadExpiry = new Date(now.getTime() + UPLOAD_TOKEN_TTL_MS);
+			uploadTokenExpiresAtIso = uploadExpiry.toISOString();
 			await tx.insert(uploadTable).values({
 				id: uploadTokenId,
 				accountId: paramsValidation.output.accountId,
@@ -142,7 +143,7 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 				type: paramsValidation.output.type,
 				name: uploadNameHeader ?? null,
 				size: body.byteLength,
-				expiresAt: uploadTokenExpiresAt,
+				expiresAt: uploadExpiry,
 				createdAt: now,
 			});
 		});
@@ -154,7 +155,7 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 				type: contentType,
 				size: body.byteLength,
 				uploadToken: uploadTokenId,
-				uploadTokenExpiresAt: uploadTokenExpiresAt?.toISOString(),
+				uploadTokenExpiresAt: uploadTokenExpiresAtIso,
 			},
 			201,
 			{
