@@ -4,44 +4,15 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. `Email/set` Implementation
-
-**Module:** `jmap.routes.ts`  
-**Stub:** `applyEmailSet()`  
-**Tables:** `accountMessageTable`, `mailboxMessageTable`, `emailKeywordTable`, `changeLogTable`, `jmapStateTable`
-
-### Tasks
-- Implement creation, update, and deletion of emails.
-- Update mailbox memberships via `mailboxMessageTable`.
-- Maintain flags & keywords via `emailKeywordTable`.
-- Log all changes into `changeLogTable` and increment `jmapStateTable.modSeq`.
-
----
-
-## 2. `EmailSubmission/set` + Outbound Sending
-
-**Module:** `jmap.routes.ts`  
-**Stub:** `applyEmailSubmissionSet()`  
-**Tables:** `emailSubmissionTable`, `identityTable`, `accountMessageTable`, `changeLogTable`, `jmapStateTable`
-
-### Tasks
-- Validate identity + email ownership.
-- Insert submission rows.
-- Generate SMTP envelope JSON.
-- Call outbound delivery stub.
-- Update delivery status + changelog + modSeq.
-
----
-
-## 3. Upload Token Workflow (`uploadTable`)
+## 1. Upload Token Workflow (`uploadTable`)
 
 **Module:** `jmap-blob.routes.ts`  
 **Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
 
-### Tasks
-- Insert upload token rows in `uploadTable`.
-- Add job to clean expired uploads.
-- Integrate upload tokens into `Email/set`.
+### Remaining Tasks
+- Add background cleanup for expired tokens (current implementation prunes opportunistically).
+- Expose a dedicated API to list/inspect active uploads if needed.
+- Enforce per-account quotas before issuing new tokens.
 
 ---
 
@@ -92,15 +63,10 @@ accountCapabilities: {
 
 ---
 
-## 8. Outbound Email Layer Stub
+## 8. Outbound Email Layer
 
-Create file `outbound.ts`:
-
-```ts
-export async function sendEmailOutbound(submission, env) {
-  // SMTP or Worker-based delivery
-}
-```
+- Current SES transport exists; extend with queued retries + webhook ingestion.
+- Track provider delivery events in `emailSubmissionTable`.
 
 ---
 
