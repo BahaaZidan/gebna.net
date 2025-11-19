@@ -4,18 +4,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. Identity API (`Identity/get`, `Identity/set`)
-
-**Tables:** `identityTable`
-
-### Tasks
-- Add JMAP identity methods.
-- Enforce single default identity.
-- Validate outbound email consistency.
-
----
-
-## 2. Vacation Response
+## 1. Vacation Response
 
 **Tables:** `vacationResponseTable`
 
@@ -26,7 +15,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 3. Full Capability Advertisement
+## 2. Full Capability Advertisement
 
 Ensure the session document advertises every capability implemented:
 
@@ -41,7 +30,7 @@ accountCapabilities: {
 
 ---
 
-## 4. Changelog Logging Everywhere
+## 3. Changelog Logging Everywhere
 
 **Tables:** `changeLogTable`, `jmapStateTable`
 
@@ -51,14 +40,14 @@ accountCapabilities: {
 
 ---
 
-## 5. Outbound Email Layer
+## 4. Outbound Email Layer
 
 - Current SES transport exists; extend with queued retries + webhook ingestion.
 - Track provider delivery events in `emailSubmissionTable`.
 
 ---
 
-## 6. Upload Token Workflow (`uploadTable`)
+## 5. Upload Token Workflow (`uploadTable`)
 
 **Module:** `jmap-blob.routes.ts`  
 **Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
@@ -70,7 +59,7 @@ accountCapabilities: {
 
 ---
 
-## 7. Cleanup Cron
+## 6. Cleanup Cron
 
 - Delete expired `uploadTable` rows.
 - GC orphaned blobs.
@@ -78,7 +67,7 @@ accountCapabilities: {
 
 ---
 
-## 8. Search (Optional Phase)
+## 7. Search (Optional Phase)
 
 - Implement subject/snippet search.
 - Add FTS table or SQLite trigram indexing.
