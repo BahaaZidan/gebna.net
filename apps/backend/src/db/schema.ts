@@ -348,6 +348,9 @@ export const emailSubmissionTable = sqliteTable(
 			.references(() => identityTable.id, { onDelete: "restrict" }),
 		envelopeJson: t.text().notNull(),
 		sendAt: t.integer({ mode: "timestamp" }),
+		status: t.text().notNull().default("pending"),
+		nextAttemptAt: t.integer({ mode: "timestamp" }),
+		retryCount: t.integer().notNull().default(0),
 		deliveryStatusJson: t.text({ mode: "json" }).notNull().$type<DeliveryStatusRecord>(),
 		undoStatus: t.text(),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
@@ -357,6 +360,7 @@ export const emailSubmissionTable = sqliteTable(
 		index("idx_email_submission_account").on(self.accountId),
 		index("idx_email_submission_email").on(self.emailId),
 		index("idx_email_submission_send_at").on(self.sendAt),
+		index("idx_email_submission_queue").on(self.status, self.nextAttemptAt),
 	]
 );
 

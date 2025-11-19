@@ -23,6 +23,9 @@
 			"bucket_name": "gebna-emails",
 		},
 	],
+	"triggers": {
+		"crons": ["*/1 * * * *"],
+	},
 	"vars": {
 		"BASE_API_URL": "https://api.gebna.net",
 		"JMAP_BASE_PATH": "/jmap",
