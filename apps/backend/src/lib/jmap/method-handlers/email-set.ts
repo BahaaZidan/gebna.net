@@ -9,6 +9,7 @@ import {
 	blobTable,
 	emailKeywordTable,
 	mailboxMessageTable,
+	uploadTable,
 } from "../../../db/schema";
 import {
 	buildBodyStructure,
@@ -424,6 +425,7 @@ type PreparedEmailCreate = {
 	bodyStructureJson: string | null;
 	flags: KeywordFlags;
 	customKeywords: Record<string, boolean>;
+	uploadTokenId: string;
 };
 
 async function prepareEmailCreate(opts: {
@@ -435,6 +437,7 @@ async function prepareEmailCreate(opts: {
 	mailboxLookup: Map<string, { id: string; role: string | null }>;
 }): Promise<PreparedEmailCreate> {
 	const { env, db, accountId, creationId, rawCreate, mailboxLookup } = opts;
+	const now = new Date();
 
 	if (!isRecord(rawCreate)) {
 		throw new EmailSetProblem("invalidProperties", "Email/create patch must be an object");
@@ -443,6 +446,11 @@ async function prepareEmailCreate(opts: {
 	const blobIdValue = rawCreate.blobId;
 	if (typeof blobIdValue !== "string" || blobIdValue.length === 0) {
 		throw new EmailSetProblem("invalidProperties", "blobId must be a non-empty string");
+	}
+
+	const uploadTokenValue = rawCreate.uploadToken;
+	if (typeof uploadTokenValue !== "string" || uploadTokenValue.length === 0) {
+		throw new EmailSetProblem("invalidProperties", "uploadToken must be provided");
 	}
 
 	const mailboxIdsValue = rawCreate.mailboxIds;
@@ -471,6 +479,28 @@ async function prepareEmailCreate(opts: {
 		keywordPatch ?? {},
 		createDefaultKeywordFlags()
 	);
+
+	const [tokenRow] = await db
+		.select({
+			blobSha256: uploadTable.blobSha256,
+			expiresAt: uploadTable.expiresAt,
+		})
+		.from(uploadTable)
+		.where(and(eq(uploadTable.id, uploadTokenValue), eq(uploadTable.accountId, accountId)))
+		.limit(1);
+
+	if (!tokenRow) {
+		throw new EmailSetProblem("invalidProperties", "uploadToken is invalid or expired");
+	}
+
+	if (tokenRow.blobSha256 !== blobIdValue) {
+		throw new EmailSetProblem("invalidProperties", "uploadToken does not match blobId");
+	}
+
+	if (tokenRow.expiresAt && tokenRow.expiresAt.getTime() <= now.getTime()) {
+		await db.delete(uploadTable).where(eq(uploadTable.id, uploadTokenValue));
+		throw new EmailSetProblem("invalidProperties", "uploadToken has expired");
+	}
 
 	const [blobRow] = await db
 		.select({
@@ -522,6 +552,7 @@ async function prepareEmailCreate(opts: {
 		bodyStructureJson,
 		flags,
 		customKeywords: custom,
+		uploadTokenId: uploadTokenValue,
 	};
 }
 
@@ -609,6 +640,8 @@ async function persistEmailCreate(opts: {
 		mailboxIds: prepared.mailboxIds,
 		now,
 	});
+
+	await tx.delete(uploadTable).where(eq(uploadTable.id, prepared.uploadTokenId));
 
 	return { accountMessageId, threadId };
 }
