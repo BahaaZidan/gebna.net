@@ -4,22 +4,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. Full Capability Advertisement
-
-Ensure the session document advertises every capability implemented:
-
-```ts
-accountCapabilities: {
-  "urn:ietf:params:jmap:core": {},
-  "urn:ietf:params:jmap:mail": {},
-  "urn:ietf:params:jmap:submission": {},
-  "urn:ietf:params:jmap:vacationresponse": {}
-}
-```
-
----
-
-## 2. Changelog Logging Everywhere
+## 1. Changelog Logging Everywhere
 
 **Tables:** `changeLogTable`, `jmapStateTable`
 
@@ -29,14 +14,14 @@ accountCapabilities: {
 
 ---
 
-## 3. Outbound Email Layer
+## 2. Outbound Email Layer
 
 - Current SES transport exists; extend with queued retries + webhook ingestion.
 - Track provider delivery events in `emailSubmissionTable`.
 
 ---
 
-## 4. Upload Token Workflow (`uploadTable`)
+## 3. Upload Token Workflow (`uploadTable`)
 
 **Module:** `jmap-blob.routes.ts`  
 **Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
@@ -48,7 +33,7 @@ accountCapabilities: {
 
 ---
 
-## 5. Cleanup Cron
+## 4. Cleanup Cron
 
 - Delete expired `uploadTable` rows.
 - GC orphaned blobs.
@@ -56,7 +41,7 @@ accountCapabilities: {
 
 ---
 
-## 6. Search (Optional Phase)
+## 5. Search (Optional Phase)
 
 - Implement subject/snippet search.
 - Add FTS table or SQLite trigram indexing.
