@@ -1,14 +1,21 @@
 import { and, eq, sql } from "drizzle-orm";
-import type { Attachment as ParsedAttachment, Email as ParsedEmail } from "postal-mime";
+import type {
+	Address as ParsedAddress,
+	Attachment as ParsedAttachment,
+	Email as ParsedEmail,
+} from "postal-mime";
 
 import { getDB, type TransactionInstance } from "./db";
 import {
 	accountMessageTable,
 	accountTable,
 	changeLogTable,
+	identityTable,
 	jmapStateTable,
 	mailboxMessageTable,
 	mailboxTable,
+	vacationResponseLogTable,
+	vacationResponseTable,
 } from "./db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "./lib/jmap/constants";
 import {
@@ -26,6 +33,7 @@ import {
 	upsertBlob,
 	upsertCanonicalMessage,
 } from "./lib/mail/ingest";
+import { createOutboundTransport } from "./lib/outbound";
 import { sha256HexFromArrayBuffer } from "./lib/utils";
 
 // ───────────────────────────────────────────────────────────
@@ -33,7 +41,31 @@ import { sha256HexFromArrayBuffer } from "./lib/utils";
 // ───────────────────────────────────────────────────────────
 
 const MAX_RAW_BYTES = JMAP_CONSTRAINTS[JMAP_CORE].maxSizeUpload;
+const VACATION_REPEAT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+function getPrimarySenderAddress(email: ParsedEmail): string | null {
+	let candidate: ParsedAddress | null | undefined = null;
+	if (email.from) {
+		candidate = Array.isArray(email.from) ? (email.from[0] ?? null) : (email.from as ParsedAddress);
+	} else if (email.sender) {
+		candidate = Array.isArray(email.sender)
+			? (email.sender[0] ?? null)
+			: (email.sender as ParsedAddress);
+	}
+	if (!candidate) return null;
+	const addr = (candidate as ParsedAddress).address ?? null;
+	return normalizeEmail(addr);
+}
+
+function hasAutoSubmittedHeader(email: ParsedEmail): boolean {
+	const headers = email.headers ?? [];
+	return headers.some((entry) => {
+		if (!entry || !entry.key) return false;
+		if (entry.key.toLowerCase() !== "auto-submitted") return false;
+		const value = (entry.value ?? "no").toLowerCase();
+		return value !== "no";
+	});
+}
 
 async function getInboxMailboxId(
 	tx: TransactionInstance,
@@ -125,6 +157,159 @@ async function recordInboundChanges(opts: {
 	}
 }
 
+function encodeDisplayName(name: string): string {
+	if (!name) return "";
+	if (/^[A-Za-z0-9 .'-]+$/.test(name)) {
+		return name;
+	}
+	return `"${name.replace(/"/g, '\\"')}"`;
+}
+
+function buildVacationMime(options: {
+	fromName: string | null;
+	fromEmail: string;
+	toEmail: string;
+	subject: string;
+	textBody: string | null;
+	htmlBody: string | null;
+}): string {
+	const { fromName, fromEmail, toEmail, subject, textBody, htmlBody } = options;
+	const fromHeader = fromName ? `${encodeDisplayName(fromName)} <${fromEmail}>` : fromEmail;
+	const chosenHtml = htmlBody ?? null;
+	const chosenText = textBody ?? (chosenHtml ? null : "I am currently away from my inbox.");
+	if (chosenHtml && chosenText) {
+		const boundary = crypto.randomUUID();
+		return [
+			`From: ${fromHeader}`,
+			`To: ${toEmail}`,
+			`Subject: ${subject}`,
+			"Auto-Submitted: auto-replied",
+			"MIME-Version: 1.0",
+			`Content-Type: multipart/alternative; boundary="${boundary}"`,
+			"",
+			`--${boundary}`,
+			"Content-Type: text/plain; charset=UTF-8",
+			"Content-Transfer-Encoding: 8bit",
+			"",
+			chosenText,
+			`--${boundary}`,
+			"Content-Type: text/html; charset=UTF-8",
+			"Content-Transfer-Encoding: 8bit",
+			"",
+			chosenHtml,
+			`--${boundary}--`,
+		].join("\r\n");
+	}
+	const body = chosenHtml ?? chosenText ?? "I am currently away from my inbox.";
+	const contentType = chosenHtml ? "text/html" : "text/plain";
+	return [
+		`From: ${fromHeader}`,
+		`To: ${toEmail}`,
+		`Subject: ${subject}`,
+		"Auto-Submitted: auto-replied",
+		`Content-Type: ${contentType}; charset=UTF-8`,
+		"",
+		body,
+	].join("\r\n");
+}
+
+async function maybeSendVacationAutoReply(options: {
+	db: ReturnType<typeof getDB>;
+	env: CloudflareBindings;
+	accountId: string;
+	accountAddress: string;
+	senderAddress: string;
+	originalSubject: string | null;
+	accountMessageId: string;
+}): Promise<void> {
+	const { db, env, accountId, accountAddress, senderAddress, originalSubject, accountMessageId } =
+		options;
+	const [vacation] = await db
+		.select({
+			isEnabled: vacationResponseTable.isEnabled,
+			fromDate: vacationResponseTable.fromDate,
+			toDate: vacationResponseTable.toDate,
+			subject: vacationResponseTable.subject,
+			textBody: vacationResponseTable.textBody,
+			htmlBody: vacationResponseTable.htmlBody,
+		})
+		.from(vacationResponseTable)
+		.where(eq(vacationResponseTable.accountId, accountId))
+		.limit(1);
+
+	if (!vacation || !vacation.isEnabled) return;
+
+	const now = new Date();
+	if (vacation.fromDate && now < vacation.fromDate) return;
+	if (vacation.toDate && now > vacation.toDate) return;
+
+	const [recent] = await db
+		.select({ respondedAt: vacationResponseLogTable.respondedAt })
+		.from(vacationResponseLogTable)
+		.where(
+			and(
+				eq(vacationResponseLogTable.accountId, accountId),
+				eq(vacationResponseLogTable.contact, senderAddress)
+			)
+		)
+		.limit(1);
+
+	if (recent) {
+		const last = new Date(recent.respondedAt);
+		if (now.getTime() - last.getTime() < VACATION_REPEAT_INTERVAL_MS) {
+			return;
+		}
+	}
+
+	const [identity] = await db
+		.select({ name: identityTable.name, email: identityTable.email })
+		.from(identityTable)
+		.where(and(eq(identityTable.accountId, accountId), eq(identityTable.isDefault, true)))
+		.limit(1);
+
+	const fromEmail = identity?.email ?? accountAddress;
+	const fromName = identity?.name ?? null;
+	const subjectBase = originalSubject ? `Re: ${originalSubject}` : "Out of office";
+	const subject = vacation.subject ?? subjectBase;
+	const textBody = vacation.textBody ?? null;
+	const htmlBody = vacation.htmlBody ?? null;
+	const mime = buildVacationMime({
+		fromName,
+		fromEmail,
+		toEmail: senderAddress,
+		subject,
+		textBody,
+		htmlBody,
+	});
+
+	const transport = createOutboundTransport(env);
+	const result = await transport.send({
+		accountId,
+		submissionId: crypto.randomUUID(),
+		emailId: accountMessageId,
+		envelope: {
+			mailFrom: fromEmail,
+			rcptTo: [senderAddress],
+		},
+		mime: {
+			kind: "inline",
+			raw: mime,
+		},
+	});
+
+	if (result.status !== "accepted") {
+		return;
+	}
+
+	await db
+		.insert(vacationResponseLogTable)
+		.values({ accountId, contact: senderAddress, respondedAt: now })
+		.onConflictDoUpdate({
+			target: [vacationResponseLogTable.accountId, vacationResponseLogTable.contact],
+			set: { respondedAt: now },
+		});
+}
+
 // ───────────────────────────────────────────────────────────
 // Cloudflare Email Worker entrypoint
 // ───────────────────────────────────────────────────────────
@@ -161,6 +346,12 @@ export async function email(
 		const ingestId = rawSha;
 
 		await ensureBlobInR2(env, rawSha, rawBuffer);
+
+		const senderAddress = getPrimarySenderAddress(email);
+		const autoSubmitted = hasAutoSubmittedHeader(email);
+		let storedAccountId: string | null = null;
+		let storedAccountMessageId: string | null = null;
+		let storedAccountAddress: string | null = null;
 
 		await db.transaction(async (tx) => {
 			// 1) Blob for raw MIME
@@ -301,7 +492,30 @@ export async function email(
 				mailboxIds,
 				now,
 			});
+
+			storedAccountId = accountId;
+			storedAccountMessageId = accountMessageId;
+			storedAccountAddress = rcpt;
 		});
+
+		if (
+			storedAccountId &&
+			storedAccountMessageId &&
+			storedAccountAddress &&
+			senderAddress &&
+			senderAddress !== storedAccountAddress &&
+			!autoSubmitted
+		) {
+			await maybeSendVacationAutoReply({
+				db,
+				env,
+				accountId: storedAccountId,
+				accountAddress: storedAccountAddress,
+				senderAddress,
+				originalSubject: email.subject ?? null,
+				accountMessageId: storedAccountMessageId,
+			});
+		}
 
 		console.log("Inbound email stored with ingestId", ingestId);
 	} catch (err) {

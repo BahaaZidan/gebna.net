@@ -18,6 +18,8 @@ import { handleMailboxGet } from "./lib/jmap/method-handlers/mailbox-get";
 import { handleMailboxQuery } from "./lib/jmap/method-handlers/mailbox-query";
 import { handleThreadChanges } from "./lib/jmap/method-handlers/thread-changes";
 import { handleThreadGet } from "./lib/jmap/method-handlers/thread-get";
+import { handleVacationResponseGet } from "./lib/jmap/method-handlers/vacation-get";
+import { handleVacationResponseSet } from "./lib/jmap/method-handlers/vacation-set";
 import { attachUserFromJwt, requireJWT, type JMAPHonoAppEnv } from "./lib/jmap/middlewares";
 import { JmapMethodResponse } from "./lib/jmap/types";
 
@@ -103,6 +105,8 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"EmailSubmission/set": handleEmailSubmissionSet,
 	"Identity/get": handleIdentityGet,
 	"Identity/set": handleIdentitySet,
+	"VacationResponse/get": handleVacationResponseGet,
+	"VacationResponse/set": handleVacationResponseSet,
 };
 
 async function handleJmap(c: Context<JMAPHonoAppEnv>) {

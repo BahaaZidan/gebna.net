@@ -375,7 +375,20 @@ export const vacationResponseTable = sqliteTable("vacation_response", (t) => ({
 	updatedAt: t.integer({ mode: "timestamp" }),
 }));
 
-export const changeLogTypeValues = ["Email", "Mailbox", "Thread", "Identity"] as const;
+export const vacationResponseLogTable = sqliteTable(
+	"vacation_response_log",
+	(t) => ({
+		accountId: t
+			.text()
+			.notNull()
+			.references(() => accountTable.id, { onDelete: "cascade" }),
+		contact: t.text().notNull(),
+		respondedAt: t.integer({ mode: "timestamp" }).notNull(),
+	}),
+	(t) => [primaryKey({ columns: [t.accountId, t.contact] })]
+);
+
+export const changeLogTypeValues = ["Email", "Mailbox", "Thread", "Identity", "VacationResponse"] as const;
 export type ChangeLogType = (typeof changeLogTypeValues)[number];
 
 export const changeLogOpValues = ["create", "update", "destroy"] as const;

@@ -4,18 +4,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. Vacation Response
-
-**Tables:** `vacationResponseTable`
-
-### Tasks
-- Add `"VacationResponse/get"` & `"VacationResponse/set"`.
-- In inbound path, detect enabled vacation responder and send auto replies.
-- Prevent duplicate responses per sender.
-
----
-
-## 2. Full Capability Advertisement
+## 1. Full Capability Advertisement
 
 Ensure the session document advertises every capability implemented:
 
@@ -30,7 +19,7 @@ accountCapabilities: {
 
 ---
 
-## 3. Changelog Logging Everywhere
+## 2. Changelog Logging Everywhere
 
 **Tables:** `changeLogTable`, `jmapStateTable`
 
@@ -40,14 +29,14 @@ accountCapabilities: {
 
 ---
 
-## 4. Outbound Email Layer
+## 3. Outbound Email Layer
 
 - Current SES transport exists; extend with queued retries + webhook ingestion.
 - Track provider delivery events in `emailSubmissionTable`.
 
 ---
 
-## 5. Upload Token Workflow (`uploadTable`)
+## 4. Upload Token Workflow (`uploadTable`)
 
 **Module:** `jmap-blob.routes.ts`  
 **Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
@@ -59,7 +48,7 @@ accountCapabilities: {
 
 ---
 
-## 6. Cleanup Cron
+## 5. Cleanup Cron
 
 - Delete expired `uploadTable` rows.
 - GC orphaned blobs.
@@ -67,7 +56,7 @@ accountCapabilities: {
 
 ---
 
-## 7. Search (Optional Phase)
+## 6. Search (Optional Phase)
 
 - Implement subject/snippet search.
 - Add FTS table or SQLite trigram indexing.
