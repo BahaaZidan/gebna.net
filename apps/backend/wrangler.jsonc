@@ -24,7 +24,7 @@
 		},
 	],
 	"triggers": {
-		"crons": ["*/1 * * * *"],
+		"crons": ["*/1 * * * *", "0 * * * *"],
 	},
 	"vars": {
 		"BASE_API_URL": "https://api.gebna.net",
