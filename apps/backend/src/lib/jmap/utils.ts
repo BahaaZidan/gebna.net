@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../db";
-import { changeLogTable, jmapStateTable } from "../../db/schema";
+import { changeLogTable, jmapStateTable, mailboxTable } from "../../db/schema";
 import { JMAPHonoAppEnv } from "./middlewares";
 import { JmapStateType } from "./types";
 
@@ -126,6 +126,42 @@ export async function getChanges(
 		destroyed,
 		hasMoreChanges,
 	};
+}
+
+export type AccountMailboxInfo = {
+	id: string;
+	role: string | null;
+};
+
+export type AccountMailboxLookup = {
+	byId: Map<string, AccountMailboxInfo>;
+	byRole: Map<string, AccountMailboxInfo>;
+};
+
+export async function getAccountMailboxes(
+	db: ReturnType<typeof getDB>,
+	accountId: string
+): Promise<AccountMailboxLookup> {
+	const rows = await db
+		.select({
+			id: mailboxTable.id,
+			role: mailboxTable.role,
+		})
+		.from(mailboxTable)
+		.where(eq(mailboxTable.accountId, accountId));
+
+	const byId = new Map<string, AccountMailboxInfo>();
+	const byRole = new Map<string, AccountMailboxInfo>();
+
+	for (const row of rows) {
+		const info: AccountMailboxInfo = { id: row.id, role: row.role };
+		byId.set(row.id, info);
+		if (row.role) {
+			byRole.set(row.role, info);
+		}
+	}
+
+	return { byId, byRole };
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

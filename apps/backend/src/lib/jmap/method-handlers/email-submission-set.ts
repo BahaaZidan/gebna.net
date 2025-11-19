@@ -1,12 +1,14 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
-import { getDB } from "../../../db";
+import { getDB, TransactionInstance } from "../../../db";
 import {
 	accountMessageTable,
 	addressTable,
+	emailKeywordTable,
 	emailSubmissionTable,
 	identityTable,
+	mailboxMessageTable,
 	messageAddressTable,
 	messageTable,
 } from "../../../db/schema";
@@ -14,7 +16,8 @@ import { createOutboundTransport } from "../../outbound";
 import { DeliveryStatusRecord } from "../../types";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState, isRecord } from "../utils";
+import { ensureAccountAccess, getAccountMailboxes, getAccountState, isRecord } from "../utils";
+import { recordEmailUpdateChanges } from "../change-log";
 
 export async function handleEmailSubmissionSet(
 	c: Context<JMAPHonoAppEnv>,
@@ -77,6 +80,7 @@ async function applyEmailSubmissionSet(
 	if (createEntries.length === 0) {
 		return {
 			accountId,
+			oldState: await getAccountState(db, accountId, "Email"),
 			created,
 			updated,
 			destroyed,
@@ -86,11 +90,15 @@ async function applyEmailSubmissionSet(
 	const transport = createOutboundTransport(env);
 	const now = new Date();
 	const nowEpochSeconds = Math.floor(now.getTime() / 1000);
+	const mailboxInfo = await getAccountMailboxes(db, accountId);
+	const sentMailboxId = mailboxInfo.byRole.get("sent")?.id ?? null;
+	const draftsMailboxId = mailboxInfo.byRole.get("drafts")?.id ?? null;
+	const oldStateValue = await getAccountState(db, accountId, "Email");
+	let emailStateChanged = false;
 
 	for (const [createId, raw] of createEntries) {
 		const parsed = parseEmailSubmissionCreate(raw);
 
-		// 1) Validate identity belongs to this account
 		const [identity] = await db
 			.select({
 				id: identityTable.id,
@@ -104,11 +112,11 @@ async function applyEmailSubmissionSet(
 			throw new Error("EmailSubmission/create.identityId does not belong to this account");
 		}
 
-		// 2) Resolve account message + canonical message
 		const [accountMessage] = await db
 			.select({
 				id: accountMessageTable.id,
 				messageId: accountMessageTable.messageId,
+				threadId: accountMessageTable.threadId,
 			})
 			.from(accountMessageTable)
 			.where(
@@ -137,7 +145,6 @@ async function applyEmailSubmissionSet(
 			throw new Error("Canonical message for EmailSubmission/create.emailId not found");
 		}
 
-		// 3) Build envelope (override -> JMAP envelope; fallback -> identity + message addresses)
 		const envelope = await resolveEnvelopeForSubmission({
 			db,
 			messageId: messageRow.id,
@@ -145,7 +152,6 @@ async function applyEmailSubmissionSet(
 			override: parsed.envelope,
 		});
 
-		// 4) Call outbound transport
 		const submissionId = crypto.randomUUID();
 
 		const deliveryResult = await transport.send({
@@ -163,14 +169,17 @@ async function applyEmailSubmissionSet(
 			},
 		});
 
+		let submissionStatus: DeliveryStatusRecord["status"];
+		if (deliveryResult.status === "accepted") {
+			submissionStatus = "accepted";
+		} else if (deliveryResult.status === "rejected") {
+			submissionStatus = "rejected";
+		} else {
+			submissionStatus = "failed";
+		}
+
 		const deliveryStatus: DeliveryStatusRecord = {
-			status:
-				// eslint-disable-next-line no-nested-ternary
-				deliveryResult.status === "accepted"
-					? "accepted"
-					: deliveryResult.status === "rejected"
-						? "rejected"
-						: "failed",
+			status: submissionStatus,
 			providerMessageId: deliveryResult.providerMessageId,
 			providerRequestId: deliveryResult.providerRequestId,
 			reason: deliveryResult.reason,
@@ -179,21 +188,34 @@ async function applyEmailSubmissionSet(
 			permanent: deliveryResult.permanent,
 		};
 
-		// 5) Persist EmailSubmission row
-		await db.insert(emailSubmissionTable).values({
-			id: submissionId,
-			accountId,
-			emailId: parsed.emailId,
-			identityId: parsed.identityId,
-			envelopeJson: JSON.stringify(envelope),
-			sendAt: null,
-			deliveryStatusJson: deliveryStatus,
-			undoStatus: null,
-			createdAt: now,
-			updatedAt: now,
+		await db.transaction(async (tx) => {
+			await tx.insert(emailSubmissionTable).values({
+				id: submissionId,
+				accountId,
+				emailId: parsed.emailId,
+				identityId: parsed.identityId,
+				envelopeJson: JSON.stringify(envelope),
+				sendAt: null,
+				deliveryStatusJson: deliveryStatus,
+				undoStatus: null,
+				createdAt: now,
+				updatedAt: now,
+			});
+
+			if (deliveryResult.status === "accepted") {
+				await finalizeEmailAfterSubmission({
+					tx,
+					accountId,
+					emailId: parsed.emailId,
+					threadId: accountMessage.threadId,
+					sentMailboxId,
+					draftsMailboxId,
+					now,
+				});
+				emailStateChanged = true;
+			}
 		});
 
-		// 6) JMAP response object for this creationId
 		created[createId] = {
 			id: submissionId,
 			emailId: parsed.emailId,
@@ -201,14 +223,86 @@ async function applyEmailSubmissionSet(
 		};
 	}
 
-	// We are not bumping jmapStateTable / changeLogTable yet; Email state changes will come
-	// together with Email/set (moving from Drafts -> Sent, etc).
+	const newState = emailStateChanged ? await getAccountState(db, accountId, "Email") : undefined;
+
 	return {
 		accountId,
+		oldState: oldStateValue,
+		newState,
 		created,
 		updated,
 		destroyed,
 	};
+}
+
+async function finalizeEmailAfterSubmission(opts: {
+	tx: TransactionInstance;
+	accountId: string;
+	emailId: string;
+	threadId: string;
+	sentMailboxId: string | null;
+	draftsMailboxId: string | null;
+	now: Date;
+}): Promise<void> {
+	const { tx, accountId, emailId, threadId, sentMailboxId, draftsMailboxId, now } = opts;
+	const touchedMailboxIds: string[] = [];
+
+	const membershipRows = await tx
+		.select({ mailboxId: mailboxMessageTable.mailboxId })
+		.from(mailboxMessageTable)
+		.where(eq(mailboxMessageTable.accountMessageId, emailId));
+
+	const membershipSet = new Set(membershipRows.map((row) => row.mailboxId));
+
+	if (draftsMailboxId && membershipSet.has(draftsMailboxId)) {
+		await tx
+			.delete(mailboxMessageTable)
+			.where(
+				and(
+					eq(mailboxMessageTable.accountMessageId, emailId),
+					eq(mailboxMessageTable.mailboxId, draftsMailboxId)
+				)
+			);
+		touchedMailboxIds.push(draftsMailboxId);
+	}
+
+	if (sentMailboxId && !membershipSet.has(sentMailboxId)) {
+		await tx
+			.insert(mailboxMessageTable)
+			.values({
+				accountMessageId: emailId,
+				mailboxId: sentMailboxId,
+				addedAt: now,
+			})
+			.onConflictDoNothing();
+		touchedMailboxIds.push(sentMailboxId);
+	}
+
+	await tx
+		.update(accountMessageTable)
+		.set({
+			isDraft: false,
+			updatedAt: now,
+		})
+		.where(eq(accountMessageTable.id, emailId));
+
+	await tx
+		.delete(emailKeywordTable)
+		.where(
+			and(
+				eq(emailKeywordTable.accountMessageId, emailId),
+				inArray(emailKeywordTable.keyword, ["$draft", "\\draft"])
+			)
+		);
+
+	await recordEmailUpdateChanges({
+		tx,
+		accountId,
+		accountMessageId: emailId,
+		threadId,
+		mailboxIds: touchedMailboxIds,
+		now,
+	});
 }
 
 async function resolveEnvelopeForSubmission(options: {
