@@ -1,5 +1,7 @@
 export const JMAP_CORE = "urn:ietf:params:jmap:core";
 export const JMAP_MAIL = "urn:ietf:params:jmap:mail";
+export const JMAP_SUBMISSION = "urn:ietf:params:jmap:submission";
+export const JMAP_VACATION = "urn:ietf:params:jmap:vacationresponse";
 
 export const JMAP_CONSTRAINTS = {
 	[JMAP_CORE]: {
@@ -33,4 +35,8 @@ export const JMAP_CONSTRAINTS = {
 		// You can add more later if your implementation supports them.
 		emailsListSortOptions: ["receivedAt", "sentAt"],
 	},
+
+	[JMAP_SUBMISSION]: {},
+
+	[JMAP_VACATION]: {},
 };

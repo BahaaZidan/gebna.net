@@ -5,7 +5,13 @@ import type { Context } from "hono";
 
 import { getDB } from "./db";
 import { jmapStateTable } from "./db/schema";
-import { JMAP_CONSTRAINTS, JMAP_CORE, JMAP_MAIL } from "./lib/jmap/constants";
+import {
+	JMAP_CONSTRAINTS,
+	JMAP_CORE,
+	JMAP_MAIL,
+	JMAP_SUBMISSION,
+	JMAP_VACATION,
+} from "./lib/jmap/constants";
 import { handleEmailChanges } from "./lib/jmap/method-handlers/email-changes";
 import { handleEmailGet } from "./lib/jmap/method-handlers/email-get";
 import { handleEmailQuery } from "./lib/jmap/method-handlers/email-query";
@@ -74,12 +80,16 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 				accountCapabilities: {
 					[JMAP_CORE]: {},
 					[JMAP_MAIL]: {},
+					[JMAP_SUBMISSION]: {},
+					[JMAP_VACATION]: {},
 				},
 			},
 		},
 		primaryAccounts: {
 			[JMAP_CORE]: accountId,
 			[JMAP_MAIL]: accountId,
+			[JMAP_SUBMISSION]: accountId,
+			[JMAP_VACATION]: accountId,
 		},
 		username: userId,
 		apiUrl: c.env.BASE_API_URL,
