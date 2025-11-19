@@ -49,13 +49,16 @@ export async function getChanges(
 ): Promise<ChangesResult> {
 	const since = Number(sinceState);
 	if (!Number.isFinite(since) || since < 0) {
-		throw Object.assign(new Error("invalid sinceState"), { jmapType: "cannotCalculateChanges" });
+		throw Object.assign(new Error("invalid sinceState"), {
+			jmapType: "cannotCalculateChanges",
+		});
 	}
 
 	const rows = await db
 		.select({
 			objectId: changeLogTable.objectId,
 			modSeq: changeLogTable.modSeq,
+			op: changeLogTable.op,
 		})
 		.from(changeLogTable)
 		.where(
@@ -83,17 +86,44 @@ export async function getChanges(
 	const hasMoreChanges = rows.length > maxChanges;
 	const slice = hasMoreChanges ? rows.slice(0, maxChanges) : rows;
 
-	// For now, treat all as "updated" – inbound path only creates, future set-code can refine.
-	const updatedIds = Array.from(new Set(slice.map((r) => r.objectId)));
+	const perId = new Map<
+		string,
+		{ firstOp: (typeof rows)[number]["op"]; lastOp: (typeof rows)[number]["op"] }
+	>();
+
+	for (const row of slice) {
+		const existing = perId.get(row.objectId);
+		if (!existing) {
+			perId.set(row.objectId, { firstOp: row.op, lastOp: row.op });
+		} else {
+			perId.set(row.objectId, { firstOp: existing.firstOp, lastOp: row.op });
+		}
+	}
+
+	const created: string[] = [];
+	const updated: string[] = [];
+	const destroyed: string[] = [];
+
+	for (const [id, ops] of perId) {
+		const { firstOp, lastOp } = ops;
+
+		if (lastOp === "destroy") {
+			destroyed.push(id);
+		} else if (firstOp === "create") {
+			created.push(id);
+		} else {
+			updated.push(id);
+		}
+	}
 
 	const newState = String(slice[slice.length - 1]!.modSeq);
 
 	return {
 		oldState: sinceState,
 		newState,
-		created: [], // TODO: distinguish when you add op column
-		updated: updatedIds,
-		destroyed: [], // TODO: fill when you add deletion logging
+		created,
+		updated,
+		destroyed,
 		hasMoreChanges,
 	};
 }

@@ -525,6 +525,7 @@ async function recordInboundChanges(opts: {
 		accountId,
 		type: "Email",
 		objectId: accountMessageId,
+		op: "create",
 		modSeq: emailModSeq,
 		createdAt: now,
 	});
@@ -535,6 +536,7 @@ async function recordInboundChanges(opts: {
 		accountId,
 		type: "Thread",
 		objectId: threadId,
+		op: "create",
 		modSeq: threadModSeq,
 		createdAt: now,
 	});
@@ -547,6 +549,7 @@ async function recordInboundChanges(opts: {
 				accountId,
 				type: "Mailbox",
 				objectId: mailboxId,
+				op: "create",
 				modSeq: mailboxModSeq,
 				createdAt: now,
 			});

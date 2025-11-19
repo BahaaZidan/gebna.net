@@ -340,6 +340,7 @@ async function recordEmailSetChanges(opts: {
 		accountId,
 		type: "Email",
 		objectId: accountMessageId,
+		op: "update",
 		modSeq: emailModSeq,
 		createdAt: now,
 	});
@@ -350,6 +351,7 @@ async function recordEmailSetChanges(opts: {
 		accountId,
 		type: "Thread",
 		objectId: threadId,
+		op: "update",
 		modSeq: threadModSeq,
 		createdAt: now,
 	});
@@ -362,6 +364,7 @@ async function recordEmailSetChanges(opts: {
 				accountId,
 				type: "Mailbox",
 				objectId: mailboxId,
+				op: "update",
 				modSeq: mailboxModSeq,
 				createdAt: now,
 			});
