@@ -5,8 +5,8 @@ import { auth } from "./auth.routes";
 import { email } from "./email-inbound";
 import { jmapFilesApp } from "./jmap-blob.routes";
 import { jmapApp } from "./jmap.routes";
-import { processEmailSubmissionQueue } from "./lib/outbound/submission-queue";
 import { cleanupExpiredUploadTokensForEnv } from "./lib/maintenance/upload-cleanup";
+import { processEmailSubmissionQueue } from "./lib/outbound/submission-queue";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 app.route("/auth", auth);
@@ -27,8 +27,16 @@ export default class extends WorkerEntrypoint<CloudflareBindings> {
 	email(message: ForwardableEmailMessage) {
 		return email(message, this.env, this.ctx);
 	}
-	async scheduled(_controller: ScheduledController) {
-		await processEmailSubmissionQueue(this.env);
-		await cleanupExpiredUploadTokensForEnv(this.env);
+	async scheduled(controller: ScheduledController) {
+		switch (controller.cron) {
+			case "*/1 * * * *":
+				await processEmailSubmissionQueue(this.env);
+				break;
+			case "0 * * * *":
+				await cleanupExpiredUploadTokensForEnv(this.env);
+				break;
+			default:
+				break;
+		}
 	}
 }
