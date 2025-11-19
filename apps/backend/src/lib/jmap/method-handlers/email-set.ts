@@ -242,7 +242,7 @@ async function applyEmailSet(
 			// Optionally clear mailbox membership as part of delete
 			await tx.delete(mailboxMessageTable).where(eq(mailboxMessageTable.accountMessageId, row.id));
 
-			await recordEmailSetChanges({
+			await recordEmailDestroyChanges({
 				tx,
 				accountId,
 				accountMessageId: row.id,
@@ -341,6 +341,54 @@ async function recordEmailSetChanges(opts: {
 		type: "Email",
 		objectId: accountMessageId,
 		op: "update",
+		modSeq: emailModSeq,
+		createdAt: now,
+	});
+
+	const threadModSeq = await bumpStateTx(tx, accountId, "Thread");
+	await tx.insert(changeLogTable).values({
+		id: crypto.randomUUID(),
+		accountId,
+		type: "Thread",
+		objectId: threadId,
+		op: "update",
+		modSeq: threadModSeq,
+		createdAt: now,
+	});
+
+	if (mailboxIds.length > 0) {
+		const mailboxModSeq = await bumpStateTx(tx, accountId, "Mailbox");
+		for (const mailboxId of mailboxIds) {
+			await tx.insert(changeLogTable).values({
+				id: crypto.randomUUID(),
+				accountId,
+				type: "Mailbox",
+				objectId: mailboxId,
+				op: "update",
+				modSeq: mailboxModSeq,
+				createdAt: now,
+			});
+		}
+	}
+}
+
+async function recordEmailDestroyChanges(opts: {
+	tx: TransactionInstance;
+	accountId: string;
+	accountMessageId: string;
+	threadId: string;
+	mailboxIds: string[];
+	now: Date;
+}): Promise<void> {
+	const { tx, accountId, accountMessageId, threadId, mailboxIds, now } = opts;
+
+	const emailModSeq = await bumpStateTx(tx, accountId, "Email");
+	await tx.insert(changeLogTable).values({
+		id: crypto.randomUUID(),
+		accountId,
+		type: "Email",
+		objectId: accountMessageId,
+		op: "destroy",
 		modSeq: emailModSeq,
 		createdAt: now,
 	});
