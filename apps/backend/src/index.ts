@@ -5,7 +5,11 @@ import { auth } from "./auth.routes";
 import { email } from "./email-inbound";
 import { jmapFilesApp } from "./jmap-blob.routes";
 import { jmapApp } from "./jmap.routes";
-import { cleanupExpiredUploadTokensForEnv } from "./lib/maintenance/upload-cleanup";
+import {
+	cleanupExpiredUploadTokensForEnv,
+	cleanupOrphanedBlobsForEnv,
+	enforceMailboxRoleConstraintsForEnv,
+} from "./lib/maintenance/upload-cleanup";
 import { processEmailSubmissionQueue } from "./lib/outbound/submission-queue";
 import { sesWebhookApp } from "./ses-webhook.routes";
 
@@ -36,6 +40,8 @@ export default class extends WorkerEntrypoint<CloudflareBindings> {
 				break;
 			case "0 * * * *":
 				await cleanupExpiredUploadTokensForEnv(this.env);
+				await cleanupOrphanedBlobsForEnv(this.env);
+				await enforceMailboxRoleConstraintsForEnv(this.env);
 				break;
 			default:
 				break;
