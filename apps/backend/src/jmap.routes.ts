@@ -17,6 +17,8 @@ import { handleEmailGet } from "./lib/jmap/method-handlers/email-get";
 import { handleEmailQuery } from "./lib/jmap/method-handlers/email-query";
 import { handleEmailQueryChanges } from "./lib/jmap/method-handlers/email-query-changes";
 import { handleEmailSet } from "./lib/jmap/method-handlers/email-set";
+import { handleEmailCopy } from "./lib/jmap/method-handlers/email-copy";
+import { handleEmailImport } from "./lib/jmap/method-handlers/email-import";
 import { handleEmailSubmissionSet } from "./lib/jmap/method-handlers/email-submission-set";
 import { handleIdentityGet } from "./lib/jmap/method-handlers/identity-get";
 import { handleIdentitySet } from "./lib/jmap/method-handlers/identity-set";
@@ -110,6 +112,8 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Email/get": handleEmailGet,
 	"Email/query": handleEmailQuery,
 	"Email/queryChanges": handleEmailQueryChanges,
+	"Email/copy": handleEmailCopy,
+	"Email/import": handleEmailImport,
 	"Email/changes": handleEmailChanges,
 	"Thread/get": handleThreadGet,
 	"Thread/changes": handleThreadChanges,

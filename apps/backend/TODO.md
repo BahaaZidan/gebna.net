@@ -25,7 +25,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 7. **Add conditional writes with `ifInState`** _(Necessary)_  
    Enforce optimistic concurrency for `Email/set`, `Mailbox/set`, `Identity/set`, etc., to prevent lost updates.
 
-8. **Implement `Email/copy` and `Email/import`** _(Necessary)_  
+8. ✅ **Implement `Email/copy` and `Email/import`** _(Necessary)_  
    Provide APIs for server-side duplication and ingest of new messages per the Mail capability.
 
 9. **Wire `onSuccess*` backreferences** _(Necessary)_  
