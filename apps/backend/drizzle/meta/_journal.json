@@ -29,6 +29,13 @@
       "when": 1763585949788,
       "tag": "0003_wandering_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1763645358241,
+      "tag": "0004_freezing_wallow",
+      "breakpoints": true
     }
   ]
 }

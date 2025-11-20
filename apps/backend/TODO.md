@@ -7,7 +7,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 1. ✅ **Validate capability negotiation** _(Necessary)_  
    Reject requests whose `using` array references unsupported capabilities by emitting the standard `unknownCapability` error before invoking any method.
 
-2. **Ship full `Mailbox/set` support** _(Necessary)_  
+2. ✅ **Ship full `Mailbox/set` support** _(Necessary)_  
    Implement create/update/destroy with parent/child relationships, role constraints, and enforcement of system mailbox uniqueness.
 
 3. **Expose mailbox rights metadata** _(Necessary)_  

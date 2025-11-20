@@ -1,5 +1,6 @@
 import {
 	customType,
+	foreignKey,
 	index,
 	integer,
 	primaryKey,
@@ -66,6 +67,7 @@ export const mailboxTable = sqliteTable(
 			.notNull()
 			.references(() => accountTable.id, { onDelete: "cascade" }),
 		name: t.text().notNull(),
+		parentId: t.text(),
 		role: t.text(),
 		sortOrder: t.integer().notNull().default(0),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
@@ -75,6 +77,12 @@ export const mailboxTable = sqliteTable(
 		uniqueIndex("ux_mailbox_account_name").on(self.accountId, self.name),
 		uniqueIndex("ux_mailbox_account_role").on(self.accountId, self.role),
 		index("idx_mailbox_account").on(self.accountId),
+		index("idx_mailbox_parent").on(self.parentId),
+		foreignKey({
+			columns: [self.parentId],
+			foreignColumns: [self.id],
+			name: "fk_mailbox_parent",
+		}).onDelete("set null"),
 	]
 );
 
@@ -392,7 +400,13 @@ export const vacationResponseLogTable = sqliteTable(
 	(t) => [primaryKey({ columns: [t.accountId, t.contact] })]
 );
 
-export const changeLogTypeValues = ["Email", "Mailbox", "Thread", "Identity", "VacationResponse"] as const;
+export const changeLogTypeValues = [
+	"Email",
+	"Mailbox",
+	"Thread",
+	"Identity",
+	"VacationResponse",
+] as const;
 export type ChangeLogType = (typeof changeLogTypeValues)[number];
 
 export const changeLogOpValues = ["create", "update", "destroy"] as const;
