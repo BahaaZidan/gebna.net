@@ -16,7 +16,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 4. ✅ **Implement `Email/queryChanges`** _(Necessary)_  
    Track query cursors and expose a compliant endpoint so clients can delta-sync search results.
 
-5. **Expand `Email/get` field selection** _(Necessary)_  
+5. ✅ **Expand `Email/get` field selection** _(Necessary)_  
    Honor `properties`, `bodyProperties`, `fetchTextBodyValues`, header filters, and part retrieval so clients can request just the data they need.
 
 6. **Support full `Email/set` drafting workflow** _(Necessary)_  
