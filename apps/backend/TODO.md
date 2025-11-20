@@ -19,7 +19,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 5. ✅ **Expand `Email/get` field selection** _(Necessary)_  
    Honor `properties`, `bodyProperties`, `fetchTextBodyValues`, header filters, and part retrieval so clients can request just the data they need.
 
-6. **Support full `Email/set` drafting workflow** _(Necessary)_  
+6. ✅ **Support full `Email/set` drafting workflow** _(Necessary)_  
    Allow patching addresses, headers, body structures, signatures, and metadata without forcing clients to upload pre-built MIME blobs.
 
 7. **Add conditional writes with `ifInState`** _(Necessary)_  

@@ -21,6 +21,7 @@ import {
 	storeAddresses,
 	storeAttachments,
 	storeHeaders,
+	upsertBlob,
 	upsertCanonicalMessage,
 } from "../../mail/ingest";
 import {
@@ -36,6 +37,9 @@ import {
 	getAccountState,
 	isRecord,
 } from "../utils";
+import { sha256HexFromArrayBuffer } from "../../utils";
+
+const draftEncoder = new TextEncoder();
 
 export async function handleEmailSet(
 	c: Context<JMAPHonoAppEnv>,
@@ -425,7 +429,7 @@ type PreparedEmailCreate = {
 	bodyStructureJson: string | null;
 	flags: KeywordFlags;
 	customKeywords: Record<string, boolean>;
-	uploadTokenId: string;
+	uploadTokenId?: string | null;
 };
 
 async function prepareEmailCreate(opts: {
@@ -441,16 +445,6 @@ async function prepareEmailCreate(opts: {
 
 	if (!isRecord(rawCreate)) {
 		throw new EmailSetProblem("invalidProperties", "Email/create patch must be an object");
-	}
-
-	const blobIdValue = rawCreate.blobId;
-	if (typeof blobIdValue !== "string" || blobIdValue.length === 0) {
-		throw new EmailSetProblem("invalidProperties", "blobId must be a non-empty string");
-	}
-
-	const uploadTokenValue = rawCreate.uploadToken;
-	if (typeof uploadTokenValue !== "string" || uploadTokenValue.length === 0) {
-		throw new EmailSetProblem("invalidProperties", "uploadToken must be provided");
 	}
 
 	const mailboxIdsValue = rawCreate.mailboxIds;
@@ -479,6 +473,228 @@ async function prepareEmailCreate(opts: {
 		keywordPatch ?? {},
 		createDefaultKeywordFlags()
 	);
+
+	const structuredDraft = await maybePrepareStructuredDraft(env, rawCreate);
+	if (structuredDraft) {
+		return {
+			creationId,
+			blobId: structuredDraft.blobId,
+			mailboxIds,
+			email: structuredDraft.email,
+			snippet: structuredDraft.snippet,
+			sentAt: structuredDraft.sentAt,
+			size: structuredDraft.size,
+			hasAttachment: structuredDraft.hasAttachment,
+			bodyStructureJson: structuredDraft.bodyStructureJson,
+			flags,
+			customKeywords: custom,
+		uploadTokenId: null,
+	};
+}
+
+type StructuredDraftResult = {
+	blobId: string;
+	email: ParsedEmail;
+	snippet: string | null;
+	sentAt: Date | null;
+	size: number;
+	hasAttachment: boolean;
+	bodyStructureJson: string | null;
+};
+
+type DraftAddressInput = {
+	email: string;
+	name?: string | null;
+};
+
+type StructuredDraftInput = {
+	subject: string | null;
+	from: DraftAddressInput[];
+	to: DraftAddressInput[];
+	cc: DraftAddressInput[];
+	bcc: DraftAddressInput[];
+	replyTo: DraftAddressInput[];
+	textBody: string | null;
+	htmlBody: string | null;
+};
+
+async function maybePrepareStructuredDraft(
+	env: JMAPHonoAppEnv["Bindings"],
+	rawCreate: Record<string, unknown>
+): Promise<StructuredDraftResult | null> {
+	const draft = parseStructuredDraftInput(rawCreate);
+	if (!draft) return null;
+
+	const mime = buildMimeFromDraft(draft);
+	const rawBytes = draftEncoder.encode(mime);
+	const rawBuffer = rawBytes.buffer.slice(
+		rawBytes.byteOffset,
+		rawBytes.byteOffset + rawBytes.byteLength
+	) as ArrayBuffer;
+	const blobId = await sha256HexFromArrayBuffer(rawBuffer);
+	const key = `blob/${blobId}`;
+
+	await env.R2_EMAILS.put(key, rawBytes, {
+		httpMetadata: {
+			contentType: "message/rfc822",
+		},
+	});
+
+	const email = await parseRawEmail(rawBuffer);
+	const snippet = makeSnippet(email);
+	const sentAt = parseSentAt(email);
+	const size = rawBytes.byteLength;
+	const hasAttachment = (email.attachments?.length ?? 0) > 0;
+	const bodyStructureJson = JSON.stringify(buildBodyStructure(email, size));
+
+	return {
+		blobId,
+		email,
+		snippet,
+		sentAt,
+		size,
+		hasAttachment,
+		bodyStructureJson,
+	};
+}
+
+function parseStructuredDraftInput(raw: Record<string, unknown>): StructuredDraftInput | null {
+	const hasBody = typeof raw.textBody === "string" || typeof raw.htmlBody === "string";
+	const hasDraftFields =
+		hasBody ||
+		raw.subject !== undefined ||
+		raw.from !== undefined ||
+		raw.to !== undefined ||
+		raw.cc !== undefined ||
+		raw.bcc !== undefined ||
+		raw.replyTo !== undefined;
+
+	if (!hasDraftFields) {
+		return null;
+	}
+
+	if (!hasBody) {
+		throw new EmailSetProblem(
+			"invalidProperties",
+			"Either textBody or htmlBody must be provided when creating an Email without blobId"
+		);
+	}
+
+	const fromList = parseDraftAddressList(raw.from);
+	if (!fromList || fromList.length === 0) {
+		throw new EmailSetProblem("invalidProperties", "from must include at least one address");
+	}
+
+	const toList = parseDraftAddressList(raw.to) ?? [];
+	const ccList = parseDraftAddressList(raw.cc) ?? [];
+	const bccList = parseDraftAddressList(raw.bcc) ?? [];
+	const replyToList = parseDraftAddressList(raw.replyTo) ?? [];
+
+	return {
+		subject: typeof raw.subject === "string" ? raw.subject : null,
+		from: fromList,
+		to: toList,
+		cc: ccList,
+		bcc: bccList,
+		replyTo: replyToList,
+		textBody: typeof raw.textBody === "string" ? raw.textBody : null,
+		htmlBody: typeof raw.htmlBody === "string" ? raw.htmlBody : null,
+	};
+}
+
+function parseDraftAddressList(value: unknown): DraftAddressInput[] | null {
+	if (!Array.isArray(value)) return null;
+	const list: DraftAddressInput[] = [];
+	for (const entry of value) {
+		if (!isRecord(entry)) continue;
+		const emailValue = typeof entry.email === "string" ? entry.email.trim() : "";
+		if (!emailValue) continue;
+		const nameValue =
+			entry.name !== undefined && entry.name !== null && typeof entry.name === "string"
+				? entry.name
+				: null;
+		list.push({ email: emailValue, name: nameValue });
+	}
+	return list.length ? list : null;
+}
+
+function buildMimeFromDraft(draft: StructuredDraftInput): string {
+	const lines: string[] = [];
+	lines.push(`Date: ${new Date().toUTCString()}`);
+	lines.push(`Message-ID: <${crypto.randomUUID()}@gebna.net>`);
+	lines.push(`From: ${formatAddressList(draft.from)}`);
+	if (draft.replyTo.length > 0) {
+		lines.push(`Reply-To: ${formatAddressList(draft.replyTo)}`);
+	}
+	if (draft.to.length > 0) lines.push(`To: ${formatAddressList(draft.to)}`);
+	if (draft.cc.length > 0) lines.push(`Cc: ${formatAddressList(draft.cc)}`);
+	if (draft.bcc.length > 0) lines.push(`Bcc: ${formatAddressList(draft.bcc)}`);
+	const subjectValue = draft.subject ?? "";
+	lines.push(`Subject: ${sanitizeHeaderValue(subjectValue)}`);
+	lines.push("MIME-Version: 1.0");
+
+	const textBody = draft.textBody ?? null;
+	const htmlBody = draft.htmlBody ?? null;
+
+	if (textBody && htmlBody) {
+		const boundary = `boundary_${crypto.randomUUID()}`;
+		lines.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+		const parts: string[] = [];
+		parts.push(`--${boundary}`);
+		parts.push("Content-Type: text/plain; charset=UTF-8");
+		parts.push("Content-Transfer-Encoding: 8bit");
+		parts.push("");
+		parts.push(normalizeBody(textBody));
+		parts.push(`--${boundary}`);
+		parts.push("Content-Type: text/html; charset=UTF-8");
+		parts.push("Content-Transfer-Encoding: 8bit");
+		parts.push("");
+		parts.push(normalizeBody(htmlBody));
+		parts.push(`--${boundary}--`);
+		return `${lines.join("\r\n")}\r\n\r\n${parts.join("\r\n")}\r\n`;
+	}
+
+	const body = textBody ?? htmlBody ?? "";
+	const subtype = htmlBody && !textBody ? "html" : "plain";
+	lines.push(`Content-Type: text/${subtype}; charset=UTF-8`);
+	lines.push("Content-Transfer-Encoding: 8bit");
+	return `${lines.join("\r\n")}\r\n\r\n${normalizeBody(body)}\r\n`;
+}
+
+function formatAddressList(list: DraftAddressInput[]): string {
+	return list.map((addr) => formatSingleAddress(addr)).join(", ");
+}
+
+function formatSingleAddress(addr: DraftAddressInput): string {
+	const email = addr.email;
+	const name = addr.name?.trim();
+	if (name && name.length > 0) {
+		const sanitized = name.replace(/"/g, '\\"');
+		return `"${sanitized}" <${email}>`;
+	}
+	return email;
+}
+
+function sanitizeHeaderValue(value: string): string {
+	return value.replace(/\r?\n/g, " ").trim();
+}
+
+function normalizeBody(value: string): string {
+	return value.replace(/\r?\n/g, "\r\n");
+}
+
+	const blobIdValue = rawCreate.blobId;
+	if (typeof blobIdValue !== "string" || blobIdValue.length === 0) {
+		throw new EmailSetProblem(
+			"invalidProperties",
+			"blobId must be a non-empty string when uploadToken is used"
+		);
+	}
+
+	const uploadTokenValue = rawCreate.uploadToken;
+	if (typeof uploadTokenValue !== "string" || uploadTokenValue.length === 0) {
+		throw new EmailSetProblem("invalidProperties", "uploadToken must be provided");
+	}
 
 	const [tokenRow] = await db
 		.select({
@@ -564,6 +780,7 @@ async function persistEmailCreate(opts: {
 	now: Date;
 }): Promise<{ accountMessageId: string; threadId: string }> {
 	const { tx, env, accountId, prepared, now } = opts;
+	await upsertBlob(tx, prepared.blobId, prepared.size, now);
 	const canonicalMessageId = await upsertCanonicalMessage({
 		tx,
 		ingestId: crypto.randomUUID(),
@@ -641,7 +858,9 @@ async function persistEmailCreate(opts: {
 		now,
 	});
 
-	await tx.delete(uploadTable).where(eq(uploadTable.id, prepared.uploadTokenId));
+	if (prepared.uploadTokenId) {
+		await tx.delete(uploadTable).where(eq(uploadTable.id, prepared.uploadTokenId));
+	}
 
 	return { accountMessageId, threadId };
 }
