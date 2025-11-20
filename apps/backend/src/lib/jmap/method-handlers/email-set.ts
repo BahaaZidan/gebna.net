@@ -430,6 +430,7 @@ type PreparedEmailCreate = {
 	flags: KeywordFlags;
 	customKeywords: Record<string, boolean>;
 	uploadTokenId?: string | null;
+	internalDate?: Date | null;
 };
 
 async function prepareEmailCreate(opts: {
@@ -474,7 +475,7 @@ async function prepareEmailCreate(opts: {
 		createDefaultKeywordFlags()
 	);
 
-	const structuredDraft = await maybePrepareStructuredDraft(env, rawCreate);
+	const structuredDraft = await maybePrepareStructuredDraft(env, rawCreate, accountId, db);
 	if (structuredDraft) {
 		return {
 			creationId,
@@ -488,7 +489,67 @@ async function prepareEmailCreate(opts: {
 			bodyStructureJson: structuredDraft.bodyStructureJson,
 			flags,
 			customKeywords: custom,
-		uploadTokenId: null,
+			uploadTokenId: null,
+			internalDate: now,
+		};
+	}
+
+	const blobIdValue = rawCreate.blobId;
+	if (typeof blobIdValue !== "string" || blobIdValue.length === 0) {
+		throw new EmailSetProblem(
+			"invalidProperties",
+			"blobId must be a non-empty string when uploadToken is used"
+		);
+	}
+
+	const uploadTokenValue = rawCreate.uploadToken;
+	if (typeof uploadTokenValue !== "string" || uploadTokenValue.length === 0) {
+		throw new EmailSetProblem("invalidProperties", "uploadToken must be provided");
+	}
+
+	const [tokenRow] = await db
+		.select({
+			blobSha256: uploadTable.blobSha256,
+			expiresAt: uploadTable.expiresAt,
+		})
+		.from(uploadTable)
+		.where(and(eq(uploadTable.id, uploadTokenValue), eq(uploadTable.accountId, accountId)))
+		.limit(1);
+
+	if (!tokenRow) {
+		throw new EmailSetProblem("invalidProperties", "uploadToken is invalid or expired");
+	}
+
+	if (tokenRow.blobSha256 !== blobIdValue) {
+		throw new EmailSetProblem("invalidProperties", "uploadToken does not match blobId");
+	}
+
+	if (tokenRow.expiresAt && tokenRow.expiresAt.getTime() <= now.getTime()) {
+		await db.delete(uploadTable).where(eq(uploadTable.id, uploadTokenValue));
+		throw new EmailSetProblem("invalidProperties", "uploadToken has expired");
+	}
+
+	const parsedBlob = await prepareEmailFromBlob({
+		env,
+		db,
+		accountId,
+		blobId: blobIdValue,
+	});
+
+	return {
+		creationId,
+		blobId: blobIdValue,
+		mailboxIds,
+		email: parsedBlob.email,
+		snippet: parsedBlob.snippet,
+		sentAt: parsedBlob.sentAt,
+		size: parsedBlob.size,
+		hasAttachment: parsedBlob.hasAttachment,
+		bodyStructureJson: parsedBlob.bodyStructureJson,
+		flags,
+		customKeywords: custom,
+		uploadTokenId: uploadTokenValue,
+		internalDate: now,
 	};
 }
 
@@ -520,7 +581,9 @@ type StructuredDraftInput = {
 
 async function maybePrepareStructuredDraft(
 	env: JMAPHonoAppEnv["Bindings"],
-	rawCreate: Record<string, unknown>
+	rawCreate: Record<string, unknown>,
+	accountId: string,
+	db: ReturnType<typeof getDB>
 ): Promise<StructuredDraftResult | null> {
 	const draft = parseStructuredDraftInput(rawCreate);
 	if (!draft) return null;
@@ -539,6 +602,17 @@ async function maybePrepareStructuredDraft(
 			contentType: "message/rfc822",
 		},
 	});
+	await db.insert(blobTable).values({
+		sha256: blobId,
+		size: rawBytes.byteLength,
+		r2Key: key,
+		createdAt: new Date(),
+	}).onConflictDoNothing();
+	await db.insert(accountBlobTable).values({
+		accountId,
+		sha256: blobId,
+		createdAt: new Date(),
+	}).onConflictDoNothing();
 
 	const email = await parseRawEmail(rawBuffer);
 	const snippet = makeSnippet(email);
@@ -683,41 +757,13 @@ function normalizeBody(value: string): string {
 	return value.replace(/\r?\n/g, "\r\n");
 }
 
-	const blobIdValue = rawCreate.blobId;
-	if (typeof blobIdValue !== "string" || blobIdValue.length === 0) {
-		throw new EmailSetProblem(
-			"invalidProperties",
-			"blobId must be a non-empty string when uploadToken is used"
-		);
-	}
-
-	const uploadTokenValue = rawCreate.uploadToken;
-	if (typeof uploadTokenValue !== "string" || uploadTokenValue.length === 0) {
-		throw new EmailSetProblem("invalidProperties", "uploadToken must be provided");
-	}
-
-	const [tokenRow] = await db
-		.select({
-			blobSha256: uploadTable.blobSha256,
-			expiresAt: uploadTable.expiresAt,
-		})
-		.from(uploadTable)
-		.where(and(eq(uploadTable.id, uploadTokenValue), eq(uploadTable.accountId, accountId)))
-		.limit(1);
-
-	if (!tokenRow) {
-		throw new EmailSetProblem("invalidProperties", "uploadToken is invalid or expired");
-	}
-
-	if (tokenRow.blobSha256 !== blobIdValue) {
-		throw new EmailSetProblem("invalidProperties", "uploadToken does not match blobId");
-	}
-
-	if (tokenRow.expiresAt && tokenRow.expiresAt.getTime() <= now.getTime()) {
-		await db.delete(uploadTable).where(eq(uploadTable.id, uploadTokenValue));
-		throw new EmailSetProblem("invalidProperties", "uploadToken has expired");
-	}
-
+async function prepareEmailFromBlob(opts: {
+	env: JMAPHonoAppEnv["Bindings"];
+	db: ReturnType<typeof getDB>;
+	accountId: string;
+	blobId: string;
+}): Promise<StructuredDraftResult> {
+	const { env, db, accountId, blobId } = opts;
 	const [blobRow] = await db
 		.select({
 			sha256: blobTable.sha256,
@@ -729,14 +775,14 @@ function normalizeBody(value: string): string {
 			accountBlobTable,
 			and(eq(accountBlobTable.sha256, blobTable.sha256), eq(accountBlobTable.accountId, accountId))
 		)
-		.where(eq(blobTable.sha256, blobIdValue))
+		.where(eq(blobTable.sha256, blobId))
 		.limit(1);
 
 	if (!blobRow) {
 		throw new EmailSetProblem("invalidProperties", "blobId not found for this account");
 	}
 
-	const r2Key = blobRow.r2Key ?? `blob/${blobIdValue}`;
+	const r2Key = blobRow.r2Key ?? `blob/${blobId}`;
 	const obj = await env.R2_EMAILS.get(r2Key);
 	if (!obj || !obj.body) {
 		throw new EmailSetProblem("invalidProperties", "Blob data is unavailable");
@@ -757,18 +803,13 @@ function normalizeBody(value: string): string {
 	const bodyStructureJson = JSON.stringify(buildBodyStructure(email, size));
 
 	return {
-		creationId,
-		blobId: blobIdValue,
-		mailboxIds,
+		blobId,
 		email,
 		snippet,
 		sentAt,
 		size,
 		hasAttachment,
 		bodyStructureJson,
-		flags,
-		customKeywords: custom,
-		uploadTokenId: uploadTokenValue,
 	};
 }
 
@@ -781,6 +822,7 @@ async function persistEmailCreate(opts: {
 }): Promise<{ accountMessageId: string; threadId: string }> {
 	const { tx, env, accountId, prepared, now } = opts;
 	await upsertBlob(tx, prepared.blobId, prepared.size, now);
+	const internalDate = prepared.internalDate ?? now;
 	const canonicalMessageId = await upsertCanonicalMessage({
 		tx,
 		ingestId: crypto.randomUUID(),
@@ -809,24 +851,24 @@ async function persistEmailCreate(opts: {
 		await ensureAccountBlob(tx, accountId, sha, now);
 	}
 
-	const threadId = await resolveOrCreateThreadId({
-		tx,
-		accountId,
-		subject: prepared.email.subject ?? null,
-		internalDate: now,
-		inReplyTo: prepared.email.inReplyTo ?? null,
-		referencesHeader: prepared.email.references ?? null,
-	});
+const threadId = await resolveOrCreateThreadId({
+	tx,
+	accountId,
+	subject: prepared.email.subject ?? null,
+	internalDate,
+	inReplyTo: prepared.email.inReplyTo ?? null,
+	referencesHeader: prepared.email.references ?? null,
+});
 
-	const accountMessageId = crypto.randomUUID();
+const accountMessageId = crypto.randomUUID();
 
-	await tx.insert(accountMessageTable).values({
-		id: accountMessageId,
-		accountId,
-		messageId: canonicalMessageId,
-		threadId,
-		internalDate: now,
-		isSeen: prepared.flags.isSeen,
+await tx.insert(accountMessageTable).values({
+	id: accountMessageId,
+	accountId,
+	messageId: canonicalMessageId,
+	threadId,
+	internalDate,
+	isSeen: prepared.flags.isSeen,
 		isFlagged: prepared.flags.isFlagged,
 		isAnswered: prepared.flags.isAnswered,
 		isDraft: prepared.flags.isDraft,
