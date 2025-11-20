@@ -28,6 +28,7 @@ import { handleVacationResponseGet } from "./lib/jmap/method-handlers/vacation-g
 import { handleVacationResponseSet } from "./lib/jmap/method-handlers/vacation-set";
 import { attachUserFromJwt, requireJWT, type JMAPHonoAppEnv } from "./lib/jmap/middlewares";
 import { JmapMethodResponse } from "./lib/jmap/types";
+import { handleMailboxSet } from "./lib/jmap/method-handlers/mailbox-set";
 
 const SUPPORTED_CAPABILITIES = new Set([JMAP_CORE, JMAP_MAIL, JMAP_SUBMISSION, JMAP_VACATION]);
 
@@ -113,6 +114,7 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Mailbox/get": handleMailboxGet,
 	"Mailbox/query": handleMailboxQuery,
 	"Mailbox/changes": handleMailboxChanges,
+	"Mailbox/set": handleMailboxSet,
 	"Email/set": handleEmailSet,
 	"EmailSubmission/set": handleEmailSubmissionSet,
 	"Identity/get": handleIdentityGet,
