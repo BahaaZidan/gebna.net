@@ -172,170 +172,27 @@ async function applyEmailSet(
 				continue;
 			}
 
-			let touchedMailboxIds: string[] = [];
-			let stateChanged = false;
+			const mailboxUpdateResult = patch.mailboxIds
+				? await applyMailboxPatch(tx, row.id, patch.mailboxIds, mailboxInfo.byId, now)
+				: { changed: false, touchedMailboxIds: [] };
+			const keywordUpdateResult = patch.keywords
+				? await applyKeywordPatch(tx, row.id, row.threadId, row.isSeen, row.isFlagged, row.isAnswered, row.isDraft, patch.keywords, now)
+				: { changed: false };
 
-			if (patch.mailboxIds) {
-				let targetMailboxIds: string[];
-				try {
-					targetMailboxIds = extractMailboxTargets(patch.mailboxIds, mailboxInfo.byId);
-				} catch (err) {
-					if (err instanceof EmailSetProblem) {
-						notUpdated[emailId] = { type: err.jmapType, description: err.message };
-						continue;
-					}
-					throw err;
-				}
-
-				if (targetMailboxIds.length === 0) {
-					notUpdated[emailId] = {
-						type: "invalidProperties",
-						description: "mailboxIds must include at least one mailbox",
-					};
-					continue;
-				}
-
-				const existingRows = await tx
-					.select({
-						mailboxId: mailboxMessageTable.mailboxId,
-					})
-					.from(mailboxMessageTable)
-					.where(eq(mailboxMessageTable.accountMessageId, row.id));
-
-				const existingSet = new Set(existingRows.map((r) => r.mailboxId));
-				const targetSet = new Set(targetMailboxIds);
-
-				const toDelete = existingRows
-					.filter((r) => !targetSet.has(r.mailboxId))
-					.map((r) => r.mailboxId);
-
-				const toInsert = targetMailboxIds.filter((mailboxId) => !existingSet.has(mailboxId));
-
-				if (toDelete.length > 0) {
-					await tx
-						.delete(mailboxMessageTable)
-						.where(
-							and(
-								eq(mailboxMessageTable.accountMessageId, row.id),
-								inArray(mailboxMessageTable.mailboxId, toDelete)
-							)
-						);
-					stateChanged = true;
-				}
-
-				for (const mailboxId of toInsert) {
-					await tx.insert(mailboxMessageTable).values({
-						accountMessageId: row.id,
-						mailboxId,
-						addedAt: now,
-					});
-					stateChanged = true;
-				}
-
-				if (stateChanged) {
-					await tx
-						.update(accountMessageTable)
-						.set({ updatedAt: now })
-						.where(eq(accountMessageTable.id, row.id));
-				}
-
-				touchedMailboxIds = Array.from(new Set([...toDelete, ...toInsert]));
-			}
-
-			if (patch.keywords) {
-				const { flags, custom } = splitKeywords(patch.keywords, {
-					isSeen: row.isSeen,
-					isFlagged: row.isFlagged,
-					isAnswered: row.isAnswered,
-					isDraft: row.isDraft,
-				});
-
-				const flagChanged =
-					flags.isSeen !== row.isSeen ||
-					flags.isFlagged !== row.isFlagged ||
-					flags.isAnswered !== row.isAnswered ||
-					flags.isDraft !== row.isDraft;
-
-				if (flagChanged) {
-					await tx
-						.update(accountMessageTable)
-						.set({
-							isSeen: flags.isSeen,
-							isFlagged: flags.isFlagged,
-							isAnswered: flags.isAnswered,
-							isDraft: flags.isDraft,
-							updatedAt: now,
-						})
-						.where(eq(accountMessageTable.id, row.id));
-					stateChanged = true;
-				}
-
-				if (Object.keys(custom).length > 0) {
-					await applyCustomKeywordMutations(tx, row.id, custom);
-					stateChanged = true;
-				}
-			}
-
-			if (stateChanged || touchedMailboxIds.length > 0) {
+			if (mailboxUpdateResult.changed || keywordUpdateResult.changed) {
 				await recordEmailUpdateChanges({
 					tx,
 					accountId,
 					accountMessageId: row.id,
 					threadId: row.threadId,
-					mailboxIds: touchedMailboxIds,
+					mailboxIds: mailboxUpdateResult.touchedMailboxIds,
 					now,
 				});
+				updated[emailId] = { id: row.id };
 			}
-
-			updated[emailId] = { id: row.id };
 		}
 
-		for (const emailId of destroyIds) {
-			const [row] = await tx
-				.select({
-					id: accountMessageTable.id,
-					threadId: accountMessageTable.threadId,
-				})
-				.from(accountMessageTable)
-				.where(
-					and(eq(accountMessageTable.id, emailId), eq(accountMessageTable.accountId, accountId))
-				)
-				.limit(1);
-
-			if (!row) {
-				notDestroyed[emailId] = { type: "notFound", description: "Email not found" };
-				continue;
-			}
-
-			const membershipRows = await tx
-				.select({ mailboxId: mailboxMessageTable.mailboxId })
-				.from(mailboxMessageTable)
-				.where(eq(mailboxMessageTable.accountMessageId, row.id));
-
-			const mailboxIds = membershipRows.map((m) => m.mailboxId);
-
-			await tx
-				.update(accountMessageTable)
-				.set({
-					isDeleted: true,
-					updatedAt: now,
-				})
-				.where(eq(accountMessageTable.id, row.id));
-
-			await tx.delete(mailboxMessageTable).where(eq(mailboxMessageTable.accountMessageId, row.id));
-			await tx.delete(emailKeywordTable).where(eq(emailKeywordTable.accountMessageId, row.id));
-
-			await recordEmailDestroyChanges({
-				tx,
-				accountId,
-				accountMessageId: row.id,
-				threadId: row.threadId,
-				mailboxIds,
-				now,
-			});
-
-			destroyed.push(emailId);
-		}
+		await handleEmailDestroy(tx, accountId, destroyIds, destroyed, notDestroyed, now);
 	});
 
 	const newState = await getAccountState(db, accountId, "Email");
@@ -1032,4 +889,170 @@ class EmailSetProblem extends Error {
 		super(message);
 		this.jmapType = type;
 	}
+}
+async function handleEmailDestroy(
+	tx: TransactionInstance,
+	accountId: string,
+	destroyIds: string[],
+	destroyed: string[],
+	notDestroyed: Record<string, EmailSetFailure>,
+	now: Date
+): Promise<void> {
+	for (const emailId of destroyIds) {
+		const [row] = await tx
+			.select({
+				id: accountMessageTable.id,
+				threadId: accountMessageTable.threadId,
+			})
+			.from(accountMessageTable)
+			.where(and(eq(accountMessageTable.id, emailId), eq(accountMessageTable.accountId, accountId)))
+			.limit(1);
+
+		if (!row) {
+			notDestroyed[emailId] = { type: "notFound", description: "Email not found" };
+			continue;
+		}
+
+		const membershipRows = await tx
+			.select({ mailboxId: mailboxMessageTable.mailboxId })
+			.from(mailboxMessageTable)
+			.where(eq(mailboxMessageTable.accountMessageId, row.id));
+
+		const mailboxIds = membershipRows.map((m) => m.mailboxId);
+
+		await tx
+			.update(accountMessageTable)
+			.set({
+				isDeleted: true,
+				updatedAt: now,
+			})
+			.where(eq(accountMessageTable.id, row.id));
+
+		await tx.delete(mailboxMessageTable).where(eq(mailboxMessageTable.accountMessageId, row.id));
+		await tx.delete(emailKeywordTable).where(eq(emailKeywordTable.accountMessageId, row.id));
+
+		await recordEmailDestroyChanges({
+			tx,
+			accountId,
+			accountMessageId: row.id,
+			threadId: row.threadId,
+			mailboxIds,
+			now,
+		});
+
+		destroyed.push(emailId);
+	}
+}
+async function applyMailboxPatch(
+	tx: TransactionInstance,
+	accountMessageId: string,
+	mailboxPatch: Record<string, boolean>,
+	mailboxLookup: Map<string, { id: string; role: string | null }>,
+	now: Date
+): Promise<{ changed: boolean; touchedMailboxIds: string[] }> {
+	let targetMailboxIds: string[];
+	try {
+		targetMailboxIds = extractMailboxTargets(mailboxPatch, mailboxLookup);
+	} catch (err) {
+		if (err instanceof EmailSetProblem) {
+			throw err;
+		}
+		throw err;
+	}
+
+	if (targetMailboxIds.length === 0) {
+		throw new EmailSetProblem("invalidProperties", "mailboxIds must include at least one mailbox");
+	}
+
+	const existingRows = await tx
+		.select({
+			mailboxId: mailboxMessageTable.mailboxId,
+		})
+		.from(mailboxMessageTable)
+		.where(eq(mailboxMessageTable.accountMessageId, accountMessageId));
+
+	const existingSet = new Set(existingRows.map((r) => r.mailboxId));
+	const targetSet = new Set(targetMailboxIds);
+
+	const toDelete = existingRows.filter((r) => !targetSet.has(r.mailboxId)).map((r) => r.mailboxId);
+	const toInsert = targetMailboxIds.filter((mailboxId) => !existingSet.has(mailboxId));
+
+	let changed = false;
+
+	if (toDelete.length > 0) {
+		await tx
+			.delete(mailboxMessageTable)
+			.where(
+				and(
+					eq(mailboxMessageTable.accountMessageId, accountMessageId),
+					inArray(mailboxMessageTable.mailboxId, toDelete)
+				)
+			);
+		changed = true;
+	}
+
+	for (const mailboxId of toInsert) {
+		await tx.insert(mailboxMessageTable).values({
+			accountMessageId,
+			mailboxId,
+			addedAt: now,
+		});
+		changed = true;
+	}
+
+	if (changed) {
+		await tx
+			.update(accountMessageTable)
+			.set({ updatedAt: now })
+			.where(eq(accountMessageTable.id, accountMessageId));
+	}
+
+	return { changed, touchedMailboxIds: Array.from(new Set([...toDelete, ...toInsert])) };
+}
+
+async function applyKeywordPatch(
+	tx: TransactionInstance,
+	accountMessageId: string,
+	threadId: string,
+	currentSeen: boolean,
+	currentFlagged: boolean,
+	currentAnswered: boolean,
+	currentDraft: boolean,
+	keywordPatch: Record<string, boolean>,
+	now: Date
+): Promise<{ changed: boolean }> {
+	const { flags, custom } = splitKeywords(keywordPatch, {
+		isSeen: currentSeen,
+		isFlagged: currentFlagged,
+		isAnswered: currentAnswered,
+		isDraft: currentDraft,
+	});
+
+	let changed = false;
+	const flagChanged =
+		flags.isSeen !== currentSeen ||
+		flags.isFlagged !== currentFlagged ||
+		flags.isAnswered !== currentAnswered ||
+		flags.isDraft !== currentDraft;
+
+	if (flagChanged || Object.keys(custom).length > 0) {
+		await tx
+			.update(accountMessageTable)
+			.set({
+				isSeen: flags.isSeen,
+				isFlagged: flags.isFlagged,
+				isAnswered: flags.isAnswered,
+				isDraft: flags.isDraft,
+				updatedAt: now,
+			})
+			.where(eq(accountMessageTable.id, accountMessageId));
+		changed = true;
+	}
+
+	if (Object.keys(custom).length > 0) {
+		await applyCustomKeywordMutations(tx, accountMessageId, custom);
+		changed = true;
+	}
+
+	return { changed };
 }

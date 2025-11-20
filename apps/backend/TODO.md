@@ -31,7 +31,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 9. **Wire `onSuccess*` backreferences** _(Necessary)_  
    Support `onSuccessDestroyOriginal`, `onSuccessUpdateEmail`, and related pipeline hooks so multi-step method calls behave correctly.
 
-10. **Track Email change log entries fully** _(Necessary)_  
+10. ✅ **Track Email change log entries fully** _(Necessary)_  
     Record mailbox membership, keyword, and thread state transitions for every create/update/destroy so `/changes` responses stay accurate.
 
 11. **Implement `Email/query` operators** _(Necessary)_  
