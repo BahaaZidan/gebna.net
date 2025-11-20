@@ -2,7 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
-import { mailboxMessageTable, mailboxTable } from "../../../db/schema";
+import { accountMessageTable, mailboxMessageTable, mailboxTable } from "../../../db/schema";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
@@ -29,6 +29,7 @@ export async function handleMailboxGet(
 		.select({
 			id: mailboxTable.id,
 			name: mailboxTable.name,
+			parentId: mailboxTable.parentId,
 			role: mailboxTable.role,
 			sortOrder: mailboxTable.sortOrder,
 		})
@@ -39,21 +40,47 @@ export async function handleMailboxGet(
 		.select({
 			mailboxId: mailboxMessageTable.mailboxId,
 			total: sql<number>`count(*)`.as("total"),
+			unread: sql<number>`sum(case when ${accountMessageTable.isSeen} = 0 then 1 else 0 end)`.as(
+				"unread"
+			),
 		})
 		.from(mailboxMessageTable)
+		.innerJoin(
+			accountMessageTable,
+			eq(mailboxMessageTable.accountMessageId, accountMessageTable.id)
+		)
+		.where(inArray(mailboxMessageTable.mailboxId, rows.map((row) => row.id)))
 		.groupBy(mailboxMessageTable.mailboxId);
 
-	const countMap = new Map<string, number>();
+	const countMap = new Map<string, { total: number; unread: number }>();
 	for (const row of countRows) {
-		countMap.set(row.mailboxId, Number(row.total));
+		countMap.set(row.mailboxId, {
+			total: Number(row.total ?? 0),
+			unread: Number(row.unread ?? 0),
+		});
 	}
+
+	const ownerRights = {
+		mayReadItems: true,
+		mayAddItems: true,
+		mayRemoveItems: true,
+		mayCreateChild: true,
+		mayRename: true,
+		mayDelete: true,
+		maySetSeen: true,
+		maySetKeywords: true,
+		maySubmit: true,
+	};
 
 	const list = rows.map((row) => ({
 		id: row.id,
 		name: row.name,
+		parentId: row.parentId,
 		role: row.role,
 		sortOrder: row.sortOrder,
-		totalEmails: countMap.get(row.id) ?? 0,
+		totalEmails: countMap.get(row.id)?.total ?? 0,
+		unreadEmails: countMap.get(row.id)?.unread ?? 0,
+		myRights: ownerRights,
 	}));
 
 	const foundIds = new Set(list.map((m) => m.id));
