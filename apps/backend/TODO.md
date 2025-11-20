@@ -34,7 +34,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 10. ✅ **Track Email change log entries fully** _(Necessary)_  
     Record mailbox membership, keyword, and thread state transitions for every create/update/destroy so `/changes` responses stay accurate.
 
-11. **Implement `Email/query` operators** _(Necessary)_  
+11. ✅ **Implement `Email/query` operators** _(Necessary)_  
     Add the remaining filters (from, to, header, size, flags, date ranges), sort options, anchors, and `calculateChanges`.
 
 12. **Expose EmailSubmission state endpoints** _(Necessary)_  
