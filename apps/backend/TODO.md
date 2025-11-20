@@ -4,7 +4,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-1. **Validate capability negotiation** _(Necessary)_  
+1. ✅ **Validate capability negotiation** _(Necessary)_  
    Reject requests whose `using` array references unsupported capabilities by emitting the standard `unknownCapability` error before invoking any method.
 
 2. **Ship full `Mailbox/set` support** _(Necessary)_  
@@ -63,4 +63,3 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 20. **Expose multi-account targeting** _(Optional)_  
     Update auth middleware to honor the `accountId` supplied by clients, enabling future multi-account or delegated mailbox scenarios.
-
