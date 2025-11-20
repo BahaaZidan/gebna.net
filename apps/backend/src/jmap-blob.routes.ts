@@ -1,5 +1,5 @@
 import { v } from "@gebna/validation";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { getDB } from "./db";
@@ -10,6 +10,7 @@ import { cleanupExpiredUploadTokens } from "./lib/maintenance/upload-cleanup";
 import { sha256HexFromArrayBuffer } from "./lib/utils";
 
 const UPLOAD_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_ACTIVE_UPLOAD_TOKENS = 64;
 
 export const jmapFilesApp = new Hono<JMAPHonoAppEnv>();
 jmapFilesApp.use(requireJWT);
@@ -100,6 +101,20 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 		const db = getDB(c.env);
 		const now = new Date();
 		await cleanupExpiredUploadTokens(db, now);
+		const [{ count: activeTokenCount = 0 } = {}] = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(uploadTable)
+			.where(and(eq(uploadTable.accountId, paramsValidation.output.accountId), gt(uploadTable.expiresAt, now)));
+
+		if (activeTokenCount >= MAX_ACTIVE_UPLOAD_TOKENS) {
+			return c.json(
+				{
+					type: "tooManyActiveUploads",
+					description: "Active upload token limit reached. Try again later.",
+				},
+				429
+			);
+		}
 		const uploadNameHeader = c.req.header("X-File-Name");
 		let uploadTokenId: string | null = null;
 		let uploadTokenExpiresAtIso: string | null = null;
@@ -161,6 +176,73 @@ jmapFilesApp.post("/upload/:accountId/:type", async (c) => {
 				"X-Content-Type-Options": "nosniff",
 			}
 		);
+	} catch (err) {
+		console.error({ err });
+		return c.json(
+			{
+				type: "serverError",
+				description: "Unexpected error",
+			},
+			500
+		);
+	}
+});
+
+const listParamsSchema = v.object({
+	accountId: accountIdSchema,
+});
+
+jmapFilesApp.get("/upload/:accountId", async (c) => {
+	try {
+		const paramsValidation = v.safeParse(listParamsSchema, c.req.param());
+		if (!paramsValidation.success) {
+			return c.json(
+				{
+					type: "invalidArguments",
+					description: paramsValidation.issues,
+				},
+				400
+			);
+		}
+
+		if (c.get("accountId") !== paramsValidation.output.accountId) {
+			return c.json(
+				{
+					type: "forbidden",
+					description: "Account access denied",
+				},
+				403
+			);
+		}
+
+		const db = getDB(c.env);
+		const now = new Date();
+		await cleanupExpiredUploadTokens(db, now);
+
+		const rows = await db
+			.select({
+				id: uploadTable.id,
+				type: uploadTable.type,
+				name: uploadTable.name,
+				size: uploadTable.size,
+				expiresAt: uploadTable.expiresAt,
+				createdAt: uploadTable.createdAt,
+			})
+			.from(uploadTable)
+			.where(and(eq(uploadTable.accountId, paramsValidation.output.accountId), gt(uploadTable.expiresAt, now)))
+			.orderBy(uploadTable.createdAt);
+
+		return c.json({
+			accountId: paramsValidation.output.accountId,
+			uploads: rows.map((row) => ({
+				id: row.id,
+				type: row.type,
+				name: row.name,
+				size: row.size,
+				expiresAt: row.expiresAt?.toISOString() ?? null,
+				createdAt: row.createdAt?.toISOString() ?? null,
+			})),
+		});
 	} catch (err) {
 		console.error({ err });
 		return c.json(
