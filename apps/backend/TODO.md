@@ -10,7 +10,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 2. ✅ **Ship full `Mailbox/set` support** _(Necessary)_  
    Implement create/update/destroy with parent/child relationships, role constraints, and enforcement of system mailbox uniqueness.
 
-3. **Expose mailbox rights metadata** _(Necessary)_  
+3. ✅ **Expose mailbox rights metadata** _(Necessary)_  
    Return `myRights`, ACL flags, and other required properties from `Mailbox/get`, and persist shared rights if we will support delegation later.
 
 4. **Implement `Email/queryChanges`** _(Necessary)_  
