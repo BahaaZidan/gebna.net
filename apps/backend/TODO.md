@@ -4,15 +4,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. Cleanup Cron
-
-- Delete expired `uploadTable` rows.
-- GC orphaned blobs.
-- Enforce mailbox role constraints.
-
----
-
-## 2. Search (Optional Phase)
+## 1. Search (Optional Phase)
 
 - Implement subject/snippet search.
 - Add FTS table or SQLite trigram indexing.
