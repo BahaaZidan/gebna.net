@@ -15,6 +15,7 @@ import {
 import { handleEmailChanges } from "./lib/jmap/method-handlers/email-changes";
 import { handleEmailGet } from "./lib/jmap/method-handlers/email-get";
 import { handleEmailQuery } from "./lib/jmap/method-handlers/email-query";
+import { handleEmailQueryChanges } from "./lib/jmap/method-handlers/email-query-changes";
 import { handleEmailSet } from "./lib/jmap/method-handlers/email-set";
 import { handleEmailSubmissionSet } from "./lib/jmap/method-handlers/email-submission-set";
 import { handleIdentityGet } from "./lib/jmap/method-handlers/identity-get";
@@ -108,6 +109,7 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 const methodHandlers: Record<string, JmapHandler> = {
 	"Email/get": handleEmailGet,
 	"Email/query": handleEmailQuery,
+	"Email/queryChanges": handleEmailQueryChanges,
 	"Email/changes": handleEmailChanges,
 	"Thread/get": handleThreadGet,
 	"Thread/changes": handleThreadChanges,
