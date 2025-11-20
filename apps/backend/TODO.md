@@ -4,14 +4,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. Outbound Email Layer
-
-- Queued retries now run via the submission queue; next add SES webhook ingestion for final delivery/bounce events.
-- Track provider delivery events in `emailSubmissionTable` so clients see final state transitions.
-
----
-
-## 2. Upload Token Workflow (`uploadTable`)
+## 1. Upload Token Workflow (`uploadTable`)
 
 **Module:** `jmap-blob.routes.ts`  
 **Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
@@ -22,7 +15,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 3. Cleanup Cron
+## 2. Cleanup Cron
 
 - Delete expired `uploadTable` rows.
 - GC orphaned blobs.
@@ -30,7 +23,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 4. Search (Optional Phase)
+## 3. Search (Optional Phase)
 
 - Implement subject/snippet search.
 - Add FTS table or SQLite trigram indexing.
