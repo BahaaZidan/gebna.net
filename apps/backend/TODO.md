@@ -4,18 +4,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 1. Upload Token Workflow (`uploadTable`)
-
-**Module:** `jmap-blob.routes.ts`  
-**Tables:** `uploadTable`, `blobTable`, `accountBlobTable`
-
-### Remaining Tasks
-- Expose a dedicated API to list/inspect active uploads if needed.
-- Enforce per-account quotas before issuing new tokens.
-
----
-
-## 2. Cleanup Cron
+## 1. Cleanup Cron
 
 - Delete expired `uploadTable` rows.
 - GC orphaned blobs.
@@ -23,7 +12,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 
 ---
 
-## 3. Search (Optional Phase)
+## 2. Search (Optional Phase)
 
 - Implement subject/snippet search.
 - Add FTS table or SQLite trigram indexing.
