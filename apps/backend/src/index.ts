@@ -7,11 +7,13 @@ import { jmapFilesApp } from "./jmap-blob.routes";
 import { jmapApp } from "./jmap.routes";
 import { cleanupExpiredUploadTokensForEnv } from "./lib/maintenance/upload-cleanup";
 import { processEmailSubmissionQueue } from "./lib/outbound/submission-queue";
+import { sesWebhookApp } from "./ses-webhook.routes";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 app.route("/auth", auth);
 app.route("/blobs", jmapFilesApp);
 app.route("/", jmapApp);
+app.route("/ses", sesWebhookApp);
 
 app.get("/lolo", (c) => {
 	const lolo = { lolo: "lolo" };
