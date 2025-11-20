@@ -63,7 +63,7 @@ export async function handleEmailQuery(
 		{
 			accountId: effectiveAccountId,
 			queryState,
-			canCalculateChanges: false,
+			canCalculateChanges: !textFilter,
 			ids,
 			position: 0,
 			total: ids.length,

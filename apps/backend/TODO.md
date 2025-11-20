@@ -13,7 +13,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 3. ✅ **Expose mailbox rights metadata** _(Necessary)_  
    Return `myRights`, ACL flags, and other required properties from `Mailbox/get`, and persist shared rights if we will support delegation later.
 
-4. **Implement `Email/queryChanges`** _(Necessary)_  
+4. ✅ **Implement `Email/queryChanges`** _(Necessary)_  
    Track query cursors and expose a compliant endpoint so clients can delta-sync search results.
 
 5. **Expand `Email/get` field selection** _(Necessary)_  
