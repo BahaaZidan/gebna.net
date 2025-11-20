@@ -29,6 +29,8 @@ import { handleVacationResponseSet } from "./lib/jmap/method-handlers/vacation-s
 import { attachUserFromJwt, requireJWT, type JMAPHonoAppEnv } from "./lib/jmap/middlewares";
 import { JmapMethodResponse } from "./lib/jmap/types";
 
+const SUPPORTED_CAPABILITIES = new Set([JMAP_CORE, JMAP_MAIL, JMAP_SUBMISSION, JMAP_VACATION]);
+
 const JmapMethodCallSchema = v.tuple([
 	v.string(), // name
 	v.record(v.string(), v.unknown()), // args
@@ -128,6 +130,17 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 	}
 
 	const req: JmapRequest = parsed.output;
+	const unknownCapability = req.using.find((capability) => !SUPPORTED_CAPABILITIES.has(capability));
+	if (unknownCapability) {
+		return c.json(
+			{
+				type: "unknownCapability",
+				capability: unknownCapability,
+			},
+			400
+		);
+	}
+
 	const methodResponses: JmapMethodResponse[] = [];
 
 	for (const [name, args, tag] of req.methodCalls) {
