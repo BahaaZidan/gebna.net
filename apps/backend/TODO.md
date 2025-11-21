@@ -58,7 +58,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 18. ✅ **Verify SES/SNS webhooks** _(Necessary)_  
     Validate AWS signatures, handle subscription confirmation, and drop unsigned payloads before mutating submission state.
 
-19. **Enforce strong upload token policy** _(Necessary)_  
+19. ✅ **Enforce strong upload token policy** _(Necessary)_  
     Replace the bespoke `uploadToken` record with the JMAP upload semantics (per-account upload limit, auth checks, expiry) and ensure blobs can be referenced by any compliant client.
 
 20. **Expose multi-account targeting** _(Optional)_  

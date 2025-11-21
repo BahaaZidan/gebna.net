@@ -1,5 +1,5 @@
 import { v } from "@gebna/validation";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 
@@ -222,8 +222,32 @@ async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respons
 		return c.json({ type: "invalidArguments", description: "Upload too large" }, 413);
 	}
 
+	const db = getDB(c.env);
+	const now = new Date();
 	const contentType = c.req.header("Content-Type") ?? "application/octet-stream";
 	const blobId = await sha256HexFromArrayBuffer(body);
+
+	const accountHasBlob = await db
+		.select({ sha256: accountBlobTable.sha256 })
+		.from(accountBlobTable)
+		.where(and(eq(accountBlobTable.accountId, effectiveAccountId), eq(accountBlobTable.sha256, blobId)))
+		.limit(1);
+
+	if (!accountHasBlob.length) {
+		const accountLimit = parseAccountUploadLimit(c.env);
+		if (accountLimit !== null) {
+			const [{ total = 0 } = {}] = await db
+				.select({ total: sql<number>`coalesce(sum(${blobTable.size}), 0)` })
+				.from(accountBlobTable)
+				.innerJoin(blobTable, eq(blobTable.sha256, accountBlobTable.sha256))
+				.where(eq(accountBlobTable.accountId, effectiveAccountId));
+
+			if (total + body.byteLength > accountLimit) {
+				return c.json({ type: "overQuota", description: "Account upload quota exceeded" }, 413);
+			}
+		}
+	}
+
 	const key = blobId;
 	await c.env.R2_EMAILS.put(key, body, {
 		httpMetadata: {
@@ -231,8 +255,6 @@ async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respons
 		},
 	});
 
-	const db = getDB(c.env);
-	const now = new Date();
 	await db.transaction(async (tx) => {
 		await tx
 			.insert(blobTable)
@@ -256,6 +278,16 @@ async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respons
 		},
 		201
 	);
+}
+
+function parseAccountUploadLimit(env: CloudflareBindings): number | null {
+	const raw = env.JMAP_UPLOAD_ACCOUNT_LIMIT_BYTES;
+	if (!raw) return null;
+	const parsed = Number(raw);
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		return null;
+	}
+	return parsed;
 }
 
 async function handleBlobDownloadHttp(c: Context<JMAPHonoAppEnv>): Promise<Response> {
