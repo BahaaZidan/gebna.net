@@ -406,6 +406,7 @@ export const changeLogTypeValues = [
 	"Thread",
 	"Identity",
 	"VacationResponse",
+	"EmailSubmission",
 ] as const;
 export type ChangeLogType = (typeof changeLogTypeValues)[number];
 

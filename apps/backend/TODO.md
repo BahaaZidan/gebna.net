@@ -37,7 +37,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 11. ✅ **Implement `Email/query` operators** _(Necessary)_  
     Add the remaining filters (from, to, header, size, flags, date ranges), sort options, anchors, and `calculateChanges`.
 
-12. **Expose EmailSubmission state endpoints** _(Necessary)_  
+12. ✅ **Expose EmailSubmission state endpoints** _(Necessary)_  
     Implement `EmailSubmission/get` and `/changes`, maintain a dedicated state counter, and emit delivery updates through these APIs.
 
 13. **Honor `sendAt` and undo windows** _(Necessary)_  

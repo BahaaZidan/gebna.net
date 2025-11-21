@@ -15,6 +15,7 @@ import { DeliveryStatusRecord } from "../../types";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState, isRecord } from "../utils";
+import { recordCreate } from "../change-log";
 
 export async function handleEmailSubmissionSet(
 	c: Context<JMAPHonoAppEnv>,
@@ -29,7 +30,7 @@ export async function handleEmailSubmissionSet(
 		return ["error", { type: "accountNotFound" }, tag];
 	}
 
-	const state = await getAccountState(db, effectiveAccountId, "Email");
+	const state = await getAccountState(db, effectiveAccountId, "EmailSubmission");
 
 	const input: EmailSubmissionSetArgs = {
 		accountId: effectiveAccountId,
@@ -74,7 +75,7 @@ async function applyEmailSubmissionSet(
 	const destroyed: string[] = [];
 
 	const createEntries = Object.entries(createMap);
-	const oldStateValue = await getAccountState(db, accountId, "Email");
+	const oldStateValue = await getAccountState(db, accountId, "EmailSubmission");
 
 	if (createEntries.length === 0) {
 		return {
@@ -200,6 +201,13 @@ async function applyEmailSubmissionSet(
 			updatedAt: now,
 		});
 
+		await recordCreate(db, {
+			accountId,
+			type: "EmailSubmission",
+			objectId: submissionId,
+			now,
+		});
+
 		submissionsToProcess.push(submissionId);
 
 		created[createId] = {
@@ -217,10 +225,15 @@ async function applyEmailSubmissionSet(
 		}
 	}
 
+	const newStateValue =
+		Object.keys(created).length > 0
+			? await getAccountState(db, accountId, "EmailSubmission")
+			: oldStateValue;
+
 	return {
 		accountId,
 		oldState: oldStateValue,
-		newState: oldStateValue,
+		newState: newStateValue,
 		created,
 		notCreated,
 		updated,
