@@ -1,29 +1,9 @@
-import { and, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 
 import { getDB } from "../../db";
-import {
-	attachmentTable,
-	blobTable,
-	mailboxTable,
-	messageTable,
-	uploadTable,
-} from "../../db/schema";
+import { attachmentTable, blobTable, mailboxTable, messageTable } from "../../db/schema";
 
 const ORPHANED_BLOB_BATCH = 25;
-
-export async function cleanupExpiredUploadTokens(
-	db: ReturnType<typeof getDB>,
-	now: Date
-): Promise<void> {
-	await db.delete(uploadTable).where(lt(uploadTable.expiresAt, now));
-}
-
-export async function cleanupExpiredUploadTokensForEnv(env: CloudflareBindings): Promise<void> {
-	const db = getDB(env);
-	const now = new Date();
-	await cleanupExpiredUploadTokens(db, now);
-}
-
 export async function cleanupOrphanedBlobsForEnv(env: CloudflareBindings): Promise<void> {
 	const db = getDB(env);
 	const rows = await db
@@ -44,7 +24,7 @@ export async function cleanupOrphanedBlobsForEnv(env: CloudflareBindings): Promi
 
 	await Promise.all(
 		rows.map(async (row) => {
-			const key = row.r2Key ?? `blob/${row.sha256}`;
+			const key = row.r2Key ?? row.sha256;
 			try {
 				await env.R2_EMAILS.delete(key);
 			} catch (err) {

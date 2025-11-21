@@ -46,7 +46,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 14. ✅ **Add `onSuccessUpdateEmail` handling** _(Necessary)_  
     When submissions succeed, update the associated Email (keywords, mailbox membership) through the standard hook rather than bespoke logic.
 
-15. **Implement Blob endpoints** _(Necessary)_  
+15. ✅ **Implement Blob endpoints** _(Necessary)_  
     Add `Blob/get`, `Blob/copy`, `Blob/lookup`, and spec-compliant download token handling instead of the current custom upload-token flow.
 
 16. **Provide push/eventing story** _(Optional)_  

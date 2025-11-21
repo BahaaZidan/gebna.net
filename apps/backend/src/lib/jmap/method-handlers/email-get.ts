@@ -432,7 +432,7 @@ async function buildBodyValues(params: BodyValuesParams): Promise<Record<string,
 		return {};
 	}
 
-	const key = row.rawBlobR2Key ?? `blob/${row.rawBlobSha256}`;
+	const key = row.rawBlobR2Key ?? row.rawBlobSha256;
 	const obj = await env.R2_EMAILS.get(key);
 	if (!obj || !obj.body) {
 		return {};

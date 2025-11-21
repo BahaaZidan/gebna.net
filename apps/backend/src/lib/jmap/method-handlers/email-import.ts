@@ -226,7 +226,7 @@ async function loadEmailMetadataFromBlob(
 		throw new EmailImportProblem("blobNotFound", "Blob not found for this account");
 	}
 
-	const r2Key = blobRow.r2Key ?? `blob/${blobId}`;
+	const r2Key = blobRow.r2Key ?? blobId;
 	const obj = await env.R2_EMAILS.get(r2Key);
 	if (!obj || !obj.body) {
 		throw new EmailImportProblem("blobNotFound", "Blob contents unavailable");
