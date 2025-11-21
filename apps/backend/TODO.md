@@ -1,65 +1,13 @@
-# TODO — JMAP Server Completion (Gebna Mail)
-
-This document tracks the remaining work required for a fully fledged, secure, spec-compliant JMAP server.
-
----
-
-1. ✅ **Validate capability negotiation** _(Necessary)_  
-   Reject requests whose `using` array references unsupported capabilities by emitting the standard `unknownCapability` error before invoking any method.
-
-2. ✅ **Ship full `Mailbox/set` support** _(Necessary)_  
-   Implement create/update/destroy with parent/child relationships, role constraints, and enforcement of system mailbox uniqueness.
-
-3. ✅ **Expose mailbox rights metadata** _(Necessary)_  
-   Return `myRights`, ACL flags, and other required properties from `Mailbox/get`, and persist shared rights if we will support delegation later.
-
-4. ✅ **Implement `Email/queryChanges`** _(Necessary)_  
-   Track query cursors and expose a compliant endpoint so clients can delta-sync search results.
-
-5. ✅ **Expand `Email/get` field selection** _(Necessary)_  
-   Honor `properties`, `bodyProperties`, `fetchTextBodyValues`, header filters, and part retrieval so clients can request just the data they need.
-
-6. ✅ **Support full `Email/set` drafting workflow** _(Necessary)_  
-   Allow patching addresses, headers, body structures, signatures, and metadata without forcing clients to upload pre-built MIME blobs.
-
-7. ✅ **Add conditional writes with `ifInState`** _(Necessary)_  
-   Enforce optimistic concurrency for `Email/set`, `Mailbox/set`, `Identity/set`, etc., to prevent lost updates.
-
-8. ✅ **Implement `Email/copy` and `Email/import`** _(Necessary)_  
-   Provide APIs for server-side duplication and ingest of new messages per the Mail capability.
-
-9. ✅ **Wire `onSuccess*` backreferences** _(Necessary)_  
-   Support `onSuccessDestroyOriginal`, `onSuccessUpdateEmail`, and related pipeline hooks so multi-step method calls behave correctly.
-
-10. ✅ **Track Email change log entries fully** _(Necessary)_  
-    Record mailbox membership, keyword, and thread state transitions for every create/update/destroy so `/changes` responses stay accurate.
-
-11. ✅ **Implement `Email/query` operators** _(Necessary)_  
-    Add the remaining filters (from, to, header, size, flags, date ranges), sort options, anchors, and `calculateChanges`.
-
-12. ✅ **Expose EmailSubmission state endpoints** _(Necessary)_  
-    Implement `EmailSubmission/get` and `/changes`, maintain a dedicated state counter, and emit delivery updates through these APIs.
-
-13. ✅ **Honor `sendAt` and undo windows** _(Necessary)_  
-    Queue submissions for future delivery, respect cancelation windows, and prevent immediate send when scheduling is requested.
-
-14. ✅ **Add `onSuccessUpdateEmail` handling** _(Necessary)_  
-    When submissions succeed, update the associated Email (keywords, mailbox membership) through the standard hook rather than bespoke logic.
-
-15. ✅ **Implement Blob endpoints** _(Necessary)_  
-    Add `Blob/get`, `Blob/copy`, `Blob/lookup`, and spec-compliant download token handling instead of the current custom upload-token flow.
-
-16. ✅ **Provide push/eventing story** _(Optional)_  
-    Implement `PushSubscription/*` and expose a non-null `eventSourceUrl` for RFC 8887 state change notifications.
-
-17. ✅ **Extend inbound pipeline to multi-recipient** _(Necessary)_  
-    Process every local recipient on an inbound message (To/Cc/Bcc, aliases), creating separate account message rows per address.
-
-18. ✅ **Verify SES/SNS webhooks** _(Necessary)_  
-    Validate AWS signatures, handle subscription confirmation, and drop unsigned payloads before mutating submission state.
-
-19. ✅ **Enforce strong upload token policy** _(Necessary)_  
-    Replace the bespoke `uploadToken` record with the JMAP upload semantics (per-account upload limit, auth checks, expiry) and ensure blobs can be referenced by any compliant client.
-
-20. **Expose multi-account targeting** _(Optional)_  
-    Update auth middleware to honor the `accountId` supplied by clients, enabling future multi-account or delegated mailbox scenarios.
+- [ ] Implement result reference substitution so method arguments like `#mailboxCreationId` are resolved before invoking handlers (`apps/backend/src/jmap.routes.ts:78-149`) to reach baseline RFC 8621 compliance.
+- [ ] Enforce per-method capability requirements instead of only rejecting unknown capabilities, returning `unknownCapability` when `using` omits `urn:ietf:params:jmap:mail`, `submission`, etc. (`apps/backend/src/jmap.routes.ts:60-141`).
+- [ ] Replace the one-shot `/jmap/event-source` response with a long-lived SSE stream that emits incremental state diffs from `change_log` (`apps/backend/src/jmap.routes.ts:211-247`).
+- [ ] Rework `normalizeFilter` so `Email/query` can combine multiple filter properties simultaneously instead of discarding everything after the first key (`apps/backend/src/lib/jmap/method-handlers/email-query.ts:134-247`).
+- [ ] Push `Email/query` pagination/sorting into SQL with `LIMIT/OFFSET` and only compute totals when requested to avoid materializing the entire mailbox on every call (`apps/backend/src/lib/jmap/method-handlers/email-query.ts:249-284`).
+- [ ] Persist filtered query states so `Email/queryChanges` can honor a `filter` rather than returning `unsupportedFilter` for anything but the default view (`apps/backend/src/lib/jmap/method-handlers/email-query-changes.ts:22-74`).
+- [ ] Sort the `emailIds` returned by `Thread/get` (e.g., newest first) to satisfy the ordering guarantee in RFC 8621 (`apps/backend/src/lib/jmap/method-handlers/thread-get.ts:24-55`).
+- [ ] Expand `Mailbox/query` to accept filter/sort/position arguments and correctly report `canCalculateChanges` instead of always returning the full list (`apps/backend/src/lib/jmap/method-handlers/mailbox-query.ts:15-42`).
+- [ ] Return accurate per-mailbox rights and thread counts (total/unread) in `Mailbox/get` rather than hard-coding permissive booleans for every mailbox (`apps/backend/src/lib/jmap/method-handlers/mailbox-get.ts:13-83`).
+- [ ] Store normalized text/html bodies at ingest time (e.g., in `apps/backend/src/lib/mail/ingest.ts`) and have `Email/get` serve `bodyValues` from the database instead of reparsing each MIME blob from R2 (`apps/backend/src/lib/jmap/method-handlers/email-get.ts:320-464`).
+- [ ] Stream blobs from R2 (or issue byte-range reads) inside `Blob/get` so we never buffer entire multi-megabyte objects just to return a slice or digest (`apps/backend/src/lib/jmap/method-handlers/blob.ts:90-230`).
+- [ ] Add per-IP/user rate limiting (and logging) to `/auth/login` and `/auth/register` to mitigate brute-force attempts (`apps/backend/src/auth.routes.ts:18-86`).
+- [ ] Verify the incoming SNS `TopicArn` matches the configured SES topic before updating submission status, alerting on mismatches (`apps/backend/src/ses-webhook.routes.ts:52-205`).
