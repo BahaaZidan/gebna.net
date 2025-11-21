@@ -102,11 +102,15 @@ export async function handleEmailQueryChanges(
 			normalizedFilter,
 			changeSet.created
 		);
-		const added = Array.from(matchingAdded).map((id) => ({
-			id,
-			index: 0,
-		}));
-		const removed = changeSet.destroyed;
+		const matchingUpdated = await filterIdsMatchingQuery(
+			db,
+			effectiveAccountId,
+			normalizedFilter,
+			changeSet.updated
+		);
+		const added = [...matchingAdded, ...matchingUpdated].map((id) => ({ id, index: 0 }));
+		const removedFromUpdated = changeSet.updated.filter((id) => !matchingUpdated.has(id));
+		const removed = [...changeSet.destroyed, ...removedFromUpdated];
 		const totalChanged = added.length + removed.length;
 
 		return [
