@@ -2,6 +2,7 @@ import { v } from "@gebna/validation";
 import { loginSchema, registerSchema } from "@gebna/validation/auth";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type { JwtVariables } from "hono/jwt";
 
 import { hashPassword, hmacRefresh, nowSec, randomHex, verifyPassword } from "./auth/crypto";
@@ -10,11 +11,23 @@ import { ACCESS_TTL, REFRESH_TTL, signAccessJWT } from "./auth/token";
 import { getDB } from "./db";
 import { accountTable, mailboxTable, sessionTable, userTable } from "./db/schema";
 import { requireJWT } from "./lib/jmap/middlewares";
+import { consumeRateLimit } from "./lib/security/rate-limit";
 
 type Variables = JwtVariables & {
 	sessionRow: typeof sessionTable.$inferSelect;
 };
 export const auth = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
+
+const AUTH_RATE_LIMITS = {
+	register: {
+		ip: { windowMs: 15 * 60 * 1000, max: 20 },
+		user: { windowMs: 60 * 60 * 1000, max: 5 },
+	},
+	login: {
+		ip: { windowMs: 5 * 60 * 1000, max: 50 },
+		user: { windowMs: 5 * 60 * 1000, max: 10 },
+	},
+} as const;
 
 auth.post("/register", async (c) => {
 	const input = await c.req.json();
@@ -25,6 +38,8 @@ auth.post("/register", async (c) => {
 
 	const db = getDB(c.env);
 	const username = inputValidation.output.username;
+	const rateLimitResponse = await enforceAuthRateLimit(c, db, "register", username);
+	if (rateLimitResponse) return rateLimitResponse;
 	const emailAddress = `${username}@gebna.net`;
 	const now = new Date();
 
@@ -115,6 +130,8 @@ auth.post("/login", async (c) => {
 	if (!inputValidation.success) return c.json({ errors: inputValidation.issues }, 400);
 
 	const db = getDB(c.env);
+	const rateLimitResponse = await enforceAuthRateLimit(c, db, "login", inputValidation.output.username);
+	if (rateLimitResponse) return rateLimitResponse;
 	const user = await db.query.userTable.findFirst({
 		where: (t, { eq }) => eq(t.username, inputValidation.output.username),
 	});
@@ -171,6 +188,61 @@ auth.get("/me", requireJWT, async (c) => {
 	if (!u) return c.json({ error: "not found" }, 404);
 	return c.json({ id: u.id, username: u.username });
 });
+
+type AuthContext = Context<{ Bindings: CloudflareBindings; Variables: Variables }>;
+
+async function enforceAuthRateLimit(
+	c: AuthContext,
+	db: ReturnType<typeof getDB>,
+	kind: keyof typeof AUTH_RATE_LIMITS,
+	username?: string
+): Promise<Response | null> {
+	const now = new Date();
+	const config = AUTH_RATE_LIMITS[kind];
+	const ip = getClientIp(c);
+
+	if (config.ip) {
+		const allowed = await consumeRateLimit(db, {
+			key: `ip:${ip}`,
+			route: `${kind}:ip`,
+			windowMs: config.ip.windowMs,
+			max: config.ip.max,
+			now,
+		});
+		if (!allowed) {
+			console.warn("Auth rate limit hit", { kind, type: "ip", ip });
+			return c.json({ error: "Too many requests. Please try again later." }, 429);
+		}
+	}
+
+	if (username && config.user) {
+		const normalized = username.trim().toLowerCase();
+		if (normalized) {
+			const allowed = await consumeRateLimit(db, {
+				key: `user:${normalized}`,
+				route: `${kind}:user`,
+				windowMs: config.user.windowMs,
+				max: config.user.max,
+				now,
+			});
+			if (!allowed) {
+				console.warn("Auth rate limit hit", { kind, type: "user", username: normalized });
+				return c.json({ error: "Too many requests. Please try again later." }, 429);
+			}
+		}
+	}
+
+	return null;
+}
+
+function getClientIp(c: AuthContext): string {
+	return (
+		c.req.header("CF-Connecting-IP") ??
+		c.req.header("X-Real-IP") ??
+		c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ??
+		"unknown"
+	);
+}
 
 async function createSession(
 	env: CloudflareBindings,
