@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 
 import { getDB } from "./db";
-import { accountBlobTable, blobTable, jmapStateTable } from "./db/schema";
+import { accountBlobTable, blobTable, changeLogTable, jmapStateTable } from "./db/schema";
 import {
 	JMAP_BLOB,
 	JMAP_BLOB_ACCOUNT_CAPABILITY,
@@ -207,6 +207,8 @@ function cloneWithResultReferences<T>(value: T, refs: CreationReferenceMap): T {
 	}
 	return value;
 }
+
+const SSE_DEFAULT_POLL_MS = 3000;
 
 function captureCreationReferences(response: JmapMethodResponse, refs: CreationReferenceMap): void {
 	const payload = response[1];
@@ -482,12 +484,86 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 		changeMap[row.type] = String(row.modSeq);
 	}
 
-	const payload = JSON.stringify({ accountId: effectiveAccountId, changed: changeMap });
+	let lastModSeq = snapshot.reduce((max, row) => {
+		const value = Number(row.modSeq ?? 0);
+		return value > max ? value : max;
+	}, 0);
+
 	const encoder = new TextEncoder();
+	const signal = c.req.raw.signal;
+	let abortListener: (() => void) | null = null;
+
 	const stream = new ReadableStream({
 		start(controller) {
-			controller.enqueue(encoder.encode(`event: state\ndata: ${payload}\n\n`));
-			controller.close();
+			let closed = false;
+
+			const sendEvent = () => {
+				const payload = JSON.stringify({ accountId: effectiveAccountId, changed: { ...changeMap } });
+				controller.enqueue(encoder.encode(`event: state\ndata: ${payload}\n\n`));
+			};
+
+			const sendComment = () => {
+				controller.enqueue(encoder.encode(":\n\n"));
+			};
+
+			const stop = () => {
+				if (closed) return;
+				closed = true;
+				controller.close();
+			};
+
+			abortListener = () => stop();
+			signal.addEventListener("abort", abortListener);
+
+			sendEvent();
+
+			const poll = async () => {
+				while (!closed) {
+					let rows: { type: string; modSeq: number }[] = [];
+					try {
+						rows = await db
+							.select({
+								type: changeLogTable.type,
+								modSeq: changeLogTable.modSeq,
+							})
+							.from(changeLogTable)
+							.where(
+								and(
+									eq(changeLogTable.accountId, effectiveAccountId),
+									sql`${changeLogTable.modSeq} > ${lastModSeq}`
+								)
+							)
+							.orderBy(changeLogTable.modSeq)
+							.limit(256);
+					} catch (err) {
+						console.error("JMAP event source polling error", err);
+					}
+
+					if (rows.length > 0) {
+						for (const row of rows) {
+							changeMap[row.type] = String(row.modSeq);
+							lastModSeq = row.modSeq;
+						}
+						sendEvent();
+					} else {
+						sendComment();
+					}
+
+					const delay = rows.length > 0 ? 1000 : SSE_DEFAULT_POLL_MS;
+					await new Promise((resolve) => setTimeout(resolve, delay));
+				}
+			};
+
+			poll()
+				.catch((err) => {
+					console.error("JMAP event source loop error", err);
+				})
+				.finally(stop);
+		},
+		cancel() {
+			if (abortListener) {
+				signal.removeEventListener("abort", abortListener);
+			}
 		},
 	});
 
