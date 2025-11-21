@@ -32,7 +32,7 @@ import { handleThreadGet } from "./lib/jmap/method-handlers/thread-get";
 import { handleVacationResponseGet } from "./lib/jmap/method-handlers/vacation-get";
 import { handleVacationResponseSet } from "./lib/jmap/method-handlers/vacation-set";
 import { attachUserFromJwt, requireJWT, type JMAPHonoAppEnv } from "./lib/jmap/middlewares";
-import { JmapMethodResponse } from "./lib/jmap/types";
+import { JmapHandlerResult, JmapMethodResponse } from "./lib/jmap/types";
 import { handleMailboxSet } from "./lib/jmap/method-handlers/mailbox-set";
 
 const SUPPORTED_CAPABILITIES = new Set([JMAP_CORE, JMAP_MAIL, JMAP_SUBMISSION, JMAP_VACATION]);
@@ -54,7 +54,7 @@ type JmapHandler = (
 	c: Context<JMAPHonoAppEnv>,
 	args: Record<string, unknown>,
 	tag: string
-) => Promise<JmapMethodResponse>;
+) => Promise<JmapHandlerResult>;
 
 async function getGlobalAccountState(
 	db: ReturnType<typeof getDB>,
@@ -164,7 +164,13 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 			}
 
 			const resp = await handler(c, args as Record<string, unknown>, tag);
-			methodResponses.push(resp);
+			if (Array.isArray(resp[0])) {
+				for (const nested of resp as JmapMethodResponse[]) {
+					methodResponses.push(nested);
+				}
+			} else {
+				methodResponses.push(resp as JmapMethodResponse);
+			}
 		} catch (err) {
 			console.error("JMAP method error", name, err);
 			methodResponses.push(["error", { type: "serverError" }, tag]);
