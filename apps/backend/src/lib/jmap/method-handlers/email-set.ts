@@ -54,6 +54,10 @@ export async function handleEmailSet(
 	}
 
 	const state = await getAccountState(db, effectiveAccountId, "Email");
+	const ifInState = args.ifInState as string | undefined;
+	if (ifInState && ifInState !== state) {
+		return ["error", { type: "stateMismatch" }, tag];
+	}
 
 	const input: EmailSetArgs = {
 		accountId: effectiveAccountId,
@@ -176,7 +180,7 @@ async function applyEmailSet(
 				? await applyMailboxPatch(tx, row.id, patch.mailboxIds, mailboxInfo.byId, now)
 				: { changed: false, touchedMailboxIds: [] };
 			const keywordUpdateResult = patch.keywords
-				? await applyKeywordPatch(tx, row.id, row.threadId, row.isSeen, row.isFlagged, row.isAnswered, row.isDraft, patch.keywords, now)
+				? await applyKeywordPatch(tx, row.id, row.isSeen, row.isFlagged, row.isAnswered, row.isDraft, patch.keywords, now)
 				: { changed: false };
 
 			if (mailboxUpdateResult.changed || keywordUpdateResult.changed) {
@@ -1013,7 +1017,6 @@ async function applyMailboxPatch(
 async function applyKeywordPatch(
 	tx: TransactionInstance,
 	accountMessageId: string,
-	threadId: string,
 	currentSeen: boolean,
 	currentFlagged: boolean,
 	currentAnswered: boolean,
