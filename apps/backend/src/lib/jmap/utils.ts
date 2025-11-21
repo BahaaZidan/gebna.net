@@ -38,6 +38,7 @@ type ChangesResult = {
 	updated: string[];
 	destroyed: string[];
 	hasMoreChanges: boolean;
+	updatedProperties: string[] | null;
 };
 
 export async function getChanges(
@@ -45,8 +46,9 @@ export async function getChanges(
 	accountId: string,
 	type: JmapStateType,
 	sinceState: string,
-	maxChanges: number
-): Promise<ChangesResult> {
+	maxChanges: number,
+	options?: { upToId?: string; includeUpdatedProperties?: boolean }
+): Promise<ChangesResult & { updatedProperties: string[] | null }> {
 	const since = Number(sinceState);
 	if (!Number.isFinite(since) || since < 0) {
 		throw Object.assign(new Error("invalid sinceState"), {
@@ -65,7 +67,9 @@ export async function getChanges(
 			and(
 				eq(changeLogTable.accountId, accountId),
 				eq(changeLogTable.type, type),
-				sql`${changeLogTable.modSeq} > ${since}`
+				options?.upToId
+					? sql`${changeLogTable.modSeq} > ${since} and ${changeLogTable.modSeq} <= ${options.upToId}`
+					: sql`${changeLogTable.modSeq} > ${since}`
 			)
 		)
 		.orderBy(changeLogTable.modSeq)
@@ -80,10 +84,11 @@ export async function getChanges(
 			updated: [],
 			destroyed: [],
 			hasMoreChanges: false,
+			updatedProperties: null,
 		};
 	}
 
-	const hasMoreChanges = rows.length > maxChanges;
+const hasMoreChanges = rows.length > maxChanges;
 	const slice = hasMoreChanges ? rows.slice(0, maxChanges) : rows;
 
 	const perId = new Map<
@@ -103,16 +108,19 @@ export async function getChanges(
 	const created: string[] = [];
 	const updated: string[] = [];
 	const destroyed: string[] = [];
+	const updatedProperties = options?.includeUpdatedProperties ? new Set<string>() : null;
 
 	for (const [id, ops] of perId) {
 		const { firstOp, lastOp } = ops;
 
 		if (lastOp === "destroy") {
 			destroyed.push(id);
+			if (updatedProperties) updatedProperties.add(id);
 		} else if (firstOp === "create") {
 			created.push(id);
 		} else {
 			updated.push(id);
+			if (updatedProperties) updatedProperties.add(id);
 		}
 	}
 
@@ -125,6 +133,7 @@ export async function getChanges(
 		updated,
 		destroyed,
 		hasMoreChanges,
+		updatedProperties: updatedProperties ? Array.from(updatedProperties) : null,
 	};
 }
 

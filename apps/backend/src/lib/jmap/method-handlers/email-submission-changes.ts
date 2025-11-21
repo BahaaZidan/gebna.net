@@ -19,9 +19,14 @@ export async function handleEmailSubmissionChanges(
 
 	const sinceState = (args.sinceState as string | undefined) ?? "0";
 	const maxChanges = typeof args.maxChanges === "number" ? args.maxChanges : 50;
+	const upToId = typeof args.upToId === "string" ? args.upToId : undefined;
+	const includeUpdatedProps = Boolean(args.includeUpdatedProperties);
 
 	try {
-		const changeSet = await getChanges(db, effectiveAccountId, "EmailSubmission", sinceState, maxChanges);
+		const changeSet = await getChanges(db, effectiveAccountId, "EmailSubmission", sinceState, maxChanges, {
+			upToId,
+			includeUpdatedProperties: includeUpdatedProps,
+		});
 		return [
 			"EmailSubmission/changes",
 			{
@@ -31,7 +36,9 @@ export async function handleEmailSubmissionChanges(
 				hasMoreChanges: changeSet.hasMoreChanges,
 				created: changeSet.created,
 				updated: changeSet.updated,
+				updatedProperties: includeUpdatedProps ? changeSet.updatedProperties : null,
 				destroyed: changeSet.destroyed,
+				upToId: upToId ?? null,
 			},
 			tag,
 		];
