@@ -40,7 +40,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 12. ✅ **Expose EmailSubmission state endpoints** _(Necessary)_  
     Implement `EmailSubmission/get` and `/changes`, maintain a dedicated state counter, and emit delivery updates through these APIs.
 
-13. **Honor `sendAt` and undo windows** _(Necessary)_  
+13. ✅ **Honor `sendAt` and undo windows** _(Necessary)_  
     Queue submissions for future delivery, respect cancelation windows, and prevent immediate send when scheduling is requested.
 
 14. **Add `onSuccessUpdateEmail` handling** _(Necessary)_  
