@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
@@ -30,10 +30,12 @@ export async function handleThreadGet(
 		.select({
 			threadId: threadTable.id,
 			emailId: accountMessageTable.id,
+			internalDate: accountMessageTable.internalDate,
 		})
 		.from(threadTable)
 		.innerJoin(accountMessageTable, eq(threadTable.id, accountMessageTable.threadId))
-		.where(and(eq(threadTable.accountId, effectiveAccountId), inArray(threadTable.id, ids)));
+		.where(and(eq(threadTable.accountId, effectiveAccountId), inArray(threadTable.id, ids)))
+		.orderBy(threadTable.id, desc(accountMessageTable.internalDate));
 
 	const byThread = new Map<string, string[]>();
 	for (const row of rows) {
