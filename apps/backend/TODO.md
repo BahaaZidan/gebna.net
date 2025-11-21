@@ -28,7 +28,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 8. ✅ **Implement `Email/copy` and `Email/import`** _(Necessary)_  
    Provide APIs for server-side duplication and ingest of new messages per the Mail capability.
 
-9. **Wire `onSuccess*` backreferences** _(Necessary)_  
+9. ✅ **Wire `onSuccess*` backreferences** _(Necessary)_  
    Support `onSuccessDestroyOriginal`, `onSuccessUpdateEmail`, and related pipeline hooks so multi-step method calls behave correctly.
 
 10. ✅ **Track Email change log entries fully** _(Necessary)_  

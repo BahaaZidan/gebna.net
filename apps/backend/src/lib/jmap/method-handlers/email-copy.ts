@@ -12,6 +12,7 @@ import { ensureAccountBlob } from "../../mail/ingest";
 import { recordEmailCreateChanges } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
+import { applyEmailSet } from "./email-set";
 import { ensureAccountAccess, getAccountMailboxes, getAccountState, isRecord } from "../utils";
 
 const KEYWORD_FLAG_MAP: Record<string, keyof KeywordFlags> = {
@@ -43,13 +44,14 @@ type EmailCopyResult = {
 	newState: string;
 	created: Record<string, unknown>;
 	notCreated: Record<string, { type: string; description?: string }>;
+	destroySourceIds: string[];
 };
 
 export async function handleEmailCopy(
 	c: Context<JMAPHonoAppEnv>,
 	args: Record<string, unknown>,
 	tag: string
-): Promise<JmapMethodResponse> {
+): Promise<JmapMethodResponse | JmapMethodResponse[]> {
 	const db = getDB(c.env);
 	const accountIdArg = args.accountId as string | undefined;
 	const effectiveAccountId = ensureAccountAccess(c, accountIdArg);
@@ -68,6 +70,19 @@ export async function handleEmailCopy(
 
 	const state = await getAccountState(db, effectiveAccountId, "Email");
 
+	const onSuccessDestroyOriginalValue = args.onSuccessDestroyOriginal;
+	if (
+		onSuccessDestroyOriginalValue !== undefined &&
+		typeof onSuccessDestroyOriginalValue !== "boolean"
+	) {
+		return [
+			"error",
+			{ type: "invalidArguments", description: "onSuccessDestroyOriginal must be a boolean" },
+			tag,
+		];
+	}
+	const shouldDestroyOriginal = onSuccessDestroyOriginalValue === true;
+
 	const input: EmailCopyArgs = {
 		accountId: effectiveAccountId,
 		create: (args.create as Record<string, unknown> | undefined) ?? undefined,
@@ -75,17 +90,44 @@ export async function handleEmailCopy(
 
 	const result = await applyEmailCopy(db, input);
 
-	return [
-		"Email/copy",
-		{
-			accountId: result.accountId,
-			oldState: state,
-			newState: result.newState,
-			created: result.created,
-			notCreated: result.notCreated,
-		},
-		tag,
+	const responses: JmapMethodResponse[] = [
+		[
+			"Email/copy",
+			{
+				accountId: result.accountId,
+				oldState: state,
+				newState: result.newState,
+				created: result.created,
+				notCreated: result.notCreated,
+			},
+			tag,
+		],
 	];
+
+	if (shouldDestroyOriginal && result.destroySourceIds.length > 0) {
+		const destroyIds = Array.from(new Set(result.destroySourceIds));
+		const emailSetResult = await applyEmailSet(c.env, db, {
+			accountId: effectiveAccountId,
+			destroy: destroyIds,
+		});
+		responses.push([
+			"Email/set",
+			{
+				accountId: emailSetResult.accountId,
+				oldState: emailSetResult.oldState,
+				newState: emailSetResult.newState,
+				created: emailSetResult.created,
+				notCreated: emailSetResult.notCreated,
+				updated: emailSetResult.updated,
+				notUpdated: emailSetResult.notUpdated,
+				destroyed: emailSetResult.destroyed,
+				notDestroyed: emailSetResult.notDestroyed,
+			},
+			tag,
+		]);
+	}
+
+	return responses.length === 1 ? responses[0]! : responses;
 }
 
 async function applyEmailCopy(
@@ -97,6 +139,7 @@ async function applyEmailCopy(
 
 	const created: Record<string, unknown> = {};
 	const notCreated: Record<string, { type: string; description?: string }> = {};
+	const destroySourceIds: string[] = [];
 
 	const oldState = await getAccountState(db, accountId, "Email");
 	const mailboxInfo = await getAccountMailboxes(db, accountId);
@@ -107,6 +150,7 @@ async function applyEmailCopy(
 				const parsed = parseEmailCopyCreate(raw, mailboxInfo.byId);
 				const createResult = await cloneEmail(tx, accountId, parsed, mailboxInfo.byId);
 				created[creationId] = { id: createResult.accountMessageId };
+				destroySourceIds.push(parsed.emailId);
 			} catch (err) {
 				if (err instanceof EmailCopyProblem) {
 					notCreated[creationId] = { type: err.type, description: err.message };
@@ -125,6 +169,7 @@ async function applyEmailCopy(
 		newState,
 		created,
 		notCreated,
+		destroySourceIds,
 	};
 }
 

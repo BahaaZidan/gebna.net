@@ -16,12 +16,13 @@ import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState, isRecord } from "../utils";
 import { recordCreate } from "../change-log";
+import { applyEmailSet } from "./email-set";
 
 export async function handleEmailSubmissionSet(
 	c: Context<JMAPHonoAppEnv>,
 	args: Record<string, unknown>,
 	tag: string
-): Promise<JmapMethodResponse> {
+): Promise<JmapMethodResponse | JmapMethodResponse[]> {
 	const db = getDB(c.env);
 
 	const accountIdArg = args.accountId as string | undefined;
@@ -36,9 +37,32 @@ export async function handleEmailSubmissionSet(
 		return ["error", { type: "stateMismatch" }, tag];
 	}
 
+	const createMap = (args.create as Record<string, unknown> | undefined) ?? {};
+	const onSuccessUpdateEmailResult = parseOnSuccessUpdateEmail(args.onSuccessUpdateEmail);
+	if ("error" in onSuccessUpdateEmailResult) {
+		return [
+			"error",
+			{ type: "invalidArguments", description: onSuccessUpdateEmailResult.error },
+			tag,
+		];
+	}
+	const onSuccessUpdateEmail = onSuccessUpdateEmailResult.value;
+
+	const onSuccessDestroyArg =
+		args.onSuccessDestroyEmail !== undefined ? args.onSuccessDestroyEmail : args.onSuccessDestroyOriginal;
+	const onSuccessDestroyEmailResult = parseOnSuccessDestroyEmail(onSuccessDestroyArg);
+	if ("error" in onSuccessDestroyEmailResult) {
+		return [
+			"error",
+			{ type: "invalidArguments", description: onSuccessDestroyEmailResult.error },
+			tag,
+		];
+	}
+	const onSuccessDestroyEmail = onSuccessDestroyEmailResult.value;
+
 	const input: EmailSubmissionSetArgs = {
 		accountId: effectiveAccountId,
-		create: (args.create as Record<string, unknown> | undefined) ?? undefined,
+		create: createMap,
 		update: (args.update as Record<string, unknown> | undefined) ?? undefined,
 		destroy: (args.destroy as string[] | undefined) ?? undefined,
 	};
@@ -46,19 +70,67 @@ export async function handleEmailSubmissionSet(
 	try {
 		const result = await applyEmailSubmissionSet(c.env, db, input);
 
-		return [
-			"EmailSubmission/set",
-			{
-				accountId: result.accountId,
-				oldState: result.oldState ?? state,
-				newState: result.newState ?? state,
-				created: result.created,
-				notCreated: result.notCreated,
-				updated: result.updated,
-				destroyed: result.destroyed,
-			},
-			tag,
+		const responses: JmapMethodResponse[] = [
+			[
+				"EmailSubmission/set",
+				{
+					accountId: result.accountId,
+					oldState: result.oldState ?? state,
+					newState: result.newState ?? state,
+					created: result.created,
+					notCreated: result.notCreated,
+					updated: result.updated,
+					destroyed: result.destroyed,
+				},
+				tag,
+			],
 		];
+
+		const implicitEmailOps = buildImplicitEmailSubmissionOps({
+			createMap,
+			creationMeta: result.creationMeta,
+			onSuccessDestroyEmail,
+			onSuccessUpdateEmail,
+		});
+
+		if ("error" in implicitEmailOps) {
+			return ["error", { type: "invalidArguments", description: implicitEmailOps.error }, tag];
+		}
+
+		if (implicitEmailOps.operations) {
+			const emailSetArgs = {
+				accountId: effectiveAccountId,
+				update:
+					Object.keys(implicitEmailOps.operations.update).length > 0
+						? implicitEmailOps.operations.update
+						: undefined,
+				destroy:
+					implicitEmailOps.operations.destroy.length > 0
+						? implicitEmailOps.operations.destroy
+						: undefined,
+			};
+
+			if (emailSetArgs.update || emailSetArgs.destroy) {
+				const emailSetResult = await applyEmailSet(c.env, db, emailSetArgs);
+				responses.push([
+					"Email/set",
+					{
+						accountId: emailSetResult.accountId,
+						oldState: emailSetResult.oldState,
+						newState: emailSetResult.newState,
+						created: emailSetResult.created,
+						notCreated: emailSetResult.notCreated,
+						updated: emailSetResult.updated,
+						notUpdated: emailSetResult.notUpdated,
+						destroyed: emailSetResult.destroyed,
+						notDestroyed: emailSetResult.notDestroyed,
+					},
+					tag,
+				]);
+			}
+		}
+
+		return responses.length === 1 ? responses[0]! : responses;
 	} catch (err) {
 		console.error("EmailSubmission/set error", err);
 		return ["error", { type: "serverError" }, tag];
@@ -77,6 +149,7 @@ async function applyEmailSubmissionSet(
 	const notCreated: Record<string, EmailSubmissionFailure> = {};
 	const updated: Record<string, unknown> = {};
 	const destroyed: string[] = [];
+	const creationMeta: Record<string, { emailId: string }> = {};
 
 	const createEntries = Object.entries(createMap);
 	const oldStateValue = await getAccountState(db, accountId, "EmailSubmission");
@@ -90,6 +163,7 @@ async function applyEmailSubmissionSet(
 			notCreated: {},
 			updated,
 			destroyed,
+			creationMeta,
 		};
 	}
 
@@ -219,6 +293,7 @@ async function applyEmailSubmissionSet(
 			emailId: parsed.emailId,
 			identityId: parsed.identityId,
 		};
+		creationMeta[createId] = { emailId: parsed.emailId };
 	}
 
 	for (const submissionId of submissionsToProcess) {
@@ -242,6 +317,7 @@ async function applyEmailSubmissionSet(
 		notCreated,
 		updated,
 		destroyed,
+		creationMeta,
 	};
 }
 
@@ -406,6 +482,7 @@ type EmailSubmissionSetResult = {
 	notCreated: Record<string, EmailSubmissionFailure>;
 	updated: Record<string, unknown>;
 	destroyed: string[];
+	creationMeta: Record<string, { emailId: string }>;
 };
 
 type EmailSubmissionEnvelopeOverride = {
@@ -425,4 +502,107 @@ class EmailSubmissionProblem extends Error {
 		super(message);
 		this.jmapType = type;
 	}
+}
+
+type OnSuccessUpdateMap = Record<string, Record<string, unknown>>;
+type ParseResult<T> = { value: T } | { error: string };
+
+function parseOnSuccessUpdateEmail(value: unknown): ParseResult<OnSuccessUpdateMap> {
+	if (value === undefined || value === null) {
+		return { value: {} };
+	}
+
+	if (!isRecord(value)) {
+		return { error: "onSuccessUpdateEmail must be an object when provided" };
+	}
+
+	const parsed: OnSuccessUpdateMap = {};
+	for (const [key, raw] of Object.entries(value)) {
+		if (!isRecord(raw)) {
+			return { error: `onSuccessUpdateEmail entry for ${key} must be an object` };
+		}
+		parsed[key] = raw;
+	}
+	return { value: parsed };
+}
+
+function parseOnSuccessDestroyEmail(value: unknown): ParseResult<string[]> {
+	if (value === undefined || value === null) {
+		return { value: [] };
+	}
+
+	if (!Array.isArray(value)) {
+		return { error: "onSuccessDestroyEmail must be an array when provided" };
+	}
+
+	const items: string[] = [];
+	for (const entry of value) {
+		if (typeof entry !== "string" || entry.length === 0) {
+			return { error: "onSuccessDestroyEmail entries must be non-empty strings" };
+		}
+		items.push(entry);
+	}
+	return { value: items };
+}
+
+type ImplicitEmailOpsResult =
+	| { error: string }
+	| { operations?: { destroy: string[]; update: Record<string, Record<string, unknown>> } };
+
+function buildImplicitEmailSubmissionOps(opts: {
+	createMap: Record<string, unknown>;
+	creationMeta: Record<string, { emailId: string }>;
+	onSuccessDestroyEmail: string[];
+	onSuccessUpdateEmail: OnSuccessUpdateMap;
+}): ImplicitEmailOpsResult {
+	const requestedCreations = new Set(Object.keys(opts.createMap ?? {}));
+	const resolveReference = (
+		ref: string
+	): { emailId: string } | { error: string } | null => {
+		if (!ref.startsWith("#")) {
+			return {
+				error: "Only creation references (starting with #) are supported in onSuccess arguments",
+			};
+		}
+		const creationId = ref.slice(1);
+		if (!requestedCreations.has(creationId)) {
+			return { error: `Unknown onSuccess reference ${ref}` };
+		}
+		const meta = opts.creationMeta[creationId];
+		if (!meta) {
+			return null;
+		}
+		return { emailId: meta.emailId };
+	};
+
+	const destroyTargets = new Set<string>();
+	for (const ref of opts.onSuccessDestroyEmail) {
+		const resolved = resolveReference(ref);
+		if (!resolved) continue;
+		if ("error" in resolved) {
+			return { error: resolved.error };
+		}
+		destroyTargets.add(resolved.emailId);
+	}
+
+	const updateMap: Record<string, Record<string, unknown>> = {};
+	for (const [ref, patch] of Object.entries(opts.onSuccessUpdateEmail)) {
+		const resolved = resolveReference(ref);
+		if (!resolved) continue;
+		if ("error" in resolved) {
+			return { error: resolved.error };
+		}
+		updateMap[resolved.emailId] = patch;
+	}
+
+	if (destroyTargets.size === 0 && Object.keys(updateMap).length === 0) {
+		return {};
+	}
+
+	return {
+		operations: {
+			destroy: Array.from(destroyTargets),
+			update: updateMap,
+		},
+	};
 }

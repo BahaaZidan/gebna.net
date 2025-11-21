@@ -90,7 +90,7 @@ export async function handleEmailSet(
 	}
 }
 
-async function applyEmailSet(
+export async function applyEmailSet(
 	env: JMAPHonoAppEnv["Bindings"],
 	db: ReturnType<typeof getDB>,
 	args: EmailSetArgs
