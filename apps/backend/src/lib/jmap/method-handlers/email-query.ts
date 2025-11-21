@@ -55,6 +55,7 @@ type QueryOptions = {
 
 const DEFAULT_SORT: SortComparator[] = [{ property: "receivedAt", isAscending: false }];
 const QUERY_STATE_PREFIX = "qs:";
+const QUERY_STATE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type StoredQueryStateRecord = {
 	filter: unknown;
@@ -175,13 +176,19 @@ export async function handleEmailQuery(
 			args.filter ?? null,
 			options.sort
 		);
+		try {
+			await purgeStaleQueryStates(db);
+		} catch (err) {
+			console.warn("Failed to purge stale query states", err);
+		}
 		const encodedQueryState = encodeQueryStateValue(queryStateId, accountState);
+		const canCalculateChanges = Boolean(queryStateId);
 		return [
 			"Email/query",
 			{
 				accountId: effectiveAccountId,
 				queryState: encodedQueryState,
-				canCalculateChanges: result.canCalculateChanges,
+				canCalculateChanges,
 				ids: result.ids,
 				position: result.position,
 				total: options.calculateTotal ? result.total : null,
@@ -389,7 +396,7 @@ async function runQuery(
 	db: ReturnType<typeof getDB>,
 	accountId: string,
 	options: QueryOptions
-): Promise<{ ids: string[]; total: number | null; position: number; canCalculateChanges: boolean }> {
+): Promise<{ ids: string[]; total: number | null; position: number }> {
 	const filterWhere = buildWhereClause(accountId, options.filter);
 	const orderParts = buildOrderBy(options.sort);
 	const orderForWindow = sql.join(orderParts, sql`, `);
@@ -437,8 +444,14 @@ async function runQuery(
 		ids: rows.map((row) => row.emailId),
 		total,
 		position: start,
-		canCalculateChanges: options.filter.operator === "none",
 	};
+}
+
+async function purgeStaleQueryStates(db: ReturnType<typeof getDB>): Promise<void> {
+	const cutoff = new Date(Date.now() - QUERY_STATE_TTL_MS);
+	await db
+		.delete(jmapQueryStateTable)
+		.where(lt(jmapQueryStateTable.lastAccessedAt, cutoff));
 }
 
 export async function filterIdsMatchingQuery(
@@ -497,10 +510,16 @@ function buildFilterSql(filter: FilterCondition): SQL | undefined {
 	switch (filter.operator) {
 		case "none":
 			return undefined;
-		case "text": {
-			const pattern = `%${escapeLikePattern(filter.value)}%`;
-			return or(like(messageTable.subject, pattern), like(messageTable.snippet, pattern));
-		}
+	case "text": {
+		const pattern = `%${escapeLikePattern(filter.value)}%`;
+		return or(
+			like(messageTable.subject, pattern),
+			like(messageTable.snippet, pattern),
+			like(messageTable.textBody, pattern),
+			like(messageTable.htmlBody, pattern),
+			buildAnyAddressCondition(filter.value)
+		);
+	}
 		case "subject": {
 			const pattern = `%${escapeLikePattern(filter.value)}%`;
 			return like(messageTable.subject, pattern);
@@ -523,10 +542,10 @@ function buildFilterSql(filter: FilterCondition): SQL | undefined {
 			return lt(messageTable.size, filter.value);
 		case "hasKeyword":
 			return buildKeywordCondition(filter.keyword);
-		case "body": {
-			const pattern = `%${escapeLikePattern(filter.value)}%`;
-			return or(like(messageTable.textBody, pattern), like(messageTable.htmlBody, pattern), like(messageTable.snippet, pattern));
-		}
+	case "body": {
+		const pattern = `%${escapeLikePattern(filter.value)}%`;
+		return or(like(messageTable.textBody, pattern), like(messageTable.htmlBody, pattern));
+	}
 		case "hasAttachment":
 			return filter.value
 				? sql`exists(select 1 from ${attachmentTable} att where att.message_id = ${messageTable.id})`
@@ -567,6 +586,11 @@ function buildFilterSql(filter: FilterCondition): SQL | undefined {
 function buildAddressCondition(kind: string, value: string): SQL {
 	const pattern = `%${escapeLikePattern(value)}%`;
 	return sql`exists(select 1 from ${messageAddressTable} ma inner join ${addressTable} addr on ma.address_id = addr.id where ma.message_id = ${messageTable.id} and ma.kind = ${kind} and addr.email like ${pattern})`;
+}
+
+function buildAnyAddressCondition(value: string): SQL {
+	const pattern = `%${escapeLikePattern(value)}%`;
+	return sql`exists(select 1 from ${messageAddressTable} ma inner join ${addressTable} addr on ma.address_id = addr.id where ma.message_id = ${messageTable.id} and (addr.email like ${pattern} or addr.name like ${pattern}))`;
 }
 
 function buildKeywordCondition(keyword: string): SQL {
