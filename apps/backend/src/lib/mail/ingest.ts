@@ -1,9 +1,5 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
-import PostalMime, {
-	Address as ParsedAddress,
-	Attachment as ParsedAttachment,
-	Email as ParsedEmail,
-} from "postal-mime";
+import PostalMime, { Address as ParsedAddress, Email as ParsedEmail } from "postal-mime";
 
 import { TransactionInstance } from "../../db";
 import {
@@ -150,67 +146,179 @@ export async function ensureAccountBlob(
 		});
 }
 
-type SimpleBodyPart = {
+type MimeNodeLike = {
+	childNodes: MimeNodeLike[];
+	content: Uint8Array | null;
+	contentType: {
+		parsed: {
+			value: string;
+			params: Record<string, string>;
+		};
+		multipart: string | false;
+	};
+	contentDisposition: {
+		parsed: {
+			value: string | null;
+			params: Record<string, string>;
+		};
+	};
+	contentId?: string;
+	headers: { key: string; value: string; originalKey?: string }[];
+};
+
+export type ParsedRawEmail = {
+	email: ParsedEmail;
+	mimeTree: MimeNodeLike;
+};
+
+export type StoredBodyPart = {
 	partId: string;
 	type: string;
 	subtype: string;
+	parameters: Record<string, string>;
 	size: number | null;
-	disposition?: string | null;
-	filename?: string | null;
-	cid?: string | null;
-	related?: boolean;
+	blobId: string | null;
+	charset: string | null;
+	disposition: string | null;
+	name: string | null;
+	cid: string | null;
+	isInline: boolean;
+	parts?: StoredBodyPart[];
 };
 
-export function buildBodyStructure(email: ParsedEmail, rawSize: number): unknown {
-	const parts: SimpleBodyPart[] = [];
-	let partCounter = 1;
+export type PreparedAttachmentInput = {
+	partId: string;
+	blobSha256: string;
+	size: number;
+	content: ArrayBuffer;
+	mimeType: string;
+	disposition: string | null;
+	filename: string | null;
+	cid: string | null;
+	related: boolean;
+};
 
-	if (email.text) {
-		parts.push({
-			partId: String(partCounter++),
-			type: "text",
-			subtype: "plain",
-			size: email.text.length,
-		});
-	}
+export type BodyStructureBuildResult = {
+	structure: StoredBodyPart;
+	attachments: PreparedAttachmentInput[];
+};
 
-	if (email.html) {
-		parts.push({
-			partId: String(partCounter++),
-			type: "text",
-			subtype: "html",
-			size: email.html.length,
-		});
-	}
+export async function buildBodyStructure(
+	parsed: ParsedRawEmail,
+	rawSize: number
+): Promise<BodyStructureBuildResult> {
+	const rootNode = parsed.mimeTree;
+	const attachments: PreparedAttachmentInput[] = [];
 
-	for (const att of (email.attachments ?? []) as ParsedAttachment[]) {
-		const mime = att.mimeType ?? "application/octet-stream";
-		const [type, subtype] = mime.split("/");
-		let size: number | null = null;
+	const walk = async (
+		node: MimeNodeLike,
+		parentId: string | null,
+		index: number,
+		isRelated: boolean
+	): Promise<StoredBodyPart> => {
+		const partId = parentId ? `${parentId}.${index + 1}` : String(index + 1);
+		const mediaType = (node.contentType?.parsed?.value ?? "text/plain").toLowerCase();
+		const [type = "text", subtype = "plain"] = mediaType.split("/");
+		const disposition = (node.contentDisposition?.parsed?.value ?? "").toLowerCase() || null;
+		const name =
+			node.contentDisposition?.parsed?.params?.filename ??
+			node.contentType?.parsed?.params?.name ??
+			null;
+		const cid = normalizeCid(node.contentId ?? null);
+		const charset = node.contentType?.parsed?.params?.charset ?? null;
+		const parameters = normalizeParameters(node.contentType?.parsed?.params ?? {});
 
-		if (typeof att.content === "string") {
-			size = att.content.length;
-		} else if (att.content instanceof ArrayBuffer) {
-			size = att.content.byteLength;
+		const part: StoredBodyPart = {
+			partId,
+			type,
+			subtype,
+			parameters,
+			size: null,
+			blobId: null,
+			charset,
+			disposition,
+			name,
+			cid,
+			isInline: disposition === "inline",
+		};
+
+		const childNodes = Array.isArray(node.childNodes) ? node.childNodes : [];
+		if (childNodes.length > 0) {
+			const children: StoredBodyPart[] = [];
+			for (let i = 0; i < childNodes.length; i++) {
+				const child = childNodes[i]!;
+				children.push(await walk(child, partId, i, isRelated || node.contentType?.multipart === "related"));
+			}
+			part.parts = children;
+		} else if (shouldExposeBlob(node, type, subtype)) {
+			const contentBytes = node.content ?? null;
+			if (contentBytes && contentBytes.byteLength > 0) {
+				const buffer = contentBytes.buffer.slice(
+					contentBytes.byteOffset,
+					contentBytes.byteOffset + contentBytes.byteLength
+				) as ArrayBuffer;
+				const sha = await sha256HexFromArrayBuffer(buffer);
+				part.blobId = sha;
+				part.size = contentBytes.byteLength;
+				attachments.push({
+					partId,
+					blobSha256: sha,
+					size: contentBytes.byteLength,
+					content: buffer,
+					mimeType: mediaType,
+					disposition,
+					filename: name,
+					cid,
+					related: isRelated,
+				});
+			}
 		}
 
-		parts.push({
-			partId: String(partCounter++),
-			type: type || "application",
-			subtype: subtype || "octet-stream",
-			size,
-			disposition: att.disposition ?? null,
-			filename: att.filename ?? null,
-			cid: att.contentId ?? null,
-			related: att.related ?? false,
-		});
+		if (!part.size && !part.blobId && !part.parts?.length) {
+			part.size = node.content ? node.content.byteLength : null;
+		}
+
+		return part;
+	};
+
+	const structure = await walk(rootNode, null, 0, false);
+	if (!structure.size) {
+		structure.size = rawSize;
 	}
 
-	return {
-		size: rawSize,
-		isTruncated: false,
-		parts,
-	};
+	return { structure, attachments };
+}
+
+function normalizeParameters(params: Record<string, string>): Record<string, string> {
+	const normalized: Record<string, string> = {};
+	for (const [key, value] of Object.entries(params)) {
+		if (typeof value === "string" && value.length > 0) {
+			normalized[key.toLowerCase()] = value;
+		}
+	}
+	return normalized;
+}
+
+function normalizeCid(value: string | null): string | null {
+	if (!value) return null;
+	const trimmed = value.trim();
+	if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
+		return trimmed.slice(1, -1);
+	}
+	return trimmed;
+}
+
+function shouldExposeBlob(node: MimeNodeLike, type: string, subtype: string): boolean {
+	if (node.contentType?.multipart) return false;
+	if (!node.content || node.content.byteLength === 0) return false;
+	const disposition = (node.contentDisposition?.parsed?.value ?? "").toLowerCase();
+	if (disposition === "attachment") {
+		return true;
+	}
+	if (type === "text" && (subtype === "plain" || subtype === "html")) {
+		return false;
+	}
+	return true;
 }
 
 export async function upsertCanonicalMessage(opts: {
@@ -289,7 +397,7 @@ export async function storeAttachments(opts: {
 	tx: TransactionInstance;
 	env: CloudflareBindings;
 	canonicalMessageId: string;
-	attachments: ParsedAttachment[];
+	attachments: PreparedAttachmentInput[];
 	now: Date;
 }): Promise<string[]> {
 	const { tx, env, canonicalMessageId, attachments, now } = opts;
@@ -297,11 +405,11 @@ export async function storeAttachments(opts: {
 
 	for (let i = 0; i < attachments.length; i++) {
 		const att = attachments[i]!;
-		const ab = attachmentContentToArrayBuffer(att.content);
-		const sha = await sha256HexFromArrayBuffer(ab);
+		const buffer = att.content;
+		const sha = att.blobSha256;
 
-		await ensureBlobInR2(env, sha, ab);
-		await upsertBlob(tx, sha, ab.byteLength, now);
+		await ensureBlobInR2(env, sha, buffer);
+		await upsertBlob(tx, sha, att.size, now);
 
 		await tx.insert(attachmentTable).values({
 			id: crypto.randomUUID(),
@@ -310,7 +418,7 @@ export async function storeAttachments(opts: {
 			filename: att.filename ?? null,
 			mimeType: att.mimeType,
 			disposition: att.disposition ?? null,
-			contentId: att.contentId ?? null,
+			contentId: att.cid ?? null,
 			related: att.related ?? false,
 			position: i,
 		});
@@ -488,6 +596,17 @@ export async function resolveOrCreateThreadId(opts: {
 	return threadId;
 }
 
-export async function parseRawEmail(rawBuffer: ArrayBuffer): Promise<ParsedEmail> {
-	return PostalMime.parse(rawBuffer);
+export async function parseRawEmail(rawBuffer: ArrayBuffer): Promise<ParsedRawEmail> {
+	const parser = new PostalMime({
+		attachmentEncoding: "arraybuffer",
+	});
+	const email = await parser.parse(rawBuffer);
+	const mimeTree = (parser as unknown as { root?: MimeNodeLike }).root;
+	if (!mimeTree) {
+		throw new Error("Failed to parse MIME structure");
+	}
+	return {
+		email,
+		mimeTree: mimeTree,
+	};
 }

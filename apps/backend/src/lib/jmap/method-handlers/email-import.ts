@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { Context } from "hono";
+import type { Email as ParsedEmail } from "postal-mime";
 
 import { getDB, TransactionInstance } from "../../../db";
 import {
@@ -22,6 +23,7 @@ import {
 	upsertBlob,
 	upsertCanonicalMessage,
 } from "../../mail/ingest";
+import type { PreparedAttachmentInput } from "../../mail/ingest";
 import { recordEmailCreateChanges } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
@@ -48,7 +50,8 @@ type ImportKeywordFlags = {
 };
 
 type ParsedEmailMetadata = {
-	email: Awaited<ReturnType<typeof parseRawEmail>>;
+	email: ParsedEmail;
+	attachments: PreparedAttachmentInput[];
 	snippet: string | null;
 	sentAt: Date | null;
 	size: number;
@@ -233,15 +236,17 @@ async function loadEmailMetadataFromBlob(
 	}
 
 	const rawBuffer = await obj.arrayBuffer();
-	const parsedEmail = await parseRawEmail(rawBuffer);
-	const snippet = makeSnippet(parsedEmail);
-	const sentAt = parseSentAt(parsedEmail);
+	const parsed = await parseRawEmail(rawBuffer);
+	const snippet = makeSnippet(parsed.email);
+	const sentAt = parseSentAt(parsed.email);
 	const size = rawBuffer.byteLength;
-	const hasAttachment = (parsedEmail.attachments?.length ?? 0) > 0;
-	const bodyStructureJson = JSON.stringify(buildBodyStructure(parsedEmail, size));
+	const { structure, attachments } = await buildBodyStructure(parsed, size);
+	const hasAttachment = attachments.length > 0;
+	const bodyStructureJson = JSON.stringify(structure);
 
 	return {
-		email: parsedEmail,
+		email: parsed.email,
+		attachments,
 		snippet,
 		sentAt,
 		size,
@@ -281,7 +286,7 @@ async function persistImportedEmail(opts: {
 		tx,
 		env,
 		canonicalMessageId,
-		attachments: metadata.email.attachments ?? [],
+		attachments: metadata.attachments,
 		now,
 	});
 	await storeAddresses({ tx, canonicalMessageId, email: metadata.email });

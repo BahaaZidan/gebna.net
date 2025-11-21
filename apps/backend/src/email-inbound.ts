@@ -1,9 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import type {
-	Address as ParsedAddress,
-	Attachment as ParsedAttachment,
-	Email as ParsedEmail,
-} from "postal-mime";
+import type { Address as ParsedAddress, Email as ParsedEmail } from "postal-mime";
 
 import { getDB, type TransactionInstance } from "./db";
 import {
@@ -265,13 +261,14 @@ export async function email(
 
 		const rawSha = await sha256HexFromArrayBuffer(rawBuffer);
 
-		const email: ParsedEmail = await parseRawEmail(rawBuffer);
+		const parsed = await parseRawEmail(rawBuffer);
+		const email = parsed.email;
 		const snippet = makeSnippet(email);
 		const sentAt = parseSentAt(email);
 		const size = rawBuffer.byteLength;
-		const hasAttachment = (email.attachments?.length ?? 0) > 0;
-		const bodyStructure = buildBodyStructure(email, size);
+		const { structure: bodyStructure, attachments } = await buildBodyStructure(parsed, size);
 		const bodyStructureJson = JSON.stringify(bodyStructure);
+		const hasAttachment = attachments.length > 0;
 
 		const ingestId = rawSha;
 
@@ -311,7 +308,7 @@ export async function email(
 				tx,
 				env,
 				canonicalMessageId,
-				attachments: (email.attachments ?? []) as ParsedAttachment[],
+				attachments,
 				now,
 			});
 

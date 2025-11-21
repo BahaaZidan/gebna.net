@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
-import type { Attachment as ParsedAttachment, Email as ParsedEmail } from "postal-mime";
+import type { Email as ParsedEmail } from "postal-mime";
 
 import { getDB, TransactionInstance } from "../../../db";
 import {
@@ -23,6 +23,7 @@ import {
 	upsertBlob,
 	upsertCanonicalMessage,
 } from "../../mail/ingest";
+import type { PreparedAttachmentInput } from "../../mail/ingest";
 import {
 	recordEmailCreateChanges,
 	recordEmailDestroyChanges,
@@ -286,6 +287,7 @@ type PreparedEmailCreate = {
 	blobId: string;
 	mailboxIds: string[];
 	email: ParsedEmail;
+	attachments: PreparedAttachmentInput[];
 	snippet: string | null;
 	sentAt: Date | null;
 	size: number;
@@ -345,6 +347,7 @@ async function prepareEmailCreate(opts: {
 			blobId: structuredDraft.blobId,
 			mailboxIds,
 			email: structuredDraft.email,
+			attachments: structuredDraft.attachments,
 			snippet: structuredDraft.snippet,
 			sentAt: structuredDraft.sentAt,
 			size: structuredDraft.size,
@@ -383,6 +386,7 @@ async function prepareEmailCreate(opts: {
 		blobId: blobIdValue,
 		mailboxIds,
 		email: parsedBlob.email,
+		attachments: parsedBlob.attachments,
 		snippet: parsedBlob.snippet,
 		sentAt: parsedBlob.sentAt,
 		size: parsedBlob.size,
@@ -397,6 +401,7 @@ async function prepareEmailCreate(opts: {
 type StructuredDraftResult = {
 	blobId: string;
 	email: ParsedEmail;
+	attachments: PreparedAttachmentInput[];
 	snippet: string | null;
 	sentAt: Date | null;
 	size: number;
@@ -455,16 +460,19 @@ async function maybePrepareStructuredDraft(
 		createdAt: new Date(),
 	}).onConflictDoNothing();
 
-	const email = await parseRawEmail(rawBuffer);
+	const parsed = await parseRawEmail(rawBuffer);
+	const email = parsed.email;
 	const snippet = makeSnippet(email);
 	const sentAt = parseSentAt(email);
 	const size = rawBytes.byteLength;
-	const hasAttachment = (email.attachments?.length ?? 0) > 0;
-	const bodyStructureJson = JSON.stringify(buildBodyStructure(email, size));
+	const { structure, attachments } = await buildBodyStructure(parsed, size);
+	const hasAttachment = attachments.length > 0;
+	const bodyStructureJson = JSON.stringify(structure);
 
 	return {
 		blobId,
 		email,
+		attachments,
 		snippet,
 		sentAt,
 		size,
@@ -636,16 +644,19 @@ async function prepareEmailFromBlob(opts: {
 		throw new EmailSetProblem("invalidProperties", "Failed to read blob data");
 	}
 
-	const email = await parseRawEmail(rawBuffer);
+	const parsed = await parseRawEmail(rawBuffer);
+	const email = parsed.email;
 	const snippet = makeSnippet(email);
 	const sentAt = parseSentAt(email);
 	const size = rawBuffer.byteLength;
-	const hasAttachment = (email.attachments?.length ?? 0) > 0;
-	const bodyStructureJson = JSON.stringify(buildBodyStructure(email, size));
+	const { structure, attachments } = await buildBodyStructure(parsed, size);
+	const hasAttachment = attachments.length > 0;
+	const bodyStructureJson = JSON.stringify(structure);
 
 	return {
 		blobId,
 		email,
+		attachments,
 		snippet,
 		sentAt,
 		size,
@@ -682,7 +693,7 @@ async function persistEmailCreate(opts: {
 		tx,
 		env,
 		canonicalMessageId,
-		attachments: (prepared.email.attachments ?? []) as ParsedAttachment[],
+		attachments: prepared.attachments,
 		now,
 	});
 	await storeAddresses({ tx, canonicalMessageId, email: prepared.email });

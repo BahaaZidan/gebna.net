@@ -1,12 +1,10 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
 import {
 	accountMessageTable,
 	addressTable,
-	attachmentTable,
-	blobTable,
 	emailKeywordTable,
 	mailboxMessageTable,
 	messageAddressTable,
@@ -22,17 +20,21 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 type StoredBodyPart = {
-	partId?: string;
-	type?: string;
-	subtype?: string;
-	[key: string]: unknown;
-};
-
-type StoredBodyStructure = {
-	size?: number;
-	isTruncated?: boolean;
+	partId: string;
+	type: string;
+	subtype: string;
+	parameters: Record<string, string>;
+	size: number | null;
+	blobId: string | null;
+	charset: string | null;
+	disposition: string | null;
+	name: string | null;
+	cid: string | null;
+	isInline: boolean;
 	parts?: StoredBodyPart[];
 };
+
+type StoredBodyStructure = StoredBodyPart;
 
 type BodyValueRecord = {
 	value: string;
@@ -41,6 +43,7 @@ type BodyValueRecord = {
 };
 
 type AttachmentRecord = {
+	partId: string;
 	blobId: string;
 	type: string;
 	size: number;
@@ -205,40 +208,6 @@ export async function handleEmailGet(
 		customKeywords.set(row.emailId, arr);
 	}
 
-	const attachmentRows = shouldInclude("attachments")
-		? await db
-				.select({
-					messageId: attachmentTable.messageId,
-					blobId: attachmentTable.blobSha256,
-					name: attachmentTable.filename,
-					type: attachmentTable.mimeType,
-					disposition: attachmentTable.disposition,
-					cid: attachmentTable.contentId,
-					size: blobTable.size,
-					isInline: attachmentTable.related,
-					position: attachmentTable.position,
-				})
-				.from(attachmentTable)
-				.innerJoin(blobTable, eq(attachmentTable.blobSha256, blobTable.sha256))
-				.where(inArray(attachmentTable.messageId, canonicalMessageIds))
-				.orderBy(asc(attachmentTable.messageId), asc(attachmentTable.position))
-		: [];
-
-	const attachmentsByMessage = new Map<string, AttachmentRecord[]>();
-	for (const row of attachmentRows) {
-		const list = attachmentsByMessage.get(row.messageId) ?? [];
-		list.push({
-			blobId: row.blobId,
-			type: row.type,
-			size: Number(row.size ?? 0),
-			cid: row.cid ?? null,
-			disposition: row.disposition ?? null,
-			name: row.name ?? null,
-			isInline: Boolean(row.isInline),
-		});
-		attachmentsByMessage.set(row.messageId, list);
-	}
-
 	const needsAddresses = ["from", "to", "cc", "bcc", "replyTo", "sender"].some((prop) =>
 		shouldInclude(prop)
 	);
@@ -320,9 +289,6 @@ export async function handleEmailGet(
 		if (shouldInclude("references")) {
 			email.references = parseReferencesArray(row.referencesJson ?? null);
 		}
-		if (shouldInclude("attachments")) {
-			email.attachments = attachmentsByMessage.get(canonicalMessageId) ?? [];
-		}
 		if (shouldInclude("subject")) email.subject = row.subject;
 		if (shouldInclude("sentAt")) {
 			email.sentAt = row.sentAt ? new Date(row.sentAt).toISOString() : null;
@@ -348,7 +314,7 @@ export async function handleEmailGet(
 			email.keywords = kw;
 		}
 
-			const addrKinds = addrsByMsg.get(canonicalMessageId) ?? {};
+		const addrKinds = addrsByMsg.get(canonicalMessageId) ?? {};
 		if (shouldInclude("from")) email.from = addrKinds["from"] ?? [];
 		if (shouldInclude("to")) email.to = addrKinds["to"] ?? [];
 		if (shouldInclude("cc")) email.cc = addrKinds["cc"] ?? [];
@@ -356,8 +322,8 @@ export async function handleEmailGet(
 		if (shouldInclude("replyTo")) email.replyTo = addrKinds["reply-to"] ?? [];
 		if (shouldInclude("sender")) email.sender = addrKinds["sender"] ?? [];
 
-			for (const [prop, lowerName] of headerLowerByProp.entries()) {
-				const values = headersByMessage.get(canonicalMessageId)?.get(lowerName);
+		for (const [prop, lowerName] of headerLowerByProp.entries()) {
+			const values = headersByMessage.get(canonicalMessageId)?.get(lowerName);
 			if (!values || values.length === 0) {
 				email[prop] = null;
 			} else if (values.length === 1) {
@@ -374,37 +340,21 @@ export async function handleEmailGet(
 				: null;
 
 		if (includeBodyStructure) {
-			email.bodyStructure = parsedStructure
-				? {
-						size: parsedStructure.size ?? null,
-						isTruncated: parsedStructure.isTruncated ?? false,
-						parts: (parsedStructure.parts ?? []).map((part) => filterBodyPart(part, bodyPropertySet)),
-				  }
-				: null;
+			email.bodyStructure = parsedStructure ? filterBodyPart(parsedStructure, bodyPropertySet) : null;
+		}
+
+		if (shouldInclude("attachments")) {
+			email.attachments = parsedStructure ? collectAttachmentsFromStructure(parsedStructure) : [];
 		}
 
 		if (includeTextBody && parsedStructure) {
-			email.textBody = (parsedStructure.parts ?? [])
-				.filter(
-					(part) =>
-						typeof part.type === "string" &&
-						part.type.toLowerCase() === "text" &&
-						typeof part.subtype === "string" &&
-						part.subtype.toLowerCase() === "plain"
-				)
-				.map((part) => filterBodyPart(part, bodyPropertySet));
+			const plainParts = collectBodyParts(parsedStructure, (part) => part.type === "text" && part.subtype === "plain");
+			email.textBody = plainParts.map((part) => filterBodyPart(part, bodyPropertySet));
 		}
 
 		if (includeHtmlBody && parsedStructure) {
-			email.htmlBody = (parsedStructure.parts ?? [])
-				.filter(
-					(part) =>
-						typeof part.type === "string" &&
-						part.type.toLowerCase() === "text" &&
-						typeof part.subtype === "string" &&
-						part.subtype.toLowerCase() === "html"
-				)
-				.map((part) => filterBodyPart(part, bodyPropertySet));
+			const htmlParts = collectBodyParts(parsedStructure, (part) => part.type === "text" && part.subtype === "html");
+			email.htmlBody = htmlParts.map((part) => filterBodyPart(part, bodyPropertySet));
 		}
 
 		if (needBodyValues && parsedStructure) {
@@ -448,7 +398,9 @@ function parseBodyStructure(json: string): StoredBodyStructure | null {
 	try {
 		const parsed = JSON.parse(json);
 		if (!parsed || typeof parsed !== "object") return null;
-		return parsed as StoredBodyStructure;
+		const candidate = parsed as StoredBodyStructure;
+		if (typeof candidate.partId !== "string") return null;
+		return candidate;
 	} catch {
 		return null;
 	}
@@ -469,16 +421,28 @@ function parseReferencesArray(json: string | null): string[] {
 
 function filterBodyPart(part: StoredBodyPart, allowed: Set<string>): Record<string, unknown> {
 	const output: Record<string, unknown> = {};
-	if (part.partId !== undefined) output.partId = part.partId;
-	if (part.type !== undefined) output.type = part.type;
-	if (part.subtype !== undefined) output.subtype = part.subtype;
+	const include = (key: string, value: unknown, force = false) => {
+		if (value === undefined) return;
+		if (!force && !allowed.has(key)) return;
+		output[key] = value;
+	};
 
-	for (const key of allowed) {
-		if (key === "partId" || key === "type" || key === "subtype") continue;
-		if (part[key] !== undefined) {
-			output[key] = part[key];
-		}
+	include("partId", part.partId, true);
+	include("type", part.type, true);
+	include("subtype", part.subtype, true);
+	include("parameters", part.parameters);
+	include("size", part.size);
+	include("blobId", part.blobId);
+	include("charset", part.charset);
+	include("disposition", part.disposition);
+	include("name", part.name);
+	include("cid", part.cid);
+	include("isInline", part.isInline);
+
+	if (part.parts && part.parts.length) {
+		output.parts = part.parts.map((child) => filterBodyPart(child, allowed));
 	}
+
 	return output;
 }
 
@@ -494,25 +458,8 @@ function buildBodyValuesFromStored(params: {
 		return null;
 	}
 
-	const parts = structure.parts ?? [];
-	const textPart = parts.find(
-		(part) =>
-			typeof part.type === "string" &&
-			part.type.toLowerCase() === "text" &&
-			typeof part.subtype === "string" &&
-			part.subtype.toLowerCase() === "plain"
-	);
-	const htmlPart = parts.find(
-		(part) =>
-			typeof part.type === "string" &&
-			part.type.toLowerCase() === "text" &&
-			typeof part.subtype === "string" &&
-			part.subtype.toLowerCase() === "html"
-	);
-
-	if (!textPart?.partId && !htmlPart?.partId) {
-		return {};
-	}
+	const textPart = findBodyPart(structure, (part) => part.type === "text" && part.subtype === "plain");
+	const htmlPart = findBodyPart(structure, (part) => part.type === "text" && part.subtype === "html");
 
 	const bodyValues: Record<string, BodyValueRecord> = {};
 
@@ -534,8 +481,66 @@ function buildBodyValuesFromStored(params: {
 		};
 	}
 
-	return bodyValues;
+	return Object.keys(bodyValues).length ? bodyValues : null;
 }
+
+function findBodyPart(
+	part: StoredBodyPart | null,
+	predicate: (part: StoredBodyPart) => boolean
+): StoredBodyPart | null {
+	if (!part) return null;
+	if (predicate(part)) {
+		return part;
+	}
+	for (const child of part.parts ?? []) {
+		const match = findBodyPart(child, predicate);
+		if (match) return match;
+	}
+	return null;
+}
+
+function collectBodyParts(
+	part: StoredBodyPart | null,
+	predicate: (part: StoredBodyPart) => boolean
+): StoredBodyPart[] {
+	if (!part) return [];
+	const matches: StoredBodyPart[] = [];
+	const walk = (node: StoredBodyPart) => {
+		if (predicate(node)) {
+			matches.push(node);
+		}
+		for (const child of node.parts ?? []) {
+			walk(child);
+		}
+	};
+	walk(part);
+	return matches;
+}
+
+function collectAttachmentsFromStructure(part: StoredBodyPart | null): AttachmentRecord[] {
+	if (!part) return [];
+	const records: AttachmentRecord[] = [];
+	const walk = (node: StoredBodyPart) => {
+		if (node.blobId) {
+			records.push({
+				partId: node.partId,
+				blobId: node.blobId,
+				type: `${node.type}/${node.subtype}`,
+				size: node.size ?? 0,
+				name: node.name ?? null,
+				cid: node.cid ?? null,
+				disposition: node.disposition ?? null,
+				isInline: Boolean(node.isInline),
+			});
+		}
+		for (const child of node.parts ?? []) {
+			walk(child);
+		}
+	};
+	walk(part);
+	return records;
+}
+
 
 function truncateStringToBytes(value: string, maxBytes: number): { value: string; isTruncated: boolean } {
 	const encoded = textEncoder.encode(value);
