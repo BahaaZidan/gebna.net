@@ -1,10 +1,12 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
 import {
 	accountMessageTable,
 	addressTable,
+	attachmentTable,
+	blobTable,
 	emailKeywordTable,
 	mailboxMessageTable,
 	messageAddressTable,
@@ -36,6 +38,16 @@ type BodyValueRecord = {
 	value: string;
 	isTruncated: boolean;
 	charset: string;
+};
+
+type AttachmentRecord = {
+	blobId: string;
+	type: string;
+	size: number;
+	name: string | null;
+	cid: string | null;
+	disposition: string | null;
+	isInline: boolean;
 };
 
 type StoredBodyRow = {
@@ -76,12 +88,15 @@ export async function handleEmailGet(
 		.select({
 			emailId: accountMessageTable.id,
 			messageId: messageTable.id,
+			headerMessageId: messageTable.messageId,
 			threadId: accountMessageTable.threadId,
 			internalDate: accountMessageTable.internalDate,
 			subject: messageTable.subject,
 			snippet: messageTable.snippet,
 			sentAt: messageTable.sentAt,
 			rawBlobSha256: messageTable.rawBlobSha256,
+			inReplyTo: messageTable.inReplyTo,
+			referencesJson: messageTable.referencesJson,
 			size: messageTable.size,
 			hasAttachment: messageTable.hasAttachment,
 			bodyStructureJson: messageTable.bodyStructureJson,
@@ -141,6 +156,8 @@ export async function handleEmailGet(
 			? maxBodyValueBytesArg
 			: 64 * 1024;
 
+	const canonicalMessageIds: string[] = rows.map((row) => row.messageId as string);
+
 	const mailboxRows = shouldInclude("mailboxIds")
 		? await db
 				.select({
@@ -188,6 +205,40 @@ export async function handleEmailGet(
 		customKeywords.set(row.emailId, arr);
 	}
 
+	const attachmentRows = shouldInclude("attachments")
+		? await db
+				.select({
+					messageId: attachmentTable.messageId,
+					blobId: attachmentTable.blobSha256,
+					name: attachmentTable.filename,
+					type: attachmentTable.mimeType,
+					disposition: attachmentTable.disposition,
+					cid: attachmentTable.contentId,
+					size: blobTable.size,
+					isInline: attachmentTable.related,
+					position: attachmentTable.position,
+				})
+				.from(attachmentTable)
+				.innerJoin(blobTable, eq(attachmentTable.blobSha256, blobTable.sha256))
+				.where(inArray(attachmentTable.messageId, canonicalMessageIds))
+				.orderBy(asc(attachmentTable.messageId), asc(attachmentTable.position))
+		: [];
+
+	const attachmentsByMessage = new Map<string, AttachmentRecord[]>();
+	for (const row of attachmentRows) {
+		const list = attachmentsByMessage.get(row.messageId) ?? [];
+		list.push({
+			blobId: row.blobId,
+			type: row.type,
+			size: Number(row.size ?? 0),
+			cid: row.cid ?? null,
+			disposition: row.disposition ?? null,
+			name: row.name ?? null,
+			isInline: Boolean(row.isInline),
+		});
+		attachmentsByMessage.set(row.messageId, list);
+	}
+
 	const needsAddresses = ["from", "to", "cc", "bcc", "replyTo", "sender"].some((prop) =>
 		shouldInclude(prop)
 	);
@@ -203,12 +254,7 @@ export async function handleEmailGet(
 				})
 				.from(messageAddressTable)
 				.innerJoin(addressTable, eq(messageAddressTable.addressId, addressTable.id))
-				.where(
-					inArray(
-						messageAddressTable.messageId,
-						rows.map((r) => r.messageId)
-					)
-				)
+					.where(inArray(messageAddressTable.messageId, canonicalMessageIds))
 		: [];
 
 	type JmapEmailAddress = { email: string; name?: string | null };
@@ -245,10 +291,7 @@ export async function handleEmailGet(
 					.from(messageHeaderTable)
 					.where(
 						and(
-							inArray(
-								messageHeaderTable.messageId,
-								rows.map((r) => r.messageId)
-							),
+								inArray(messageHeaderTable.messageId, canonicalMessageIds),
 							inArray(messageHeaderTable.lowerName, Array.from(new Set(headerLowerByProp.values())))
 						)
 					)
@@ -268,9 +311,18 @@ export async function handleEmailGet(
 
 	for (const row of rows) {
 		const email: EmailRecord = { id: row.emailId };
+		const canonicalMessageId = row.messageId as string;
 
 		if (shouldInclude("threadId")) email.threadId = row.threadId;
 		if (shouldInclude("mailboxIds")) email.mailboxIds = mailboxMap.get(row.emailId) ?? {};
+		if (shouldInclude("messageId")) email.messageId = row.headerMessageId ?? null;
+		if (shouldInclude("inReplyTo")) email.inReplyTo = row.inReplyTo ?? null;
+		if (shouldInclude("references")) {
+			email.references = parseReferencesArray(row.referencesJson ?? null);
+		}
+		if (shouldInclude("attachments")) {
+			email.attachments = attachmentsByMessage.get(canonicalMessageId) ?? [];
+		}
 		if (shouldInclude("subject")) email.subject = row.subject;
 		if (shouldInclude("sentAt")) {
 			email.sentAt = row.sentAt ? new Date(row.sentAt).toISOString() : null;
@@ -296,7 +348,7 @@ export async function handleEmailGet(
 			email.keywords = kw;
 		}
 
-		const addrKinds = addrsByMsg.get(row.messageId) ?? {};
+			const addrKinds = addrsByMsg.get(canonicalMessageId) ?? {};
 		if (shouldInclude("from")) email.from = addrKinds["from"] ?? [];
 		if (shouldInclude("to")) email.to = addrKinds["to"] ?? [];
 		if (shouldInclude("cc")) email.cc = addrKinds["cc"] ?? [];
@@ -304,8 +356,8 @@ export async function handleEmailGet(
 		if (shouldInclude("replyTo")) email.replyTo = addrKinds["reply-to"] ?? [];
 		if (shouldInclude("sender")) email.sender = addrKinds["sender"] ?? [];
 
-		for (const [prop, lowerName] of headerLowerByProp.entries()) {
-			const values = headersByMessage.get(row.messageId)?.get(lowerName);
+			for (const [prop, lowerName] of headerLowerByProp.entries()) {
+				const values = headersByMessage.get(canonicalMessageId)?.get(lowerName);
 			if (!values || values.length === 0) {
 				email[prop] = null;
 			} else if (values.length === 1) {
@@ -399,6 +451,19 @@ function parseBodyStructure(json: string): StoredBodyStructure | null {
 		return parsed as StoredBodyStructure;
 	} catch {
 		return null;
+	}
+}
+
+function parseReferencesArray(json: string | null): string[] {
+	if (!json) return [];
+	try {
+		const parsed = JSON.parse(json);
+		if (!Array.isArray(parsed)) {
+			return [];
+		}
+		return parsed.filter((value): value is string => typeof value === "string");
+	} catch {
+		return [];
 	}
 }
 
