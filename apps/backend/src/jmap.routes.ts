@@ -225,8 +225,28 @@ function captureCreationReferences(response: JmapMethodResponse, refs: CreationR
 	}
 }
 
+const requestTextEncoder = new TextEncoder();
+
 async function handleJmap(c: Context<JMAPHonoAppEnv>) {
-	const body = await c.req.json();
+	const rawBody = await c.req.text();
+	const maxSizeRequest = JMAP_CONSTRAINTS[JMAP_CORE].maxSizeRequest ?? null;
+	if (maxSizeRequest) {
+		const bodySize = requestTextEncoder.encode(rawBody).length;
+		if (bodySize > maxSizeRequest) {
+			return c.json(
+				{ type: "requestTooLarge", description: "Request exceeds maxSizeRequest" },
+				413
+			);
+		}
+	}
+
+	let body: unknown;
+	try {
+		body = rawBody ? JSON.parse(rawBody) : {};
+	} catch {
+		return c.json({ type: "invalidArguments", description: "Invalid JSON body" }, 400);
+	}
+
 	const parsed = v.safeParse(JmapRequestSchema, body);
 
 	if (!parsed.success) {
@@ -240,6 +260,17 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 			{
 				type: "unknownCapability",
 				capability: unknownCapability,
+			},
+			400
+		);
+	}
+
+	const maxCalls = JMAP_CONSTRAINTS[JMAP_CORE].maxCallsInRequest ?? null;
+	if (maxCalls && req.methodCalls.length > maxCalls) {
+		return c.json(
+			{
+				type: "limitExceeded",
+				description: `methodCalls exceeds maxCallsInRequest (${maxCalls})`,
 			},
 			400
 		);

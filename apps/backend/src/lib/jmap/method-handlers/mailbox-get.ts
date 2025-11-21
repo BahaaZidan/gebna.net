@@ -3,6 +3,7 @@ import { Context } from "hono";
 
 import { getDB } from "../../../db";
 import { accountMessageTable, mailboxMessageTable, mailboxTable } from "../../../db/schema";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
@@ -22,19 +23,42 @@ export async function handleMailboxGet(
 	const state = await getAccountState(db, effectiveAccountId, "Mailbox");
 
 	const ids = (args.ids as string[] | undefined) ?? null;
+	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
+	if (Array.isArray(ids) && ids.length > maxObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
+			},
+			tag,
+		];
+	}
 
 	const condition = eq(mailboxTable.accountId, effectiveAccountId);
 
-	const rows = await db
-		.select({
-			id: mailboxTable.id,
-			name: mailboxTable.name,
-			parentId: mailboxTable.parentId,
-			role: mailboxTable.role,
-			sortOrder: mailboxTable.sortOrder,
-		})
-		.from(mailboxTable)
-		.where(ids?.length ? and(condition, inArray(mailboxTable.id, ids)) : condition);
+const rows = await (ids?.length
+		? db
+				.select({
+					id: mailboxTable.id,
+					name: mailboxTable.name,
+					parentId: mailboxTable.parentId,
+					role: mailboxTable.role,
+					sortOrder: mailboxTable.sortOrder,
+				})
+				.from(mailboxTable)
+				.where(and(condition, inArray(mailboxTable.id, ids)))
+		: db
+				.select({
+					id: mailboxTable.id,
+					name: mailboxTable.name,
+					parentId: mailboxTable.parentId,
+					role: mailboxTable.role,
+					sortOrder: mailboxTable.sortOrder,
+				})
+				.from(mailboxTable)
+				.where(condition)
+				.limit(maxObjects));
 
 	const mailboxIds = rows.map((row) => row.id);
 	const countRows = mailboxIds.length

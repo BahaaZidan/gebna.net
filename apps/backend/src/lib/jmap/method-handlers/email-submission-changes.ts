@@ -1,6 +1,7 @@
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getChanges } from "../utils";
@@ -18,7 +19,9 @@ export async function handleEmailSubmissionChanges(
 	}
 
 	const sinceState = (args.sinceState as string | undefined) ?? "0";
-	const maxChanges = typeof args.maxChanges === "number" ? args.maxChanges : 50;
+	const limitFromConstraints = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
+	const maxChangesInput = typeof args.maxChanges === "number" && Number.isFinite(args.maxChanges) ? args.maxChanges : 50;
+	const maxChanges = Math.min(maxChangesInput, limitFromConstraints);
 	const upToId = typeof args.upToId === "string" ? args.upToId : undefined;
 	const includeUpdatedProps = Boolean(args.includeUpdatedProperties);
 

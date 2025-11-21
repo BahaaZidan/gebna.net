@@ -3,6 +3,7 @@ import { Context } from "hono";
 
 import { getDB } from "../../../db";
 import { identityTable } from "../../../db/schema";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
@@ -52,24 +53,46 @@ export async function handleIdentityGet(
 
 	const state = await getAccountState(db, effectiveAccountId, "Identity");
 	const ids = (args.ids as string[] | undefined) ?? null;
+	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
+	if (Array.isArray(ids) && ids.length > maxObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
+			},
+			tag,
+		];
+	}
 
-	const rows = await db
-		.select({
-			id: identityTable.id,
-			name: identityTable.name,
-			email: identityTable.email,
-			replyToJson: identityTable.replyToJson,
-			bccJson: identityTable.bccJson,
-			textSignature: identityTable.textSignature,
-			htmlSignature: identityTable.htmlSignature,
-			isDefault: identityTable.isDefault,
-		})
-		.from(identityTable)
-		.where(
-			ids?.length
-				? and(eq(identityTable.accountId, effectiveAccountId), inArray(identityTable.id, ids))
-				: eq(identityTable.accountId, effectiveAccountId)
-		);
+	const rows = await (ids?.length
+		? db
+				.select({
+					id: identityTable.id,
+					name: identityTable.name,
+					email: identityTable.email,
+					replyToJson: identityTable.replyToJson,
+					bccJson: identityTable.bccJson,
+					textSignature: identityTable.textSignature,
+					htmlSignature: identityTable.htmlSignature,
+					isDefault: identityTable.isDefault,
+				})
+				.from(identityTable)
+				.where(and(eq(identityTable.accountId, effectiveAccountId), inArray(identityTable.id, ids)))
+		: db
+				.select({
+					id: identityTable.id,
+					name: identityTable.name,
+					email: identityTable.email,
+					replyToJson: identityTable.replyToJson,
+					bccJson: identityTable.bccJson,
+					textSignature: identityTable.textSignature,
+					htmlSignature: identityTable.htmlSignature,
+					isDefault: identityTable.isDefault,
+				})
+				.from(identityTable)
+				.where(eq(identityTable.accountId, effectiveAccountId))
+				.limit(maxObjects));
 
 	const list: IdentityRecord[] = rows.map((row) => ({
 		id: row.id,

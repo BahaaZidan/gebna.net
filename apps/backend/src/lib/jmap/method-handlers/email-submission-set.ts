@@ -17,6 +17,7 @@ import {
 } from "../../outbound/submission-queue";
 import { DeliveryStatusRecord } from "../../types";
 import { JMAPHonoAppEnv } from "../middlewares";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState, getAccountMailboxes, isRecord } from "../utils";
 import { recordCreate, recordUpdate } from "../change-log";
@@ -39,6 +40,20 @@ export async function handleEmailSubmissionSet(
 	const ifInState = args.ifInState as string | undefined;
 	if (ifInState && ifInState !== state) {
 		return ["error", { type: "stateMismatch" }, tag];
+	}
+
+	const maxSetObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInSet ?? 128;
+	const createCount = isRecord(args.create) ? Object.keys(args.create).length : 0;
+	const updateCount = isRecord(args.update) ? Object.keys(args.update).length : 0;
+	const destroyCount = Array.isArray(args.destroy) ? args.destroy.length : 0;
+	if (createCount > maxSetObjects) {
+		return ["error", { type: "limitExceeded", description: `create exceeds maxObjectsInSet (${maxSetObjects})` }, tag];
+	}
+	if (updateCount > maxSetObjects) {
+		return ["error", { type: "limitExceeded", description: `update exceeds maxObjectsInSet (${maxSetObjects})` }, tag];
+	}
+	if (destroyCount > maxSetObjects) {
+		return ["error", { type: "limitExceeded", description: `destroy exceeds maxObjectsInSet (${maxSetObjects})` }, tag];
 	}
 
 	const createMap = (args.create as Record<string, unknown> | undefined) ?? {};
