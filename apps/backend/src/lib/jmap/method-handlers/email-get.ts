@@ -11,6 +11,7 @@ import {
 	messageHeaderTable,
 	messageTable,
 } from "../../../db/schema";
+import { addressParser, decodeWords } from "postal-mime";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
@@ -43,6 +44,12 @@ type BodyValueRecord = {
 	isTruncated: boolean;
 	charset: string;
 };
+
+type HeaderFetchMode = "raw" | "text" | "addresses";
+
+type HeaderSpec = { lowerName: string; mode: HeaderFetchMode };
+
+type JmapEmailAddress = { email: string; name?: string | null };
 
 type AttachmentRecord = {
 	partId: string;
@@ -228,7 +235,6 @@ export async function handleEmailGet(
 					.where(inArray(messageAddressTable.messageId, canonicalMessageIds))
 		: [];
 
-	type JmapEmailAddress = { email: string; name?: string | null };
 	const addrsByMsg = new Map<string, Record<string, JmapEmailAddress[]>>();
 
 	for (const row of addressRows) {
@@ -242,31 +248,33 @@ export async function handleEmailGet(
 		addrsByMsg.set(row.messageId, perMsg);
 	}
 
-	const headerProps =
-		properties?.filter((prop) => typeof prop === "string" && prop.startsWith("header:")) ?? [];
-	const headerLowerByProp = new Map<string, string>();
-	for (const prop of headerProps) {
-		const headerName = prop.slice(7);
-		if (!headerName) continue;
-		headerLowerByProp.set(prop, headerName.toLowerCase());
-	}
+const headerProps =
+	properties?.filter((prop) => typeof prop === "string" && prop.startsWith("header:")) ?? [];
+const headerSpecs = new Map<string, HeaderSpec>();
+const headerNameSet = new Set<string>();
+for (const prop of headerProps) {
+	const spec = parseHeaderProperty(prop);
+	if (!spec) continue;
+	headerSpecs.set(prop, spec);
+	headerNameSet.add(spec.lowerName);
+}
 
-	const headerRows =
-		headerLowerByProp.size > 0
-			? await db
-					.select({
-						messageId: messageHeaderTable.messageId,
-						lowerName: messageHeaderTable.lowerName,
-						value: messageHeaderTable.value,
-					})
-					.from(messageHeaderTable)
-					.where(
-						and(
-								inArray(messageHeaderTable.messageId, canonicalMessageIds),
-							inArray(messageHeaderTable.lowerName, Array.from(new Set(headerLowerByProp.values())))
-						)
+const headerRows =
+	headerSpecs.size > 0
+		? await db
+				.select({
+					messageId: messageHeaderTable.messageId,
+					lowerName: messageHeaderTable.lowerName,
+					value: messageHeaderTable.value,
+				})
+				.from(messageHeaderTable)
+				.where(
+					and(
+						inArray(messageHeaderTable.messageId, canonicalMessageIds),
+						inArray(messageHeaderTable.lowerName, Array.from(headerNameSet))
 					)
-			: [];
+				)
+		: [];
 
 	const headersByMessage = new Map<string, Map<string, string[]>>();
 	for (const row of headerRows) {
@@ -324,16 +332,10 @@ export async function handleEmailGet(
 		if (shouldInclude("replyTo")) email.replyTo = addrKinds["reply-to"] ?? [];
 		if (shouldInclude("sender")) email.sender = addrKinds["sender"] ?? [];
 
-		for (const [prop, lowerName] of headerLowerByProp.entries()) {
-			const values = headersByMessage.get(canonicalMessageId)?.get(lowerName);
-			if (!values || values.length === 0) {
-				email[prop] = null;
-			} else if (values.length === 1) {
-				email[prop] = values[0];
-			} else {
-				email[prop] = values;
-			}
-		}
+	for (const [prop, spec] of headerSpecs.entries()) {
+		const values = headersByMessage.get(canonicalMessageId)?.get(spec.lowerName);
+		email[prop] = formatHeaderValues(values, spec.mode);
+	}
 
 		const parsedStructure =
 			(includeBodyStructure || includeTextBody || includeHtmlBody || needBodyValues) &&
@@ -438,6 +440,90 @@ function parseReferencesArray(json: string | null): string[] {
 		return parsed.filter((value): value is string => typeof value === "string");
 	} catch {
 		return [];
+	}
+}
+
+function parseHeaderProperty(prop: string): HeaderSpec | null {
+	if (typeof prop !== "string" || !prop.startsWith("header:")) return null;
+	let remainder = prop.slice(7);
+	if (!remainder) return null;
+	let mode: HeaderFetchMode = "raw";
+	const suffixMatch = remainder.match(/:(asText|asRaw|asAddresses)$/i);
+	if (suffixMatch) {
+		const suffix = suffixMatch[1]?.toLowerCase();
+		switch (suffix) {
+			case "astext":
+				mode = "text";
+				break;
+			case "asaddresses":
+				mode = "addresses";
+				break;
+			default:
+				mode = "raw";
+		}
+		remainder = remainder.slice(0, -suffixMatch[0].length);
+	}
+	if (!remainder) return null;
+	return { lowerName: remainder.toLowerCase(), mode };
+}
+
+function formatHeaderValues(values: string[] | undefined, mode: HeaderFetchMode): unknown {
+	if (!values || values.length === 0) {
+		return null;
+	}
+	switch (mode) {
+		case "text": {
+			const decoded = values.map(decodeHeaderValue);
+			return decoded.length === 1 ? decoded[0] : decoded;
+		}
+		case "addresses": {
+			const addresses = parseAddressHeaderValues(values);
+			return addresses;
+		}
+		case "raw":
+		default:
+			return values.length === 1 ? values[0] : values;
+	}
+}
+
+function decodeHeaderValue(value: string): string {
+	try {
+		return decodeWords(value);
+	} catch {
+		return value;
+	}
+}
+
+function parseAddressHeaderValues(values: string[]): JmapEmailAddress[] {
+	const result: JmapEmailAddress[] = [];
+	for (const raw of values) {
+		try {
+			const parsed = addressParser(raw) ?? [];
+			for (const entry of parsed as unknown[]) {
+				appendAddressEntry(entry, result);
+			}
+		} catch {
+			continue;
+		}
+	}
+	return result;
+}
+
+function appendAddressEntry(entry: unknown, target: JmapEmailAddress[]): void {
+	if (!entry || typeof entry !== "object") return;
+	const maybeMailbox = entry as { address?: string | null; name?: string | null; group?: unknown };
+	if (typeof maybeMailbox.address === "string" && maybeMailbox.address.length > 0) {
+		target.push({
+			email: maybeMailbox.address,
+			name: maybeMailbox.name ?? null,
+		});
+		return;
+	}
+	const group = maybeMailbox.group;
+	if (Array.isArray(group)) {
+		for (const child of group) {
+			appendAddressEntry(child, target);
+		}
 	}
 }
 
