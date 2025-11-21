@@ -20,6 +20,7 @@ declare namespace Cloudflare {
 		R2_EMAILS: R2Bucket;
 		SES_WEBHOOK_TOKEN: string;
 		MAIL_UNDO_WINDOW_SECONDS: string;
+		JMAP_UPLOAD_ACCOUNT_LIMIT_BYTES: string;
 	}
 }
 interface CloudflareBindings extends Cloudflare.Env {}

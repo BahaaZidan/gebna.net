@@ -33,5 +33,6 @@
 		"JMAP_DOWNLOAD_PATH": "/jmap/download/{accountId}/{blobId}/{name}?type={type}",
 		"AWS_SES_REGION": "eu-central-1",
 		"MAIL_UNDO_WINDOW_SECONDS": "30",
+		"JMAP_UPLOAD_ACCOUNT_LIMIT_BYTES": "536870912",
 	},
 }
