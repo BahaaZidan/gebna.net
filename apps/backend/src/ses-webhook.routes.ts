@@ -167,6 +167,19 @@ sesWebhookApp.post("/events", async (c) => {
 	let processed = 0;
 
 	for (const record of events) {
+		const snsType = typeof record.Sns?.Type === "string" ? record.Sns.Type : null;
+		const signatureValid = await verifySnsSignature(record);
+		if (!signatureValid) {
+			console.warn("SNS signature verification failed");
+			continue;
+		}
+		if (snsType === "SubscriptionConfirmation") {
+			await handleSubscriptionConfirmation(record);
+			continue;
+		}
+		if (snsType && snsType !== "Notification") {
+			continue;
+		}
 		const message = parseNotification(record);
 		if (!message) continue;
 		const submissionId = extractSubmissionId(message);
@@ -187,3 +200,169 @@ sesWebhookApp.post("/events", async (c) => {
 
 	return c.json({ processed });
 });
+
+async function handleSubscriptionConfirmation(record: SnsRecord): Promise<void> {
+	const message = parseNotification(record);
+	const subscribeUrl = message && typeof message.SubscribeURL === "string" ? message.SubscribeURL : null;
+	if (!subscribeUrl) return;
+	try {
+		const res = await fetch(subscribeUrl, { method: "GET" });
+		if (!res.ok) {
+			console.error("Failed to confirm SNS subscription", res.status);
+		}
+	} catch (err) {
+		console.error("Error confirming SNS subscription", err);
+	}
+}
+
+async function verifySnsSignature(record: SnsRecord): Promise<boolean> {
+	const sns = record.Sns;
+	if (!sns) return false;
+	const type = typeof sns.Type === "string" ? sns.Type : null;
+	const signature = typeof sns.Signature === "string" ? sns.Signature : null;
+	const certUrl = typeof sns.SigningCertUrl === "string" ? sns.SigningCertUrl : null;
+	const version = typeof sns.SignatureVersion === "string" ? sns.SignatureVersion : null;
+	if (!type || !signature || !certUrl || version !== "1") {
+		return false;
+	}
+	const canonical = buildCanonicalString(type, sns as unknown as Record<string, unknown>);
+	if (!canonical) return false;
+	const certKey = await getCertificate(certUrl);
+	if (!certKey) return false;
+	try {
+		const verified = await crypto.subtle.verify(
+			"RSASSA-PKCS1-v1_5",
+			certKey,
+			base64ToUint8Array(signature),
+			new TextEncoder().encode(canonical)
+		);
+		return verified;
+	} catch (err) {
+		console.error("SNS signature verification error", err);
+		return false;
+	}
+}
+
+function buildCanonicalString(type: string, sns: Record<string, unknown>): string | null {
+	const fields: Array<[string, string]> = [];
+	const get = (key: string): string | undefined => {
+		const value = sns[key];
+		return typeof value === "string" ? value : undefined;
+	};
+
+	const pushField = (key: string, value?: string) => {
+		if (value === undefined) return;
+		fields.push([key, value]);
+	};
+
+	if (type === "Notification") {
+		const message = get("Message");
+		const messageId = get("MessageId");
+		const timestamp = get("Timestamp");
+		const topicArn = get("TopicArn");
+		const subject = get("Subject");
+		const typeValue = get("Type");
+		if (!message || !messageId || !timestamp || !topicArn || !typeValue) {
+			return null;
+		}
+		pushField("Message", message);
+		pushField("MessageId", messageId);
+		if (subject) pushField("Subject", subject);
+		pushField("Timestamp", timestamp);
+		pushField("TopicArn", topicArn);
+		pushField("Type", typeValue);
+	} else if (type === "SubscriptionConfirmation" || type === "UnsubscribeConfirmation") {
+		const message = get("Message");
+		const messageId = get("MessageId");
+		const timestamp = get("Timestamp");
+		const topicArn = get("TopicArn");
+		const token = get("Token");
+		const subscribeUrl = get("SubscribeURL");
+		const typeValue = get("Type");
+		if (!message || !messageId || !timestamp || !topicArn || !token || !subscribeUrl || !typeValue) {
+			return null;
+		}
+		pushField("Message", message);
+		pushField("MessageId", messageId);
+		pushField("SubscribeURL", subscribeUrl);
+		pushField("Timestamp", timestamp);
+		pushField("Token", token);
+		pushField("TopicArn", topicArn);
+		pushField("Type", typeValue);
+	} else {
+		return null;
+	}
+
+	return fields.map(([key, value]) => `${key}\n${value}\n`).join("");
+}
+
+const CERT_CACHE = new Map<string, CryptoKey>();
+
+async function getCertificate(urlStr: string): Promise<CryptoKey | null> {
+	try {
+		const url = new URL(urlStr);
+		if (url.protocol !== "https:") return null;
+		const hostname = url.hostname.toLowerCase();
+		if (!hostname.endsWith(".amazonaws.com")) return null;
+		if (!hostname.includes(".sns.")) return null;
+		const cached = CERT_CACHE.get(urlStr);
+		if (cached) return cached;
+		const res = await fetch(urlStr);
+		if (!res.ok) {
+			console.error("Failed to download SNS certificate", res.status);
+			return null;
+		}
+		const pem = await res.text();
+		const key = await importCertificate(pem);
+		if (key) {
+			CERT_CACHE.set(urlStr, key);
+		}
+		return key;
+	} catch (err) {
+		console.error("Error fetching SNS certificate", err);
+		return null;
+	}
+}
+
+async function importCertificate(pem: string): Promise<CryptoKey | null> {
+	const lines = pem.replace(/-----BEGIN CERTIFICATE-----/, "").replace(/-----END CERTIFICATE-----/, "");
+	const normalized = lines.replace(/\\s+/g, "");
+	const der = base64ToUint8Array(normalized);
+	try {
+		return await crypto.subtle.importKey(
+			"spki",
+			der,
+			{
+				name: "RSASSA-PKCS1-v1_5",
+				hash: "SHA-1",
+			},
+			true,
+			["verify"]
+		);
+	} catch (err) {
+		console.error("Failed to import SNS certificate", err);
+		return null;
+	}
+}
+
+function base64ToUint8Array(value: string): Uint8Array {
+	const sanitized = value.replace(/\\s+/g, "");
+	let binary: string;
+	if (typeof atob === "function") {
+		binary = atob(sanitized);
+	} else {
+		const nodeBuffer = (globalThis as Record<string, unknown>).Buffer as
+			| { from(data: string, encoding: string): { toString(enc: string): string } }
+			| undefined;
+		if (nodeBuffer && typeof nodeBuffer.from === "function") {
+			binary = nodeBuffer.from(sanitized, "base64").toString("binary");
+		} else {
+			throw new Error("Base64 decoding not supported in this environment");
+		}
+	}
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i += 1) {
+		bytes[i] = binary.charCodeAt(i);
+	}
+	return bytes;
+}
