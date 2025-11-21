@@ -154,96 +154,116 @@ function parseQueryOptions(args: Record<string, unknown>): QueryOptions {
 function normalizeFilter(raw: unknown): FilterCondition {
 	if (!raw || typeof raw !== "object") return { operator: "none" };
 	const value = raw as Record<string, unknown>;
+	const conditions: FilterCondition[] = [];
 
-	const text = value.text;
-	if (typeof text === "string" && text.trim()) {
-		return { operator: "text", value: text.trim() };
-	}
+	const pushCondition = (condition: FilterCondition | undefined) => {
+		if (!condition) return;
+		if (condition.operator === "none") return;
+		conditions.push(condition);
+	};
 
-	const subject = value.subject;
-	if (typeof subject === "string" && subject.trim()) {
-		return { operator: "subject", value: subject.trim() };
-	}
+	const stringProp = (prop: string) => {
+		const input = value[prop];
+		if (typeof input === "string" && input.trim()) {
+			return input.trim();
+		}
+		return null;
+	};
 
-	const from = value.from;
-	if (typeof from === "string" && from.trim()) {
-		return { operator: "from", value: from.trim() };
-	}
+	const text = stringProp("text");
+	if (text) pushCondition({ operator: "text", value: text });
 
-	const to = value.to;
-	if (typeof to === "string" && to.trim()) {
-		return { operator: "to", value: to.trim() };
-	}
+	const subject = stringProp("subject");
+	if (subject) pushCondition({ operator: "subject", value: subject });
 
-	const cc = value.cc;
-	if (typeof cc === "string" && cc.trim()) {
-		return { operator: "cc", value: cc.trim() };
-	}
+	const from = stringProp("from");
+	if (from) pushCondition({ operator: "from", value: from });
 
-	const bcc = value.bcc;
-	if (typeof bcc === "string" && bcc.trim()) {
-		return { operator: "bcc", value: bcc.trim() };
-	}
+	const to = stringProp("to");
+	if (to) pushCondition({ operator: "to", value: to });
+
+	const cc = stringProp("cc");
+	if (cc) pushCondition({ operator: "cc", value: cc });
+
+	const bcc = stringProp("bcc");
+	if (bcc) pushCondition({ operator: "bcc", value: bcc });
 
 	if (typeof value.after === "string") {
 		const date = new Date(value.after);
 		if (!Number.isNaN(date.getTime())) {
-			return { operator: "after", value: date };
+			pushCondition({ operator: "after", value: date });
 		}
 	}
 
 	if (typeof value.before === "string") {
 		const date = new Date(value.before);
 		if (!Number.isNaN(date.getTime())) {
-			return { operator: "before", value: date };
+			pushCondition({ operator: "before", value: date });
 		}
 	}
 
 	if (typeof value.sizeLarger === "number" && Number.isFinite(value.sizeLarger)) {
-		return { operator: "sizeLarger", value: value.sizeLarger };
+		pushCondition({ operator: "sizeLarger", value: value.sizeLarger });
 	}
 
 	if (typeof value.sizeSmaller === "number" && Number.isFinite(value.sizeSmaller)) {
-		return { operator: "sizeSmaller", value: value.sizeSmaller };
+		pushCondition({ operator: "sizeSmaller", value: value.sizeSmaller });
 	}
 
 	if (typeof value.inMailbox === "string" && value.inMailbox) {
-		return { operator: "inMailbox", mailboxId: value.inMailbox };
+		pushCondition({ operator: "inMailbox", mailboxId: value.inMailbox });
 	}
 
 	if (Array.isArray(value.inMailboxOtherThan) && value.inMailboxOtherThan.length > 0) {
 		const cleaned = value.inMailboxOtherThan.filter((id): id is string => typeof id === "string");
 		if (cleaned.length) {
-			return { operator: "inMailboxOtherThan", mailboxIds: cleaned };
+			pushCondition({ operator: "inMailboxOtherThan", mailboxIds: cleaned });
 		}
 	}
 
 	if (typeof value.hasKeyword === "string" && value.hasKeyword) {
-		return { operator: "hasKeyword", keyword: value.hasKeyword };
+		pushCondition({ operator: "hasKeyword", keyword: value.hasKeyword });
 	}
 
 	if (Array.isArray(value.and)) {
-		return {
-			operator: "and",
-			conditions: value.and.map((entry) => normalizeFilter(entry)),
-		};
+		const subConditions = value.and
+			.map((entry) => normalizeFilter(entry))
+			.filter((entry) => entry.operator !== "none");
+		if (subConditions.length === 1) {
+			pushCondition(subConditions[0]);
+		} else if (subConditions.length > 1) {
+			pushCondition({ operator: "and", conditions: subConditions });
+		}
 	}
 
 	if (Array.isArray(value.or)) {
-		return {
-			operator: "or",
-			conditions: value.or.map((entry) => normalizeFilter(entry)),
-		};
+		const subConditions = value.or
+			.map((entry) => normalizeFilter(entry))
+			.filter((entry) => entry.operator !== "none");
+		if (subConditions.length === 1) {
+			pushCondition(subConditions[0]);
+		} else if (subConditions.length > 0) {
+			pushCondition({ operator: "or", conditions: subConditions });
+		}
 	}
 
 	if (value.not !== undefined) {
-		return {
-			operator: "not",
-			condition: normalizeFilter(value.not),
-		};
+		const sub = normalizeFilter(value.not);
+		if (sub.operator !== "none") {
+			pushCondition({ operator: "not", condition: sub });
+		}
 	}
 
-	return { operator: "none" };
+	if (conditions.length === 0) {
+		return { operator: "none" };
+	}
+	if (conditions.length === 1) {
+		return conditions[0]!;
+	}
+	return {
+		operator: "and",
+		conditions,
+	};
 }
 
 async function runQuery(
