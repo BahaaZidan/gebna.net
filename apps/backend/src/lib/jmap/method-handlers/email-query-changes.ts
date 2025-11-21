@@ -5,6 +5,14 @@ import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getChanges } from "../utils";
+import {
+	StoredQueryStateRecord,
+	decodeQueryStateValue,
+	filterIdsMatchingQuery,
+	filtersEqual,
+	loadQueryStateRecord,
+	normalizeFilter,
+} from "./email-query";
 
 export async function handleEmailQueryChanges(
 	c: Context<JMAPHonoAppEnv>,
@@ -18,17 +26,7 @@ export async function handleEmailQueryChanges(
 		return ["error", { type: "accountNotFound" }, tag];
 	}
 
-	const filter = args.filter;
-	if (filter && Object.keys(filter as Record<string, unknown>).length > 0) {
-		return [
-			"error",
-			{
-				type: "unsupportedFilter",
-				description: "Email/queryChanges currently supports only the default (empty) filter.",
-			},
-			tag,
-		];
-	}
+	let filterArg = args.filter as Record<string, unknown> | null | undefined;
 
 	const sinceQueryState = args.sinceQueryState as string | undefined;
 	if (!sinceQueryState) {
@@ -42,6 +40,47 @@ export async function handleEmailQueryChanges(
 		];
 	}
 
+	const parsedState = decodeQueryStateValue(sinceQueryState);
+	let storedState: StoredQueryStateRecord | null = null;
+	let sinceQueryStateValue = sinceQueryState;
+
+	if (parsedState) {
+		storedState = await loadQueryStateRecord(db, effectiveAccountId, parsedState.id);
+		if (!storedState) {
+			return [
+				"error",
+				{
+					type: "invalidArguments",
+					description: "Unknown or expired queryState",
+				},
+				tag,
+			];
+		}
+		sinceQueryStateValue = parsedState.modSeq;
+		if (filterArg === undefined) {
+			filterArg = storedState.filter as Record<string, unknown> | null;
+		} else if (!filtersEqual(filterArg, storedState.filter)) {
+			return [
+				"error",
+				{
+					type: "invalidArguments",
+					description: "Filter does not match stored queryState",
+				},
+				tag,
+			];
+		}
+	} else if (filterArg && typeof filterArg === "object" && Object.keys(filterArg).length > 0) {
+		return [
+			"error",
+			{
+				type: "unsupportedFilter",
+				description: "Filter requires a queryState generated after filtering support was added.",
+			},
+			tag,
+		];
+	}
+
+	const normalizedFilter = normalizeFilter(filterArg ?? null);
 	const maxChangesArg = args.maxChanges as number | undefined;
 	const maxObjectsLimit = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
 	const maxChanges =
@@ -54,10 +93,16 @@ export async function handleEmailQueryChanges(
 			db,
 			effectiveAccountId,
 			"Email",
-			sinceQueryState,
+			sinceQueryStateValue,
 			maxChanges
 		);
-		const added = changeSet.created.map((id) => ({
+		const matchingAdded = await filterIdsMatchingQuery(
+			db,
+			effectiveAccountId,
+			normalizedFilter,
+			changeSet.created
+		);
+		const added = Array.from(matchingAdded).map((id) => ({
 			id,
 			index: 0,
 		}));
@@ -73,8 +118,8 @@ export async function handleEmailQueryChanges(
 				totalChanged,
 				added,
 				removed,
-				filter: null,
-				sort: [{ property: "receivedAt", isAscending: false }],
+				filter: filterArg ?? null,
+				sort: storedState?.sort ?? [{ property: "receivedAt", isAscending: false }],
 				limit: maxChanges,
 				hasMoreChanges: changeSet.hasMoreChanges,
 				collapseThreads: false,
