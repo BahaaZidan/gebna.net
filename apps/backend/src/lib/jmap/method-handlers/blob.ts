@@ -370,6 +370,7 @@ export async function handleBlobLookup(
 			.where(
 				and(
 					eq(accountMessageTable.accountId, effectiveAccountId),
+					eq(accountMessageTable.isDeleted, false),
 					inArray(messageTable.rawBlobSha256, filteredIds)
 				)
 			);
@@ -389,6 +390,7 @@ export async function handleBlobLookup(
 			.where(
 				and(
 					eq(accountMessageTable.accountId, effectiveAccountId),
+					eq(accountMessageTable.isDeleted, false),
 					inArray(attachmentTable.blobSha256, filteredIds)
 				)
 			);

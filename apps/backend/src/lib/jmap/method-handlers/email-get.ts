@@ -93,6 +93,7 @@ export async function handleEmailGet(
 		.where(
 			and(
 				eq(accountMessageTable.accountId, effectiveAccountId),
+				eq(accountMessageTable.isDeleted, false),
 				inArray(accountMessageTable.id, ids)
 			)
 		);

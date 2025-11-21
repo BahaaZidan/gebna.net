@@ -36,21 +36,29 @@ export async function handleMailboxGet(
 		.from(mailboxTable)
 		.where(ids?.length ? and(condition, inArray(mailboxTable.id, ids)) : condition);
 
-	const countRows = await db
-		.select({
-			mailboxId: mailboxMessageTable.mailboxId,
-			total: sql<number>`count(*)`.as("total"),
-			unread: sql<number>`sum(case when ${accountMessageTable.isSeen} = 0 then 1 else 0 end)`.as(
-				"unread"
-			),
-		})
-		.from(mailboxMessageTable)
-		.innerJoin(
-			accountMessageTable,
-			eq(mailboxMessageTable.accountMessageId, accountMessageTable.id)
-		)
-		.where(inArray(mailboxMessageTable.mailboxId, rows.map((row) => row.id)))
-		.groupBy(mailboxMessageTable.mailboxId);
+	const mailboxIds = rows.map((row) => row.id);
+	const countRows = mailboxIds.length
+		? await db
+				.select({
+					mailboxId: mailboxMessageTable.mailboxId,
+					total: sql<number>`count(*)`.as("total"),
+					unread: sql<number>`sum(case when ${accountMessageTable.isSeen} = 0 then 1 else 0 end)`.as(
+						"unread"
+					),
+				})
+				.from(mailboxMessageTable)
+				.innerJoin(
+					accountMessageTable,
+					eq(mailboxMessageTable.accountMessageId, accountMessageTable.id)
+				)
+				.where(
+					and(
+						inArray(mailboxMessageTable.mailboxId, mailboxIds),
+						eq(accountMessageTable.isDeleted, false)
+					)
+				)
+				.groupBy(mailboxMessageTable.mailboxId)
+		: [];
 
 	const countMap = new Map<string, { total: number; unread: number }>();
 	for (const row of countRows) {

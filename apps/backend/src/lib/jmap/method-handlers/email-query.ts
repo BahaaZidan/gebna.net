@@ -446,7 +446,7 @@ export async function filterIdsMatchingQuery(
 }
 
 function buildWhereClause(accountId: string, filter: FilterCondition) {
-	const base = eq(accountMessageTable.accountId, accountId);
+	const base = and(eq(accountMessageTable.accountId, accountId), eq(accountMessageTable.isDeleted, false));
 	const filterClause = buildFilterSql(filter);
 	return filterClause ? and(base, filterClause) : base;
 }

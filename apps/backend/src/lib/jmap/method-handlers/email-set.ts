@@ -166,7 +166,11 @@ export async function applyEmailSet(
 				})
 				.from(accountMessageTable)
 				.where(
-					and(eq(accountMessageTable.id, emailId), eq(accountMessageTable.accountId, accountId))
+					and(
+						eq(accountMessageTable.id, emailId),
+						eq(accountMessageTable.accountId, accountId),
+						eq(accountMessageTable.isDeleted, false)
+					)
 				)
 				.limit(1);
 
@@ -881,7 +885,13 @@ async function handleEmailDestroy(
 				threadId: accountMessageTable.threadId,
 			})
 			.from(accountMessageTable)
-			.where(and(eq(accountMessageTable.id, emailId), eq(accountMessageTable.accountId, accountId)))
+			.where(
+				and(
+					eq(accountMessageTable.id, emailId),
+					eq(accountMessageTable.accountId, accountId),
+					eq(accountMessageTable.isDeleted, false)
+				)
+			)
 			.limit(1);
 
 		if (!row) {

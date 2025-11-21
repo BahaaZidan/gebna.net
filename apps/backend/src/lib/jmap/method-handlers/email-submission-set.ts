@@ -231,7 +231,8 @@ async function applyEmailSubmissionSet(
 			.where(
 				and(
 					eq(accountMessageTable.id, parsed.emailId),
-					eq(accountMessageTable.accountId, accountId)
+					eq(accountMessageTable.accountId, accountId),
+					eq(accountMessageTable.isDeleted, false)
 				)
 			)
 			.limit(1);

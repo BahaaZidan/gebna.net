@@ -72,7 +72,9 @@ async function claimSubmission(
 			.from(emailSubmissionTable)
 			.innerJoin(accountMessageTable, eq(emailSubmissionTable.emailId, accountMessageTable.id))
 			.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
-			.where(eq(emailSubmissionTable.id, submissionId))
+			.where(
+				and(eq(emailSubmissionTable.id, submissionId), eq(accountMessageTable.isDeleted, false))
+			)
 			.limit(1);
 
 		if (!rows.length) return null;
