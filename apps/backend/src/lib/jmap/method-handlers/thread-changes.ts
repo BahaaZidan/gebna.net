@@ -20,6 +20,8 @@ export async function handleThreadChanges(
 
 	const sinceState = (args.sinceState as string | undefined) ?? "0";
 	const maxChangesArg = args.maxChanges as number | undefined;
+	const upToId = typeof args.upToId === "string" ? args.upToId : undefined;
+	const includeUpdatedProps = Boolean(args.includeUpdatedProperties);
 	const limitFromConstraints = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
 	const maxChanges =
 		typeof maxChangesArg === "number" && Number.isFinite(maxChangesArg) && maxChangesArg > 0
@@ -27,7 +29,10 @@ export async function handleThreadChanges(
 			: limitFromConstraints;
 
 	try {
-		const changes = await getChanges(db, effectiveAccountId, "Thread", sinceState, maxChanges);
+		const changes = await getChanges(db, effectiveAccountId, "Thread", sinceState, maxChanges, {
+			upToId,
+			includeUpdatedProperties: includeUpdatedProps,
+		});
 
 		return [
 			"Thread/changes",
@@ -38,7 +43,9 @@ export async function handleThreadChanges(
 				hasMoreChanges: changes.hasMoreChanges,
 				created: changes.created,
 				updated: changes.updated,
+				updatedProperties: includeUpdatedProps ? changes.updatedProperties : null,
 				destroyed: changes.destroyed,
+				upToId: upToId ?? null,
 			},
 			tag,
 		];
