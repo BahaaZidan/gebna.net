@@ -24,6 +24,7 @@ const ALLOWED_BLOB_PROPERTIES = new Set([
 
 const SUPPORTED_DIGESTS = new Set(["sha-256"]);
 const SUPPORTED_LOOKUP_TYPES = new Set(["Email"]);
+const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
 
 export async function handleBlobGet(
 	c: Context<JMAPHonoAppEnv>,
@@ -150,30 +151,35 @@ export async function handleBlobGet(
 		const needsData =
 			wantsAutoData || wantsText || wantsBase64 || digestProps.length > 0 || offset > 0 || length !== null;
 
-		let dataView: Uint8Array<ArrayBufferLike> | null = null;
-		if (needsData) {
-			const object = await c.env.R2_EMAILS.get(meta.r2Key ?? id);
+		const safeOffset = Math.min(offset, meta.size);
+		const maxLength = length === null ? meta.size - safeOffset : length;
+		const safeLength = Math.max(0, Math.min(meta.size - safeOffset, maxLength));
+		if (safeOffset >= meta.size) {
+			entry.isTruncated = true;
+		}
+		if (length !== null && safeOffset + length < meta.size) {
+			entry.isTruncated = true;
+		}
+
+		const requiresDataFetch =
+			(wantsAutoData && safeLength > 0) ||
+			(wantsText && safeLength > 0) ||
+			(wantsBase64 && safeLength > 0);
+
+		let slice = new Uint8Array(0);
+		if (requiresDataFetch && safeLength > 0) {
+			const object = await c.env.R2_EMAILS.get(meta.r2Key ?? id, {
+				range:
+					safeOffset > 0 || length !== null
+						? { offset: safeOffset, length: safeLength }
+						: undefined,
+			});
 			if (!object || !object.body) {
 				notFound.push(id);
 				continue;
 			}
 			const buffer = await object.arrayBuffer();
-			dataView = new Uint8Array(buffer);
-		}
-
-		let slice: Uint8Array<ArrayBufferLike> = new Uint8Array();
-		if (dataView) {
-			const safeOffset = Math.min(offset, meta.size);
-			const maxLength = length === null ? meta.size - safeOffset : length;
-			const safeLength = Math.max(0, Math.min(meta.size - safeOffset, maxLength));
-			const end = safeOffset + safeLength;
-			if (safeOffset >= meta.size) {
-				entry.isTruncated = true;
-			}
-			if (length !== null && safeOffset + length < meta.size) {
-				entry.isTruncated = true;
-			}
-			slice = dataView.subarray(safeOffset, end);
+			slice = new Uint8Array(buffer);
 		}
 
 		let textValue: string | null = null;
@@ -181,7 +187,7 @@ export async function handleBlobGet(
 		if (slice.length > 0 || offset < meta.size) {
 			if (slice.length > 0) {
 				try {
-					textValue = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(slice);
+					textValue = textDecoder.decode(slice);
 				} catch {
 					encodingProblem = true;
 					textValue = null;
@@ -211,11 +217,16 @@ export async function handleBlobGet(
 		}
 
 		for (const digest of digestProps) {
+			const normalized = digest.toLowerCase();
+			if (normalized === "sha-256") {
+				entry[`digest:${digest}`] = encodeBase64(hexToBytes(id));
+				continue;
+			}
 			if (!slice.length) {
 				entry[`digest:${digest}`] = encodeBase64(new Uint8Array());
 				continue;
 			}
-			const value = await crypto.subtle.digest(digest.toUpperCase(), slice);
+			const value = await crypto.subtle.digest(normalized.toUpperCase(), slice);
 			entry[`digest:${digest}`] = encodeBase64(new Uint8Array(value));
 		}
 
@@ -418,4 +429,14 @@ function encodeBase64(data: Uint8Array<ArrayBufferLike>): string {
 		binary += String.fromCharCode(...chunk);
 	}
 	return btoa(binary);
+}
+
+function hexToBytes(hex: string): Uint8Array {
+	const clean = hex.trim();
+	const len = clean.length;
+	const output = new Uint8Array(len / 2);
+	for (let i = 0; i < len; i += 2) {
+		output[i / 2] = parseInt(clean.slice(i, i + 2), 16);
+	}
+	return output;
 }
