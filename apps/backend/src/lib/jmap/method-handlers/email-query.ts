@@ -11,6 +11,7 @@ import {
 	mailboxMessageTable,
 	messageAddressTable,
 	messageTable,
+	attachmentTable,
 } from "../../../db/schema";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
@@ -24,11 +25,15 @@ type FilterCondition =
 	| { operator: "to"; value: string }
 	| { operator: "cc"; value: string }
 	| { operator: "bcc"; value: string }
+	| { operator: "body"; value: string }
 	| { operator: "after"; value: Date }
 	| { operator: "before"; value: Date }
 	| { operator: "sizeLarger"; value: number }
 	| { operator: "sizeSmaller"; value: number }
 	| { operator: "hasKeyword"; keyword: string }
+	| { operator: "hasAttachment"; value: boolean }
+	| { operator: "attachmentName"; value: string }
+	| { operator: "attachmentType"; value: string }
 	| { operator: "inMailbox"; mailboxId: string }
 	| { operator: "inMailboxOtherThan"; mailboxIds: string[] }
 	| { operator: "and" | "or"; conditions: FilterCondition[] }
@@ -289,6 +294,9 @@ export function normalizeFilter(raw: unknown): FilterCondition {
 	const bcc = stringProp("bcc");
 	if (bcc) pushCondition({ operator: "bcc", value: bcc });
 
+	const body = stringProp("body");
+	if (body) pushCondition({ operator: "body", value: body });
+
 	if (typeof value.after === "string") {
 		const date = new Date(value.after);
 		if (!Number.isNaN(date.getTime())) {
@@ -325,6 +333,16 @@ export function normalizeFilter(raw: unknown): FilterCondition {
 	if (typeof value.hasKeyword === "string" && value.hasKeyword) {
 		pushCondition({ operator: "hasKeyword", keyword: value.hasKeyword });
 	}
+
+	if (typeof value.hasAttachment === "boolean") {
+		pushCondition({ operator: "hasAttachment", value: value.hasAttachment });
+	}
+
+	const attachmentName = stringProp("attachmentName");
+	if (attachmentName) pushCondition({ operator: "attachmentName", value: attachmentName });
+
+	const attachmentType = stringProp("attachmentType");
+	if (attachmentType) pushCondition({ operator: "attachmentType", value: attachmentType });
 
 	if (Array.isArray(value.and)) {
 		const subConditions = value.and
@@ -505,6 +523,22 @@ function buildFilterSql(filter: FilterCondition): SQL | undefined {
 			return lt(messageTable.size, filter.value);
 		case "hasKeyword":
 			return buildKeywordCondition(filter.keyword);
+		case "body": {
+			const pattern = `%${escapeLikePattern(filter.value)}%`;
+			return or(like(messageTable.textBody, pattern), like(messageTable.htmlBody, pattern), like(messageTable.snippet, pattern));
+		}
+		case "hasAttachment":
+			return filter.value
+				? sql`exists(select 1 from ${attachmentTable} att where att.message_id = ${messageTable.id})`
+				: sql`not exists(select 1 from ${attachmentTable} att where att.message_id = ${messageTable.id})`;
+		case "attachmentName": {
+			const pattern = `%${escapeLikePattern(filter.value)}%`;
+			return sql`exists(select 1 from ${attachmentTable} att where att.message_id = ${messageTable.id} and att.filename like ${pattern})`;
+		}
+		case "attachmentType": {
+			const pattern = `%${escapeLikePattern(filter.value)}%`;
+			return sql`exists(select 1 from ${attachmentTable} att where att.message_id = ${messageTable.id} and att.mime_type like ${pattern})`;
+		}
 		case "inMailbox":
 			return sql`exists(select 1 from ${mailboxMessageTable} mm where mm.account_message_id = ${accountMessageTable.id} and mm.mailbox_id = ${filter.mailboxId})`;
 		case "inMailboxOtherThan": {
