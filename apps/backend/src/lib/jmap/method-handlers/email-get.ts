@@ -1,4 +1,3 @@
-import PostalMime from "postal-mime";
 import { and, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
@@ -7,7 +6,6 @@ import {
 	accountMessageTable,
 	addressTable,
 	emailKeywordTable,
-	blobTable,
 	mailboxMessageTable,
 	messageAddressTable,
 	messageHeaderTable,
@@ -39,16 +37,11 @@ type BodyValueRecord = {
 	charset: string;
 };
 
-type BodyValuesParams = {
-	env: CloudflareBindings;
-	row: {
-		rawBlobSha256: string;
-		rawBlobR2Key: string | null | undefined;
-	};
-	structure: StoredBodyStructure;
-	includeText: boolean;
-	includeHtml: boolean;
-	maxBytes: number;
+type StoredBodyRow = {
+	textBody: string | null;
+	textBodyIsTruncated: boolean | null;
+	htmlBody: string | null;
+	htmlBodyIsTruncated: boolean | null;
 };
 
 export async function handleEmailGet(
@@ -86,15 +79,17 @@ export async function handleEmailGet(
 			size: messageTable.size,
 			hasAttachment: messageTable.hasAttachment,
 			bodyStructureJson: messageTable.bodyStructureJson,
+			textBody: messageTable.textBody,
+			textBodyIsTruncated: messageTable.textBodyIsTruncated,
+			htmlBody: messageTable.htmlBody,
+			htmlBodyIsTruncated: messageTable.htmlBodyIsTruncated,
 			isSeen: accountMessageTable.isSeen,
 			isFlagged: accountMessageTable.isFlagged,
 			isAnswered: accountMessageTable.isAnswered,
 			isDraft: accountMessageTable.isDraft,
-			rawBlobR2Key: blobTable.r2Key,
 		})
 		.from(accountMessageTable)
 		.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
-		.leftJoin(blobTable, eq(messageTable.rawBlobSha256, blobTable.sha256))
 		.where(
 			and(
 				eq(accountMessageTable.accountId, effectiveAccountId),
@@ -352,14 +347,13 @@ export async function handleEmailGet(
 
 		if (needBodyValues && parsedStructure) {
 			const bodyValues =
-				(await buildBodyValues({
-					env: c.env,
+				buildBodyValuesFromStored({
 					row,
 					structure: parsedStructure,
 					includeText: fetchAllBodyValues || fetchTextBodyValues || includeBodyValuesProp,
 					includeHtml: fetchAllBodyValues || fetchHTMLBodyValues || includeBodyValuesProp,
 					maxBytes: maxBodyValueBytes,
-				})) ?? {};
+				}) ?? {};
 			email.bodyValues = bodyValues;
 		}
 
@@ -406,8 +400,14 @@ function filterBodyPart(part: StoredBodyPart, allowed: Set<string>): Record<stri
 	return output;
 }
 
-async function buildBodyValues(params: BodyValuesParams): Promise<Record<string, BodyValueRecord> | null> {
-	const { env, row, structure, includeText, includeHtml, maxBytes } = params;
+function buildBodyValuesFromStored(params: {
+	row: StoredBodyRow;
+	structure: StoredBodyStructure;
+	includeText: boolean;
+	includeHtml: boolean;
+	maxBytes: number;
+}): Record<string, BodyValueRecord> | null {
+	const { row, structure, includeText, includeHtml, maxBytes } = params;
 	if (!includeText && !includeHtml) {
 		return null;
 	}
@@ -432,30 +432,22 @@ async function buildBodyValues(params: BodyValuesParams): Promise<Record<string,
 		return {};
 	}
 
-	const key = row.rawBlobR2Key ?? row.rawBlobSha256;
-	const obj = await env.R2_EMAILS.get(key);
-	if (!obj || !obj.body) {
-		return {};
-	}
-
-	const buffer = await obj.arrayBuffer();
-	const parsed = await PostalMime.parse(buffer);
 	const bodyValues: Record<string, BodyValueRecord> = {};
 
-	if (includeText && textPart?.partId && typeof parsed.text === "string") {
-		const { value, isTruncated } = truncateToBytes(parsed.text, maxBytes);
+	if (includeText && textPart?.partId && typeof row.textBody === "string") {
+		const { value, isTruncated } = truncateStringToBytes(row.textBody, maxBytes);
 		bodyValues[textPart.partId] = {
 			value,
-			isTruncated,
+			isTruncated: isTruncated || Boolean(row.textBodyIsTruncated),
 			charset: "UTF-8",
 		};
 	}
 
-	if (includeHtml && htmlPart?.partId && typeof parsed.html === "string") {
-		const { value, isTruncated } = truncateToBytes(parsed.html, maxBytes);
+	if (includeHtml && htmlPart?.partId && typeof row.htmlBody === "string") {
+		const { value, isTruncated } = truncateStringToBytes(row.htmlBody, maxBytes);
 		bodyValues[htmlPart.partId] = {
 			value,
-			isTruncated,
+			isTruncated: isTruncated || Boolean(row.htmlBodyIsTruncated),
 			charset: "UTF-8",
 		};
 	}
@@ -463,7 +455,7 @@ async function buildBodyValues(params: BodyValuesParams): Promise<Record<string,
 	return bodyValues;
 }
 
-function truncateToBytes(value: string, maxBytes: number): { value: string; isTruncated: boolean } {
+function truncateStringToBytes(value: string, maxBytes: number): { value: string; isTruncated: boolean } {
 	const encoded = textEncoder.encode(value);
 	if (encoded.byteLength <= maxBytes) {
 		return { value, isTruncated: false };

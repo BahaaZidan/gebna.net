@@ -7,7 +7,7 @@
 - [x] Sort the `emailIds` returned by `Thread/get` (e.g., newest first) to satisfy the ordering guarantee in RFC 8621 (`apps/backend/src/lib/jmap/method-handlers/thread-get.ts:24-55`).
 - [x] Expand `Mailbox/query` to accept filter/sort/position arguments and correctly report `canCalculateChanges` instead of always returning the full list (`apps/backend/src/lib/jmap/method-handlers/mailbox-query.ts:15-42`).
 - [x] Return accurate per-mailbox rights and thread counts (total/unread) in `Mailbox/get` rather than hard-coding permissive booleans for every mailbox (`apps/backend/src/lib/jmap/method-handlers/mailbox-get.ts:13-83`).
-- [ ] Store normalized text/html bodies at ingest time (e.g., in `apps/backend/src/lib/mail/ingest.ts`) and have `Email/get` serve `bodyValues` from the database instead of reparsing each MIME blob from R2 (`apps/backend/src/lib/jmap/method-handlers/email-get.ts:320-464`).
+- [x] Store normalized text/html bodies at ingest time (e.g., in `apps/backend/src/lib/mail/ingest.ts`) and have `Email/get` serve `bodyValues` from the database instead of reparsing each MIME blob from R2 (`apps/backend/src/lib/jmap/method-handlers/email-get.ts:320-464`).
 - [ ] Stream blobs from R2 (or issue byte-range reads) inside `Blob/get` so we never buffer entire multi-megabyte objects just to return a slice or digest (`apps/backend/src/lib/jmap/method-handlers/blob.ts:90-230`).
 - [ ] Add per-IP/user rate limiting (and logging) to `/auth/login` and `/auth/register` to mitigate brute-force attempts (`apps/backend/src/auth.routes.ts:18-86`).
 - [ ] Verify the incoming SNS `TopicArn` matches the configured SES topic before updating submission status, alerting on mismatches (`apps/backend/src/ses-webhook.routes.ts:52-205`).

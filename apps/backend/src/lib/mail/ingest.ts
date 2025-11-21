@@ -19,6 +19,10 @@ import {
 } from "../../db/schema";
 import { sha256HexFromArrayBuffer } from "../utils";
 
+const storedBodyEncoder = new TextEncoder();
+const storedBodyDecoder = new TextDecoder();
+const MAX_STORED_BODY_BYTES = 256 * 1024;
+
 export function normalizeEmail(addr: string | null | undefined): string | null {
 	if (!addr) return null;
 	return addr.trim().toLowerCase();
@@ -81,6 +85,23 @@ export function attachmentContentToArrayBuffer(content: ArrayBuffer | string): A
 		return encoded.buffer as ArrayBuffer;
 	}
 	return content;
+}
+
+function prepareStoredBody(value: string | null | undefined): {
+	content: string | null;
+	truncated: boolean;
+} {
+	if (!value) {
+		return { content: null, truncated: false };
+	}
+	const normalized = value.replace(/\r\n/g, "\n");
+	const encoded = storedBodyEncoder.encode(normalized);
+	if (encoded.byteLength <= MAX_STORED_BODY_BYTES) {
+		return { content: normalized, truncated: false };
+	}
+	const sliced = encoded.slice(0, MAX_STORED_BODY_BYTES);
+	const decoded = storedBodyDecoder.decode(sliced);
+	return { content: decoded, truncated: true };
 }
 
 export async function ensureBlobInR2(
@@ -220,6 +241,8 @@ export async function upsertCanonicalMessage(opts: {
 	const references = parseReferences(email.references ?? null);
 	const messageId = normalizeMessageId(email.messageId);
 	const inReplyTo = normalizeMessageId(email.inReplyTo);
+	const storedText = prepareStoredBody(email.text ?? null);
+	const storedHtml = prepareStoredBody(email.html ?? null);
 
 	const inserted = await tx
 		.insert(messageTable)
@@ -237,6 +260,10 @@ export async function upsertCanonicalMessage(opts: {
 			size,
 			hasAttachment,
 			bodyStructureJson,
+			textBody: storedText.content,
+			textBodyIsTruncated: storedText.truncated,
+			htmlBody: storedHtml.content,
+			htmlBodyIsTruncated: storedHtml.truncated,
 		})
 		.onConflictDoNothing({ target: messageTable.ingestId })
 		.returning({ id: messageTable.id });
