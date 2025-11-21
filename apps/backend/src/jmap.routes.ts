@@ -148,6 +148,32 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Blob/lookup": handleBlobLookup,
 };
 
+const METHOD_CAPABILITIES: Record<string, string[]> = {
+	"Email/get": [JMAP_MAIL],
+	"Email/query": [JMAP_MAIL],
+	"Email/queryChanges": [JMAP_MAIL],
+	"Email/copy": [JMAP_MAIL],
+	"Email/import": [JMAP_MAIL],
+	"Email/changes": [JMAP_MAIL],
+	"Email/set": [JMAP_MAIL],
+	"Thread/get": [JMAP_MAIL],
+	"Thread/changes": [JMAP_MAIL],
+	"Mailbox/get": [JMAP_MAIL],
+	"Mailbox/query": [JMAP_MAIL],
+	"Mailbox/changes": [JMAP_MAIL],
+	"Mailbox/set": [JMAP_MAIL],
+	"EmailSubmission/set": [JMAP_SUBMISSION],
+	"EmailSubmission/get": [JMAP_SUBMISSION],
+	"EmailSubmission/changes": [JMAP_SUBMISSION],
+	"Identity/get": [JMAP_SUBMISSION],
+	"Identity/set": [JMAP_SUBMISSION],
+	"VacationResponse/get": [JMAP_VACATION],
+	"VacationResponse/set": [JMAP_VACATION],
+	"Blob/get": [JMAP_BLOB],
+	"Blob/copy": [JMAP_BLOB],
+	"Blob/lookup": [JMAP_BLOB],
+};
+
 type CreationReferenceMap = Map<string, string>;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -219,12 +245,24 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 
 	const methodResponses: JmapMethodResponse[] = [];
 	const creationReferences: CreationReferenceMap = new Map();
+	const requestedCapabilities = new Set(req.using);
 
 	for (const [name, args, tag] of req.methodCalls) {
 		try {
 			const handler = methodHandlers[name];
 			if (!handler) {
 				methodResponses.push(["error", { type: "unknownMethod", description: name }, tag]);
+				continue;
+			}
+
+			const requiredCapabilities = METHOD_CAPABILITIES[name] ?? [];
+			const missingCapability = requiredCapabilities.find((capability) => !requestedCapabilities.has(capability));
+			if (missingCapability) {
+				methodResponses.push([
+					"error",
+					{ type: "unknownCapability", capability: missingCapability },
+					tag,
+				]);
 				continue;
 			}
 
