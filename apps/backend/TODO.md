@@ -1,4 +1,4 @@
-- [ ] Implement result reference substitution so method arguments like `#mailboxCreationId` are resolved before invoking handlers (`apps/backend/src/jmap.routes.ts:78-149`) to reach baseline RFC 8621 compliance.
+- [x] Implement result reference substitution so method arguments like `#mailboxCreationId` are resolved before invoking handlers (`apps/backend/src/jmap.routes.ts:78-149`) to reach baseline RFC 8621 compliance.
 - [ ] Enforce per-method capability requirements instead of only rejecting unknown capabilities, returning `unknownCapability` when `using` omits `urn:ietf:params:jmap:mail`, `submission`, etc. (`apps/backend/src/jmap.routes.ts:60-141`).
 - [ ] Replace the one-shot `/jmap/event-source` response with a long-lived SSE stream that emits incremental state diffs from `change_log` (`apps/backend/src/jmap.routes.ts:211-247`).
 - [ ] Rework `normalizeFilter` so `Email/query` can combine multiple filter properties simultaneously instead of discarding everything after the first key (`apps/backend/src/lib/jmap/method-handlers/email-query.ts:134-247`).
