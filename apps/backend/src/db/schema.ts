@@ -445,3 +445,14 @@ export const jmapQueryStateTable = sqliteTable(
 	}),
 	(self) => [index("idx_jmap_query_state_account").on(self.accountId)]
 );
+
+export const authRateLimitTable = sqliteTable(
+	"auth_rate_limit",
+	(t) => ({
+		id: t.text().primaryKey(),
+		key: t.text().notNull(),
+		route: t.text().notNull(),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
+	}),
+	(self) => [index("idx_auth_rate_limit_key_route").on(self.key, self.route, self.createdAt)]
+);
