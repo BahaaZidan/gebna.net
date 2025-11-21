@@ -18,7 +18,7 @@ import {
 import { DeliveryStatusRecord } from "../../types";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState, isRecord } from "../utils";
+import { ensureAccountAccess, getAccountState, getAccountMailboxes, isRecord } from "../utils";
 import { recordCreate, recordUpdate } from "../change-log";
 import { applyEmailSet } from "./email-set";
 
@@ -42,6 +42,8 @@ export async function handleEmailSubmissionSet(
 	}
 
 	const createMap = (args.create as Record<string, unknown> | undefined) ?? {};
+	const mailboxInfo =
+		Object.keys(createMap).length > 0 ? await getAccountMailboxes(db, effectiveAccountId) : null;
 	const onSuccessUpdateEmailResult = parseOnSuccessUpdateEmail(args.onSuccessUpdateEmail);
 	if ("error" in onSuccessUpdateEmailResult) {
 		return [
@@ -50,7 +52,14 @@ export async function handleEmailSubmissionSet(
 			tag,
 		];
 	}
-	const onSuccessUpdateEmail = onSuccessUpdateEmailResult.value;
+	let onSuccessUpdateEmail = onSuccessUpdateEmailResult.value;
+	if (mailboxInfo) {
+		onSuccessUpdateEmail = addDefaultSubmissionEmailPatches({
+			existing: onSuccessUpdateEmail,
+			createMap,
+			mailboxInfo,
+		});
+	}
 
 	const onSuccessDestroyArg =
 		args.onSuccessDestroyEmail !== undefined ? args.onSuccessDestroyEmail : args.onSuccessDestroyOriginal;
@@ -275,8 +284,7 @@ async function applyEmailSubmissionSet(
 			requestedSendAt: parsed.sendAt,
 			undoWindowMs,
 		});
-		const releaseMs = releaseAt.getTime();
-		const shouldProcessNow = releaseMs <= Date.now();
+		const shouldProcessNow = releaseAt.getTime() <= now.getTime();
 		const undoStatusValue = shouldProcessNow ? "final" : "pending";
 
 		const deliveryStatus: DeliveryStatusRecord = {
@@ -763,4 +771,53 @@ function computeReleaseTime(opts: {
 		return new Date(nowMs + opts.undoWindowMs);
 	}
 	return new Date(nowMs);
+}
+
+type AccountMailboxInfo = Awaited<ReturnType<typeof getAccountMailboxes>>;
+
+function addDefaultSubmissionEmailPatches(opts: {
+	existing: OnSuccessUpdateMap;
+	createMap: Record<string, unknown>;
+	mailboxInfo: AccountMailboxInfo;
+}): OnSuccessUpdateMap {
+	if (Object.keys(opts.createMap ?? {}).length === 0) {
+		return opts.existing;
+	}
+	const merged: OnSuccessUpdateMap = { ...opts.existing };
+	const sentMailboxId = opts.mailboxInfo.byRole.get("sent")?.id ?? null;
+	const draftsMailboxId = opts.mailboxInfo.byRole.get("drafts")?.id ?? null;
+
+	for (const creationId of Object.keys(opts.createMap)) {
+		const ref = `#${creationId}`;
+		if (merged[ref]) continue;
+		const patch = buildDefaultEmailSubmissionPatch(sentMailboxId, draftsMailboxId);
+		if (!patch) continue;
+		merged[ref] = patch;
+	}
+	return merged;
+}
+
+function buildDefaultEmailSubmissionPatch(
+	sentMailboxId: string | null,
+	draftsMailboxId: string | null
+): Record<string, unknown> | null {
+	const patch: Record<string, unknown> = {};
+	const mailboxPatch: Record<string, boolean> = {};
+	if (draftsMailboxId) {
+		mailboxPatch[draftsMailboxId] = false;
+	}
+	if (sentMailboxId) {
+		mailboxPatch[sentMailboxId] = true;
+	}
+	if (Object.keys(mailboxPatch).length > 0) {
+		patch.mailboxIds = mailboxPatch;
+	}
+
+	const keywordPatch: Record<string, boolean> = {
+		$draft: false,
+		"\\draft": false,
+	};
+	patch.keywords = keywordPatch;
+
+	return Object.keys(patch).length > 0 ? patch : null;
 }

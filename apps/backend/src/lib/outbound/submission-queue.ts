@@ -7,8 +7,6 @@ import {
 	messageTable,
 } from "../../db/schema";
 import { createOutboundTransport } from ".";
-import { finalizeEmailAfterSubmission } from "../jmap/helpers/finalize-email";
-import { getAccountMailboxes } from "../jmap/utils";
 import { DeliveryStatusRecord } from "../types";
 
 export const QUEUE_STATUS_PENDING = "pending";
@@ -228,18 +226,6 @@ async function sendClaimedSubmission(
 	};
 
 	if (deliveryOutcome.status === "accepted") {
-		const mailboxInfo = await getAccountMailboxes(db, claimed.accountId);
-		await db.transaction(async (tx) => {
-			await finalizeEmailAfterSubmission({
-				tx,
-				accountId: claimed.accountId,
-				emailId: claimed.emailId,
-				threadId: claimed.threadId,
-				sentMailboxId: mailboxInfo.byRole.get("sent")?.id ?? null,
-				draftsMailboxId: mailboxInfo.byRole.get("drafts")?.id ?? null,
-				now,
-			});
-		});
 		await handleSendResult(db, claimed.id, mappedStatus, QUEUE_STATUS_SENT, null, nextRetryCount, now);
 		return;
 	}
