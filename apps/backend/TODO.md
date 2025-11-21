@@ -55,7 +55,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 17. ✅ **Extend inbound pipeline to multi-recipient** _(Necessary)_  
     Process every local recipient on an inbound message (To/Cc/Bcc, aliases), creating separate account message rows per address.
 
-18. **Verify SES/SNS webhooks** _(Necessary)_  
+18. ✅ **Verify SES/SNS webhooks** _(Necessary)_  
     Validate AWS signatures, handle subscription confirmation, and drop unsigned payloads before mutating submission state.
 
 19. **Enforce strong upload token policy** _(Necessary)_  
