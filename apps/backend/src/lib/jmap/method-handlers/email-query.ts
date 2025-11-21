@@ -270,34 +270,53 @@ async function runQuery(
 	db: ReturnType<typeof getDB>,
 	accountId: string,
 	options: QueryOptions
-): Promise<{ ids: string[]; total: number; position: number; canCalculateChanges: boolean }> {
-	const baseRows = await db
+): Promise<{ ids: string[]; total: number | null; position: number; canCalculateChanges: boolean }> {
+	const filterWhere = buildWhereClause(accountId, options.filter);
+	const orderParts = buildOrderBy(options.sort);
+	const orderForWindow = sql.join(orderParts, sql`, `);
+
+	let start = options.position;
+
+	if (options.anchor) {
+		const rowNumberExpr = sql<number>`row_number() over (ORDER BY ${orderForWindow}) - 1`.as("rowIndex");
+		const anchorRows = await db
+			.select({ rowIndex: rowNumberExpr })
+			.from(accountMessageTable)
+			.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
+			.where(and(filterWhere, eq(accountMessageTable.id, options.anchor.id)))
+			.limit(1);
+
+		if (!anchorRows.length) {
+			throw new EmailQueryProblem("anchorNotFound", "anchor was not found");
+		}
+		const baseIndex = anchorRows[0]!.rowIndex ?? 0;
+		start = Math.max(baseIndex + options.anchor.offset, 0);
+	}
+
+	const rows = await db
 		.select({
 			emailId: accountMessageTable.id,
-			internalDate: accountMessageTable.internalDate,
-			sentAt: messageTable.sentAt,
-			size: messageTable.size,
 		})
 		.from(accountMessageTable)
 		.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
-		.where(buildWhereClause(accountId, options.filter))
-		.orderBy(...buildOrderBy(options.sort));
+		.where(filterWhere)
+		.orderBy(...orderParts)
+		.limit(options.limit)
+		.offset(start);
 
-	if (options.anchor) {
-		const anchorIndex = baseRows.findIndex((row) => row.emailId === options.anchor?.id);
-		if (anchorIndex === -1) {
-			throw new EmailQueryProblem("anchorNotFound", "anchor was not found");
-		}
-		options.position = Math.max(anchorIndex + options.anchor.offset, 0);
+	let total: number | null = null;
+	if (options.calculateTotal) {
+		const [{ count } = { count: 0 }] = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(accountMessageTable)
+			.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
+			.where(filterWhere);
+		total = count ?? 0;
 	}
 
-	const start = Math.min(options.position, baseRows.length);
-	const paged = baseRows.slice(start, start + options.limit);
-	const ids = paged.map((row) => row.emailId);
-
 	return {
-		ids,
-		total: baseRows.length,
+		ids: rows.map((row) => row.emailId),
+		total,
 		position: start,
 		canCalculateChanges: options.filter.operator === "none",
 	};
