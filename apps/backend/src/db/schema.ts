@@ -148,6 +148,10 @@ export const messageTable = sqliteTable(
 		size: t.integer().notNull(),
 		hasAttachment: t.integer({ mode: "boolean" }).notNull().default(false),
 		bodyStructureJson: t.text(),
+		textBody: t.text(),
+		textBodyIsTruncated: t.integer({ mode: "boolean" }).notNull().default(false),
+		htmlBody: t.text(),
+		htmlBodyIsTruncated: t.integer({ mode: "boolean" }).notNull().default(false),
 	}),
 	(self) => [
 		uniqueIndex("ux_message_ingest").on(self.ingestId),
