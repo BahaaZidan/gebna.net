@@ -249,7 +249,11 @@ async function cloneEmail(
 		})
 		.from(accountMessageTable)
 		.where(
-			and(eq(accountMessageTable.id, create.emailId), eq(accountMessageTable.accountId, accountId))
+			and(
+				eq(accountMessageTable.id, create.emailId),
+				eq(accountMessageTable.accountId, accountId),
+				eq(accountMessageTable.isDeleted, false)
+			)
 		)
 		.limit(1);
 

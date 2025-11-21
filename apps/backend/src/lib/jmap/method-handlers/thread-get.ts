@@ -34,7 +34,13 @@ export async function handleThreadGet(
 		})
 		.from(threadTable)
 		.innerJoin(accountMessageTable, eq(threadTable.id, accountMessageTable.threadId))
-		.where(and(eq(threadTable.accountId, effectiveAccountId), inArray(threadTable.id, ids)))
+		.where(
+			and(
+				eq(threadTable.accountId, effectiveAccountId),
+				inArray(threadTable.id, ids),
+				eq(accountMessageTable.isDeleted, false)
+			)
+		)
 		.orderBy(threadTable.id, desc(accountMessageTable.internalDate));
 
 	const byThread = new Map<string, string[]>();
