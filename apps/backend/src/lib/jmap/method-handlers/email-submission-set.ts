@@ -10,12 +10,16 @@ import {
 	messageAddressTable,
 	messageTable,
 } from "../../../db/schema";
-import { processSingleSubmission } from "../../outbound/submission-queue";
+import {
+	processSingleSubmission,
+	QUEUE_STATUS_CANCELED,
+	QUEUE_STATUS_PENDING,
+} from "../../outbound/submission-queue";
 import { DeliveryStatusRecord } from "../../types";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState, isRecord } from "../utils";
-import { recordCreate } from "../change-log";
+import { recordCreate, recordUpdate } from "../change-log";
 import { applyEmailSet } from "./email-set";
 
 export async function handleEmailSubmissionSet(
@@ -80,7 +84,9 @@ export async function handleEmailSubmissionSet(
 					created: result.created,
 					notCreated: result.notCreated,
 					updated: result.updated,
+					notUpdated: result.notUpdated,
 					destroyed: result.destroyed,
+					notDestroyed: result.notDestroyed,
 				},
 				tag,
 			],
@@ -144,30 +150,38 @@ async function applyEmailSubmissionSet(
 ): Promise<EmailSubmissionSetResult> {
 	const accountId = args.accountId;
 	const createMap = args.create ?? {};
+	const updateMap = args.update ?? {};
+	const destroyList = args.destroy ?? [];
 
 	const created: Record<string, unknown> = {};
 	const notCreated: Record<string, EmailSubmissionFailure> = {};
 	const updated: Record<string, unknown> = {};
+	const notUpdated: Record<string, EmailSubmissionFailure> = {};
 	const destroyed: string[] = [];
+	const notDestroyed: Record<string, EmailSubmissionFailure> = {};
 	const creationMeta: Record<string, { emailId: string }> = {};
 
 	const createEntries = Object.entries(createMap);
+	const updateEntries = Object.entries(updateMap);
 	const oldStateValue = await getAccountState(db, accountId, "EmailSubmission");
 
-	if (createEntries.length === 0) {
+	if (createEntries.length === 0 && updateEntries.length === 0 && destroyList.length === 0) {
 		return {
 			accountId,
 			oldState: oldStateValue,
 			newState: oldStateValue,
 			created,
-			notCreated: {},
+			notCreated,
 			updated,
+			notUpdated,
 			destroyed,
+			notDestroyed,
 			creationMeta,
 		};
 	}
 
 	const now = new Date();
+	const undoWindowMs = getUndoWindowDurationMs(env);
 	const submissionsToProcess: string[] = [];
 
 	for (const [createId, raw] of createEntries) {
@@ -256,6 +270,14 @@ async function applyEmailSubmissionSet(
 		}
 
 		const submissionId = crypto.randomUUID();
+		const releaseAt = computeReleaseTime({
+			now,
+			requestedSendAt: parsed.sendAt,
+			undoWindowMs,
+		});
+		const releaseMs = releaseAt.getTime();
+		const shouldProcessNow = releaseMs <= Date.now();
+		const undoStatusValue = shouldProcessNow ? "final" : "pending";
 
 		const deliveryStatus: DeliveryStatusRecord = {
 			status: "pending",
@@ -269,12 +291,12 @@ async function applyEmailSubmissionSet(
 			emailId: parsed.emailId,
 			identityId: parsed.identityId,
 			envelopeJson: JSON.stringify(envelope),
-			sendAt: null,
-			status: "pending",
-			nextAttemptAt: now,
+			sendAt: releaseAt,
+			status: QUEUE_STATUS_PENDING,
+			nextAttemptAt: releaseAt,
 			retryCount: 0,
 			deliveryStatusJson: deliveryStatus,
-			undoStatus: null,
+			undoStatus: undoStatusValue,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -286,14 +308,84 @@ async function applyEmailSubmissionSet(
 			now,
 		});
 
-		submissionsToProcess.push(submissionId);
+		if (shouldProcessNow) {
+			submissionsToProcess.push(submissionId);
+		}
 
 		created[createId] = {
 			id: submissionId,
 			emailId: parsed.emailId,
 			identityId: parsed.identityId,
+			sendAt: releaseAt.toISOString(),
+			undoStatus: undoStatusValue,
 		};
 		creationMeta[createId] = { emailId: parsed.emailId };
+	}
+
+	for (const [updateId, rawPatch] of updateEntries) {
+		let patch: EmailSubmissionUpdate;
+		try {
+			patch = parseEmailSubmissionUpdate(rawPatch);
+		} catch (err) {
+			if (err instanceof EmailSubmissionProblem) {
+				notUpdated[updateId] = { type: err.jmapType, description: err.message };
+				continue;
+			}
+			throw err;
+		}
+
+		if (!patch.undoStatus) {
+			continue;
+		}
+
+		const [row] = await db
+			.select({
+				id: emailSubmissionTable.id,
+				status: emailSubmissionTable.status,
+				undoStatus: emailSubmissionTable.undoStatus,
+			})
+			.from(emailSubmissionTable)
+			.where(and(eq(emailSubmissionTable.id, updateId), eq(emailSubmissionTable.accountId, accountId)))
+			.limit(1);
+
+		if (!row) {
+			notUpdated[updateId] = { type: "notFound", description: "EmailSubmission not found" };
+			continue;
+		}
+
+		if (row.status !== QUEUE_STATUS_PENDING || row.undoStatus !== "pending") {
+			notUpdated[updateId] = {
+				type: "cannotUnsend",
+				description: "Submission can no longer be canceled",
+			};
+			continue;
+		}
+
+		const updateTime = new Date();
+		await db
+			.update(emailSubmissionTable)
+			.set({
+				status: QUEUE_STATUS_CANCELED,
+				undoStatus: "canceled",
+				nextAttemptAt: null,
+				updatedAt: updateTime,
+			})
+			.where(and(eq(emailSubmissionTable.id, updateId), eq(emailSubmissionTable.accountId, accountId)));
+
+		await recordUpdate(db, {
+			accountId,
+			type: "EmailSubmission",
+			objectId: row.id,
+			now: updateTime,
+		});
+		updated[updateId] = { id: row.id };
+	}
+
+	for (const destroyId of destroyList) {
+		notDestroyed[destroyId] = {
+			type: "invalidArguments",
+			description: "EmailSubmission destroy is not supported",
+		};
 	}
 
 	for (const submissionId of submissionsToProcess) {
@@ -304,10 +396,9 @@ async function applyEmailSubmissionSet(
 		}
 	}
 
-	const newStateValue =
-		Object.keys(created).length > 0
-			? await getAccountState(db, accountId, "EmailSubmission")
-			: oldStateValue;
+	const mutated =
+		Object.keys(created).length > 0 || Object.keys(updated).length > 0 || destroyed.length > 0;
+	const newStateValue = mutated ? await getAccountState(db, accountId, "EmailSubmission") : oldStateValue;
 
 	return {
 		accountId,
@@ -316,7 +407,9 @@ async function applyEmailSubmissionSet(
 		created,
 		notCreated,
 		updated,
+		notUpdated,
 		destroyed,
+		notDestroyed,
 		creationMeta,
 	};
 }
@@ -448,18 +541,57 @@ function parseEmailSubmissionCreate(raw: unknown): EmailSubmissionCreate {
 	}
 
 	const sendAtValue = raw.sendAt;
-	if (typeof sendAtValue === "string") {
-		result.sendAt = sendAtValue;
+	if (sendAtValue !== undefined) {
+		if (typeof sendAtValue !== "string") {
+			throw new EmailSubmissionProblem(
+				"invalidProperties",
+				"EmailSubmission/create.sendAt must be a string when provided"
+			);
+		}
+		const parsedDate = new Date(sendAtValue);
+		if (Number.isNaN(parsedDate.getTime())) {
+			throw new EmailSubmissionProblem(
+				"invalidProperties",
+				"EmailSubmission/create.sendAt must be a valid RFC 3339 timestamp"
+			);
+		}
+		result.sendAt = parsedDate;
 	}
 
 	return result;
+}
+
+function parseEmailSubmissionUpdate(raw: unknown): EmailSubmissionUpdate {
+	if (!isRecord(raw)) {
+		throw new EmailSubmissionProblem(
+			"invalidProperties",
+			"EmailSubmission/update patch must be an object"
+		);
+	}
+
+	const patch: EmailSubmissionUpdate = {};
+	if (raw.undoStatus !== undefined) {
+		if (raw.undoStatus !== "canceled") {
+			throw new EmailSubmissionProblem(
+				"invalidProperties",
+				"EmailSubmission/update.undoStatus may only be set to \"canceled\""
+			);
+		}
+		patch.undoStatus = "canceled";
+	}
+
+	return patch;
 }
 
 type EmailSubmissionCreate = {
 	emailId: string;
 	identityId: string;
 	envelope?: EmailSubmissionEnvelopeOverride;
-	sendAt?: string;
+	sendAt?: Date;
+};
+
+type EmailSubmissionUpdate = {
+	undoStatus?: "canceled";
 };
 
 type ResolvedEnvelope = {
@@ -481,7 +613,9 @@ type EmailSubmissionSetResult = {
 	created: Record<string, unknown>;
 	notCreated: Record<string, EmailSubmissionFailure>;
 	updated: Record<string, unknown>;
+	notUpdated: Record<string, EmailSubmissionFailure>;
 	destroyed: string[];
+	notDestroyed: Record<string, EmailSubmissionFailure>;
 	creationMeta: Record<string, { emailId: string }>;
 };
 
@@ -605,4 +739,28 @@ function buildImplicitEmailSubmissionOps(opts: {
 			update: updateMap,
 		},
 	};
+}
+
+function getUndoWindowDurationMs(env: CloudflareBindings): number {
+	const raw = env.MAIL_UNDO_WINDOW_SECONDS;
+	if (!raw) return 0;
+	const parsed = Number(raw);
+	if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+	return parsed * 1000;
+}
+
+function computeReleaseTime(opts: {
+	now: Date;
+	requestedSendAt?: Date;
+	undoWindowMs: number;
+}): Date {
+	const nowMs = opts.now.getTime();
+	if (opts.requestedSendAt) {
+		const desiredMs = opts.requestedSendAt.getTime();
+		return new Date(desiredMs > nowMs ? desiredMs : nowMs);
+	}
+	if (opts.undoWindowMs > 0) {
+		return new Date(nowMs + opts.undoWindowMs);
+	}
+	return new Date(nowMs);
 }

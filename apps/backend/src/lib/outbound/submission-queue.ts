@@ -11,10 +11,11 @@ import { finalizeEmailAfterSubmission } from "../jmap/helpers/finalize-email";
 import { getAccountMailboxes } from "../jmap/utils";
 import { DeliveryStatusRecord } from "../types";
 
-const QUEUE_STATUS_PENDING = "pending";
-const QUEUE_STATUS_SENDING = "sending";
-const QUEUE_STATUS_SENT = "sent";
-const QUEUE_STATUS_FAILED = "failed";
+export const QUEUE_STATUS_PENDING = "pending";
+export const QUEUE_STATUS_SENDING = "sending";
+export const QUEUE_STATUS_SENT = "sent";
+export const QUEUE_STATUS_FAILED = "failed";
+export const QUEUE_STATUS_CANCELED = "canceled";
 
 const RETRY_DELAYS_SECONDS = [60, 300, 900, 3600, 21600];
 const MAX_RETRY_ATTEMPTS = RETRY_DELAYS_SECONDS.length;
@@ -65,6 +66,7 @@ async function claimSubmission(
 				nextAttemptAt: emailSubmissionTable.nextAttemptAt,
 				retryCount: emailSubmissionTable.retryCount,
 				deliveryStatus: emailSubmissionTable.deliveryStatusJson,
+				undoStatus: emailSubmissionTable.undoStatus,
 				threadId: accountMessageTable.threadId,
 				rawBlobSha256: messageTable.rawBlobSha256,
 				size: messageTable.size,
@@ -79,10 +81,11 @@ async function claimSubmission(
 		const row = rows[0]!;
 		if (row.status !== QUEUE_STATUS_PENDING) return null;
 		if (row.nextAttemptAt && row.nextAttemptAt > now) return null;
+		if (row.undoStatus === "canceled") return null;
 
 		const updated = await tx
 			.update(emailSubmissionTable)
-			.set({ status: QUEUE_STATUS_SENDING, updatedAt: now })
+			.set({ status: QUEUE_STATUS_SENDING, undoStatus: "final", updatedAt: now })
 			.where(and(eq(emailSubmissionTable.id, submissionId), eq(emailSubmissionTable.status, QUEUE_STATUS_PENDING)))
 			.returning({ id: emailSubmissionTable.id });
 

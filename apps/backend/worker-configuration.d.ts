@@ -19,6 +19,7 @@ declare namespace Cloudflare {
 		AWS_SES_SECRET_ACCESS_KEY: string;
 		R2_EMAILS: R2Bucket;
 		SES_WEBHOOK_TOKEN: string;
+		MAIL_UNDO_WINDOW_SECONDS: string;
 	}
 }
 interface CloudflareBindings extends Cloudflare.Env {}

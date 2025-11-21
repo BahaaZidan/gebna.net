@@ -39,6 +39,7 @@ export async function handleEmailSubmissionGet(
 			envelope: row.envelopeJson ? JSON.parse(row.envelopeJson) : null,
 			sendAt: row.sendAt?.toISOString() ?? null,
 			status: row.status,
+			undoStatus: row.undoStatus ?? "final",
 			deliveryStatus: row.deliveryStatusJson ?? null,
 		}));
 
