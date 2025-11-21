@@ -181,6 +181,11 @@ sesWebhookApp.post("/events", async (c) => {
 			continue;
 		}
 		const message = parseNotification(record);
+		const topicArn = typeof record.Sns?.TopicArn === "string" ? record.Sns.TopicArn : null;
+		if (!topicArn || topicArn !== c.env.SES_TOPIC_ARN) {
+			console.warn("Unexpected SES topic", { received: topicArn });
+			continue;
+		}
 		if (!message) continue;
 		const submissionId = extractSubmissionId(message);
 		if (!submissionId) continue;

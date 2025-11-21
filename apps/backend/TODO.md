@@ -10,4 +10,4 @@
 - [x] Store normalized text/html bodies at ingest time (e.g., in `apps/backend/src/lib/mail/ingest.ts`) and have `Email/get` serve `bodyValues` from the database instead of reparsing each MIME blob from R2 (`apps/backend/src/lib/jmap/method-handlers/email-get.ts:320-464`).
 - [x] Stream blobs from R2 (or issue byte-range reads) inside `Blob/get` so we never buffer entire multi-megabyte objects just to return a slice or digest (`apps/backend/src/lib/jmap/method-handlers/blob.ts:90-230`).
 - [x] Add per-IP/user rate limiting (and logging) to `/auth/login` and `/auth/register` to mitigate brute-force attempts (`apps/backend/src/auth.routes.ts:18-86`).
-- [ ] Verify the incoming SNS `TopicArn` matches the configured SES topic before updating submission status, alerting on mismatches (`apps/backend/src/ses-webhook.routes.ts:52-205`).
+- [x] Verify the incoming SNS `TopicArn` matches the configured SES topic before updating submission status, alerting on mismatches (`apps/backend/src/ses-webhook.routes.ts:52-205`).
