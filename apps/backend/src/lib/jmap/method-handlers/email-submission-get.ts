@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
 import { emailSubmissionTable } from "../../../db/schema";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
@@ -21,6 +22,17 @@ export async function handleEmailSubmissionGet(
 
 	const state = await getAccountState(db, effectiveAccountId, "EmailSubmission");
 	const ids = (args.ids as string[] | undefined) ?? [];
+	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
+	if (ids.length > maxObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
+			},
+			tag,
+		];
+	}
 	if (ids.length === 0) {
 		return ["EmailSubmission/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 	}
@@ -28,10 +40,12 @@ export async function handleEmailSubmissionGet(
 	const rows = await db
 		.select()
 		.from(emailSubmissionTable)
-		.where(eq(emailSubmissionTable.accountId, effectiveAccountId));
+		.where(and(eq(emailSubmissionTable.accountId, effectiveAccountId), inArray(emailSubmissionTable.id, ids)));
 
-	const list = rows
-		.filter((row) => ids.includes(row.id))
+	const rowMap = new Map(rows.map((row) => [row.id, row]));
+	const list = ids
+		.map((id) => rowMap.get(id))
+		.filter((row): row is typeof rows[number] => Boolean(row))
 		.map((row) => ({
 			id: row.id,
 			emailId: row.emailId,

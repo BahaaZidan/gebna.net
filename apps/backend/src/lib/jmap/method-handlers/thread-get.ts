@@ -3,6 +3,7 @@ import { Context } from "hono";
 
 import { getDB } from "../../../db";
 import { accountMessageTable, threadTable } from "../../../db/schema";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
@@ -22,6 +23,17 @@ export async function handleThreadGet(
 	const state = await getAccountState(db, effectiveAccountId, "Thread");
 
 	const ids = (args.ids as string[] | undefined) ?? [];
+	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
+	if (ids.length > maxObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
+			},
+			tag,
+		];
+	}
 	if (!ids.length) {
 		return ["Thread/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 	}

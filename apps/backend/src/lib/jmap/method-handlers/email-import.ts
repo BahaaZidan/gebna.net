@@ -28,6 +28,7 @@ import { recordEmailCreateChanges } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountMailboxes, getAccountState, isRecord } from "../utils";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 
 type EmailImportArgs = {
 	accountId: string;
@@ -83,6 +84,18 @@ export async function handleEmailImport(
 	}
 
 	const state = await getAccountState(db, effectiveAccountId, "Email");
+	const maxSetObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInSet ?? 128;
+	const createCount = isRecord(args.emails) ? Object.keys(args.emails).length : 0;
+	if (createCount > maxSetObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `emails exceeds maxObjectsInSet (${maxSetObjects})`,
+			},
+			tag,
+		];
+	}
 
 	const input: EmailImportArgs = {
 		accountId: effectiveAccountId,
