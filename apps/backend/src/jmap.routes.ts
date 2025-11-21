@@ -115,7 +115,7 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 		apiUrl: c.env.BASE_API_URL,
 		downloadUrl: `${c.env.BASE_API_URL}${c.env.JMAP_DOWNLOAD_PATH}`,
 		uploadUrl: `${c.env.BASE_API_URL}${c.env.JMAP_UPLOAD_PATH}`,
-		eventSourceUrl: null,
+		eventSourceUrl: `${c.env.BASE_API_URL}/jmap/event-source/{accountId}`,
 		state: globalState,
 	};
 
@@ -340,6 +340,42 @@ function sanitizeFileName(value: string): string {
 	return value.replace(/\r|\n/g, "").replace(/"/g, "");
 }
 
+async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> {
+	const accountIdParam = c.req.param("accountId");
+	const effectiveAccountId = c.get("accountId");
+	if (accountIdParam !== effectiveAccountId) {
+		return c.json({ type: "forbidden", description: "Account access denied" }, 403);
+	}
+
+	const db = getDB(c.env);
+	const snapshot = await db
+		.select({ type: jmapStateTable.type, modSeq: jmapStateTable.modSeq })
+		.from(jmapStateTable)
+		.where(eq(jmapStateTable.accountId, effectiveAccountId));
+
+	const changeMap: Record<string, string> = {};
+	for (const row of snapshot) {
+		changeMap[row.type] = String(row.modSeq);
+	}
+
+	const payload = JSON.stringify({ accountId: effectiveAccountId, changed: changeMap });
+	const encoder = new TextEncoder();
+	const stream = new ReadableStream({
+		start(controller) {
+			controller.enqueue(encoder.encode(`event: state\ndata: ${payload}\n\n`));
+			controller.close();
+		},
+	});
+
+	return new Response(stream, {
+		headers: {
+			"Content-Type": "text/event-stream",
+			"Cache-Control": "no-store",
+			Connection: "keep-alive",
+		},
+	});
+}
+
 export const jmapApp = new Hono<JMAPHonoAppEnv>();
 
 jmapApp.use(requireJWT);
@@ -349,3 +385,4 @@ jmapApp.get("/.well-known/jmap", handleSession);
 jmapApp.post("/jmap", handleJmap);
 jmapApp.post("/jmap/upload/:accountId", handleBlobUploadHttp);
 jmapApp.get("/jmap/download/:accountId/:blobId/:name", handleBlobDownloadHttp);
+jmapApp.get("/jmap/event-source/:accountId", handleEventSource);

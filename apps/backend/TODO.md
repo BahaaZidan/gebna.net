@@ -49,7 +49,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 15. ✅ **Implement Blob endpoints** _(Necessary)_  
     Add `Blob/get`, `Blob/copy`, `Blob/lookup`, and spec-compliant download token handling instead of the current custom upload-token flow.
 
-16. **Provide push/eventing story** _(Optional)_  
+16. ✅ **Provide push/eventing story** _(Optional)_  
     Implement `PushSubscription/*` and expose a non-null `eventSourceUrl` for RFC 8887 state change notifications.
 
 17. **Extend inbound pipeline to multi-recipient** _(Necessary)_  
