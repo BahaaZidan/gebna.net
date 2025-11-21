@@ -3,7 +3,7 @@
 - [x] Replace the one-shot `/jmap/event-source` response with a long-lived SSE stream that emits incremental state diffs from `change_log` (`apps/backend/src/jmap.routes.ts:211-247`).
 - [x] Rework `normalizeFilter` so `Email/query` can combine multiple filter properties simultaneously instead of discarding everything after the first key (`apps/backend/src/lib/jmap/method-handlers/email-query.ts:134-247`).
 - [x] Push `Email/query` pagination/sorting into SQL with `LIMIT/OFFSET` and only compute totals when requested to avoid materializing the entire mailbox on every call (`apps/backend/src/lib/jmap/method-handlers/email-query.ts:249-284`).
-- [ ] Persist filtered query states so `Email/queryChanges` can honor a `filter` rather than returning `unsupportedFilter` for anything but the default view (`apps/backend/src/lib/jmap/method-handlers/email-query-changes.ts:22-74`).
+- [x] Persist filtered query states so `Email/queryChanges` can honor a `filter` rather than returning `unsupportedFilter` for anything but the default view (`apps/backend/src/lib/jmap/method-handlers/email-query-changes.ts:22-74`).
 - [ ] Sort the `emailIds` returned by `Thread/get` (e.g., newest first) to satisfy the ordering guarantee in RFC 8621 (`apps/backend/src/lib/jmap/method-handlers/thread-get.ts:24-55`).
 - [ ] Expand `Mailbox/query` to accept filter/sort/position arguments and correctly report `canCalculateChanges` instead of always returning the full list (`apps/backend/src/lib/jmap/method-handlers/mailbox-query.ts:15-42`).
 - [ ] Return accurate per-mailbox rights and thread counts (total/unread) in `Mailbox/get` rather than hard-coding permissive booleans for every mailbox (`apps/backend/src/lib/jmap/method-handlers/mailbox-get.ts:13-83`).

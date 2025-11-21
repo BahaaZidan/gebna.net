@@ -425,3 +425,19 @@ export const messageHeaderTable = sqliteTable(
 		index("idx_message_header_name").on(self.lowerName),
 	]
 );
+
+export const jmapQueryStateTable = sqliteTable(
+	"jmap_query_state",
+	(t) => ({
+		id: t.text().primaryKey(),
+		accountId: t
+			.text()
+			.notNull()
+			.references(() => accountTable.id, { onDelete: "cascade" }),
+		filterJson: t.text(),
+		sortJson: t.text(),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
+		lastAccessedAt: t.integer({ mode: "timestamp" }).notNull(),
+	}),
+	(self) => [index("idx_jmap_query_state_account").on(self.accountId)]
+);

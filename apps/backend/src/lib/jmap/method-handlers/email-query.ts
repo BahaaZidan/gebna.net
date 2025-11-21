@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, like, lt, or, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { Context } from "hono";
 
@@ -7,6 +7,7 @@ import {
 	accountMessageTable,
 	addressTable,
 	emailKeywordTable,
+	jmapQueryStateTable,
 	mailboxMessageTable,
 	messageAddressTable,
 	messageTable,
@@ -48,6 +49,99 @@ type QueryOptions = {
 };
 
 const DEFAULT_SORT: SortComparator[] = [{ property: "receivedAt", isAscending: false }];
+const QUERY_STATE_PREFIX = "qs:";
+
+export type StoredQueryStateRecord = {
+	filter: unknown;
+	sort: SortComparator[] | null;
+};
+
+function encodeQueryStateValue(stateId: string, modSeq: string): string {
+	return `${QUERY_STATE_PREFIX}${stateId}:${modSeq}`;
+}
+
+export function decodeQueryStateValue(value: string): { id: string; modSeq: string } | null {
+	if (!value.startsWith(QUERY_STATE_PREFIX)) return null;
+	const trimmed = value.slice(QUERY_STATE_PREFIX.length);
+	const idx = trimmed.indexOf(":");
+	if (idx === -1) return null;
+	return {
+		id: trimmed.slice(0, idx),
+		modSeq: trimmed.slice(idx + 1),
+	};
+}
+
+function stableJsonStringify(value: unknown): string {
+	if (Array.isArray(value)) {
+		return `[${value.map((item) => stableJsonStringify(item)).join(",")}]`;
+	}
+
+	if (value && typeof value === "object") {
+		const entries = Object.entries(value as Record<string, unknown>)
+			.filter(([, v]) => v !== undefined)
+			.sort(([a], [b]) => a.localeCompare(b));
+
+		return `{${entries.map(([key, v]) => `${JSON.stringify(key)}:${stableJsonStringify(v)}`).join(",")}}`;
+	}
+
+	return JSON.stringify(value ?? null);
+}
+
+async function persistQueryStateRecord(
+	db: ReturnType<typeof getDB>,
+	accountId: string,
+	filterInput: unknown,
+	sortInput: SortComparator[]
+): Promise<string> {
+	const now = new Date();
+	const id = crypto.randomUUID();
+	const filterJson = filterInput === undefined ? null : stableJsonStringify(filterInput);
+	const sortJson = sortInput && sortInput.length > 0 ? stableJsonStringify(sortInput) : null;
+
+	await db.insert(jmapQueryStateTable).values({
+		id,
+		accountId,
+		filterJson,
+		sortJson,
+		createdAt: now,
+		lastAccessedAt: now,
+	});
+
+	return id;
+}
+
+export async function loadQueryStateRecord(
+	db: ReturnType<typeof getDB>,
+	accountId: string,
+	id: string
+): Promise<StoredQueryStateRecord | null> {
+	const [row] = await db
+		.select({
+			filterJson: jmapQueryStateTable.filterJson,
+			sortJson: jmapQueryStateTable.sortJson,
+		})
+		.from(jmapQueryStateTable)
+		.where(and(eq(jmapQueryStateTable.id, id), eq(jmapQueryStateTable.accountId, accountId)))
+		.limit(1);
+
+	if (!row) {
+		return null;
+	}
+
+	await db
+		.update(jmapQueryStateTable)
+		.set({ lastAccessedAt: new Date() })
+		.where(eq(jmapQueryStateTable.id, id));
+
+	return {
+		filter: row.filterJson ? JSON.parse(row.filterJson) : null,
+		sort: row.sortJson ? (JSON.parse(row.sortJson) as SortComparator[]) : null,
+	};
+}
+
+export function filtersEqual(a: unknown, b: unknown): boolean {
+	return stableJsonStringify(a ?? null) === stableJsonStringify(b ?? null);
+}
 
 function escapeLikePattern(input: string): string {
 	return input.replace(/[\\_%]/g, (ch) => `\\${ch}`);
@@ -64,17 +158,24 @@ export async function handleEmailQuery(
 	if (!effectiveAccountId) {
 		return ["error", { type: "accountNotFound" }, tag];
 	}
-	const queryState = await getAccountState(db, effectiveAccountId, "Email");
+	const accountState = await getAccountState(db, effectiveAccountId, "Email");
 
 	const options = parseQueryOptions(args);
 
 	try {
 		const result = await runQuery(db, effectiveAccountId, options);
+		const queryStateId = await persistQueryStateRecord(
+			db,
+			effectiveAccountId,
+			args.filter ?? null,
+			options.sort
+		);
+		const encodedQueryState = encodeQueryStateValue(queryStateId, accountState);
 		return [
 			"Email/query",
 			{
 				accountId: effectiveAccountId,
-				queryState,
+				queryState: encodedQueryState,
 				canCalculateChanges: result.canCalculateChanges,
 				ids: result.ids,
 				position: result.position,
@@ -151,7 +252,7 @@ function parseQueryOptions(args: Record<string, unknown>): QueryOptions {
 	};
 }
 
-function normalizeFilter(raw: unknown): FilterCondition {
+export function normalizeFilter(raw: unknown): FilterCondition {
 	if (!raw || typeof raw !== "object") return { operator: "none" };
 	const value = raw as Record<string, unknown>;
 	const conditions: FilterCondition[] = [];
@@ -320,6 +421,28 @@ async function runQuery(
 		position: start,
 		canCalculateChanges: options.filter.operator === "none",
 	};
+}
+
+export async function filterIdsMatchingQuery(
+	db: ReturnType<typeof getDB>,
+	accountId: string,
+	filter: FilterCondition,
+	ids: string[]
+): Promise<Set<string>> {
+	if (!ids.length) {
+		return new Set();
+	}
+	if (filter.operator === "none") {
+		return new Set(ids);
+	}
+
+	const rows = await db
+		.select({ emailId: accountMessageTable.id })
+		.from(accountMessageTable)
+		.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
+		.where(and(buildWhereClause(accountId, filter), inArray(accountMessageTable.id, ids)));
+
+	return new Set(rows.map((row) => row.emailId));
 }
 
 function buildWhereClause(accountId: string, filter: FilterCondition) {
