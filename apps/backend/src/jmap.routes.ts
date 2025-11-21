@@ -1,11 +1,13 @@
 import { v } from "@gebna/validation";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 
 import { getDB } from "./db";
-import { jmapStateTable } from "./db/schema";
+import { accountBlobTable, blobTable, jmapStateTable } from "./db/schema";
 import {
+	JMAP_BLOB,
+	JMAP_BLOB_ACCOUNT_CAPABILITY,
 	JMAP_CONSTRAINTS,
 	JMAP_CORE,
 	JMAP_MAIL,
@@ -34,8 +36,16 @@ import { handleVacationResponseSet } from "./lib/jmap/method-handlers/vacation-s
 import { attachUserFromJwt, requireJWT, type JMAPHonoAppEnv } from "./lib/jmap/middlewares";
 import { JmapHandlerResult, JmapMethodResponse } from "./lib/jmap/types";
 import { handleMailboxSet } from "./lib/jmap/method-handlers/mailbox-set";
+import { handleBlobCopy, handleBlobGet, handleBlobLookup } from "./lib/jmap/method-handlers/blob";
+import { sha256HexFromArrayBuffer } from "./lib/utils";
 
-const SUPPORTED_CAPABILITIES = new Set([JMAP_CORE, JMAP_MAIL, JMAP_SUBMISSION, JMAP_VACATION]);
+const SUPPORTED_CAPABILITIES = new Set([
+	JMAP_CORE,
+	JMAP_MAIL,
+	JMAP_SUBMISSION,
+	JMAP_VACATION,
+	JMAP_BLOB,
+]);
 
 const JmapMethodCallSchema = v.tuple([
 	v.string(), // name
@@ -90,6 +100,7 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 					[JMAP_MAIL]: {},
 					[JMAP_SUBMISSION]: {},
 					[JMAP_VACATION]: {},
+					[JMAP_BLOB]: JMAP_BLOB_ACCOUNT_CAPABILITY,
 				},
 			},
 		},
@@ -98,6 +109,7 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 			[JMAP_MAIL]: accountId,
 			[JMAP_SUBMISSION]: accountId,
 			[JMAP_VACATION]: accountId,
+			[JMAP_BLOB]: accountId,
 		},
 		username: userId,
 		apiUrl: c.env.BASE_API_URL,
@@ -131,6 +143,9 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Identity/set": handleIdentitySet,
 	"VacationResponse/get": handleVacationResponseGet,
 	"VacationResponse/set": handleVacationResponseSet,
+	"Blob/get": handleBlobGet,
+	"Blob/copy": handleBlobCopy,
+	"Blob/lookup": handleBlobLookup,
 };
 
 async function handleJmap(c: Context<JMAPHonoAppEnv>) {
@@ -180,6 +195,151 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 	return c.json({ methodResponses });
 }
 
+async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Response> {
+	const accountIdParam = c.req.param("accountId");
+	const effectiveAccountId = c.get("accountId");
+	if (accountIdParam !== effectiveAccountId) {
+		return c.json({ type: "forbidden", description: "Account access denied" }, 403);
+	}
+
+	const contentLengthHeader = c.req.header("Content-Length");
+	const maxSize = JMAP_CONSTRAINTS[JMAP_CORE].maxSizeUpload;
+	if (contentLengthHeader) {
+		const parsed = Number(contentLengthHeader);
+		if (!Number.isFinite(parsed) || parsed < 0) {
+			return c.json({ type: "invalidArguments", description: "Invalid Content-Length" }, 400);
+		}
+		if (maxSize && parsed > maxSize) {
+			return c.json({ type: "invalidArguments", description: "Upload too large" }, 413);
+		}
+	}
+
+	const body = await c.req.arrayBuffer();
+	if (!body.byteLength) {
+		return c.json({ type: "invalidArguments", description: "Empty upload" }, 400);
+	}
+	if (maxSize && body.byteLength > maxSize) {
+		return c.json({ type: "invalidArguments", description: "Upload too large" }, 413);
+	}
+
+	const contentType = c.req.header("Content-Type") ?? "application/octet-stream";
+	const blobId = await sha256HexFromArrayBuffer(body);
+	const key = blobId;
+	await c.env.R2_EMAILS.put(key, body, {
+		httpMetadata: {
+			contentType,
+		},
+	});
+
+	const db = getDB(c.env);
+	const now = new Date();
+	await db.transaction(async (tx) => {
+		await tx
+			.insert(blobTable)
+			.values({ sha256: blobId, size: body.byteLength, r2Key: key, createdAt: now })
+			.onConflictDoUpdate({
+				target: blobTable.sha256,
+				set: { size: body.byteLength, r2Key: key, createdAt: now },
+			});
+		await tx
+			.insert(accountBlobTable)
+			.values({ accountId: effectiveAccountId, sha256: blobId, createdAt: now })
+			.onConflictDoNothing({ target: [accountBlobTable.accountId, accountBlobTable.sha256] });
+	});
+
+	return c.json(
+		{
+			accountId: effectiveAccountId,
+			blobId,
+			type: contentType,
+			size: body.byteLength,
+		},
+		201
+	);
+}
+
+async function handleBlobDownloadHttp(c: Context<JMAPHonoAppEnv>): Promise<Response> {
+	const params = c.req.param();
+	const requestedAccountId = params.accountId;
+	const effectiveAccountId = c.get("accountId");
+	if (requestedAccountId !== effectiveAccountId) {
+		return c.json({ type: "forbidden", description: "Account access denied" }, 403);
+	}
+
+	const blobId = params.blobId;
+	const requestedName = decodeURIComponent(params.name ?? "blob");
+	const typeParam = c.req.query("type");
+	if (!typeParam) {
+		return c.json({ type: "invalidArguments", description: "type query param required" }, 400);
+	}
+	const decodedType = decodeURIComponent(typeParam);
+	const safeType = sanitizeMimeType(decodedType);
+	if (!safeType) {
+		return c.json({ type: "invalidArguments", description: "Invalid content type" }, 400);
+	}
+
+	const safeName = sanitizeFileName(requestedName);
+	const db = getDB(c.env);
+	const [row] = await db
+		.select({ size: blobTable.size, r2Key: blobTable.r2Key })
+		.from(accountBlobTable)
+		.innerJoin(blobTable, eq(blobTable.sha256, accountBlobTable.sha256))
+		.where(and(eq(accountBlobTable.accountId, effectiveAccountId), eq(accountBlobTable.sha256, blobId)))
+		.limit(1);
+
+	if (!row) {
+		return c.json({ type: "notFound", description: "Blob not found" }, 404);
+	}
+
+	const object = await c.env.R2_EMAILS.get(row.r2Key ?? blobId);
+	if (!object || !object.body) {
+		return c.json({ type: "notFound", description: "Blob not found" }, 404);
+	}
+
+	const etag = `"${blobId}"`;
+	const ifNoneMatch = c.req.header("If-None-Match");
+	if (ifNoneMatch && ifNoneMatch.split(",").map((v) => v.trim()).includes(etag)) {
+		return new Response(null, {
+			status: 304,
+			headers: {
+				ETag: etag,
+				"Cache-Control": "private, immutable, max-age=31536000",
+			},
+		});
+	}
+
+	const headers: Record<string, string> = {
+		"Content-Type": safeType,
+		ETag: etag,
+		"Cache-Control": "private, immutable, max-age=31536000",
+		"X-Content-Type-Options": "nosniff",
+		"Content-Disposition": `attachment; filename="${encodeURIComponent(
+			safeName
+		)}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+	};
+	if (row.size !== null && row.size !== undefined) {
+		headers["Content-Length"] = String(row.size);
+	}
+	if (object.uploaded) {
+		headers["Last-Modified"] = object.uploaded.toUTCString();
+	}
+
+	return new Response(object.body, { status: 200, headers });
+}
+
+function sanitizeMimeType(value: string): string | null {
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	if (!/^[0-9A-Za-z!#$&^_.+-]+\/[0-9A-Za-z!#$&^_.+-]+$/.test(trimmed)) {
+		return null;
+	}
+	return trimmed;
+}
+
+function sanitizeFileName(value: string): string {
+	return value.replace(/\r|\n/g, "").replace(/"/g, "");
+}
+
 export const jmapApp = new Hono<JMAPHonoAppEnv>();
 
 jmapApp.use(requireJWT);
@@ -187,3 +347,5 @@ jmapApp.use(attachUserFromJwt);
 
 jmapApp.get("/.well-known/jmap", handleSession);
 jmapApp.post("/jmap", handleJmap);
+jmapApp.post("/jmap/upload/:accountId", handleBlobUploadHttp);
+jmapApp.get("/jmap/download/:accountId/:blobId/:name", handleBlobDownloadHttp);

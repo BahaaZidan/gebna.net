@@ -3,19 +3,13 @@ import { Hono } from "hono";
 
 import { auth } from "./auth.routes";
 import { email } from "./email-inbound";
-import { jmapFilesApp } from "./jmap-blob.routes";
 import { jmapApp } from "./jmap.routes";
-import {
-	cleanupExpiredUploadTokensForEnv,
-	cleanupOrphanedBlobsForEnv,
-	enforceMailboxRoleConstraintsForEnv,
-} from "./lib/maintenance/upload-cleanup";
+import { cleanupOrphanedBlobsForEnv, enforceMailboxRoleConstraintsForEnv } from "./lib/maintenance/upload-cleanup";
 import { processEmailSubmissionQueue } from "./lib/outbound/submission-queue";
 import { sesWebhookApp } from "./ses-webhook.routes";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 app.route("/auth", auth);
-app.route("/blobs", jmapFilesApp);
 app.route("/", jmapApp);
 app.route("/ses", sesWebhookApp);
 
@@ -39,7 +33,6 @@ export default class extends WorkerEntrypoint<CloudflareBindings> {
 				await processEmailSubmissionQueue(this.env);
 				break;
 			case "0 * * * *":
-				await cleanupExpiredUploadTokensForEnv(this.env);
 				await cleanupOrphanedBlobsForEnv(this.env);
 				await enforceMailboxRoleConstraintsForEnv(this.env);
 				break;

@@ -2,6 +2,7 @@ export const JMAP_CORE = "urn:ietf:params:jmap:core";
 export const JMAP_MAIL = "urn:ietf:params:jmap:mail";
 export const JMAP_SUBMISSION = "urn:ietf:params:jmap:submission";
 export const JMAP_VACATION = "urn:ietf:params:jmap:vacationresponse";
+export const JMAP_BLOB = "urn:ietf:params:jmap:blob";
 
 export const JMAP_CONSTRAINTS = {
 	[JMAP_CORE]: {
@@ -39,4 +40,13 @@ export const JMAP_CONSTRAINTS = {
 	[JMAP_SUBMISSION]: {},
 
 	[JMAP_VACATION]: {},
+
+	[JMAP_BLOB]: {},
+};
+
+export const JMAP_BLOB_ACCOUNT_CAPABILITY = {
+	maxSizeBlobSet: JMAP_CONSTRAINTS[JMAP_CORE].maxSizeUpload,
+	maxDataSources: 1,
+	supportedTypeNames: ["Email"],
+	supportedDigestAlgorithms: ["sha-256"],
 };

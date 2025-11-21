@@ -9,7 +9,6 @@ import {
 	blobTable,
 	emailKeywordTable,
 	mailboxMessageTable,
-	uploadTable,
 } from "../../../db/schema";
 import {
 	buildBodyStructure,
@@ -290,7 +289,6 @@ type PreparedEmailCreate = {
 	bodyStructureJson: string | null;
 	flags: KeywordFlags;
 	customKeywords: Record<string, boolean>;
-	uploadTokenId?: string | null;
 	internalDate?: Date | null;
 };
 
@@ -350,44 +348,23 @@ async function prepareEmailCreate(opts: {
 			bodyStructureJson: structuredDraft.bodyStructureJson,
 			flags,
 			customKeywords: custom,
-			uploadTokenId: null,
 			internalDate: now,
 		};
 	}
 
 	const blobIdValue = rawCreate.blobId;
 	if (typeof blobIdValue !== "string" || blobIdValue.length === 0) {
-		throw new EmailSetProblem(
-			"invalidProperties",
-			"blobId must be a non-empty string when uploadToken is used"
-		);
+		throw new EmailSetProblem("invalidProperties", "blobId must be a non-empty string");
 	}
 
-	const uploadTokenValue = rawCreate.uploadToken;
-	if (typeof uploadTokenValue !== "string" || uploadTokenValue.length === 0) {
-		throw new EmailSetProblem("invalidProperties", "uploadToken must be provided");
-	}
-
-	const [tokenRow] = await db
-		.select({
-			blobSha256: uploadTable.blobSha256,
-			expiresAt: uploadTable.expiresAt,
-		})
-		.from(uploadTable)
-		.where(and(eq(uploadTable.id, uploadTokenValue), eq(uploadTable.accountId, accountId)))
+	const [blobMapping] = await db
+		.select({ sha256: accountBlobTable.sha256 })
+		.from(accountBlobTable)
+		.where(and(eq(accountBlobTable.accountId, accountId), eq(accountBlobTable.sha256, blobIdValue)))
 		.limit(1);
 
-	if (!tokenRow) {
-		throw new EmailSetProblem("invalidProperties", "uploadToken is invalid or expired");
-	}
-
-	if (tokenRow.blobSha256 !== blobIdValue) {
-		throw new EmailSetProblem("invalidProperties", "uploadToken does not match blobId");
-	}
-
-	if (tokenRow.expiresAt && tokenRow.expiresAt.getTime() <= now.getTime()) {
-		await db.delete(uploadTable).where(eq(uploadTable.id, uploadTokenValue));
-		throw new EmailSetProblem("invalidProperties", "uploadToken has expired");
+	if (!blobMapping) {
+		throw new EmailSetProblem("invalidProperties", "blobId not found for this account");
 	}
 
 	const parsedBlob = await prepareEmailFromBlob({
@@ -409,7 +386,6 @@ async function prepareEmailCreate(opts: {
 		bodyStructureJson: parsedBlob.bodyStructureJson,
 		flags,
 		customKeywords: custom,
-		uploadTokenId: uploadTokenValue,
 		internalDate: now,
 	};
 }
@@ -456,7 +432,7 @@ async function maybePrepareStructuredDraft(
 		rawBytes.byteOffset + rawBytes.byteLength
 	) as ArrayBuffer;
 	const blobId = await sha256HexFromArrayBuffer(rawBuffer);
-	const key = `blob/${blobId}`;
+	const key = blobId;
 
 	await env.R2_EMAILS.put(key, rawBytes, {
 		httpMetadata: {
@@ -643,7 +619,7 @@ async function prepareEmailFromBlob(opts: {
 		throw new EmailSetProblem("invalidProperties", "blobId not found for this account");
 	}
 
-	const r2Key = blobRow.r2Key ?? `blob/${blobId}`;
+	const r2Key = blobRow.r2Key ?? blobId;
 	const obj = await env.R2_EMAILS.get(r2Key);
 	if (!obj || !obj.body) {
 		throw new EmailSetProblem("invalidProperties", "Blob data is unavailable");
@@ -760,10 +736,6 @@ await tx.insert(accountMessageTable).values({
 		mailboxIds: prepared.mailboxIds,
 		now,
 	});
-
-	if (prepared.uploadTokenId) {
-		await tx.delete(uploadTable).where(eq(uploadTable.id, prepared.uploadTokenId));
-	}
 
 	return { accountMessageId, threadId };
 }

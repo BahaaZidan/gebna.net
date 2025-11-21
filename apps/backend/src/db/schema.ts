@@ -293,30 +293,6 @@ export const emailKeywordTable = sqliteTable(
 	]
 );
 
-export const uploadTable = sqliteTable(
-	"upload",
-	(t) => ({
-		id: t.text().primaryKey(),
-		accountId: t
-			.text()
-			.notNull()
-			.references(() => accountTable.id, { onDelete: "cascade" }),
-		blobSha256: t
-			.text()
-			.notNull()
-			.references(() => blobTable.sha256, { onDelete: "cascade" }),
-		type: t.text().notNull(),
-		name: t.text(),
-		size: t.integer().notNull(),
-		expiresAt: t.integer({ mode: "timestamp" }).notNull(),
-		createdAt: t.integer({ mode: "timestamp" }).notNull(),
-	}),
-	(self) => [
-		index("idx_upload_account").on(self.accountId),
-		index("idx_upload_expires").on(self.expiresAt),
-	]
-);
-
 export const identityTable = sqliteTable(
 	"identity",
 	(t) => ({
