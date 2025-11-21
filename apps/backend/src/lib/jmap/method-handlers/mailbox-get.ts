@@ -60,28 +60,21 @@ export async function handleMailboxGet(
 		});
 	}
 
-	const ownerRights = {
-		mayReadItems: true,
-		mayAddItems: true,
-		mayRemoveItems: true,
-		mayCreateChild: true,
-		mayRename: true,
-		mayDelete: true,
-		maySetSeen: true,
-		maySetKeywords: true,
-		maySubmit: true,
-	};
+	const list = rows.map((row) => {
+		const role = row.role ?? null;
+		const rights = getRightsForRole(role);
 
-	const list = rows.map((row) => ({
-		id: row.id,
-		name: row.name,
-		parentId: row.parentId,
-		role: row.role,
-		sortOrder: row.sortOrder,
-		totalEmails: countMap.get(row.id)?.total ?? 0,
-		unreadEmails: countMap.get(row.id)?.unread ?? 0,
-		myRights: ownerRights,
-	}));
+		return {
+			id: row.id,
+			name: row.name,
+			parentId: row.parentId,
+			role,
+			sortOrder: row.sortOrder,
+			totalEmails: countMap.get(row.id)?.total ?? 0,
+			unreadEmails: countMap.get(row.id)?.unread ?? 0,
+			myRights: rights,
+		};
+	});
 
 	const foundIds = new Set(list.map((m) => m.id));
 	const notFound = ids ? ids.filter((id) => !foundIds.has(id)) : [];
@@ -96,4 +89,45 @@ export async function handleMailboxGet(
 		},
 		tag,
 	];
+}
+
+type MailboxRights = {
+	mayReadItems: boolean;
+	mayAddItems: boolean;
+	mayRemoveItems: boolean;
+	mayCreateChild: boolean;
+	mayRename: boolean;
+	mayDelete: boolean;
+	maySetSeen: boolean;
+	maySetKeywords: boolean;
+	maySubmit: boolean;
+};
+
+const BASE_RIGHTS: MailboxRights = {
+	mayReadItems: true,
+	mayAddItems: true,
+	mayRemoveItems: true,
+	mayCreateChild: true,
+	mayRename: true,
+	mayDelete: true,
+	maySetSeen: true,
+	maySetKeywords: true,
+	maySubmit: true,
+};
+
+const ROLE_RIGHTS: Record<string, Partial<MailboxRights>> = {
+	inbox: { mayCreateChild: false, mayRename: false, mayDelete: false },
+	sent: { mayRename: false, mayDelete: false },
+	drafts: { mayRename: false, mayDelete: false },
+	trash: { mayCreateChild: false, mayRename: false, mayDelete: false },
+	spam: { mayCreateChild: false, mayRename: false, mayDelete: false },
+};
+
+function createRights(overrides: Partial<MailboxRights> = {}): MailboxRights {
+	return { ...BASE_RIGHTS, ...overrides };
+}
+
+function getRightsForRole(role: string | null): MailboxRights {
+	const overrides = role ? ROLE_RIGHTS[role] ?? {} : {};
+	return createRights(overrides);
 }
