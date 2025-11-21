@@ -148,6 +148,55 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Blob/lookup": handleBlobLookup,
 };
 
+type CreationReferenceMap = Map<string, string>;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function resolveStringReference(value: string, refs: CreationReferenceMap): string {
+	if (value.startsWith("#") && value.length > 1) {
+		const resolved = refs.get(value.slice(1));
+		if (resolved) {
+			return resolved;
+		}
+	}
+	return value;
+}
+
+function cloneWithResultReferences<T>(value: T, refs: CreationReferenceMap): T {
+	if (typeof value === "string") {
+		return resolveStringReference(value, refs) as T;
+	}
+	if (Array.isArray(value)) {
+		return value.map((entry) => cloneWithResultReferences(entry, refs)) as T;
+	}
+	if (isPlainObject(value)) {
+		const next: Record<string, unknown> = {};
+		for (const [key, entry] of Object.entries(value)) {
+			const resolvedKey = resolveStringReference(key, refs);
+			next[resolvedKey] = cloneWithResultReferences(entry, refs);
+		}
+		return next as T;
+	}
+	return value;
+}
+
+function captureCreationReferences(response: JmapMethodResponse, refs: CreationReferenceMap): void {
+	const payload = response[1];
+	if (!isPlainObject(payload)) return;
+	const created = payload.created;
+	if (!isPlainObject(created)) return;
+
+	for (const [creationId, record] of Object.entries(created)) {
+		if (!isPlainObject(record)) continue;
+		const objectId = record.id;
+		if (typeof objectId === "string" && objectId.length > 0) {
+			refs.set(creationId, objectId);
+		}
+	}
+}
+
 async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 	const body = await c.req.json();
 	const parsed = v.safeParse(JmapRequestSchema, body);
@@ -169,6 +218,7 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 	}
 
 	const methodResponses: JmapMethodResponse[] = [];
+	const creationReferences: CreationReferenceMap = new Map();
 
 	for (const [name, args, tag] of req.methodCalls) {
 		try {
@@ -178,13 +228,17 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 				continue;
 			}
 
-			const resp = await handler(c, args as Record<string, unknown>, tag);
+			const resolvedArgs = cloneWithResultReferences(args as Record<string, unknown>, creationReferences);
+			const resp = await handler(c, resolvedArgs, tag);
 			if (Array.isArray(resp[0])) {
 				for (const nested of resp as JmapMethodResponse[]) {
 					methodResponses.push(nested);
+					captureCreationReferences(nested, creationReferences);
 				}
 			} else {
-				methodResponses.push(resp as JmapMethodResponse);
+				const single = resp as JmapMethodResponse;
+				methodResponses.push(single);
+				captureCreationReferences(single, creationReferences);
 			}
 		} catch (err) {
 			console.error("JMAP method error", name, err);
