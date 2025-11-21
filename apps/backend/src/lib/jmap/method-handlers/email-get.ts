@@ -11,6 +11,7 @@ import {
 	messageHeaderTable,
 	messageTable,
 } from "../../../db/schema";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
@@ -62,6 +63,11 @@ export async function handleEmailGet(
 	if (!ids.length) {
 		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 	}
+	const maxObjectsLimit = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
+	const limitedIds = ids.slice(0, maxObjectsLimit);
+	if (!limitedIds.length) {
+		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: ids }, tag];
+	}
 
 	const propertiesArg = args.properties as string[] | undefined;
 	const properties = Array.isArray(propertiesArg) ? propertiesArg : undefined;
@@ -94,7 +100,7 @@ export async function handleEmailGet(
 			and(
 				eq(accountMessageTable.accountId, effectiveAccountId),
 				eq(accountMessageTable.isDeleted, false),
-				inArray(accountMessageTable.id, ids)
+				inArray(accountMessageTable.id, limitedIds)
 			)
 		);
 
@@ -150,11 +156,14 @@ export async function handleEmailGet(
 				)
 		: [];
 
-	const mailboxMap = new Map<string, string[]>();
+	const mailboxMap = new Map<string, Record<string, boolean>>();
 	for (const row of mailboxRows) {
-		const arr = mailboxMap.get(row.emailId) ?? [];
-		arr.push(row.mailboxId);
-		mailboxMap.set(row.emailId, arr);
+		let entry = mailboxMap.get(row.emailId);
+		if (!entry) {
+			entry = {};
+			mailboxMap.set(row.emailId, entry);
+		}
+		entry[row.mailboxId] = true;
 	}
 
 	const keywordRows = shouldInclude("keywords")
@@ -255,13 +264,13 @@ export async function handleEmailGet(
 	}
 
 	type EmailRecord = Record<string, unknown> & { id: string };
-	const list: EmailRecord[] = [];
+	const emailsById = new Map<string, EmailRecord>();
 
 	for (const row of rows) {
 		const email: EmailRecord = { id: row.emailId };
 
 		if (shouldInclude("threadId")) email.threadId = row.threadId;
-		if (shouldInclude("mailboxIds")) email.mailboxIds = mailboxMap.get(row.emailId) ?? [];
+		if (shouldInclude("mailboxIds")) email.mailboxIds = mailboxMap.get(row.emailId) ?? {};
 		if (shouldInclude("subject")) email.subject = row.subject;
 		if (shouldInclude("sentAt")) {
 			email.sentAt = row.sentAt ? new Date(row.sentAt).toISOString() : null;
@@ -358,10 +367,17 @@ export async function handleEmailGet(
 			email.bodyValues = bodyValues;
 		}
 
-		list.push(email);
+		emailsById.set(row.emailId, email);
 	}
 
-	const foundIds = new Set(list.map((e) => e.id));
+	const list: EmailRecord[] = [];
+	const foundIds = new Set<string>();
+	for (const id of limitedIds) {
+		const email = emailsById.get(id);
+		if (!email) continue;
+		list.push(email);
+		foundIds.add(id);
+	}
 	const notFound = ids.filter((id) => !foundIds.has(id));
 
 	return [
