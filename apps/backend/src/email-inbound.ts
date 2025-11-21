@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type {
 	Address as ParsedAddress,
 	Attachment as ParsedAttachment,
@@ -279,9 +279,11 @@ export async function email(
 
 		const senderAddress = getPrimarySenderAddress(email);
 		const autoSubmitted = hasAutoSubmittedHeader(email);
-		let storedAccountId: string | null = null;
-		let storedAccountMessageId: string | null = null;
-		let storedAccountAddress: string | null = null;
+		const deliveries: {
+			accountId: string;
+			accountMessageId: string;
+			accountAddress: string;
+		}[] = [];
 
 		await db.transaction(async (tx) => {
 			// 1) Blob for raw MIME
@@ -316,139 +318,185 @@ export async function email(
 			// 5) Addresses
 			await storeAddresses({ tx, canonicalMessageId, email });
 
-			// 6) Per-recipient handling
-			const rcpt = normalizeEmail(message.to);
-			if (!rcpt) {
-				console.warn("Inbound email with empty recipient");
+			const recipientAddresses = collectRecipientAddresses(message, email);
+			if (recipientAddresses.length === 0) {
+				console.warn("Inbound email with no resolvable recipients");
 				return;
 			}
 
-			const [accountRow] = await tx
-				.select({ id: accountTable.id })
+			const accountRows = await tx
+				.select({ id: accountTable.id, address: accountTable.address })
 				.from(accountTable)
-				.where(eq(accountTable.address, rcpt))
-				.limit(1);
+				.where(inArray(accountTable.address, recipientAddresses));
 
-			if (!accountRow) {
-				console.warn("No local account for recipient", rcpt);
+			if (!accountRows.length) {
+				console.warn("No local account for recipients", recipientAddresses);
 				return;
 			}
 
-			const accountId = accountRow.id;
-			const internalDate = now;
-
-			// Link blobs to account (raw MIME)
-			await ensureAccountBlob(tx, accountId, rawSha, now);
-
-			// Link blobs to account (attachments)
-			for (const sha of attachmentBlobShas) {
-				await ensureAccountBlob(tx, accountId, sha, now);
-			}
-
-			const threadId = await resolveOrCreateThreadId({
-				tx,
-				accountId,
-				subject: email.subject ?? null,
-				internalDate,
-				inReplyTo: email.inReplyTo ?? null,
-				referencesHeader: email.references ?? null,
-			});
-
-			// accountMessage (per-account listing)
-			const insertResult = await tx
-				.insert(accountMessageTable)
-				.values({
-					id: crypto.randomUUID(),
-					accountId,
-					messageId: canonicalMessageId,
-					threadId,
-					internalDate,
-					isSeen: false,
-					isFlagged: false,
-					isAnswered: false,
-					isDraft: false,
-					isDeleted: false,
-					createdAt: now,
-					updatedAt: now,
-				})
-				.onConflictDoNothing({
-					target: [accountMessageTable.accountId, accountMessageTable.messageId],
-				})
-				.returning({ id: accountMessageTable.id });
-
-			let accountMessageId = insertResult[0]?.id as string | undefined;
-
-			if (!accountMessageId) {
-				const [existing] = await tx
-					.select({ id: accountMessageTable.id })
-					.from(accountMessageTable)
-					.where(
-						and(
-							eq(accountMessageTable.accountId, accountId),
-							eq(accountMessageTable.messageId, canonicalMessageId)
-						)
-					)
-					.limit(1);
-
-				if (!existing) {
-					throw new Error("Failed to upsert accountMessage");
+			const targets = new Map<string, { accountId: string; address: string }>();
+			for (const row of accountRows) {
+				if (!row.address) continue;
+				if (!targets.has(row.id)) {
+					targets.set(row.id, { accountId: row.id, address: row.address });
 				}
-				accountMessageId = existing.id;
 			}
 
-			// Put into Inbox
-			const mailboxIds: string[] = [];
-			const inboxId = await getInboxMailboxId(tx, accountId);
-			if (!inboxId) {
-				console.warn("No Inbox mailbox for account", accountId);
-			} else {
-				mailboxIds.push(inboxId);
-				await tx
-					.insert(mailboxMessageTable)
+			for (const target of targets.values()) {
+				const accountId = target.accountId;
+				const internalDate = now;
+
+				await ensureAccountBlob(tx, accountId, rawSha, now);
+				for (const sha of attachmentBlobShas) {
+					await ensureAccountBlob(tx, accountId, sha, now);
+				}
+
+				const threadId = await resolveOrCreateThreadId({
+					tx,
+					accountId,
+					subject: email.subject ?? null,
+					internalDate,
+					inReplyTo: email.inReplyTo ?? null,
+					referencesHeader: email.references ?? null,
+				});
+
+				const insertResult = await tx
+					.insert(accountMessageTable)
 					.values({
-						accountMessageId,
-						mailboxId: inboxId,
-						addedAt: now,
+						id: crypto.randomUUID(),
+						accountId,
+						messageId: canonicalMessageId,
+						threadId,
+						internalDate,
+						isSeen: false,
+						isFlagged: false,
+						isAnswered: false,
+						isDraft: false,
+						isDeleted: false,
+						createdAt: now,
+						updatedAt: now,
 					})
-					.onConflictDoNothing();
+					.onConflictDoNothing({
+						target: [accountMessageTable.accountId, accountMessageTable.messageId],
+					})
+					.returning({ id: accountMessageTable.id });
+
+				let accountMessageId = insertResult[0]?.id as string | undefined;
+
+				if (!accountMessageId) {
+					const [existing] = await tx
+						.select({ id: accountMessageTable.id })
+						.from(accountMessageTable)
+						.where(
+							and(
+								eq(accountMessageTable.accountId, accountId),
+								eq(accountMessageTable.messageId, canonicalMessageId)
+							)
+						)
+						.limit(1);
+
+					if (!existing) {
+						throw new Error("Failed to upsert accountMessage");
+					}
+					accountMessageId = existing.id;
+				}
+
+				const mailboxIds: string[] = [];
+				const inboxId = await getInboxMailboxId(tx, accountId);
+				if (!inboxId) {
+					console.warn("No Inbox mailbox for account", accountId);
+				} else {
+					mailboxIds.push(inboxId);
+					await tx
+						.insert(mailboxMessageTable)
+						.values({
+							accountMessageId,
+							mailboxId: inboxId,
+							addedAt: now,
+						})
+						.onConflictDoNothing();
+				}
+
+				await recordEmailCreateChanges({
+					tx,
+					accountId,
+					accountMessageId,
+					threadId,
+					mailboxIds,
+					now,
+				});
+
+				deliveries.push({
+					accountId,
+					accountMessageId,
+					accountAddress: target.address,
+				});
 			}
-
-			// Record JMAP changes for /changes
-			await recordEmailCreateChanges({
-				tx,
-				accountId,
-				accountMessageId,
-				threadId,
-				mailboxIds,
-				now,
-			});
-
-			storedAccountId = accountId;
-			storedAccountMessageId = accountMessageId;
-			storedAccountAddress = rcpt;
 		});
 
-		if (
-			storedAccountId &&
-			storedAccountMessageId &&
-			storedAccountAddress &&
-			senderAddress &&
-			senderAddress !== storedAccountAddress &&
-			!autoSubmitted
-		) {
-			await maybeSendVacationAutoReply({
-				db,
-				env,
-				accountId: storedAccountId,
-				accountAddress: storedAccountAddress,
-				senderAddress,
-				originalSubject: email.subject ?? null,
-				accountMessageId: storedAccountMessageId,
-			});
+		if (senderAddress && !autoSubmitted) {
+			for (const delivery of deliveries) {
+				if (senderAddress === delivery.accountAddress) continue;
+				await maybeSendVacationAutoReply({
+					db,
+					env,
+					accountId: delivery.accountId,
+					accountAddress: delivery.accountAddress,
+					senderAddress,
+					originalSubject: email.subject ?? null,
+					accountMessageId: delivery.accountMessageId,
+				});
+			}
 		}
 
 		console.log("Inbound email stored with ingestId", ingestId);
 	} catch (err) {
 		console.error("Error handling inbound email", err);
 	}
+}
+function collectRecipientAddresses(
+	message: ForwardableEmailMessage,
+	email: ParsedEmail
+): string[] {
+	const recipients = new Set<string>();
+
+	const pushAddress = (value: string | null | undefined) => {
+		const normalized = normalizeEmail(value);
+		if (normalized) {
+			recipients.add(normalized);
+		}
+	};
+
+	const collectFromParsed = (value: ParsedEmail["to"]) => {
+		if (!value) return;
+		if (Array.isArray(value)) {
+			for (const entry of value) {
+				if (!entry) continue;
+				if (typeof entry === "string") {
+					pushAddress(entry);
+				} else if (Array.isArray(entry)) {
+					for (const nested of entry) {
+						if (typeof nested === "string") {
+							pushAddress(nested);
+						} else if (nested && typeof nested === "object") {
+							pushAddress((nested as ParsedAddress).address ?? null);
+						}
+					}
+				} else if (typeof entry === "object") {
+					pushAddress((entry as ParsedAddress).address ?? null);
+				}
+			}
+		} else if (typeof value === "string") {
+			pushAddress(value);
+		} else if (typeof value === "object") {
+			pushAddress((value as ParsedAddress).address ?? null);
+		}
+	};
+
+	pushAddress(message.to);
+	collectFromParsed(email.to);
+	collectFromParsed(email.cc);
+	collectFromParsed(email.bcc);
+
+	return Array.from(recipients);
 }
