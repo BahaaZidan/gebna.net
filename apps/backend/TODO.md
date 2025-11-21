@@ -22,7 +22,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 6. ✅ **Support full `Email/set` drafting workflow** _(Necessary)_  
    Allow patching addresses, headers, body structures, signatures, and metadata without forcing clients to upload pre-built MIME blobs.
 
-7. **Add conditional writes with `ifInState`** _(Necessary)_  
+7. ✅ **Add conditional writes with `ifInState`** _(Necessary)_  
    Enforce optimistic concurrency for `Email/set`, `Mailbox/set`, `Identity/set`, etc., to prevent lost updates.
 
 8. ✅ **Implement `Email/copy` and `Email/import`** _(Necessary)_  

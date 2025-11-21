@@ -201,6 +201,10 @@ export async function handleMailboxSet(
 	}
 
 	const oldState = await getAccountState(db, effectiveAccountId, "Mailbox");
+	const ifInState = args.ifInState as string | undefined;
+	if (ifInState && ifInState !== oldState) {
+		return ["error", { type: "stateMismatch" }, tag];
+	}
 	const createMap = (args.create as Record<string, unknown> | undefined) ?? {};
 	const updateMap = (args.update as Record<string, unknown> | undefined) ?? {};
 	const destroyList = (args.destroy as string[] | undefined) ?? [];

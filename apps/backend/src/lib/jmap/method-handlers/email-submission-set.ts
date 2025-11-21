@@ -31,6 +31,10 @@ export async function handleEmailSubmissionSet(
 	}
 
 	const state = await getAccountState(db, effectiveAccountId, "EmailSubmission");
+	const ifInState = args.ifInState as string | undefined;
+	if (ifInState && ifInState !== state) {
+		return ["error", { type: "stateMismatch" }, tag];
+	}
 
 	const input: EmailSubmissionSetArgs = {
 		accountId: effectiveAccountId,
