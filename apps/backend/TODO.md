@@ -52,7 +52,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 16. ✅ **Provide push/eventing story** _(Optional)_  
     Implement `PushSubscription/*` and expose a non-null `eventSourceUrl` for RFC 8887 state change notifications.
 
-17. **Extend inbound pipeline to multi-recipient** _(Necessary)_  
+17. ✅ **Extend inbound pipeline to multi-recipient** _(Necessary)_  
     Process every local recipient on an inbound message (To/Cc/Bcc, aliases), creating separate account message rows per address.
 
 18. **Verify SES/SNS webhooks** _(Necessary)_  
