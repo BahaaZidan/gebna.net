@@ -15,9 +15,11 @@ import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
+import { parseRawEmail } from "../../mail/ingest";
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
+const INGEST_BODY_CACHE_LIMIT = 256 * 1024;
 
 type StoredBodyPart = {
 	partId: string;
@@ -358,15 +360,35 @@ export async function handleEmailGet(
 		}
 
 		if (needBodyValues && parsedStructure) {
-			const bodyValues =
-				buildBodyValuesFromStored({
-					row,
-					structure: parsedStructure,
-					includeText: fetchAllBodyValues || fetchTextBodyValues || includeBodyValuesProp,
-					includeHtml: fetchAllBodyValues || fetchHTMLBodyValues || includeBodyValuesProp,
-					maxBytes: maxBodyValueBytes,
-				}) ?? {};
-			email.bodyValues = bodyValues;
+			const { values: storedBodyValues, missingPartIds } = buildBodyValuesFromStored({
+				row,
+				structure: parsedStructure,
+				includeText: fetchAllBodyValues || fetchTextBodyValues || includeBodyValuesProp,
+				includeHtml: fetchAllBodyValues || fetchHTMLBodyValues || includeBodyValuesProp,
+				maxBytes: maxBodyValueBytes,
+			});
+
+			const combinedValues = { ...storedBodyValues };
+			if (missingPartIds.length > 0) {
+				try {
+					const streamedValues = await fetchBodyValuesFromRawMime({
+						env: c.env,
+						rawBlobSha: row.rawBlobSha256,
+						partIds: missingPartIds,
+						maxBytes: maxBodyValueBytes,
+						structure: parsedStructure,
+					});
+					for (const [partId, record] of Object.entries(streamedValues)) {
+						combinedValues[partId] = record;
+					}
+				} catch (err) {
+					console.warn("Failed to stream bodyValues", err);
+				}
+			}
+
+			if (Object.keys(combinedValues).length > 0) {
+				email.bodyValues = combinedValues;
+			}
 		}
 
 		emailsById.set(row.emailId, email);
@@ -452,36 +474,56 @@ function buildBodyValuesFromStored(params: {
 	includeText: boolean;
 	includeHtml: boolean;
 	maxBytes: number;
-}): Record<string, BodyValueRecord> | null {
+}): { values: Record<string, BodyValueRecord>; missingPartIds: string[] } {
 	const { row, structure, includeText, includeHtml, maxBytes } = params;
-	if (!includeText && !includeHtml) {
-		return null;
+	const values: Record<string, BodyValueRecord> = {};
+	const missing = new Set<string>();
+
+	if (!structure) {
+		return { values, missingPartIds: [] };
 	}
 
-	const textPart = findBodyPart(structure, (part) => part.type === "text" && part.subtype === "plain");
-	const htmlPart = findBodyPart(structure, (part) => part.type === "text" && part.subtype === "html");
-
-	const bodyValues: Record<string, BodyValueRecord> = {};
-
-	if (includeText && textPart?.partId && typeof row.textBody === "string") {
-		const { value, isTruncated } = truncateStringToBytes(row.textBody, maxBytes);
-		bodyValues[textPart.partId] = {
-			value,
-			isTruncated: isTruncated || Boolean(row.textBodyIsTruncated),
-			charset: "UTF-8",
-		};
+	if (includeText) {
+		const textParts = collectBodyParts(structure, (part) => part.type === "text" && part.subtype === "plain");
+		textParts.forEach((part, index) => {
+			const canUseStored = index === 0 && typeof row.textBody === "string";
+			if (canUseStored) {
+				const { value, isTruncated } = truncateStringToBytes(row.textBody!, maxBytes);
+				values[part.partId] = {
+					value,
+					isTruncated: isTruncated || Boolean(row.textBodyIsTruncated),
+					charset: part.charset ?? "UTF-8",
+				};
+				if (row.textBodyIsTruncated && maxBytes > INGEST_BODY_CACHE_LIMIT) {
+					missing.add(part.partId);
+				}
+			} else {
+				missing.add(part.partId);
+			}
+		});
 	}
 
-	if (includeHtml && htmlPart?.partId && typeof row.htmlBody === "string") {
-		const { value, isTruncated } = truncateStringToBytes(row.htmlBody, maxBytes);
-		bodyValues[htmlPart.partId] = {
-			value,
-			isTruncated: isTruncated || Boolean(row.htmlBodyIsTruncated),
-			charset: "UTF-8",
-		};
+	if (includeHtml) {
+		const htmlParts = collectBodyParts(structure, (part) => part.type === "text" && part.subtype === "html");
+		htmlParts.forEach((part, index) => {
+			const canUseStored = index === 0 && typeof row.htmlBody === "string";
+			if (canUseStored) {
+				const { value, isTruncated } = truncateStringToBytes(row.htmlBody!, maxBytes);
+				values[part.partId] = {
+					value,
+					isTruncated: isTruncated || Boolean(row.htmlBodyIsTruncated),
+					charset: part.charset ?? "UTF-8",
+				};
+				if (row.htmlBodyIsTruncated && maxBytes > INGEST_BODY_CACHE_LIMIT) {
+					missing.add(part.partId);
+				}
+			} else {
+				missing.add(part.partId);
+			}
+		});
 	}
 
-	return Object.keys(bodyValues).length ? bodyValues : null;
+	return { values, missingPartIds: Array.from(missing) };
 }
 
 function findBodyPart(
@@ -539,6 +581,91 @@ function collectAttachmentsFromStructure(part: StoredBodyPart | null): Attachmen
 	};
 	walk(part);
 	return records;
+}
+
+async function fetchBodyValuesFromRawMime(params: {
+	env: JMAPHonoAppEnv["Bindings"];
+	rawBlobSha: string | null;
+	partIds: string[];
+	maxBytes: number;
+	structure: StoredBodyStructure;
+}): Promise<Record<string, BodyValueRecord>> {
+	const { env, rawBlobSha, partIds, maxBytes, structure } = params;
+	if (!rawBlobSha || partIds.length === 0) {
+		return {};
+	}
+	const object = await env.R2_EMAILS.get(rawBlobSha);
+	if (!object || !object.body) {
+		return {};
+	}
+	const rawBuffer = await object.arrayBuffer();
+	const parsed = await parseRawEmail(rawBuffer);
+	const needed = new Set(partIds);
+	const collected = new Map<string, string>();
+	collectMimeTextParts(parsed.mimeTree, needed, collected, null, 0);
+
+	const result: Record<string, BodyValueRecord> = {};
+	for (const partId of partIds) {
+		const content = collected.get(partId);
+		if (!content) continue;
+		const { value, isTruncated } = truncateStringToBytes(content, maxBytes);
+		const charset = findBodyPart(structure, (part) => part.partId === partId)?.charset ?? "UTF-8";
+		result[partId] = {
+			value,
+			isTruncated,
+			charset: charset ?? "UTF-8",
+		};
+	}
+	return result;
+}
+
+function collectMimeTextParts(
+	node: unknown,
+	needed: Set<string>,
+	collected: Map<string, string>,
+	parentPartId: string | null,
+	index: number
+): void {
+	if (!node || typeof node !== "object") return;
+	const anyNode = node as {
+		childNodes?: unknown[];
+		contentType?: { parsed?: { value?: string } };
+		getTextContent?: () => string;
+		content?: Uint8Array;
+	};
+	const partId = parentPartId ? `${parentPartId}.${index + 1}` : String(index + 1);
+	const children = Array.isArray(anyNode.childNodes) ? anyNode.childNodes : [];
+	const mediaType = (anyNode.contentType?.parsed?.value ?? "").toLowerCase();
+	if (!children.length && mediaType.startsWith("text/") && needed.has(partId)) {
+		const text = extractMimeNodeText(anyNode);
+		if (typeof text === "string") {
+			collected.set(partId, text);
+		}
+	}
+	for (let i = 0; i < children.length; i++) {
+		collectMimeTextParts(children[i], needed, collected, partId, i);
+	}
+}
+
+function extractMimeNodeText(node: {
+	getTextContent?: () => string;
+	content?: Uint8Array;
+}): string | null {
+	if (typeof node.getTextContent === "function") {
+		try {
+			return node.getTextContent();
+		} catch {
+			return null;
+		}
+	}
+	if (node.content instanceof Uint8Array) {
+		try {
+			return textDecoder.decode(node.content);
+		} catch {
+			return null;
+		}
+	}
+	return null;
 }
 
 
