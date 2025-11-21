@@ -43,7 +43,7 @@ This document tracks the remaining work required for a fully fledged, secure, sp
 13. ✅ **Honor `sendAt` and undo windows** _(Necessary)_  
     Queue submissions for future delivery, respect cancelation windows, and prevent immediate send when scheduling is requested.
 
-14. **Add `onSuccessUpdateEmail` handling** _(Necessary)_  
+14. ✅ **Add `onSuccessUpdateEmail` handling** _(Necessary)_  
     When submissions succeed, update the associated Email (keywords, mailbox membership) through the standard hook rather than bespoke logic.
 
 15. **Implement Blob endpoints** _(Necessary)_  
