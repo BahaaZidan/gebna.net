@@ -778,9 +778,7 @@ function buildImplicitEmailSubmissionOps(opts: {
 		ref: string
 	): { emailId: string } | { error: string } | null => {
 		if (!ref.startsWith("#")) {
-			return {
-				error: "Only creation references (starting with #) are supported in onSuccess arguments",
-			};
+			return { emailId: ref };
 		}
 		const creationId = ref.slice(1);
 		if (!requestedCreations.has(creationId)) {
