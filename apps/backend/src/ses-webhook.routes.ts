@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { getDB } from "./db";
 import { emailSubmissionTable } from "./db/schema";
 import { isRecord } from "./lib/jmap/utils";
+import { recordUpdate } from "./lib/jmap/change-log";
 import { DeliveryStatusRecord } from "./lib/types";
 
 type SnsRecord = SNSEvent["Records"][number];
@@ -191,15 +192,27 @@ sesWebhookApp.post("/events", async (c) => {
 		if (!submissionId) continue;
 		const mapped = mapNotificationToStatus(message);
 		if (!mapped) continue;
-		await db
+		const now = new Date();
+		const updated = await db
 			.update(emailSubmissionTable)
 			.set({
 				status: mapped.queueStatus,
 				nextAttemptAt: null,
 				deliveryStatusJson: mapped.status,
-				updatedAt: new Date(),
+				updatedAt: now,
 			})
-			.where(eq(emailSubmissionTable.id, submissionId));
+			.where(eq(emailSubmissionTable.id, submissionId))
+			.returning({
+				accountId: emailSubmissionTable.accountId,
+				id: emailSubmissionTable.id,
+			});
+		if (!updated.length) continue;
+		await recordUpdate(db, {
+			accountId: updated[0]!.accountId,
+			type: "EmailSubmission",
+			objectId: updated[0]!.id,
+			now,
+		});
 		processed += 1;
 	}
 

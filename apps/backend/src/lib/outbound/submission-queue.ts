@@ -8,6 +8,7 @@ import {
 } from "../../db/schema";
 import { createOutboundTransport } from ".";
 import { DeliveryStatusRecord } from "../types";
+import { recordUpdate } from "../jmap/change-log";
 
 export const QUEUE_STATUS_PENDING = "pending";
 export const QUEUE_STATUS_SENDING = "sending";
@@ -92,7 +93,7 @@ async function claimSubmission(
 				retryCount: row.retryCount,
 				permanent: true,
 			};
-			await tx
+			const failed = await tx
 				.update(emailSubmissionTable)
 				.set({
 					status: QUEUE_STATUS_FAILED,
@@ -101,7 +102,19 @@ async function claimSubmission(
 					deliveryStatusJson: deliveryStatus,
 					updatedAt: now,
 				})
-				.where(eq(emailSubmissionTable.id, submissionId));
+				.where(eq(emailSubmissionTable.id, submissionId))
+				.returning({
+					accountId: emailSubmissionTable.accountId,
+					id: emailSubmissionTable.id,
+				});
+			if (failed.length) {
+				await recordUpdate(tx, {
+					accountId: failed[0]!.accountId,
+					type: "EmailSubmission",
+					objectId: failed[0]!.id,
+					now,
+				});
+			}
 			return null;
 		}
 
@@ -113,7 +126,7 @@ async function claimSubmission(
 				retryCount: row.retryCount,
 				permanent: true,
 			};
-			await tx
+			const failed = await tx
 				.update(emailSubmissionTable)
 				.set({
 					status: QUEUE_STATUS_FAILED,
@@ -122,7 +135,19 @@ async function claimSubmission(
 					deliveryStatusJson: deliveryStatus,
 					updatedAt: now,
 				})
-				.where(eq(emailSubmissionTable.id, submissionId));
+				.where(eq(emailSubmissionTable.id, submissionId))
+				.returning({
+					accountId: emailSubmissionTable.accountId,
+					id: emailSubmissionTable.id,
+				});
+			if (failed.length) {
+				await recordUpdate(tx, {
+					accountId: failed[0]!.accountId,
+					type: "EmailSubmission",
+					objectId: failed[0]!.id,
+					now,
+				});
+			}
 			return null;
 		}
 
@@ -130,9 +155,18 @@ async function claimSubmission(
 			.update(emailSubmissionTable)
 			.set({ status: QUEUE_STATUS_SENDING, undoStatus: "final", updatedAt: now })
 			.where(and(eq(emailSubmissionTable.id, submissionId), eq(emailSubmissionTable.status, QUEUE_STATUS_PENDING)))
-			.returning({ id: emailSubmissionTable.id });
+			.returning({
+				id: emailSubmissionTable.id,
+				accountId: emailSubmissionTable.accountId,
+			});
 
 		if (!updated.length) return null;
+		await recordUpdate(tx, {
+			accountId: updated[0]!.accountId,
+			type: "EmailSubmission",
+			objectId: updated[0]!.id,
+			now,
+		});
 
 		return {
 			id: row.id,
@@ -157,7 +191,7 @@ async function handleSendResult(
 	retryCount: number,
 	now: Date
 ): Promise<void> {
-	await db
+	const updated = await db
 		.update(emailSubmissionTable)
 		.set({
 			status: queueStatus,
@@ -166,7 +200,22 @@ async function handleSendResult(
 			deliveryStatusJson: result,
 			updatedAt: now,
 		})
-		.where(eq(emailSubmissionTable.id, submissionId));
+		.where(eq(emailSubmissionTable.id, submissionId))
+		.returning({
+			accountId: emailSubmissionTable.accountId,
+			id: emailSubmissionTable.id,
+		});
+
+	if (!updated.length) {
+		return;
+	}
+
+	await recordUpdate(db, {
+		accountId: updated[0]!.accountId,
+		type: "EmailSubmission",
+		objectId: updated[0]!.id,
+		now,
+	});
 }
 
 async function sendClaimedSubmission(
