@@ -20,10 +20,12 @@ const ALLOWED_BLOB_PROPERTIES = new Set([
 	"size",
 	"isEncodingProblem",
 	"isTruncated",
+	"type",
+	"name",
 ]);
 
 const SUPPORTED_DIGESTS = new Set(["sha-256"]);
-const SUPPORTED_LOOKUP_TYPES = new Set(["Email"]);
+const SUPPORTED_LOOKUP_TYPES = new Set(["Email", "EmailBodyValue"]);
 const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
 
 export async function handleBlobGet(
@@ -121,14 +123,19 @@ export async function handleBlobGet(
 			id: accountBlobTable.sha256,
 			size: blobTable.size,
 			r2Key: blobTable.r2Key,
+			type: accountBlobTable.type,
+			name: accountBlobTable.name,
 		})
 		.from(accountBlobTable)
 		.innerJoin(blobTable, eq(accountBlobTable.sha256, blobTable.sha256))
 		.where(and(eq(accountBlobTable.accountId, effectiveAccountId), inArray(accountBlobTable.sha256, ids)));
 
-	const blobMap = new Map<string, { size: number; r2Key: string | null }>();
+	const blobMap = new Map<
+		string,
+		{ size: number; r2Key: string | null; type: string | null; name: string | null }
+	>();
 	for (const row of rows) {
-		blobMap.set(row.id, { size: row.size ?? 0, r2Key: row.r2Key });
+		blobMap.set(row.id, { size: row.size ?? 0, r2Key: row.r2Key, type: row.type ?? null, name: row.name ?? null });
 	}
 
 	const notFound: string[] = [];
@@ -147,6 +154,8 @@ export async function handleBlobGet(
 			isEncodingProblem: false,
 			isTruncated: false,
 		};
+		entry.type = meta.type ?? null;
+		entry.name = meta.name ?? null;
 
 		const needsData =
 			wantsAutoData || wantsText || wantsBase64 || digestProps.length > 0 || offset > 0 || length !== null;
@@ -360,9 +369,41 @@ export async function handleBlobLookup(
 		return true;
 	});
 
+	const needsEmailMatches = typeNames.includes("Email");
+	const needsBodyValueMatches = typeNames.includes("EmailBodyValue");
 	const emailMatches = new Map<string, Set<string>>();
+	const emailBodyValueMatches = new Map<string, Set<string>>();
 
-	if (typeNames.includes("Email") && filteredIds.length > 0) {
+	let attachmentRows:
+		| {
+				blobId: string | null;
+				emailId: string;
+				messageId: string;
+				bodyStructure: string | null;
+		  }[]
+		| null = null;
+
+	if ((needsEmailMatches || needsBodyValueMatches) && filteredIds.length > 0) {
+		attachmentRows = await db
+			.select({
+				blobId: attachmentTable.blobSha256,
+				emailId: accountMessageTable.id,
+				messageId: messageTable.id,
+				bodyStructure: messageTable.bodyStructureJson,
+			})
+			.from(attachmentTable)
+			.innerJoin(messageTable, eq(attachmentTable.messageId, messageTable.id))
+			.innerJoin(accountMessageTable, eq(accountMessageTable.messageId, messageTable.id))
+			.where(
+				and(
+					eq(accountMessageTable.accountId, effectiveAccountId),
+					eq(accountMessageTable.isDeleted, false),
+					inArray(attachmentTable.blobSha256, filteredIds)
+				)
+			);
+	}
+
+	if (needsEmailMatches && filteredIds.length > 0) {
 		const rawRows = await db
 			.select({ blobId: messageTable.rawBlobSha256, emailId: accountMessageTable.id })
 			.from(accountMessageTable)
@@ -382,31 +423,43 @@ export async function handleBlobLookup(
 			emailMatches.set(row.blobId, list);
 		}
 
-		const attachmentRows = await db
-			.select({ blobId: attachmentTable.blobSha256, emailId: accountMessageTable.id })
-			.from(attachmentTable)
-			.innerJoin(messageTable, eq(attachmentTable.messageId, messageTable.id))
-			.innerJoin(accountMessageTable, eq(accountMessageTable.messageId, messageTable.id))
-			.where(
-				and(
-					eq(accountMessageTable.accountId, effectiveAccountId),
-					eq(accountMessageTable.isDeleted, false),
-					inArray(attachmentTable.blobSha256, filteredIds)
-				)
-			);
+		if (attachmentRows) {
+			for (const row of attachmentRows) {
+				if (!row.blobId) continue;
+				const list = emailMatches.get(row.blobId) ?? new Set<string>();
+				list.add(row.emailId);
+				emailMatches.set(row.blobId, list);
+			}
+		}
+	}
 
+	if (needsBodyValueMatches && attachmentRows && attachmentRows.length > 0) {
+		const structureCache = new Map<string, StoredBlobPart | null>();
 		for (const row of attachmentRows) {
 			if (!row.blobId) continue;
-			const list = emailMatches.get(row.blobId) ?? new Set<string>();
-			list.add(row.emailId);
-			emailMatches.set(row.blobId, list);
+			let structure = structureCache.get(row.messageId);
+			if (structure === undefined) {
+				structure = parseStoredBodyStructure(row.bodyStructure);
+				structureCache.set(row.messageId, structure);
+			}
+			if (!structure) continue;
+			const partIds = collectPartIdsForBlob(structure, row.blobId);
+			if (!partIds.length) continue;
+			const list = emailBodyValueMatches.get(row.blobId) ?? new Set<string>();
+			for (const partId of partIds) {
+				list.add(`${row.emailId}/${partId}`);
+			}
+			emailBodyValueMatches.set(row.blobId, list);
 		}
 	}
 
 	const list = filteredIds.map((blobId) => {
 		const matchedIds: Record<string, string[]> = {};
-		if (typeNames.includes("Email")) {
+		if (needsEmailMatches) {
 			matchedIds.Email = Array.from(emailMatches.get(blobId) ?? []);
+		}
+		if (needsBodyValueMatches) {
+			matchedIds.EmailBodyValue = Array.from(emailBodyValueMatches.get(blobId) ?? []);
 		}
 		return { id: blobId, matchedIds };
 	});
@@ -441,4 +494,38 @@ function hexToBytes(hex: string): Uint8Array {
 		output[i / 2] = parseInt(clean.slice(i, i + 2), 16);
 	}
 	return output;
+}
+
+type StoredBlobPart = {
+	partId: string;
+	blobId: string | null;
+	parts?: StoredBlobPart[];
+};
+
+function parseStoredBodyStructure(json: string | null): StoredBlobPart | null {
+	if (!json) return null;
+	try {
+		const parsed = JSON.parse(json);
+		if (!parsed || typeof parsed !== "object") return null;
+		const candidate = parsed as StoredBlobPart;
+		if (typeof candidate.partId !== "string") return null;
+		return candidate;
+	} catch {
+		return null;
+	}
+}
+
+function collectPartIdsForBlob(part: StoredBlobPart | null, blobId: string): string[] {
+	if (!part) return [];
+	const matches: string[] = [];
+	const walk = (node: StoredBlobPart) => {
+		if (node.blobId === blobId) {
+			matches.push(node.partId);
+		}
+		for (const child of node.parts ?? []) {
+			walk(child);
+		}
+	};
+	walk(part);
+	return matches;
 }

@@ -349,8 +349,18 @@ async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respons
 
 	const db = getDB(c.env);
 	const now = new Date();
-	const contentType = c.req.header("Content-Type") ?? "application/octet-stream";
+	const contentTypeHeader = c.req.header("Content-Type") ?? "application/octet-stream";
 	const blobId = await sha256HexFromArrayBuffer(body);
+	const sanitizedHeaderType =
+		sanitizeMimeType(contentTypeHeader.split(";")[0] ?? contentTypeHeader) ?? "application/octet-stream";
+	const typeQuery = c.req.query("type");
+	const requestedType = typeQuery ? sanitizeMimeType(typeQuery) : null;
+	const storedContentType = requestedType ?? sanitizedHeaderType;
+	const requestedName = c.req.query("name");
+	const storedName =
+		typeof requestedName === "string" && requestedName.length > 0
+			? sanitizeFileName(requestedName)
+			: null;
 
 	const accountHasBlob = await db
 		.select({ sha256: accountBlobTable.sha256 })
@@ -376,7 +386,7 @@ async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respons
 	const key = blobId;
 	await c.env.R2_EMAILS.put(key, body, {
 		httpMetadata: {
-			contentType,
+			contentType: contentTypeHeader,
 		},
 	});
 
@@ -390,15 +400,28 @@ async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respons
 			});
 		await tx
 			.insert(accountBlobTable)
-			.values({ accountId: effectiveAccountId, sha256: blobId, createdAt: now })
-			.onConflictDoNothing({ target: [accountBlobTable.accountId, accountBlobTable.sha256] });
+			.values({
+				accountId: effectiveAccountId,
+				sha256: blobId,
+				type: storedContentType,
+				name: storedName,
+				createdAt: now,
+			})
+			.onConflictDoUpdate({
+				target: [accountBlobTable.accountId, accountBlobTable.sha256],
+				set: {
+					type: sql`coalesce(${accountBlobTable.type}, excluded.type)`,
+					name: sql`coalesce(${accountBlobTable.name}, excluded.name)`,
+				},
+			});
 	});
 
 	return c.json(
 		{
 			accountId: effectiveAccountId,
 			blobId,
-			type: contentType,
+			type: storedContentType,
+			name: storedName,
 			size: body.byteLength,
 		},
 		201

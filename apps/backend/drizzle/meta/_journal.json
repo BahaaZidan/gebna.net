@@ -57,6 +57,13 @@
       "when": 1763753183608,
       "tag": "0007_nappy_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1763807278634,
+      "tag": "0008_panoramic_patch",
+      "breakpoints": true
     }
   ]
 }
