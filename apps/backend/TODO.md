@@ -1,1 +1,0 @@
-- [ ] Extend structured `Email/set` create to handle attachments referencing uploaded blobs (and fold them into the generated MIME) instead of limiting drafts to `textBody`/`htmlBody` only (`apps/backend/src/lib/jmap/method-handlers/email-set.ts:403-575`).

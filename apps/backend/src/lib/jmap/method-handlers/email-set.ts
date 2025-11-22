@@ -463,6 +463,17 @@ type StructuredDraftInput = {
 	replyTo: DraftAddressInput[];
 	textBody: string | null;
 	htmlBody: string | null;
+	attachments: DraftAttachmentInput[];
+};
+
+type DraftAttachmentInput = {
+	blobId: string;
+	type?: string | null;
+	name?: string | null;
+	charset?: string | null;
+	disposition?: string | null;
+	cid?: string | null;
+	isInline?: boolean;
 };
 
 async function maybePrepareStructuredDraft(
@@ -474,7 +485,14 @@ async function maybePrepareStructuredDraft(
 	const draft = parseStructuredDraftInput(rawCreate);
 	if (!draft) return null;
 
-	const mime = buildMimeFromDraft(draft);
+	const loadedAttachments = await loadDraftAttachments({
+		env,
+		db,
+		accountId,
+		attachments: draft.attachments,
+	});
+
+	const mime = buildMimeFromDraft(draft, loadedAttachments);
 	const rawBytes = draftEncoder.encode(mime);
 	const rawBuffer = rawBytes.buffer.slice(
 		rawBytes.byteOffset,
@@ -552,6 +570,7 @@ function parseStructuredDraftInput(raw: Record<string, unknown>): StructuredDraf
 	const ccList = parseDraftAddressList(raw.cc) ?? [];
 	const bccList = parseDraftAddressList(raw.bcc) ?? [];
 	const replyToList = parseDraftAddressList(raw.replyTo) ?? [];
+	const attachments = parseDraftAttachmentList(raw.attachments);
 
 	return {
 		subject: typeof raw.subject === "string" ? raw.subject : null,
@@ -562,6 +581,7 @@ function parseStructuredDraftInput(raw: Record<string, unknown>): StructuredDraf
 		replyTo: replyToList,
 		textBody: typeof raw.textBody === "string" ? raw.textBody : null,
 		htmlBody: typeof raw.htmlBody === "string" ? raw.htmlBody : null,
+		attachments,
 	};
 }
 
@@ -581,47 +601,201 @@ function parseDraftAddressList(value: unknown): DraftAddressInput[] | null {
 	return list.length ? list : null;
 }
 
-function buildMimeFromDraft(draft: StructuredDraftInput): string {
-	const lines: string[] = [];
-	lines.push(`Date: ${new Date().toUTCString()}`);
-	lines.push(`Message-ID: <${crypto.randomUUID()}@gebna.net>`);
-	lines.push(`From: ${formatAddressList(draft.from)}`);
-	if (draft.replyTo.length > 0) {
-		lines.push(`Reply-To: ${formatAddressList(draft.replyTo)}`);
+function parseDraftAttachmentList(value: unknown): DraftAttachmentInput[] {
+	if (value === undefined) return [];
+	if (!Array.isArray(value)) {
+		throw new EmailSetProblem("invalidProperties", "attachments must be an array when provided");
 	}
-	if (draft.to.length > 0) lines.push(`To: ${formatAddressList(draft.to)}`);
-	if (draft.cc.length > 0) lines.push(`Cc: ${formatAddressList(draft.cc)}`);
-	if (draft.bcc.length > 0) lines.push(`Bcc: ${formatAddressList(draft.bcc)}`);
+	const items: DraftAttachmentInput[] = [];
+	for (const entry of value) {
+		if (!isRecord(entry)) {
+			throw new EmailSetProblem("invalidProperties", "attachments entries must be objects");
+		}
+		const blobIdValue = entry.blobId;
+		if (typeof blobIdValue !== "string" || blobIdValue.length === 0) {
+			throw new EmailSetProblem("invalidProperties", "attachments entries must include blobId");
+		}
+		let typeValue: string | null = null;
+		if (entry.type !== undefined && entry.type !== null) {
+			if (typeof entry.type !== "string") {
+				throw new EmailSetProblem("invalidProperties", "attachments.type must be a string");
+			}
+			typeValue = entry.type;
+		}
+		let nameValue: string | null = null;
+		if (entry.name !== undefined && entry.name !== null) {
+			if (typeof entry.name !== "string") {
+				throw new EmailSetProblem("invalidProperties", "attachments.name must be a string");
+			}
+			nameValue = entry.name;
+		}
+		let charsetValue: string | null = null;
+		if (entry.charset !== undefined && entry.charset !== null) {
+			if (typeof entry.charset !== "string") {
+				throw new EmailSetProblem("invalidProperties", "attachments.charset must be a string");
+			}
+			charsetValue = entry.charset;
+		}
+		let dispositionValue: string | null = null;
+		if (entry.disposition !== undefined && entry.disposition !== null) {
+			if (typeof entry.disposition !== "string") {
+				throw new EmailSetProblem("invalidProperties", "attachments.disposition must be a string");
+			}
+			dispositionValue = entry.disposition;
+		}
+		let cidValue: string | null = null;
+		if (entry.cid !== undefined && entry.cid !== null) {
+			if (typeof entry.cid !== "string") {
+				throw new EmailSetProblem("invalidProperties", "attachments.cid must be a string");
+			}
+			cidValue = entry.cid;
+		}
+		let isInlineValue: boolean | undefined;
+		if (entry.isInline !== undefined) {
+			if (typeof entry.isInline !== "boolean") {
+				throw new EmailSetProblem("invalidProperties", "attachments.isInline must be a boolean");
+			}
+			isInlineValue = entry.isInline;
+		}
+
+		items.push({
+			blobId: blobIdValue,
+			type: typeValue,
+			name: nameValue,
+			charset: charsetValue,
+			disposition: dispositionValue,
+			cid: cidValue,
+			isInline: isInlineValue,
+		});
+	}
+	return items;
+}
+
+type LoadedDraftAttachment = {
+	blobId: string;
+	contentType: string;
+	filename: string | null;
+	charset: string | null;
+	disposition: string;
+	cid: string | null;
+	data: ArrayBuffer;
+};
+
+async function loadDraftAttachments(opts: {
+	env: JMAPHonoAppEnv["Bindings"];
+	db: ReturnType<typeof getDB>;
+	accountId: string;
+	attachments: DraftAttachmentInput[];
+}): Promise<LoadedDraftAttachment[]> {
+	const { env, db, accountId, attachments } = opts;
+	if (!attachments.length) return [];
+
+	const blobIds = Array.from(new Set(attachments.map((att) => att.blobId)));
+	const rows = await db
+		.select({
+			sha: blobTable.sha256,
+			r2Key: blobTable.r2Key,
+			type: accountBlobTable.type,
+			name: accountBlobTable.name,
+		})
+		.from(accountBlobTable)
+		.innerJoin(blobTable, eq(accountBlobTable.sha256, blobTable.sha256))
+		.where(and(eq(accountBlobTable.accountId, accountId), inArray(accountBlobTable.sha256, blobIds)));
+
+	const blobMap = new Map(rows.map((row) => [row.sha, row]));
+	const loaded: LoadedDraftAttachment[] = [];
+
+	for (const attachment of attachments) {
+		const meta = blobMap.get(attachment.blobId);
+		if (!meta) {
+			throw new EmailSetProblem("invalidProperties", `Attachment blobId ${attachment.blobId} not found`);
+		}
+		const object = await env.R2_EMAILS.get(meta.r2Key ?? attachment.blobId);
+		if (!object || !object.body) {
+			throw new EmailSetProblem("invalidProperties", `Attachment blobId ${attachment.blobId} has no data`);
+		}
+		const data = await object.arrayBuffer();
+		const contentType =
+			sanitizeContentType(attachment.type) ??
+			sanitizeContentType(meta.type ?? null) ??
+			"application/octet-stream";
+		const filename = sanitizeAttachmentName(attachment.name ?? meta.name ?? null);
+		const dispositionRaw =
+			typeof attachment.disposition === "string" && attachment.disposition.length > 0
+				? attachment.disposition
+				: undefined;
+		const dispositionValue = dispositionRaw ?? (attachment.isInline ? "inline" : "attachment");
+
+		loaded.push({
+			blobId: attachment.blobId,
+			contentType,
+			filename,
+			charset: attachment.charset ?? null,
+			disposition: dispositionValue,
+			cid: attachment.cid ?? null,
+			data,
+		});
+	}
+
+	return loaded;
+}
+
+function buildMimeFromDraft(draft: StructuredDraftInput, attachments: LoadedDraftAttachment[]): string {
+	const headerLines: string[] = [];
+	headerLines.push(`Date: ${new Date().toUTCString()}`);
+	headerLines.push(`Message-ID: <${crypto.randomUUID()}@gebna.net>`);
+	headerLines.push(`From: ${formatAddressList(draft.from)}`);
+	if (draft.replyTo.length > 0) {
+		headerLines.push(`Reply-To: ${formatAddressList(draft.replyTo)}`);
+	}
+	if (draft.to.length > 0) headerLines.push(`To: ${formatAddressList(draft.to)}`);
+	if (draft.cc.length > 0) headerLines.push(`Cc: ${formatAddressList(draft.cc)}`);
+	if (draft.bcc.length > 0) headerLines.push(`Bcc: ${formatAddressList(draft.bcc)}`);
 	const subjectValue = draft.subject ?? "";
-	lines.push(`Subject: ${sanitizeHeaderValue(subjectValue)}`);
-	lines.push("MIME-Version: 1.0");
+	headerLines.push(`Subject: ${sanitizeHeaderValue(subjectValue)}`);
+	headerLines.push("MIME-Version: 1.0");
 
 	const textBody = draft.textBody ?? null;
 	const htmlBody = draft.htmlBody ?? null;
 
-	if (textBody && htmlBody) {
-		const boundary = `boundary_${crypto.randomUUID()}`;
-		lines.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
-		const parts: string[] = [];
-		parts.push(`--${boundary}`);
-		parts.push("Content-Type: text/plain; charset=UTF-8");
-		parts.push("Content-Transfer-Encoding: 8bit");
-		parts.push("");
-		parts.push(normalizeBody(textBody));
-		parts.push(`--${boundary}`);
-		parts.push("Content-Type: text/html; charset=UTF-8");
-		parts.push("Content-Transfer-Encoding: 8bit");
-		parts.push("");
-		parts.push(normalizeBody(htmlBody));
-		parts.push(`--${boundary}--`);
-		return `${lines.join("\r\n")}\r\n\r\n${parts.join("\r\n")}\r\n`;
+	if (!attachments.length) {
+		if (textBody && htmlBody) {
+			const boundary = `boundary_${crypto.randomUUID()}`;
+			headerLines.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+			const parts: string[] = [];
+			parts.push(`--${boundary}`);
+			parts.push("Content-Type: text/plain; charset=UTF-8");
+			parts.push("Content-Transfer-Encoding: 8bit");
+			parts.push("");
+			parts.push(normalizeBody(textBody));
+			parts.push(`--${boundary}`);
+			parts.push("Content-Type: text/html; charset=UTF-8");
+			parts.push("Content-Transfer-Encoding: 8bit");
+			parts.push("");
+			parts.push(normalizeBody(htmlBody));
+			parts.push(`--${boundary}--`);
+			return `${headerLines.join("\r\n")}\r\n\r\n${parts.join("\r\n")}\r\n`;
+		}
+		const body = textBody ?? htmlBody ?? "";
+		const subtype = htmlBody && !textBody ? "html" : "plain";
+		headerLines.push(`Content-Type: text/${subtype}; charset=UTF-8`);
+		headerLines.push("Content-Transfer-Encoding: 8bit");
+		return `${headerLines.join("\r\n")}\r\n\r\n${normalizeBody(body)}\r\n`;
 	}
 
-	const body = textBody ?? htmlBody ?? "";
-	const subtype = htmlBody && !textBody ? "html" : "plain";
-	lines.push(`Content-Type: text/${subtype}; charset=UTF-8`);
-	lines.push("Content-Transfer-Encoding: 8bit");
-	return `${lines.join("\r\n")}\r\n\r\n${normalizeBody(body)}\r\n`;
+	const mixedBoundary = `mixed_${crypto.randomUUID()}`;
+	headerLines.push(`Content-Type: multipart/mixed; boundary="${mixedBoundary}"`);
+	const sections: string[] = [];
+	sections.push(`--${mixedBoundary}`);
+	sections.push(...renderPrimaryBodyPart(textBody, htmlBody));
+
+	for (const attachment of attachments) {
+		sections.push(`--${mixedBoundary}`);
+		sections.push(...renderAttachmentPart(attachment));
+	}
+	sections.push(`--${mixedBoundary}--`);
+
+	return `${headerLines.join("\r\n")}\r\n\r\n${sections.join("\r\n")}\r\n`;
 }
 
 function formatAddressList(list: DraftAddressInput[]): string {
@@ -644,6 +818,109 @@ function sanitizeHeaderValue(value: string): string {
 
 function normalizeBody(value: string): string {
 	return value.replace(/\r?\n/g, "\r\n");
+}
+
+function sanitizeContentType(value: string | null | undefined): string | null {
+	if (!value) return null;
+	const trimmed = value.trim().toLowerCase();
+	if (!trimmed) return null;
+	if (!/^[0-9a-z!#$&^_.+-]+\/[0-9a-z!#$&^_.+-]+$/.test(trimmed)) {
+		return null;
+	}
+	return trimmed;
+}
+
+function sanitizeAttachmentName(value: string | null): string | null {
+	if (!value) return null;
+	const cleaned = value.replace(/\r|\n/g, "").trim();
+	return cleaned.length ? cleaned : null;
+}
+
+function escapeHeaderParameter(value: string): string {
+	return value.replace(/(["\\])/g, "\\$1");
+}
+
+function encodeBase64Buffer(buffer: ArrayBuffer): string {
+	const bytes = new Uint8Array(buffer);
+	let binary = "";
+	const chunk = 0x8000;
+	for (let i = 0; i < bytes.length; i += chunk) {
+		const slice = bytes.subarray(i, i + chunk);
+		binary += String.fromCharCode(...slice);
+	}
+	return btoa(binary);
+}
+
+function wrapBase64(value: string, lineLength = 76): string {
+	const parts: string[] = [];
+	for (let i = 0; i < value.length; i += lineLength) {
+		parts.push(value.slice(i, i + lineLength));
+	}
+	return parts.join("\r\n");
+}
+
+function renderPrimaryBodyPart(textBody: string | null, htmlBody: string | null): string[] {
+	if (textBody && htmlBody) {
+		const boundary = `alt_${crypto.randomUUID()}`;
+		const lines: string[] = [];
+		lines.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+		lines.push("");
+		lines.push(`--${boundary}`);
+		lines.push("Content-Type: text/plain; charset=UTF-8");
+		lines.push("Content-Transfer-Encoding: 8bit");
+		lines.push("");
+		lines.push(normalizeBody(textBody));
+		lines.push("");
+		lines.push(`--${boundary}`);
+		lines.push("Content-Type: text/html; charset=UTF-8");
+		lines.push("Content-Transfer-Encoding: 8bit");
+		lines.push("");
+		lines.push(normalizeBody(htmlBody));
+		lines.push("");
+		lines.push(`--${boundary}--`);
+		lines.push("");
+		return lines;
+	}
+	const body = textBody ?? htmlBody ?? "";
+	const subtype = htmlBody && !textBody ? "html" : "plain";
+	return [
+		`Content-Type: text/${subtype}; charset=UTF-8`,
+		"Content-Transfer-Encoding: 8bit",
+		"",
+		normalizeBody(body),
+		"",
+	];
+}
+
+function renderAttachmentPart(attachment: LoadedDraftAttachment): string[] {
+	const lines: string[] = [];
+	const params: string[] = [];
+	if (attachment.filename) {
+		params.push(`name="${escapeHeaderParameter(attachment.filename)}"`);
+	}
+	if (attachment.charset) {
+		params.push(`charset=${attachment.charset}`);
+	}
+	const contentTypeLine =
+		params.length > 0
+			? `Content-Type: ${attachment.contentType}; ${params.join("; ")}`
+			: `Content-Type: ${attachment.contentType}`;
+	lines.push(contentTypeLine);
+
+	let dispositionLine = `Content-Disposition: ${attachment.disposition}`;
+	if (attachment.filename) {
+		dispositionLine += `; filename="${escapeHeaderParameter(attachment.filename)}"`;
+	}
+	lines.push(dispositionLine);
+	lines.push("Content-Transfer-Encoding: base64");
+	if (attachment.cid) {
+		lines.push(`Content-ID: <${attachment.cid}>`);
+	}
+	lines.push("");
+	const base64 = encodeBase64Buffer(attachment.data);
+	lines.push(wrapBase64(base64));
+	lines.push("");
+	return lines;
 }
 
 async function prepareEmailFromBlob(opts: {
