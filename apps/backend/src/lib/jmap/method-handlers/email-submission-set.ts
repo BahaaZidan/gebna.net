@@ -446,10 +446,15 @@ async function resolveEnvelopeForSubmission(options: {
 }): Promise<ResolvedEnvelope> {
 	const { db, messageId, identityEmail, override } = options;
 
-	const mailFrom =
-		override?.mailFrom?.email !== undefined && override.mailFrom.email.length > 0
-			? override.mailFrom.email
-			: identityEmail;
+	const identityAddress = normalizeEnvelopeAddress(identityEmail);
+	if (!identityAddress) {
+		throw new EmailSubmissionProblem(
+			"invalidProperties",
+			"Identity email address is invalid"
+		);
+	}
+
+	const mailFrom = getMailFromAddress(identityAddress, override?.mailFrom?.email);
 
 	if (override?.rcptTo !== undefined && override.rcptTo.length > 0) {
 		const rcptTo = override.rcptTo.map((r) => r.email);
@@ -487,6 +492,61 @@ async function resolveEnvelopeForSubmission(options: {
 	}
 
 	return { mailFrom, rcptTo };
+}
+
+type NormalizedEnvelopeAddress = {
+	value: string;
+	lowerValue: string;
+	lowerDomain: string;
+};
+
+function normalizeEnvelopeAddress(value: string): NormalizedEnvelopeAddress | null {
+	const trimmed = value.trim();
+	const atIndex = trimmed.lastIndexOf("@");
+	if (atIndex <= 0 || atIndex === trimmed.length - 1) {
+		return null;
+	}
+	const localPart = trimmed.slice(0, atIndex);
+	const domainPart = trimmed.slice(atIndex + 1);
+	if (!domainPart) {
+		return null;
+	}
+	const lowerDomain = domainPart.toLowerCase();
+	return {
+		value: `${localPart}@${domainPart}`,
+		lowerValue: `${localPart.toLowerCase()}@${lowerDomain}`,
+		lowerDomain,
+	};
+}
+
+function getMailFromAddress(
+	identityAddress: NormalizedEnvelopeAddress,
+	overrideEmail: string | undefined
+): string {
+	if (!overrideEmail) {
+		return identityAddress.value;
+	}
+	const trimmed = overrideEmail.trim();
+	if (!trimmed) {
+		return identityAddress.value;
+	}
+	const normalizedOverride = normalizeEnvelopeAddress(trimmed);
+	if (!normalizedOverride) {
+		throw new EmailSubmissionProblem(
+			"invalidProperties",
+			"EmailSubmission/create.envelope.mailFrom.email must be a valid email address when provided"
+		);
+	}
+	const matchesIdentity =
+		normalizedOverride.lowerValue === identityAddress.lowerValue ||
+		normalizedOverride.lowerDomain === identityAddress.lowerDomain;
+	if (!matchesIdentity) {
+		throw new EmailSubmissionProblem(
+			"invalidProperties",
+			"Envelope mailFrom overrides must use the selected identity's address or domain"
+		);
+	}
+	return normalizedOverride.value;
 }
 
 function parseEmailSubmissionCreate(raw: unknown): EmailSubmissionCreate {

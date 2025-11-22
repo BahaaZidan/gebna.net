@@ -52,6 +52,7 @@ async function claimSubmission(
 	submissionId: string
 ): Promise<ClaimedSubmission | null> {
 	const now = new Date();
+	const nowEpochSeconds = Math.floor(now.getTime() / 1000);
 
 	return db.transaction(async (tx) => {
 		const rows = await tx
@@ -65,16 +66,16 @@ async function claimSubmission(
 				retryCount: emailSubmissionTable.retryCount,
 				deliveryStatus: emailSubmissionTable.deliveryStatusJson,
 				undoStatus: emailSubmissionTable.undoStatus,
+				accountMessageId: accountMessageTable.id,
+				accountMessageDeleted: accountMessageTable.isDeleted,
 				threadId: accountMessageTable.threadId,
 				rawBlobSha256: messageTable.rawBlobSha256,
 				size: messageTable.size,
 			})
 			.from(emailSubmissionTable)
-			.innerJoin(accountMessageTable, eq(emailSubmissionTable.emailId, accountMessageTable.id))
-			.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
-			.where(
-				and(eq(emailSubmissionTable.id, submissionId), eq(accountMessageTable.isDeleted, false))
-			)
+			.leftJoin(accountMessageTable, eq(emailSubmissionTable.emailId, accountMessageTable.id))
+			.leftJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
+			.where(eq(emailSubmissionTable.id, submissionId))
 			.limit(1);
 
 		if (!rows.length) return null;
@@ -82,6 +83,48 @@ async function claimSubmission(
 		if (row.status !== QUEUE_STATUS_PENDING) return null;
 		if (row.nextAttemptAt && row.nextAttemptAt > now) return null;
 		if (row.undoStatus === "canceled") return null;
+
+		if (!row.accountMessageId || row.accountMessageDeleted || !row.threadId) {
+			const deliveryStatus: DeliveryStatusRecord = {
+				status: "failed",
+				reason: "Email deleted before sending",
+				lastAttempt: nowEpochSeconds,
+				retryCount: row.retryCount,
+				permanent: true,
+			};
+			await tx
+				.update(emailSubmissionTable)
+				.set({
+					status: QUEUE_STATUS_FAILED,
+					nextAttemptAt: null,
+					undoStatus: "final",
+					deliveryStatusJson: deliveryStatus,
+					updatedAt: now,
+				})
+				.where(eq(emailSubmissionTable.id, submissionId));
+			return null;
+		}
+
+		if (!row.rawBlobSha256 || row.size === null || row.size === undefined) {
+			const deliveryStatus: DeliveryStatusRecord = {
+				status: "failed",
+				reason: "Email blob missing before sending",
+				lastAttempt: nowEpochSeconds,
+				retryCount: row.retryCount,
+				permanent: true,
+			};
+			await tx
+				.update(emailSubmissionTable)
+				.set({
+					status: QUEUE_STATUS_FAILED,
+					nextAttemptAt: null,
+					undoStatus: "final",
+					deliveryStatusJson: deliveryStatus,
+					updatedAt: now,
+				})
+				.where(eq(emailSubmissionTable.id, submissionId));
+			return null;
+		}
 
 		const updated = await tx
 			.update(emailSubmissionTable)
