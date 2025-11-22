@@ -81,7 +81,6 @@ export const mailboxTable = sqliteTable(
 		foreignKey({
 			columns: [self.parentId],
 			foreignColumns: [self.id],
-			name: "fk_mailbox_parent",
 		}).onDelete("set null"),
 	]
 );
@@ -124,6 +123,8 @@ export const accountBlobTable = sqliteTable(
 			.text()
 			.notNull()
 			.references(() => blobTable.sha256, { onDelete: "cascade" }),
+		type: t.text(),
+		name: t.text(),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 	}),
 	(t) => [primaryKey({ columns: [t.accountId, t.sha256] })]
