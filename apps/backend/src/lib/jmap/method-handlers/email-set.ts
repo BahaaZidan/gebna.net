@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { Context } from "hono";
 import type { Email as ParsedEmail } from "postal-mime";
 
@@ -6,9 +6,13 @@ import { getDB, TransactionInstance } from "../../../db";
 import {
 	accountBlobTable,
 	accountMessageTable,
+	attachmentTable,
 	blobTable,
 	emailKeywordTable,
 	mailboxMessageTable,
+	messageAddressTable,
+	messageHeaderTable,
+	messageTable,
 } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import {
@@ -236,7 +240,7 @@ export async function applyEmailSet(
 			}
 		}
 
-		await handleEmailDestroy(tx, accountId, destroyIds, destroyed, notDestroyed, now);
+		await handleEmailDestroy(env, tx, accountId, destroyIds, destroyed, notDestroyed, now);
 	});
 
 	const newState = await getAccountState(db, accountId, "Email");
@@ -918,6 +922,7 @@ class EmailSetProblem extends Error {
 	}
 }
 async function handleEmailDestroy(
+	env: JMAPHonoAppEnv["Bindings"],
 	tx: TransactionInstance,
 	accountId: string,
 	destroyIds: string[],
@@ -929,6 +934,7 @@ async function handleEmailDestroy(
 		const [row] = await tx
 			.select({
 				id: accountMessageTable.id,
+				messageId: accountMessageTable.messageId,
 				threadId: accountMessageTable.threadId,
 			})
 			.from(accountMessageTable)
@@ -974,7 +980,137 @@ async function handleEmailDestroy(
 		});
 
 		destroyed.push(emailId);
+
+		await cleanupCanonicalMessageIfUnused({
+			tx,
+			env,
+			canonicalMessageId: row.messageId,
+		});
 	}
+}
+
+async function cleanupCanonicalMessageIfUnused(opts: {
+	tx: TransactionInstance;
+	env: JMAPHonoAppEnv["Bindings"];
+	canonicalMessageId: string;
+}): Promise<void> {
+	const { tx, env, canonicalMessageId } = opts;
+	const [remaining] = await tx
+		.select({ count: sql<number>`count(*) as count` })
+		.from(accountMessageTable)
+		.where(
+			and(eq(accountMessageTable.messageId, canonicalMessageId), eq(accountMessageTable.isDeleted, false))
+		);
+
+	if ((remaining?.count ?? 0) > 0) {
+		return;
+	}
+
+	const [messageRow] = await tx
+		.select({
+			id: messageTable.id,
+			rawBlobSha256: messageTable.rawBlobSha256,
+		})
+		.from(messageTable)
+		.where(eq(messageTable.id, canonicalMessageId))
+		.limit(1);
+
+	const attachmentRows = await tx
+		.select({ blobSha256: attachmentTable.blobSha256 })
+		.from(attachmentTable)
+		.where(eq(attachmentTable.messageId, canonicalMessageId));
+
+	const blobIds = new Set<string>();
+	if (messageRow?.rawBlobSha256) {
+		blobIds.add(messageRow.rawBlobSha256);
+	}
+	for (const attachment of attachmentRows) {
+		if (attachment.blobSha256) {
+			blobIds.add(attachment.blobSha256);
+		}
+	}
+
+	const ownerRows = await tx
+		.select({ accountId: accountMessageTable.accountId })
+		.from(accountMessageTable)
+		.where(eq(accountMessageTable.messageId, canonicalMessageId));
+
+	if (ownerRows.length > 0 && blobIds.size > 0) {
+		await tx
+			.delete(accountBlobTable)
+			.where(
+				and(
+					inArray(
+						accountBlobTable.accountId,
+						ownerRows.map((row) => row.accountId)
+					),
+					inArray(accountBlobTable.sha256, Array.from(blobIds))
+				)
+			);
+	}
+
+	await tx.delete(accountMessageTable).where(eq(accountMessageTable.messageId, canonicalMessageId));
+	await tx.delete(messageAddressTable).where(eq(messageAddressTable.messageId, canonicalMessageId));
+	await tx.delete(messageHeaderTable).where(eq(messageHeaderTable.messageId, canonicalMessageId));
+	await tx.delete(attachmentTable).where(eq(attachmentTable.messageId, canonicalMessageId));
+	await tx.delete(messageTable).where(eq(messageTable.id, canonicalMessageId));
+
+	await cleanupBlobStorage(env, tx, Array.from(blobIds));
+}
+
+async function cleanupBlobStorage(
+	env: JMAPHonoAppEnv["Bindings"],
+	tx: TransactionInstance,
+	blobIds: string[]
+): Promise<void> {
+	if (!blobIds.length) return;
+
+	const keysToDelete: string[] = [];
+
+	for (const blobId of blobIds) {
+		const [rawCount] = await tx
+			.select({ count: sql<number>`count(*) as count` })
+			.from(messageTable)
+			.where(eq(messageTable.rawBlobSha256, blobId));
+		if ((rawCount?.count ?? 0) > 0) {
+			continue;
+		}
+
+		const [attachmentCount] = await tx
+			.select({ count: sql<number>`count(*) as count` })
+			.from(attachmentTable)
+			.where(eq(attachmentTable.blobSha256, blobId));
+		if ((attachmentCount?.count ?? 0) > 0) {
+			continue;
+		}
+
+		const [blobRow] = await tx
+			.select({ sha: blobTable.sha256, r2Key: blobTable.r2Key })
+			.from(blobTable)
+			.where(eq(blobTable.sha256, blobId))
+			.limit(1);
+
+		if (!blobRow) {
+			continue;
+		}
+
+		await tx.delete(blobTable).where(eq(blobTable.sha256, blobId));
+		keysToDelete.push(blobRow.r2Key ?? blobId);
+	}
+
+	if (!keysToDelete.length) {
+		return;
+	}
+
+	await Promise.all(
+		keysToDelete.map(async (key) => {
+			try {
+				await env.R2_EMAILS.delete(key);
+			} catch (err) {
+				console.error("Failed to delete blob from R2", { key, err });
+			}
+		})
+	);
 }
 async function applyMailboxPatch(
 	tx: TransactionInstance,
