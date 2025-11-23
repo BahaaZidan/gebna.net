@@ -85,6 +85,10 @@ export async function handlePushSubscriptionSet(
 	}
 
 	const oldState = await getAccountState(db, effectiveAccountId, "PushSubscription");
+	const ifInState = args.ifInState as string | undefined;
+	if (ifInState && ifInState !== oldState) {
+		return ["error", { type: "stateMismatch" }, tag];
+	}
 	const maxSubscriptions = JMAP_CONSTRAINTS[JMAP_PUSH]?.maxSubscriptionsPerAccount ?? Number.MAX_SAFE_INTEGER;
 
 	const created: Record<string, { id: string }> = {};
