@@ -6,16 +6,18 @@ import { pushSubscriptionTable } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse, JmapStateType } from "../types";
-import { ensureAccountAccess, getAccountState } from "../utils";
+import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
 
 type PushSubscriptionResponse = {
 	id: string;
-	deviceClientId: string;
-	url: string;
-	keys: { auth?: string | null; p256dh?: string | null } | null;
-	types: JmapStateType[] | null;
-	expires: string | null;
+	deviceClientId?: string;
+	url?: string;
+	keys?: { auth?: string | null; p256dh?: string | null } | null;
+	types?: JmapStateType[] | null;
+	expires?: string | null;
 };
+
+const PUSH_SUBSCRIPTION_PROPERTIES = ["id", "deviceClientId", "url", "keys", "types", "expires"] as const;
 
 const KNOWN_PUSH_TYPES: readonly JmapStateType[] = [
 	"Email",
@@ -56,6 +58,14 @@ export async function handlePushSubscriptionGet(
 
 	const ids = Array.isArray(idsInput) ? idsInput.filter((id) => typeof id === "string" && id.length > 0) : null;
 
+	const propertiesResult = parseRequestedProperties(args.properties, PUSH_SUBSCRIPTION_PROPERTIES);
+	if ("error" in propertiesResult) {
+		return ["error", { type: "invalidArguments", description: propertiesResult.error }, tag];
+	}
+	const requestedProperties = propertiesResult.properties;
+	const includeProp = (prop: (typeof PUSH_SUBSCRIPTION_PROPERTIES)[number]) =>
+		!requestedProperties || requestedProperties.has(prop);
+
 	const rows = await (ids
 		? db
 				.select({
@@ -83,14 +93,17 @@ export async function handlePushSubscriptionGet(
 				.where(eq(pushSubscriptionTable.accountId, effectiveAccountId))
 				.limit(maxObjects));
 
-	const list: PushSubscriptionResponse[] = rows.map((row) => ({
-		id: row.id,
-		deviceClientId: row.deviceClientId,
-		url: row.url,
-		keys: formatKeys(row.keysAuth, row.keysP256dh),
-		types: parseTypes(row.typesJson),
-		expires: row.expiresAt ? new Date(row.expiresAt).toISOString() : null,
-	}));
+	const list: PushSubscriptionResponse[] = rows.map((row) => {
+		const entry: PushSubscriptionResponse = { id: row.id } as PushSubscriptionResponse;
+		if (includeProp("deviceClientId")) entry.deviceClientId = row.deviceClientId;
+		if (includeProp("url")) entry.url = row.url;
+		if (includeProp("keys")) entry.keys = formatKeys(row.keysAuth, row.keysP256dh);
+		if (includeProp("types")) entry.types = parseTypes(row.typesJson);
+		if (includeProp("expires")) {
+			entry.expires = row.expiresAt ? new Date(row.expiresAt).toISOString() : null;
+		}
+		return entry;
+	});
 
 	const foundIds = new Set(list.map((entry) => entry.id));
 	const notFound = ids ? ids.filter((id) => !foundIds.has(id)) : [];

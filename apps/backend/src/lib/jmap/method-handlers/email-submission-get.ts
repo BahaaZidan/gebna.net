@@ -6,7 +6,20 @@ import { emailSubmissionTable } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState } from "../utils";
+import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
+
+type EmailSubmissionRecord = { id: string } & Record<string, unknown>;
+
+const EMAIL_SUBMISSION_PROPERTIES = [
+	"id",
+	"emailId",
+	"identityId",
+	"envelope",
+	"sendAt",
+	"status",
+	"undoStatus",
+	"deliveryStatus",
+] as const;
 
 export async function handleEmailSubmissionGet(
 	c: Context<JMAPHonoAppEnv>,
@@ -37,25 +50,35 @@ export async function handleEmailSubmissionGet(
 		return ["EmailSubmission/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 	}
 
+	const propertiesResult = parseRequestedProperties(args.properties, EMAIL_SUBMISSION_PROPERTIES);
+	if ("error" in propertiesResult) {
+		return ["error", { type: "invalidArguments", description: propertiesResult.error }, tag];
+	}
+	const requestedProperties = propertiesResult.properties;
+	const includeProp = (prop: (typeof EMAIL_SUBMISSION_PROPERTIES)[number]) =>
+		!requestedProperties || requestedProperties.has(prop);
+
 	const rows = await db
 		.select()
 		.from(emailSubmissionTable)
 		.where(and(eq(emailSubmissionTable.accountId, effectiveAccountId), inArray(emailSubmissionTable.id, ids)));
 
 	const rowMap = new Map(rows.map((row) => [row.id, row]));
-	const list = ids
-		.map((id) => rowMap.get(id))
-		.filter((row): row is typeof rows[number] => Boolean(row))
-		.map((row) => ({
-			id: row.id,
-			emailId: row.emailId,
-			identityId: row.identityId,
-			envelope: row.envelopeJson ? JSON.parse(row.envelopeJson) : null,
-			sendAt: row.sendAt?.toISOString() ?? null,
-			status: row.status,
-			undoStatus: row.undoStatus ?? "final",
-			deliveryStatus: row.deliveryStatusJson ?? null,
-		}));
+	const list: EmailSubmissionRecord[] = ids
+		.map((id) => {
+			const row = rowMap.get(id);
+			if (!row) return null;
+			const entry: EmailSubmissionRecord = { id: row.id };
+			if (includeProp("emailId")) entry.emailId = row.emailId;
+			if (includeProp("identityId")) entry.identityId = row.identityId;
+			if (includeProp("envelope")) entry.envelope = row.envelopeJson ? JSON.parse(row.envelopeJson) : null;
+			if (includeProp("sendAt")) entry.sendAt = row.sendAt?.toISOString() ?? null;
+			if (includeProp("status")) entry.status = row.status;
+			if (includeProp("undoStatus")) entry.undoStatus = row.undoStatus ?? "final";
+			if (includeProp("deliveryStatus")) entry.deliveryStatus = row.deliveryStatusJson ?? null;
+			return entry;
+		})
+		.filter((value): value is EmailSubmissionRecord => value !== null);
 
 	const foundIds = new Set(list.map((item) => item.id));
 	const notFound = ids.filter((id) => !foundIds.has(id));

@@ -18,7 +18,11 @@ export async function handleEmailSubmissionChanges(
 		return ["error", { type: "accountNotFound" }, tag];
 	}
 
-	const sinceState = (args.sinceState as string | undefined) ?? "0";
+	const sinceStateArg = args.sinceState;
+	if (typeof sinceStateArg !== "string" || sinceStateArg.length === 0) {
+		return ["error", { type: "invalidArguments", description: "sinceState is required" }, tag];
+	}
+	const sinceState = sinceStateArg;
 	const limitFromConstraints = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
 	const maxChangesInput = typeof args.maxChanges === "number" && Number.isFinite(args.maxChanges) ? args.maxChanges : 50;
 	const maxChanges = Math.min(maxChangesInput, limitFromConstraints);

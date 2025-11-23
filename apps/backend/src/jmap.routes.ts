@@ -54,6 +54,27 @@ const SUPPORTED_CAPABILITIES = new Set([
 	JMAP_PUSH,
 ]);
 
+function buildMailAccountCapability(): Record<string, unknown> {
+	return {
+		...JMAP_CONSTRAINTS[JMAP_MAIL],
+		mayCreateTopLevelMailbox: true,
+	};
+}
+
+function buildSubmissionAccountCapability(env: CloudflareBindings): Record<string, unknown> {
+	return {
+		maxDelayedSend: getUndoWindowSeconds(env),
+		submissionExtensions: [],
+	};
+}
+
+function buildVacationAccountCapability(): Record<string, unknown> {
+	return {
+		supportsRichText: true,
+		supportsCalendarAutoReplies: true,
+	};
+}
+
 const JmapMethodCallSchema = v.tuple([
 	v.string(), // name
 	v.record(v.string(), v.unknown()), // args
@@ -103,10 +124,10 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 				isPersonal: true,
 				isReadOnly: false,
 				accountCapabilities: {
-					[JMAP_CORE]: {},
-					[JMAP_MAIL]: {},
-					[JMAP_SUBMISSION]: {},
-					[JMAP_VACATION]: {},
+					[JMAP_CORE]: { ...JMAP_CONSTRAINTS[JMAP_CORE] },
+					[JMAP_MAIL]: buildMailAccountCapability(),
+					[JMAP_SUBMISSION]: buildSubmissionAccountCapability(c.env),
+					[JMAP_VACATION]: buildVacationAccountCapability(),
 					[JMAP_BLOB]: JMAP_BLOB_ACCOUNT_CAPABILITY,
 					[JMAP_PUSH]: {
 						maxSubscriptionsPerAccount: JMAP_CONSTRAINTS[JMAP_PUSH]?.maxSubscriptionsPerAccount ?? 0,
@@ -469,6 +490,16 @@ function parseAccountUploadLimit(env: CloudflareBindings): number | null {
 		return null;
 	}
 	return parsed;
+}
+
+function getUndoWindowSeconds(env: CloudflareBindings): number | null {
+	const raw = env.MAIL_UNDO_WINDOW_SECONDS;
+	if (!raw) return null;
+	const parsed = Number(raw);
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		return null;
+	}
+	return Math.floor(parsed);
 }
 
 async function handleBlobDownloadHttp(c: Context<JMAPHonoAppEnv>): Promise<Response> {

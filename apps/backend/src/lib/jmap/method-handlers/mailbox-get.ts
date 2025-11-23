@@ -6,7 +6,29 @@ import { accountMessageTable, mailboxMessageTable, mailboxTable } from "../../..
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState } from "../utils";
+import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
+
+type MailboxRecord = {
+	id: string;
+	name?: string;
+	parentId?: string | null;
+	role?: string | null;
+	sortOrder?: number;
+	totalEmails?: number;
+	unreadEmails?: number;
+	myRights?: MailboxRights;
+};
+
+const MAILBOX_PROPERTIES = [
+	"id",
+	"name",
+	"parentId",
+	"role",
+	"sortOrder",
+	"totalEmails",
+	"unreadEmails",
+	"myRights",
+] as const;
 
 export async function handleMailboxGet(
 	c: Context<JMAPHonoAppEnv>,
@@ -37,7 +59,15 @@ export async function handleMailboxGet(
 
 	const condition = eq(mailboxTable.accountId, effectiveAccountId);
 
-const rows = await (ids?.length
+	const propertiesResult = parseRequestedProperties(args.properties, MAILBOX_PROPERTIES);
+	if ("error" in propertiesResult) {
+		return ["error", { type: "invalidArguments", description: propertiesResult.error }, tag];
+	}
+	const requestedProperties = propertiesResult.properties;
+	const includeProp = (prop: (typeof MAILBOX_PROPERTIES)[number]) =>
+		!requestedProperties || requestedProperties.has(prop);
+
+	const rows = await (ids?.length
 		? db
 				.select({
 					id: mailboxTable.id,
@@ -92,20 +122,19 @@ const rows = await (ids?.length
 		});
 	}
 
-	const list = rows.map((row) => {
+	const list: MailboxRecord[] = rows.map((row) => {
+		const entry: MailboxRecord = { id: row.id };
 		const role = row.role ?? null;
-		const rights = getRightsForRole(role);
-
-		return {
-			id: row.id,
-			name: row.name,
-			parentId: row.parentId,
-			role,
-			sortOrder: row.sortOrder,
-			totalEmails: countMap.get(row.id)?.total ?? 0,
-			unreadEmails: countMap.get(row.id)?.unread ?? 0,
-			myRights: rights,
-		};
+		if (includeProp("name")) entry.name = row.name;
+		if (includeProp("parentId")) entry.parentId = row.parentId;
+		if (includeProp("role")) entry.role = role;
+		if (includeProp("sortOrder")) entry.sortOrder = row.sortOrder;
+		if (includeProp("totalEmails")) entry.totalEmails = countMap.get(row.id)?.total ?? 0;
+		if (includeProp("unreadEmails")) entry.unreadEmails = countMap.get(row.id)?.unread ?? 0;
+		if (includeProp("myRights")) {
+			entry.myRights = getRightsForRole(role);
+		}
+		return entry;
 	});
 
 	const foundIds = new Set(list.map((m) => m.id));
