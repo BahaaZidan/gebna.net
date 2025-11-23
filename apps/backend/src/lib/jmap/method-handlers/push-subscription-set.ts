@@ -17,7 +17,6 @@ type PushSubscriptionCreate = {
 	keys: PushSubscriptionKeys;
 	types: JmapStateType[] | null;
 	expiresAt: Date | null;
-	verificationCode: string | null;
 };
 
 type PushSubscriptionUpdate = {
@@ -26,7 +25,6 @@ type PushSubscriptionUpdate = {
 	keys?: PushSubscriptionKeys;
 	types?: JmapStateType[] | null;
 	expiresAt?: Date | null;
-	verificationCode?: string | null;
 };
 
 const PUSH_SUBSCRIPTION_TYPES: readonly JmapStateType[] = [
@@ -91,7 +89,7 @@ export async function handlePushSubscriptionSet(
 	}
 	const maxSubscriptions = JMAP_CONSTRAINTS[JMAP_PUSH]?.maxSubscriptionsPerAccount ?? Number.MAX_SAFE_INTEGER;
 
-	const created: Record<string, { id: string }> = {};
+	const created: Record<string, { id: string; verificationCode: string }> = {};
 	const notCreated: Record<string, { type: string; description?: string }> = {};
 	const updated: Record<string, { id: string }> = {};
 	const notUpdated: Record<string, { type: string; description?: string }> = {};
@@ -169,6 +167,7 @@ export async function handlePushSubscriptionSet(
 
 				const now = new Date();
 				const id = crypto.randomUUID();
+				const verificationCode = generateVerificationCode();
 				await tx.insert(pushSubscriptionTable).values({
 					id,
 					accountId: effectiveAccountId,
@@ -177,7 +176,7 @@ export async function handlePushSubscriptionSet(
 					keysAuth: parsed.keys?.auth ?? null,
 					keysP256dh: parsed.keys?.p256dh ?? null,
 					typesJson: serializeTypes(parsed.types),
-					verificationCode: parsed.verificationCode,
+					verificationCode,
 					expiresAt: parsed.expiresAt ?? null,
 					createdAt: now,
 					updatedAt: now,
@@ -190,7 +189,7 @@ export async function handlePushSubscriptionSet(
 					now,
 				});
 
-				created[creationId] = { id };
+				created[creationId] = { id, verificationCode };
 			}
 
 			for (const [id, raw] of updateEntries) {
@@ -250,10 +249,6 @@ export async function handlePushSubscriptionSet(
 				if (patch.expiresAt !== undefined) {
 					updateData.expiresAt = patch.expiresAt ?? null;
 				}
-				if (patch.verificationCode !== undefined) {
-					updateData.verificationCode = patch.verificationCode;
-				}
-
 				if (Object.keys(updateData).length === 0) {
 					continue;
 				}
@@ -308,15 +303,12 @@ function parsePushSubscriptionCreate(raw: unknown): PushSubscriptionCreate {
 	const keys = parseKeys(raw.keys);
 	const types = parseTypesInput(raw.types);
 	const expiresAt = parseExpires(raw.expires);
-	const verificationCode = parseOptionalString(raw.verificationCode);
-
 	return {
 		deviceClientId,
 		url,
 		keys,
 		types,
 		expiresAt,
-		verificationCode,
 	};
 }
 
@@ -340,9 +332,6 @@ function parsePushSubscriptionUpdate(raw: unknown): PushSubscriptionUpdate {
 	}
 	if (raw.expires !== undefined) {
 		patch.expiresAt = parseExpires(raw.expires);
-	}
-	if (raw.verificationCode !== undefined) {
-		patch.verificationCode = parseOptionalString(raw.verificationCode);
 	}
 
 	return patch;
@@ -423,12 +412,8 @@ function parseExpires(value: unknown): Date | null {
 	throw new PushSubscriptionProblem("invalidProperties", "expires must be an ISO date string or null");
 }
 
-function parseOptionalString(value: unknown): string | null {
-	if (value === undefined || value === null) return null;
-	if (typeof value !== "string") {
-		throw new PushSubscriptionProblem("invalidProperties", "verificationCode must be a string or null");
-	}
-	return value;
+function generateVerificationCode(): string {
+	return crypto.randomUUID();
 }
 
 function serializeTypes(types: JmapStateType[] | null): string | null {
