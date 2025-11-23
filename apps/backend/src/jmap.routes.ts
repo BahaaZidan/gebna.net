@@ -41,7 +41,7 @@ import { handleThreadGet } from "./lib/jmap/method-handlers/thread-get";
 import { handleVacationResponseGet } from "./lib/jmap/method-handlers/vacation-get";
 import { handleVacationResponseSet } from "./lib/jmap/method-handlers/vacation-set";
 import { attachUserFromJwt, requireJWT, type JMAPHonoAppEnv } from "./lib/jmap/middlewares";
-import { JmapHandlerResult, JmapMethodResponse } from "./lib/jmap/types";
+import { JmapHandlerResult, JmapMethodResponse, JmapStateType } from "./lib/jmap/types";
 import { handleMailboxSet } from "./lib/jmap/method-handlers/mailbox-set";
 import { handleBlobCopy, handleBlobGet, handleBlobLookup } from "./lib/jmap/method-handlers/blob";
 import { sha256HexFromArrayBuffer } from "./lib/utils";
@@ -233,6 +233,15 @@ function cloneWithResultReferences<T>(value: T, refs: CreationReferenceMap): T {
 }
 
 const SSE_DEFAULT_POLL_MS = 3000;
+const ALL_EVENT_SOURCE_TYPES: readonly JmapStateType[] = [
+	"Email",
+	"Mailbox",
+	"Thread",
+	"Identity",
+	"VacationResponse",
+	"EmailSubmission",
+	"PushSubscription",
+];
 
 function captureCreationReferences(response: JmapMethodResponse, refs: CreationReferenceMap): void {
 	const payload = response[1];
@@ -551,15 +560,106 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 		return c.json({ type: "forbidden", description: "Account access denied" }, 403);
 	}
 
+	const url = new URL(c.req.url, c.env.BASE_API_URL);
+	const params = url.searchParams;
+
+	let requestedTypes: JmapStateType[] | null = null;
+	const typeValues = params.getAll("types").flatMap((entry) =>
+		entry
+			.split(",")
+			.map((value) => value.trim())
+			.filter(Boolean)
+	);
+	if (typeValues.length > 0) {
+		const parsed: JmapStateType[] = [];
+		for (const value of typeValues) {
+			if (!ALL_EVENT_SOURCE_TYPES.includes(value as JmapStateType)) {
+				return c.json(
+					{
+						type: "invalidArguments",
+						description: `Unsupported type ${value}`,
+					},
+					400
+				);
+			}
+			if (!parsed.includes(value as JmapStateType)) {
+				parsed.push(value as JmapStateType);
+			}
+		}
+		requestedTypes = parsed;
+	}
+
+	const closeAfterParam = params.get("closeAfter");
+	let closeAfter: "state" | "idle" | null = null;
+	if (closeAfterParam) {
+		if (closeAfterParam === "state" || closeAfterParam === "idle") {
+			closeAfter = closeAfterParam;
+		} else {
+			return c.json(
+				{
+					type: "invalidArguments",
+					description: "closeAfter must be 'state' or 'idle'",
+				},
+				400
+			);
+		}
+	}
+
+	let closeAfterIdleMs = 30_000;
+	const closeAfterIdleParam = params.get("closeAfterIdle");
+	if (closeAfterIdleParam !== null) {
+		const parsed = Number(closeAfterIdleParam);
+		if (!Number.isFinite(parsed) || parsed <= 0) {
+			return c.json(
+				{
+					type: "invalidArguments",
+					description: "closeAfterIdle must be a positive number",
+				},
+				400
+			);
+		}
+		closeAfterIdleMs = parsed * 1000;
+	}
+
+	let pingIntervalMs = SSE_DEFAULT_POLL_MS;
+	const pingParam = params.get("ping");
+	if (pingParam !== null) {
+		const parsed = Number(pingParam);
+		if (!Number.isFinite(parsed) || parsed <= 0) {
+			return c.json(
+				{
+					type: "invalidArguments",
+					description: "ping must be a positive number",
+				},
+				400
+			);
+		}
+		pingIntervalMs = Math.max(500, parsed * 1000);
+	}
+
+	const monitoredTypes = requestedTypes ?? [...ALL_EVENT_SOURCE_TYPES];
+	if (monitoredTypes.length === 0) {
+		return c.json(
+			{
+				type: "invalidArguments",
+				description: "At least one type must be requested",
+			},
+			400
+		);
+	}
+	const monitoredTypeSet = new Set(monitoredTypes);
+
 	const db = getDB(c.env);
 	const snapshot = await db
 		.select({ type: jmapStateTable.type, modSeq: jmapStateTable.modSeq })
 		.from(jmapStateTable)
 		.where(eq(jmapStateTable.accountId, effectiveAccountId));
 
+	const snapshotMap = new Map(snapshot.map((row) => [row.type, row.modSeq ?? 0]));
 	const changeMap: Record<string, string> = {};
-	for (const row of snapshot) {
-		changeMap[row.type] = String(row.modSeq);
+	for (const type of monitoredTypes) {
+		const modSeq = snapshotMap.get(type) ?? 0;
+		changeMap[type] = String(modSeq);
 	}
 
 	let lastModSeq = snapshot.reduce((max, row) => {
@@ -571,13 +671,21 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 	const signal = c.req.raw.signal;
 	let abortListener: (() => void) | null = null;
 
+	let idleTimer: ReturnType<typeof setTimeout> | null = null;
 	const stream = new ReadableStream({
 		start(controller) {
 			let closed = false;
 
+			const scheduleIdleClose = () => {
+				if (closeAfter !== "idle") return;
+				if (idleTimer) clearTimeout(idleTimer);
+				idleTimer = setTimeout(() => stop(), closeAfterIdleMs);
+			};
+
 			const sendEvent = () => {
 				const payload = JSON.stringify({ accountId: effectiveAccountId, changed: { ...changeMap } });
 				controller.enqueue(encoder.encode(`event: state\ndata: ${payload}\n\n`));
+				scheduleIdleClose();
 			};
 
 			const sendComment = () => {
@@ -587,6 +695,10 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 			const stop = () => {
 				if (closed) return;
 				closed = true;
+				if (idleTimer) {
+					clearTimeout(idleTimer);
+					idleTimer = null;
+				}
 				controller.close();
 			};
 
@@ -594,6 +706,10 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 			signal.addEventListener("abort", abortListener);
 
 			sendEvent();
+			if (closeAfter === "state") {
+				stop();
+				return;
+			}
 
 			const poll = async () => {
 				while (!closed) {
@@ -618,16 +734,24 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 					}
 
 					if (rows.length > 0) {
+						let hadRelevantChange = false;
 						for (const row of rows) {
-							changeMap[row.type] = String(row.modSeq);
 							lastModSeq = row.modSeq;
+							const type = row.type as JmapStateType;
+							if (!monitoredTypeSet.has(type)) {
+								continue;
+							}
+							changeMap[type] = String(row.modSeq);
+							hadRelevantChange = true;
 						}
-						sendEvent();
+						if (hadRelevantChange) {
+							sendEvent();
+						}
 					} else {
 						sendComment();
 					}
 
-					const delay = rows.length > 0 ? 1000 : SSE_DEFAULT_POLL_MS;
+					const delay = rows.length > 0 ? Math.min(1000, pingIntervalMs) : pingIntervalMs;
 					await new Promise((resolve) => setTimeout(resolve, delay));
 				}
 			};
@@ -641,6 +765,10 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 		cancel() {
 			if (abortListener) {
 				signal.removeEventListener("abort", abortListener);
+			}
+			if (idleTimer) {
+				clearTimeout(idleTimer);
+				idleTimer = null;
 			}
 		},
 	});
