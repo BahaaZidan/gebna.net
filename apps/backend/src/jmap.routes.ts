@@ -11,6 +11,7 @@ import {
 	JMAP_CONSTRAINTS,
 	JMAP_CORE,
 	JMAP_MAIL,
+	JMAP_PUSH,
 	JMAP_SUBMISSION,
 	JMAP_VACATION,
 } from "./lib/jmap/constants";
@@ -28,6 +29,9 @@ import { handleEmailSubmissionChanges } from "./lib/jmap/method-handlers/email-s
 import { handleIdentityGet } from "./lib/jmap/method-handlers/identity-get";
 import { handleIdentitySet } from "./lib/jmap/method-handlers/identity-set";
 import { handleIdentityChanges } from "./lib/jmap/method-handlers/identity-changes";
+import { handlePushSubscriptionGet } from "./lib/jmap/method-handlers/push-subscription-get";
+import { handlePushSubscriptionSet } from "./lib/jmap/method-handlers/push-subscription-set";
+import { handlePushSubscriptionDestroy } from "./lib/jmap/method-handlers/push-subscription-destroy";
 import { handleMailboxChanges } from "./lib/jmap/method-handlers/mailbox-changes";
 import { handleMailboxGet } from "./lib/jmap/method-handlers/mailbox-get";
 import { handleMailboxQuery } from "./lib/jmap/method-handlers/mailbox-query";
@@ -48,6 +52,7 @@ const SUPPORTED_CAPABILITIES = new Set([
 	JMAP_SUBMISSION,
 	JMAP_VACATION,
 	JMAP_BLOB,
+	JMAP_PUSH,
 ]);
 
 const JmapMethodCallSchema = v.tuple([
@@ -104,6 +109,9 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 					[JMAP_SUBMISSION]: {},
 					[JMAP_VACATION]: {},
 					[JMAP_BLOB]: JMAP_BLOB_ACCOUNT_CAPABILITY,
+					[JMAP_PUSH]: {
+						maxSubscriptionsPerAccount: JMAP_CONSTRAINTS[JMAP_PUSH]?.maxSubscriptionsPerAccount ?? 0,
+					},
 				},
 			},
 		},
@@ -113,6 +121,7 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 			[JMAP_SUBMISSION]: accountId,
 			[JMAP_VACATION]: accountId,
 			[JMAP_BLOB]: accountId,
+			[JMAP_PUSH]: accountId,
 		},
 		username: userId,
 		apiUrl: c.env.BASE_API_URL,
@@ -147,6 +156,9 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Identity/get": handleIdentityGet,
 	"Identity/changes": handleIdentityChanges,
 	"Identity/set": handleIdentitySet,
+	"PushSubscription/get": handlePushSubscriptionGet,
+	"PushSubscription/set": handlePushSubscriptionSet,
+	"PushSubscription/destroy": handlePushSubscriptionDestroy,
 	"VacationResponse/get": handleVacationResponseGet,
 	"VacationResponse/set": handleVacationResponseSet,
 	"Blob/get": handleBlobGet,
@@ -176,6 +188,9 @@ const METHOD_CAPABILITIES: Record<string, string[]> = {
 	"Identity/get": [JMAP_SUBMISSION],
 	"Identity/changes": [JMAP_SUBMISSION],
 	"Identity/set": [JMAP_SUBMISSION],
+	"PushSubscription/get": [JMAP_PUSH],
+	"PushSubscription/set": [JMAP_PUSH],
+	"PushSubscription/destroy": [JMAP_PUSH],
 	"VacationResponse/get": [JMAP_VACATION],
 	"VacationResponse/set": [JMAP_VACATION],
 	"Blob/get": [JMAP_BLOB],

@@ -7,4 +7,5 @@ export type JmapStateType =
 	| "Thread"
 	| "Identity"
 	| "VacationResponse"
-	| "EmailSubmission";
+	| "EmailSubmission"
+	| "PushSubscription";
