@@ -15,7 +15,6 @@ type PushSubscriptionResponse = {
 	keys: { auth?: string | null; p256dh?: string | null } | null;
 	types: JmapStateType[] | null;
 	expires: string | null;
-	verificationCode: string | null;
 };
 
 const KNOWN_PUSH_TYPES: readonly JmapStateType[] = [
@@ -66,7 +65,6 @@ export async function handlePushSubscriptionGet(
 					keysAuth: pushSubscriptionTable.keysAuth,
 					keysP256dh: pushSubscriptionTable.keysP256dh,
 					typesJson: pushSubscriptionTable.typesJson,
-					verificationCode: pushSubscriptionTable.verificationCode,
 					expiresAt: pushSubscriptionTable.expiresAt,
 				})
 				.from(pushSubscriptionTable)
@@ -79,7 +77,6 @@ export async function handlePushSubscriptionGet(
 					keysAuth: pushSubscriptionTable.keysAuth,
 					keysP256dh: pushSubscriptionTable.keysP256dh,
 					typesJson: pushSubscriptionTable.typesJson,
-					verificationCode: pushSubscriptionTable.verificationCode,
 					expiresAt: pushSubscriptionTable.expiresAt,
 				})
 				.from(pushSubscriptionTable)
@@ -93,7 +90,6 @@ export async function handlePushSubscriptionGet(
 		keys: formatKeys(row.keysAuth, row.keysP256dh),
 		types: parseTypes(row.typesJson),
 		expires: row.expiresAt ? new Date(row.expiresAt).toISOString() : null,
-		verificationCode: row.verificationCode ?? null,
 	}));
 
 	const foundIds = new Set(list.map((entry) => entry.id));
