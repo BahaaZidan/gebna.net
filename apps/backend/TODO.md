@@ -1,16 +1,6 @@
 ## Compliance
 
-## Performance
-- Replace the broad `LIKE` scans in `Email/query` with an indexed/FTS-backed search table so text filters stop scanning entire tables.
-- Cache per-mailbox total/unread counters (e.g., via triggers) instead of recomputing grouped counts on every `Mailbox/get`.
-- Add change-log compaction/GC so `change_log` growth does not slow every `Email/changes`/event-source poll.
-- Avoid downloading entire MIME blobs from R2 when populating `bodyValues`; persist truncated per-part text or stream ranges.
-- Track account storage usage incrementally rather than recomputing `SUM(blob.size)` on every blob upload.
-- Add a native `collapseThreads` path to `Email/query` so the server can efficiently return one id per thread when requested.
-
-## Security
-- Lock down structured draft creation so `Email/set` without a `blobId` can only emit `From`/`Sender` addresses that belong to the user’s identities.
-- Enforce the declared `maxConcurrentRequests` and `maxConcurrentUpload` limits by tracking in-flight operations.
-- Integrate DKIM/DMARC signing (and SES configuration-set enforcement) into the outbound transport so messages are authenticated.
-- Scan inbound uploads/attachments for malware before persisting them to R2 and the database.
-- Add per-account outbound throttling/abuse detection inside the submission queue using SES webhook feedback to suspend compromised accounts.
+- Make `PushSubscription/set` handle destroy operations and remove the non-standard `PushSubscription/destroy` method so the API matches RFC 8620 (`apps/backend/src/lib/jmap/method-handlers/push-subscription-set.ts`, `apps/backend/src/lib/jmap/method-handlers/push-subscription-destroy.ts`, `apps/backend/src/jmap.routes.ts`).
+- Add `ifInState` handling to `PushSubscription/set` so clients can detect concurrent edits before mutating subscriptions (`apps/backend/src/lib/jmap/method-handlers/push-subscription-set.ts`).
+- Persist mailbox query state (filter + sort) the same way `Email/query` does so `Mailbox/queryChanges` can validate incoming requests rather than assuming the token is just the mailbox state (`apps/backend/src/lib/jmap/method-handlers/mailbox-query.ts`, `apps/backend/src/lib/jmap/method-handlers/mailbox-query-changes.ts`).
+- `Mailbox/queryChanges` always reports newly added ids with `index: 0`; compute the real index in the sorted result set so clients can insert items at the correct position (`apps/backend/src/lib/jmap/method-handlers/mailbox-query-changes.ts`).
