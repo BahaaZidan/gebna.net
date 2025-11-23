@@ -1,13 +1,18 @@
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
+import { accountMessageTable, messageTable } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getChanges } from "../utils";
 import {
+	buildOrderBy,
+	buildWhereClause,
 	filterIdsMatchingQuery,
 	normalizeFilter,
+	type SortComparator,
 } from "./email-query";
 import {
 	StoredQueryStateRecord,
@@ -110,7 +115,19 @@ export async function handleEmailQueryChanges(
 			normalizedFilter,
 			changeSet.updated
 		);
-		const added = [...matchingAdded, ...matchingUpdated].map((id) => ({ id, index: 0 }));
+		const sortComparators: SortComparator[] =
+			(storedState?.sort as SortComparator[] | undefined) ?? [{ property: "receivedAt", isAscending: false }];
+		const addedIds = Array.from(new Set([...matchingAdded, ...matchingUpdated]));
+		const positionMap = await loadQueryPositions(
+			db,
+			effectiveAccountId,
+			normalizedFilter,
+			sortComparators,
+			addedIds
+		);
+		const added = addedIds
+			.map((id) => ({ id, index: positionMap.get(id) ?? 0 }))
+			.sort((a, b) => a.index - b.index);
 		const removedFromUpdated = changeSet.updated.filter((id) => !matchingUpdated.has(id));
 		const removed = [...changeSet.destroyed, ...removedFromUpdated];
 		const totalChanged = added.length + removed.length;
@@ -125,7 +142,7 @@ export async function handleEmailQueryChanges(
 				added,
 				removed,
 				filter: filterArg ?? null,
-				sort: storedState?.sort ?? [{ property: "receivedAt", isAscending: false }],
+				sort: sortComparators,
 				limit: maxChanges,
 				hasMoreChanges: changeSet.hasMoreChanges,
 				collapseThreads: false,
@@ -139,4 +156,35 @@ export async function handleEmailQueryChanges(
 		}
 		return ["error", { type: "serverError" }, tag];
 	}
+}
+
+async function loadQueryPositions(
+	db: ReturnType<typeof getDB>,
+	accountId: string,
+	filter: ReturnType<typeof normalizeFilter>,
+	sort: SortComparator[],
+	ids: string[]
+): Promise<Map<string, number>> {
+	if (!ids.length) {
+		return new Map();
+	}
+	const whereClause = buildWhereClause(accountId, filter);
+	const orderParts = buildOrderBy(sort);
+	const orderSql = sql.join(orderParts, sql`, `);
+	const rowNumberExpr = sql<number>`row_number() over (ORDER BY ${orderSql}) - 1`.as("rowIndex");
+	const rows = await db
+		.select({
+			emailId: accountMessageTable.id,
+			rowIndex: rowNumberExpr,
+		})
+		.from(accountMessageTable)
+		.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
+		.where(and(whereClause, inArray(accountMessageTable.id, ids)));
+
+	const map = new Map<string, number>();
+	for (const row of rows) {
+		if (row.rowIndex === null || row.rowIndex === undefined) continue;
+		map.set(row.emailId, Number(row.rowIndex));
+	}
+	return map;
 }
