@@ -30,6 +30,7 @@ import { handleIdentitySet } from "./lib/jmap/method-handlers/identity-set";
 import { handleMailboxChanges } from "./lib/jmap/method-handlers/mailbox-changes";
 import { handleMailboxGet } from "./lib/jmap/method-handlers/mailbox-get";
 import { handleMailboxQuery } from "./lib/jmap/method-handlers/mailbox-query";
+import { handleMailboxQueryChanges } from "./lib/jmap/method-handlers/mailbox-query-changes";
 import { handleThreadChanges } from "./lib/jmap/method-handlers/thread-changes";
 import { handleThreadGet } from "./lib/jmap/method-handlers/thread-get";
 import { handleVacationResponseGet } from "./lib/jmap/method-handlers/vacation-get";
@@ -135,6 +136,7 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Thread/changes": handleThreadChanges,
 	"Mailbox/get": handleMailboxGet,
 	"Mailbox/query": handleMailboxQuery,
+	"Mailbox/queryChanges": handleMailboxQueryChanges,
 	"Mailbox/changes": handleMailboxChanges,
 	"Mailbox/set": handleMailboxSet,
 	"Email/set": handleEmailSet,
@@ -163,6 +165,7 @@ const METHOD_CAPABILITIES: Record<string, string[]> = {
 	"Thread/changes": [JMAP_MAIL],
 	"Mailbox/get": [JMAP_MAIL],
 	"Mailbox/query": [JMAP_MAIL],
+	"Mailbox/queryChanges": [JMAP_MAIL],
 	"Mailbox/changes": [JMAP_MAIL],
 	"Mailbox/set": [JMAP_MAIL],
 	"EmailSubmission/set": [JMAP_SUBMISSION],

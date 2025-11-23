@@ -1,5 +1,4 @@
 ## Compliance
-- Add the JMAP `Mailbox/queryChanges` method so clients can page mailbox lists incrementally.
 - Emit `Identity/changes` notifications and serve the method alongside the existing `Identity/get` and `Identity/set` handlers.
 - Introduce persistent push-subscription storage plus `PushSubscription/get/set/destroy` endpoints and advertise them in the session object.
 - Make `/jmap/event-source/:accountId` honor the full RFC 8620 query contract (types filters, close-after semantics, etc.) instead of the current custom poller.
