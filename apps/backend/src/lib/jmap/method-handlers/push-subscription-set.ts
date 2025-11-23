@@ -1,9 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
 import { pushSubscriptionTable } from "../../../db/schema";
-import { recordCreate, recordUpdate } from "../change-log";
+import { recordCreate, recordDestroy, recordUpdate } from "../change-log";
 import { JMAP_CONSTRAINTS, JMAP_CORE, JMAP_PUSH } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse, JmapStateType } from "../types";
@@ -62,16 +62,23 @@ export async function handlePushSubscriptionSet(
 
 	const createMap = isRecord(args.create) ? (args.create as Record<string, unknown>) : {};
 	const updateMap = isRecord(args.update) ? (args.update as Record<string, unknown>) : {};
+	const destroyList = Array.isArray(args.destroy)
+		? (args.destroy as unknown[]).filter((value): value is string => typeof value === "string" && value.length > 0)
+		: [];
 	const createEntries = Object.entries(createMap);
 	const updateEntries = Object.entries(updateMap);
 
 	const maxSetObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInSet ?? 128;
-	if (createEntries.length + updateEntries.length > maxSetObjects) {
+	if (
+		createEntries.length > maxSetObjects ||
+		updateEntries.length > maxSetObjects ||
+		destroyList.length > maxSetObjects
+	) {
 		return [
 			"error",
 			{
 				type: "limitExceeded",
-				description: `Too many create/update operations (max ${maxSetObjects})`,
+				description: `Too many create/update/destroy operations (max ${maxSetObjects} each)`,
 			},
 			tag,
 		];
@@ -84,15 +91,40 @@ export async function handlePushSubscriptionSet(
 	const notCreated: Record<string, { type: string; description?: string }> = {};
 	const updated: Record<string, { id: string }> = {};
 	const notUpdated: Record<string, { type: string; description?: string }> = {};
+	const destroyed: string[] = [];
+	const notDestroyed: Record<string, { type: string; description?: string }> = {};
 
 	try {
 		await db.transaction(async (tx) => {
-			if (createEntries.length > 0 && Number.isFinite(maxSubscriptions)) {
-				const existing = await tx
+			if (destroyList.length > 0) {
+				const rows = await tx
 					.select({ id: pushSubscriptionTable.id })
 					.from(pushSubscriptionTable)
+					.where(and(eq(pushSubscriptionTable.accountId, effectiveAccountId), inArray(pushSubscriptionTable.id, destroyList)));
+				const existing = new Set(rows.map((row) => row.id));
+				const now = new Date();
+				for (const id of destroyList) {
+					if (!existing.has(id)) {
+						notDestroyed[id] = { type: "notFound", description: "PushSubscription not found" };
+						continue;
+					}
+					await tx.delete(pushSubscriptionTable).where(eq(pushSubscriptionTable.id, id));
+					await recordDestroy(tx, {
+						accountId: effectiveAccountId,
+						type: "PushSubscription",
+						objectId: id,
+						now,
+					});
+					destroyed.push(id);
+				}
+			}
+
+			if (createEntries.length > 0 && Number.isFinite(maxSubscriptions)) {
+				const [{ count = 0 } = {}] = await tx
+					.select({ count: sql<number>`count(*) as count` })
+					.from(pushSubscriptionTable)
 					.where(eq(pushSubscriptionTable.accountId, effectiveAccountId));
-				if (existing.length + createEntries.length > maxSubscriptions) {
+				if (count + createEntries.length > maxSubscriptions) {
 					throw Object.assign(
 						new Error(`maxSubscriptionsPerAccount (${maxSubscriptions}) exceeded`),
 						{ jmapType: "limitExceeded" }
@@ -256,6 +288,8 @@ export async function handlePushSubscriptionSet(
 			notCreated,
 			updated,
 			notUpdated,
+			destroyed,
+			notDestroyed,
 		},
 		tag,
 	];
