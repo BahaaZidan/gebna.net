@@ -6,6 +6,11 @@ import { mailboxTable } from "../../../db/schema";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
+import {
+	encodeQueryStateValue,
+	persistQueryStateRecord,
+	purgeStaleQueryStates,
+} from "../helpers/query-state";
 
 export type MailboxFilter = {
 	operator: "all" | "text" | "name" | "role";
@@ -25,7 +30,7 @@ type MailboxQueryOptions = {
 	calculateTotal: boolean;
 };
 
-const DEFAULT_MAILBOX_SORT: MailboxSort[] = [{ property: "sortOrder", isAscending: true }];
+export const DEFAULT_MAILBOX_SORT: MailboxSort[] = [{ property: "sortOrder", isAscending: true }];
 
 export async function handleMailboxQuery(
 	c: Context<JMAPHonoAppEnv>,
@@ -39,7 +44,7 @@ export async function handleMailboxQuery(
 	if (!effectiveAccountId) {
 		return ["error", { type: "accountNotFound" }, tag];
 	}
-	const queryState = await getAccountState(db, effectiveAccountId, "Mailbox");
+	const mailboxState = await getAccountState(db, effectiveAccountId, "Mailbox");
 
 	const options = parseQueryOptions(args);
 
@@ -61,12 +66,23 @@ export async function handleMailboxQuery(
 		total = typeof count === "number" ? count : 0;
 	}
 
+	let queryStateId: string | null = null;
+	try {
+		queryStateId = await persistQueryStateRecord(db, effectiveAccountId, options.filter, options.sort);
+		await purgeStaleQueryStates(db);
+	} catch (err) {
+		console.warn("Failed to persist mailbox queryState", err);
+	}
+	const encodedQueryState =
+		queryStateId !== null ? encodeQueryStateValue(queryStateId, mailboxState) : mailboxState;
+	const canCalculateChanges = options.filter.operator === "all" && Boolean(queryStateId);
+
 	return [
 		"Mailbox/query",
 		{
 			accountId: effectiveAccountId,
-			queryState,
-			canCalculateChanges: options.filter.operator === "all",
+			queryState: encodedQueryState,
+			canCalculateChanges,
 			ids,
 			position: options.position,
 			total: options.calculateTotal ? total : null,
@@ -155,7 +171,7 @@ function applyFilter(accountId: string, filter: MailboxFilter) {
 	}
 }
 
-function buildOrderBy(sort: MailboxSort[]) {
+export function buildOrderBy(sort: MailboxSort[]) {
 	if (!sort.length) return [asc(mailboxTable.sortOrder)];
 	return sort.map((entry) => {
 		if (entry.property === "name") {

@@ -6,13 +6,15 @@ import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getChanges } from "../utils";
 import {
-	StoredQueryStateRecord,
-	decodeQueryStateValue,
 	filterIdsMatchingQuery,
-	filtersEqual,
-	loadQueryStateRecord,
 	normalizeFilter,
 } from "./email-query";
+import {
+	StoredQueryStateRecord,
+	decodeQueryStateValue,
+	filtersEqual,
+	loadQueryStateRecord,
+} from "../helpers/query-state";
 
 export async function handleEmailQueryChanges(
 	c: Context<JMAPHonoAppEnv>,
