@@ -6,20 +6,31 @@ import { identityTable } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState } from "../utils";
+import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
 
 type IdentityAddress = { email: string; name?: string | null };
 
 type IdentityRecord = {
 	id: string;
-	name: string;
-	email: string;
-	replyTo: IdentityAddress[] | null;
-	bcc: IdentityAddress[] | null;
-	textSignature: string | null;
-	htmlSignature: string | null;
-	isDefault: boolean;
+	name?: string;
+	email?: string;
+	replyTo?: IdentityAddress[] | null;
+	bcc?: IdentityAddress[] | null;
+	textSignature?: string | null;
+	htmlSignature?: string | null;
+	isDefault?: boolean;
 };
+
+const IDENTITY_PROPERTIES = [
+	"id",
+	"name",
+	"email",
+	"replyTo",
+	"bcc",
+	"textSignature",
+	"htmlSignature",
+	"isDefault",
+] as const;
 
 function parseAddressJson(json: string | null): IdentityAddress[] | null {
 	if (!json) return null;
@@ -65,6 +76,14 @@ export async function handleIdentityGet(
 		];
 	}
 
+	const propertiesResult = parseRequestedProperties(args.properties, IDENTITY_PROPERTIES);
+	if ("error" in propertiesResult) {
+		return ["error", { type: "invalidArguments", description: propertiesResult.error }, tag];
+	}
+	const requestedProperties = propertiesResult.properties;
+	const includeProp = (prop: (typeof IDENTITY_PROPERTIES)[number]) =>
+		!requestedProperties || requestedProperties.has(prop);
+
 	const rows = await (ids?.length
 		? db
 				.select({
@@ -94,16 +113,17 @@ export async function handleIdentityGet(
 				.where(eq(identityTable.accountId, effectiveAccountId))
 				.limit(maxObjects));
 
-	const list: IdentityRecord[] = rows.map((row) => ({
-		id: row.id,
-		name: row.name,
-		email: row.email,
-		replyTo: parseAddressJson(row.replyToJson),
-		bcc: parseAddressJson(row.bccJson),
-		textSignature: row.textSignature ?? null,
-		htmlSignature: row.htmlSignature ?? null,
-		isDefault: Boolean(row.isDefault),
-	}));
+	const list: IdentityRecord[] = rows.map((row) => {
+		const entry: IdentityRecord = { id: row.id } as IdentityRecord;
+		if (includeProp("name")) entry.name = row.name;
+		if (includeProp("email")) entry.email = row.email;
+		if (includeProp("replyTo")) entry.replyTo = parseAddressJson(row.replyToJson);
+		if (includeProp("bcc")) entry.bcc = parseAddressJson(row.bccJson);
+		if (includeProp("textSignature")) entry.textSignature = row.textSignature ?? null;
+		if (includeProp("htmlSignature")) entry.htmlSignature = row.htmlSignature ?? null;
+		if (includeProp("isDefault")) entry.isDefault = Boolean(row.isDefault);
+		return entry;
+	});
 
 	const foundIds = new Set(list.map((r) => r.id));
 	const notFound = ids ? ids.filter((id) => !foundIds.has(id)) : [];

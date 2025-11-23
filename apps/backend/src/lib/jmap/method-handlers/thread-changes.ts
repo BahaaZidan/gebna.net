@@ -18,7 +18,11 @@ export async function handleThreadChanges(
 		return ["error", { type: "accountNotFound" }, tag];
 	}
 
-	const sinceState = (args.sinceState as string | undefined) ?? "0";
+	const sinceStateArg = args.sinceState;
+	if (typeof sinceStateArg !== "string" || sinceStateArg.length === 0) {
+		return ["error", { type: "invalidArguments", description: "sinceState is required" }, tag];
+	}
+	const sinceState = sinceStateArg;
 	const maxChangesArg = args.maxChanges as number | undefined;
 	const upToId = typeof args.upToId === "string" ? args.upToId : undefined;
 	const includeUpdatedProps = Boolean(args.includeUpdatedProperties);

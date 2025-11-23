@@ -173,3 +173,27 @@ export async function getAccountMailboxes(
 export function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+export function parseRequestedProperties(
+	value: unknown,
+	allowed: readonly string[]
+): { properties: Set<string> | null } | { error: string } {
+	if (value === undefined) {
+		return { properties: null };
+	}
+	if (!Array.isArray(value)) {
+		return { error: "properties must be an array of strings" };
+	}
+	const allowedSet = new Set(allowed);
+	const properties = new Set<string>();
+	for (const entry of value) {
+		if (typeof entry !== "string" || entry.length === 0) {
+			return { error: "properties must be non-empty strings" };
+		}
+		if (!allowedSet.has(entry)) {
+			return { error: `Unsupported property ${entry}` };
+		}
+		properties.add(entry);
+	}
+	return { properties };
+}
