@@ -123,7 +123,7 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 			[JMAP_PUSH]: accountId,
 		},
 		username: userId,
-		apiUrl: c.env.BASE_API_URL,
+		apiUrl: `${c.env.BASE_API_URL}${c.env.JMAP_BASE_PATH ?? ""}`,
 		downloadUrl: `${c.env.BASE_API_URL}${c.env.JMAP_DOWNLOAD_PATH}`,
 		uploadUrl: `${c.env.BASE_API_URL}${c.env.JMAP_UPLOAD_PATH}`,
 		eventSourceUrl: `${c.env.BASE_API_URL}/jmap/event-source/{accountId}`,
@@ -258,6 +258,8 @@ function captureCreationReferences(response: JmapMethodResponse, refs: CreationR
 const requestTextEncoder = new TextEncoder();
 
 async function handleJmap(c: Context<JMAPHonoAppEnv>) {
+	const db = getDB(c.env);
+	const accountId = c.get("accountId");
 	const rawBody = await c.req.text();
 	const maxSizeRequest = JMAP_CONSTRAINTS[JMAP_CORE].maxSizeRequest ?? null;
 	if (maxSizeRequest) {
@@ -347,7 +349,8 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 		}
 	}
 
-	return c.json({ methodResponses });
+	const sessionState = await getGlobalAccountState(db, accountId);
+	return c.json({ sessionState, methodResponses });
 }
 
 async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Response> {
