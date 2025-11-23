@@ -361,12 +361,12 @@ function parseUrl(value: unknown): string {
 	}
 	try {
 		const parsed = new URL(value);
-		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-			throw new Error("Invalid protocol");
+		if (parsed.protocol !== "https:") {
+			throw new PushSubscriptionProblem("invalidProperties", "url must use https");
 		}
 		return parsed.toString();
 	} catch {
-		throw new PushSubscriptionProblem("invalidProperties", "url must be a valid http(s) URL");
+		throw new PushSubscriptionProblem("invalidProperties", "url must be a valid https URL");
 	}
 }
 
