@@ -11,56 +11,27 @@ import {
 	messageHeaderTable,
 	messageTable,
 } from "../../../db/schema";
-import { addressParser, decodeWords } from "postal-mime";
+import {
+	BodyValueRecord,
+	HeaderSpec,
+	JmapEmailAddress,
+	collectAttachmentsFromStructure,
+	collectBodyParts,
+	collectMimeTextParts,
+	filterBodyPart,
+	formatHeaderValues,
+	parseHeaderProperty,
+	truncateStringToBytes,
+} from "../email-format";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
-import { parseRawEmail } from "../../mail/ingest";
+import { parseRawEmail, type StoredBodyPart } from "../../mail/ingest";
 
-const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
 const INGEST_BODY_CACHE_LIMIT = 256 * 1024;
 
-type StoredBodyPart = {
-	partId: string;
-	type: string;
-	subtype: string;
-	parameters: Record<string, string>;
-	size: number | null;
-	blobId: string | null;
-	charset: string | null;
-	disposition: string | null;
-	name: string | null;
-	cid: string | null;
-	isInline: boolean;
-	parts?: StoredBodyPart[];
-};
-
 type StoredBodyStructure = StoredBodyPart;
-
-type BodyValueRecord = {
-	value: string;
-	isTruncated: boolean;
-	charset: string;
-};
-
-type HeaderFetchMode = "raw" | "text" | "addresses";
-
-type HeaderSpec = { lowerName: string; mode: HeaderFetchMode };
-
-type JmapEmailAddress = { email: string; name?: string | null };
-
-type AttachmentRecord = {
-	partId: string;
-	blobId: string;
-	type: string;
-	size: number;
-	name: string | null;
-	cid: string | null;
-	disposition: string | null;
-	isInline: boolean;
-};
 
 type StoredBodyRow = {
 	textBody: string | null;
@@ -443,117 +414,6 @@ function parseReferencesArray(json: string | null): string[] {
 	}
 }
 
-function parseHeaderProperty(prop: string): HeaderSpec | null {
-	if (typeof prop !== "string" || !prop.startsWith("header:")) return null;
-	let remainder = prop.slice(7);
-	if (!remainder) return null;
-	let mode: HeaderFetchMode = "raw";
-	const suffixMatch = remainder.match(/:(asText|asRaw|asAddresses)$/i);
-	if (suffixMatch) {
-		const suffix = suffixMatch[1]?.toLowerCase();
-		switch (suffix) {
-			case "astext":
-				mode = "text";
-				break;
-			case "asaddresses":
-				mode = "addresses";
-				break;
-			default:
-				mode = "raw";
-		}
-		remainder = remainder.slice(0, -suffixMatch[0].length);
-	}
-	if (!remainder) return null;
-	return { lowerName: remainder.toLowerCase(), mode };
-}
-
-function formatHeaderValues(values: string[] | undefined, mode: HeaderFetchMode): unknown {
-	if (!values || values.length === 0) {
-		return null;
-	}
-	switch (mode) {
-		case "text": {
-			const decoded = values.map(decodeHeaderValue);
-			return decoded.length === 1 ? decoded[0] : decoded;
-		}
-		case "addresses": {
-			const addresses = parseAddressHeaderValues(values);
-			return addresses;
-		}
-		case "raw":
-		default:
-			return values.length === 1 ? values[0] : values;
-	}
-}
-
-function decodeHeaderValue(value: string): string {
-	try {
-		return decodeWords(value);
-	} catch {
-		return value;
-	}
-}
-
-function parseAddressHeaderValues(values: string[]): JmapEmailAddress[] {
-	const result: JmapEmailAddress[] = [];
-	for (const raw of values) {
-		try {
-			const parsed = addressParser(raw) ?? [];
-			for (const entry of parsed as unknown[]) {
-				appendAddressEntry(entry, result);
-			}
-		} catch {
-			continue;
-		}
-	}
-	return result;
-}
-
-function appendAddressEntry(entry: unknown, target: JmapEmailAddress[]): void {
-	if (!entry || typeof entry !== "object") return;
-	const maybeMailbox = entry as { address?: string | null; name?: string | null; group?: unknown };
-	if (typeof maybeMailbox.address === "string" && maybeMailbox.address.length > 0) {
-		target.push({
-			email: maybeMailbox.address,
-			name: maybeMailbox.name ?? null,
-		});
-		return;
-	}
-	const group = maybeMailbox.group;
-	if (Array.isArray(group)) {
-		for (const child of group) {
-			appendAddressEntry(child, target);
-		}
-	}
-}
-
-function filterBodyPart(part: StoredBodyPart, allowed: Set<string>): Record<string, unknown> {
-	const output: Record<string, unknown> = {};
-	const include = (key: string, value: unknown, force = false) => {
-		if (value === undefined) return;
-		if (!force && !allowed.has(key)) return;
-		output[key] = value;
-	};
-
-	include("partId", part.partId, true);
-	include("type", part.type, true);
-	include("subtype", part.subtype, true);
-	include("parameters", part.parameters);
-	include("size", part.size);
-	include("blobId", part.blobId);
-	include("charset", part.charset);
-	include("disposition", part.disposition);
-	include("name", part.name);
-	include("cid", part.cid);
-	include("isInline", part.isInline);
-
-	if (part.parts && part.parts.length) {
-		output.parts = part.parts.map((child) => filterBodyPart(child, allowed));
-	}
-
-	return output;
-}
-
 function buildBodyValuesFromStored(params: {
 	row: StoredBodyRow;
 	structure: StoredBodyStructure;
@@ -627,48 +487,6 @@ function findBodyPart(
 	return null;
 }
 
-function collectBodyParts(
-	part: StoredBodyPart | null,
-	predicate: (part: StoredBodyPart) => boolean
-): StoredBodyPart[] {
-	if (!part) return [];
-	const matches: StoredBodyPart[] = [];
-	const walk = (node: StoredBodyPart) => {
-		if (predicate(node)) {
-			matches.push(node);
-		}
-		for (const child of node.parts ?? []) {
-			walk(child);
-		}
-	};
-	walk(part);
-	return matches;
-}
-
-function collectAttachmentsFromStructure(part: StoredBodyPart | null): AttachmentRecord[] {
-	if (!part) return [];
-	const records: AttachmentRecord[] = [];
-	const walk = (node: StoredBodyPart) => {
-		if (node.blobId) {
-			records.push({
-				partId: node.partId,
-				blobId: node.blobId,
-				type: `${node.type}/${node.subtype}`,
-				size: node.size ?? 0,
-				name: node.name ?? null,
-				cid: node.cid ?? null,
-				disposition: node.disposition ?? null,
-				isInline: Boolean(node.isInline),
-			});
-		}
-		for (const child of node.parts ?? []) {
-			walk(child);
-		}
-	};
-	walk(part);
-	return records;
-}
-
 async function fetchBodyValuesFromRawMime(params: {
 	env: JMAPHonoAppEnv["Bindings"];
 	rawBlobSha: string | null;
@@ -703,66 +521,4 @@ async function fetchBodyValuesFromRawMime(params: {
 		};
 	}
 	return result;
-}
-
-function collectMimeTextParts(
-	node: unknown,
-	needed: Set<string>,
-	collected: Map<string, string>,
-	parentPartId: string | null,
-	index: number
-): void {
-	if (!node || typeof node !== "object") return;
-	const anyNode = node as {
-		childNodes?: unknown[];
-		contentType?: { parsed?: { value?: string } };
-		getTextContent?: () => string;
-		content?: Uint8Array;
-	};
-	const partId = parentPartId ? `${parentPartId}.${index + 1}` : String(index + 1);
-	const children = Array.isArray(anyNode.childNodes) ? anyNode.childNodes : [];
-	const mediaType = (anyNode.contentType?.parsed?.value ?? "").toLowerCase();
-	if (!children.length && mediaType.startsWith("text/") && needed.has(partId)) {
-		const text = extractMimeNodeText(anyNode);
-		if (typeof text === "string") {
-			collected.set(partId, text);
-		}
-	}
-	for (let i = 0; i < children.length; i++) {
-		collectMimeTextParts(children[i], needed, collected, partId, i);
-	}
-}
-
-function extractMimeNodeText(node: {
-	getTextContent?: () => string;
-	content?: Uint8Array;
-}): string | null {
-	if (typeof node.getTextContent === "function") {
-		try {
-			return node.getTextContent();
-		} catch {
-			return null;
-		}
-	}
-	if (node.content instanceof Uint8Array) {
-		try {
-			return textDecoder.decode(node.content);
-		} catch {
-			return null;
-		}
-	}
-	return null;
-}
-
-
-function truncateStringToBytes(value: string, maxBytes: number): { value: string; isTruncated: boolean } {
-	const encoded = textEncoder.encode(value);
-	if (encoded.byteLength <= maxBytes) {
-		return { value, isTruncated: false };
-	}
-	const truncated = encoded.slice(0, maxBytes);
-	return {
-		value: textDecoder.decode(truncated),
-		isTruncated: true,
-	};
 }
