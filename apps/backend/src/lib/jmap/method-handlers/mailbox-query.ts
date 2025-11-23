@@ -7,12 +7,12 @@ import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState } from "../utils";
 
-type MailboxFilter = {
+export type MailboxFilter = {
 	operator: "all" | "text" | "name" | "role";
 	value?: string;
 };
 
-type MailboxSort = {
+export type MailboxSort = {
 	property: "name" | "sortOrder";
 	isAscending?: boolean;
 };
@@ -87,15 +87,15 @@ function parseQueryOptions(args: Record<string, unknown>): MailboxQueryOptions {
 	const calculateTotal = Boolean(args.calculateTotal) || Boolean(args.calculateChanges);
 
 	return {
-		filter: normalizeFilter(args.filter),
-		sort: normalizeSort(args.sort),
+		filter: normalizeMailboxFilter(args.filter),
+		sort: normalizeMailboxSort(args.sort),
 		limit,
 		position,
 		calculateTotal,
 	};
 }
 
-function normalizeFilter(raw: unknown): MailboxFilter {
+export function normalizeMailboxFilter(raw: unknown): MailboxFilter {
 	if (!raw || typeof raw !== "object") return { operator: "all" };
 	const value = raw as Record<string, unknown>;
 
@@ -117,7 +117,7 @@ function normalizeFilter(raw: unknown): MailboxFilter {
 	return { operator: "all" };
 }
 
-function normalizeSort(raw: unknown): MailboxSort[] {
+export function normalizeMailboxSort(raw: unknown): MailboxSort[] {
 	if (!Array.isArray(raw) || raw.length === 0) {
 		return DEFAULT_MAILBOX_SORT;
 	}
