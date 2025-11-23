@@ -3,6 +3,7 @@ export const JMAP_MAIL = "urn:ietf:params:jmap:mail";
 export const JMAP_SUBMISSION = "urn:ietf:params:jmap:submission";
 export const JMAP_VACATION = "urn:ietf:params:jmap:vacationresponse";
 export const JMAP_BLOB = "urn:ietf:params:jmap:blob";
+export const JMAP_PUSH = "urn:ietf:params:jmap:push";
 
 export const JMAP_CONSTRAINTS = {
 	[JMAP_CORE]: {
@@ -42,6 +43,10 @@ export const JMAP_CONSTRAINTS = {
 	[JMAP_VACATION]: {},
 
 	[JMAP_BLOB]: {},
+
+	[JMAP_PUSH]: {
+		maxSubscriptionsPerAccount: 32,
+	},
 };
 
 export const JMAP_BLOB_ACCOUNT_CAPABILITY = {

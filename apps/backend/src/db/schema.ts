@@ -319,6 +319,30 @@ export const identityTable = sqliteTable(
 	(self) => [index("idx_identity_account").on(self.accountId)]
 );
 
+export const pushSubscriptionTable = sqliteTable(
+	"push_subscription",
+	(t) => ({
+		id: t.text().primaryKey(),
+		accountId: t
+			.text()
+			.notNull()
+			.references(() => accountTable.id, { onDelete: "cascade" }),
+		deviceClientId: t.text().notNull(),
+		url: t.text().notNull(),
+		keysAuth: t.text(),
+		keysP256dh: t.text(),
+		typesJson: t.text(),
+		verificationCode: t.text(),
+		expiresAt: t.integer({ mode: "timestamp" }),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
+		updatedAt: t.integer({ mode: "timestamp" }).notNull(),
+	}),
+	(self) => [
+		index("idx_push_subscription_account").on(self.accountId),
+		index("idx_push_subscription_device").on(self.accountId, self.deviceClientId),
+	]
+);
+
 export const emailSubmissionTable = sqliteTable(
 	"email_submission",
 	(t) => ({
@@ -388,6 +412,7 @@ export const changeLogTypeValues = [
 	"Identity",
 	"VacationResponse",
 	"EmailSubmission",
+	"PushSubscription",
 ] as const;
 export type ChangeLogType = (typeof changeLogTypeValues)[number];
 
