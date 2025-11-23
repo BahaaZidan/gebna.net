@@ -1,5 +1,4 @@
 ## Compliance
-- Implement the missing `Email/parse` handler and register it so clients can convert uploaded blobs into structured `Email` objects.
 - Add the JMAP `Mailbox/queryChanges` method so clients can page mailbox lists incrementally.
 - Emit `Identity/changes` notifications and serve the method alongside the existing `Identity/get` and `Identity/set` handlers.
 - Introduce persistent push-subscription storage plus `PushSubscription/get/set/destroy` endpoints and advertise them in the session object.
