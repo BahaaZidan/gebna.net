@@ -27,6 +27,7 @@ import { handleEmailSubmissionGet } from "./lib/jmap/method-handlers/email-submi
 import { handleEmailSubmissionChanges } from "./lib/jmap/method-handlers/email-submission-changes";
 import { handleIdentityGet } from "./lib/jmap/method-handlers/identity-get";
 import { handleIdentitySet } from "./lib/jmap/method-handlers/identity-set";
+import { handleIdentityChanges } from "./lib/jmap/method-handlers/identity-changes";
 import { handleMailboxChanges } from "./lib/jmap/method-handlers/mailbox-changes";
 import { handleMailboxGet } from "./lib/jmap/method-handlers/mailbox-get";
 import { handleMailboxQuery } from "./lib/jmap/method-handlers/mailbox-query";
@@ -144,6 +145,7 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"EmailSubmission/get": handleEmailSubmissionGet,
 	"EmailSubmission/changes": handleEmailSubmissionChanges,
 	"Identity/get": handleIdentityGet,
+	"Identity/changes": handleIdentityChanges,
 	"Identity/set": handleIdentitySet,
 	"VacationResponse/get": handleVacationResponseGet,
 	"VacationResponse/set": handleVacationResponseSet,
@@ -172,6 +174,7 @@ const METHOD_CAPABILITIES: Record<string, string[]> = {
 	"EmailSubmission/get": [JMAP_SUBMISSION],
 	"EmailSubmission/changes": [JMAP_SUBMISSION],
 	"Identity/get": [JMAP_SUBMISSION],
+	"Identity/changes": [JMAP_SUBMISSION],
 	"Identity/set": [JMAP_SUBMISSION],
 	"VacationResponse/get": [JMAP_VACATION],
 	"VacationResponse/set": [JMAP_VACATION],
