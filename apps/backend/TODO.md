@@ -1,6 +1,4 @@
 ## Compliance
-- Make `/jmap/event-source/:accountId` honor the full RFC 8620 query contract (types filters, close-after semantics, etc.) instead of the current custom poller.
-- Destroy empty threads and emit `Thread/destroy` state when the last email is removed.
 
 ## Performance
 - Replace the broad `LIKE` scans in `Email/query` with an indexed/FTS-backed search table so text filters stop scanning entire tables.

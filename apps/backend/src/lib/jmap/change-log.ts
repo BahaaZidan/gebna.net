@@ -227,8 +227,12 @@ export async function recordEmailUpdateChanges(params: EmailChangeParams): Promi
 	}
 }
 
-export async function recordEmailDestroyChanges(params: EmailChangeParams): Promise<void> {
-	const { tx, accountId, accountMessageId, threadId, mailboxIds, now } = params;
+type EmailDestroyChangeParams = EmailChangeParams & {
+	threadStillExists: boolean;
+};
+
+export async function recordEmailDestroyChanges(params: EmailDestroyChangeParams): Promise<void> {
+	const { tx, accountId, accountMessageId, threadId, mailboxIds, now, threadStillExists } = params;
 
 	const emailModSeq = await bumpStateTx(tx, accountId, "Email");
 	await tx.insert(changeLogTable).values({
@@ -241,16 +245,18 @@ export async function recordEmailDestroyChanges(params: EmailChangeParams): Prom
 		createdAt: now,
 	});
 
-	const threadModSeq = await bumpStateTx(tx, accountId, "Thread");
-	await tx.insert(changeLogTable).values({
-		id: crypto.randomUUID(),
-		accountId,
-		type: "Thread",
-		objectId: threadId,
-		op: "update",
-		modSeq: threadModSeq,
-		createdAt: now,
-	});
+	if (threadStillExists) {
+		const threadModSeq = await bumpStateTx(tx, accountId, "Thread");
+		await tx.insert(changeLogTable).values({
+			id: crypto.randomUUID(),
+			accountId,
+			type: "Thread",
+			objectId: threadId,
+			op: "update",
+			modSeq: threadModSeq,
+			createdAt: now,
+		});
+	}
 
 	if (mailboxIds.length > 0) {
 		const mailboxModSeq = await bumpStateTx(tx, accountId, "Mailbox");

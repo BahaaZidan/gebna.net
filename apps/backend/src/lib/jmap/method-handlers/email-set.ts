@@ -13,6 +13,7 @@ import {
 	messageAddressTable,
 	messageHeaderTable,
 	messageTable,
+	threadTable,
 } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import {
@@ -30,6 +31,7 @@ import {
 } from "../../mail/ingest";
 import type { PreparedAttachmentInput } from "../../mail/ingest";
 import {
+	recordDestroy,
 	recordEmailCreateChanges,
 	recordEmailDestroyChanges,
 	recordEmailUpdateChanges,
@@ -1247,6 +1249,18 @@ async function handleEmailDestroy(
 		await tx.delete(mailboxMessageTable).where(eq(mailboxMessageTable.accountMessageId, row.id));
 		await tx.delete(emailKeywordTable).where(eq(emailKeywordTable.accountMessageId, row.id));
 
+		const [threadRemaining] = await tx
+			.select({ count: sql<number>`count(*) as count` })
+			.from(accountMessageTable)
+			.where(
+				and(
+					eq(accountMessageTable.accountId, accountId),
+					eq(accountMessageTable.threadId, row.threadId),
+					eq(accountMessageTable.isDeleted, false)
+				)
+			);
+		const threadStillExists = (threadRemaining?.count ?? 0) > 0;
+
 		await recordEmailDestroyChanges({
 			tx,
 			accountId,
@@ -1254,7 +1268,20 @@ async function handleEmailDestroy(
 			threadId: row.threadId,
 			mailboxIds,
 			now,
+			threadStillExists,
 		});
+
+		if (!threadStillExists) {
+			await tx
+				.delete(threadTable)
+				.where(and(eq(threadTable.id, row.threadId), eq(threadTable.accountId, accountId)));
+			await recordDestroy(tx, {
+				accountId,
+				type: "Thread",
+				objectId: row.threadId,
+				now,
+			});
+		}
 
 		destroyed.push(emailId);
 
