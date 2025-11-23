@@ -108,23 +108,20 @@ const hasMoreChanges = rows.length > maxChanges;
 	const created: string[] = [];
 	const updated: string[] = [];
 	const destroyed: string[] = [];
-	const updatedProperties = options?.includeUpdatedProperties ? new Set<string>() : null;
-
 	for (const [id, ops] of perId) {
 		const { firstOp, lastOp } = ops;
 
 		if (lastOp === "destroy") {
 			destroyed.push(id);
-			if (updatedProperties) updatedProperties.add(id);
 		} else if (firstOp === "create") {
 			created.push(id);
 		} else {
 			updated.push(id);
-			if (updatedProperties) updatedProperties.add(id);
 		}
 	}
 
 	const newState = String(slice[slice.length - 1]!.modSeq);
+	const updatedProperties: string[] | null = null;
 
 	return {
 		oldState: sinceState,
@@ -133,7 +130,7 @@ const hasMoreChanges = rows.length > maxChanges;
 		updated,
 		destroyed,
 		hasMoreChanges,
-		updatedProperties: updatedProperties ? Array.from(updatedProperties) : null,
+		updatedProperties,
 	};
 }
 

@@ -1,5 +1,1 @@
 ## Compliance
-- [ ] Enforce the advertised `maxMailboxesPerEmail` capability when creating/updating emails so a single Email cannot be assigned to more than 32 mailboxes (apps/backend/src/lib/jmap/constants.ts:27-39, apps/backend/src/lib/jmap/method-handlers/email-set.ts:373-420,1077-1090).
-- [ ] Enforce the advertised `maxSizeAttachmentsPerEmail` limit when synthesizing drafts or importing blobs; `Email/set` and `Email/import` currently never total attachment sizes before ingest (apps/backend/src/lib/jmap/constants.ts:27-39, apps/backend/src/lib/jmap/method-handlers/email-set.ts:481-575, apps/backend/src/lib/jmap/method-handlers/email-import.ts:1-220).
-- [ ] `Email/queryChanges` needs to calculate the correct insertion index for each added id per RFC 8620 §5.5 instead of hard-coding `index: 0` (apps/backend/src/lib/jmap/method-handlers/email-query-changes.ts:93-135).
-- [ ] Fix `getChanges`/`Email/changes` so `updatedProperties` contains property names (or null) rather than a list of object ids, which is not spec-compliant (apps/backend/src/lib/jmap/utils.ts:111-137).

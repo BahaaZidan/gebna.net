@@ -15,7 +15,7 @@ import {
 	messageTable,
 	threadTable,
 } from "../../../db/schema";
-import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
+import { JMAP_CONSTRAINTS, JMAP_CORE, JMAP_MAIL } from "../constants";
 import {
 	buildBodyStructure,
 	ensureAccountBlob,
@@ -47,6 +47,8 @@ import {
 import { sha256HexFromArrayBuffer } from "../../utils";
 
 const draftEncoder = new TextEncoder();
+const MAX_MAILBOXES_PER_EMAIL = JMAP_CONSTRAINTS[JMAP_MAIL]?.maxMailboxesPerEmail ?? null;
+const MAX_ATTACHMENT_BYTES = JMAP_CONSTRAINTS[JMAP_MAIL]?.maxSizeAttachmentsPerEmail ?? null;
 
 export async function handleEmailSet(
 	c: Context<JMAPHonoAppEnv>,
@@ -372,6 +374,7 @@ async function prepareEmailCreate(opts: {
 	}
 
 	const mailboxIds = extractMailboxTargets(mailboxPatch, mailboxLookup);
+	enforceMailboxLimit(mailboxIds);
 	if (mailboxIds.length === 0) {
 		throw new EmailSetProblem("invalidProperties", "mailboxIds must include at least one mailbox");
 	}
@@ -422,6 +425,7 @@ async function prepareEmailCreate(opts: {
 		accountId,
 		blobId: blobIdValue,
 	});
+	enforceAttachmentAggregateLimit(parsedBlob.attachments.reduce((sum, att) => sum + att.size, 0));
 
 	return {
 		creationId,
@@ -493,6 +497,7 @@ async function maybePrepareStructuredDraft(
 		accountId,
 		attachments: draft.attachments,
 	});
+	enforceAttachmentAggregateLimit(loadedAttachments.reduce((sum, att) => sum + att.data.byteLength, 0));
 
 	const mime = buildMimeFromDraft(draft, loadedAttachments);
 	const rawBytes = draftEncoder.encode(mime);
@@ -836,6 +841,32 @@ function sanitizeAttachmentName(value: string | null): string | null {
 	if (!value) return null;
 	const cleaned = value.replace(/\r|\n/g, "").trim();
 	return cleaned.length ? cleaned : null;
+}
+
+function enforceMailboxLimit(mailboxIds: string[]): void {
+	if (
+		MAX_MAILBOXES_PER_EMAIL !== null &&
+		typeof MAX_MAILBOXES_PER_EMAIL === "number" &&
+		mailboxIds.length > MAX_MAILBOXES_PER_EMAIL
+	) {
+		throw new EmailSetProblem(
+			"limitExceeded",
+			`mailboxIds exceeds maxMailboxesPerEmail (${MAX_MAILBOXES_PER_EMAIL})`
+		);
+	}
+}
+
+function enforceAttachmentAggregateLimit(totalBytes: number): void {
+	if (
+		MAX_ATTACHMENT_BYTES !== null &&
+		typeof MAX_ATTACHMENT_BYTES === "number" &&
+		totalBytes > MAX_ATTACHMENT_BYTES
+	) {
+		throw new EmailSetProblem(
+			"limitExceeded",
+			`attachments exceed maxSizeAttachmentsPerEmail (${MAX_ATTACHMENT_BYTES})`
+		);
+	}
 }
 
 function escapeHeaderParameter(value: string): string {
@@ -1436,6 +1467,7 @@ async function applyMailboxPatch(
 	if (targetMailboxIds.length === 0) {
 		throw new EmailSetProblem("invalidProperties", "mailboxIds must include at least one mailbox");
 	}
+	enforceMailboxLimit(targetMailboxIds);
 
 	const existingRows = await tx
 		.select({

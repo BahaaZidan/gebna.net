@@ -28,7 +28,7 @@ import { recordEmailCreateChanges } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountMailboxes, getAccountState, isRecord } from "../utils";
-import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
+import { JMAP_CONSTRAINTS, JMAP_CORE, JMAP_MAIL } from "../constants";
 
 type EmailImportArgs = {
 	accountId: string;
@@ -70,6 +70,8 @@ const KEYWORD_FLAG_MAP: Record<string, keyof ImportKeywordFlags> = {
 	$draft: "isDraft",
 	"\\draft": "isDraft",
 };
+const MAX_MAILBOXES_PER_EMAIL = JMAP_CONSTRAINTS[JMAP_MAIL]?.maxMailboxesPerEmail ?? null;
+const MAX_ATTACHMENT_BYTES = JMAP_CONSTRAINTS[JMAP_MAIL]?.maxSizeAttachmentsPerEmail ?? null;
 
 export async function handleEmailImport(
 	c: Context<JMAPHonoAppEnv>,
@@ -200,12 +202,14 @@ function parseEmailImportCreate(
 		targetMailboxIds.push(mailboxId);
 	}
 
-	if (!targetMailboxIds.length) {
+	const uniqueMailboxIds = Array.from(new Set(targetMailboxIds));
+	if (!uniqueMailboxIds.length) {
 		throw new EmailImportProblem(
 			"invalidProperties",
 			"mailboxIds must include at least one mailbox"
 		);
 	}
+	enforceMailboxLimit(uniqueMailboxIds.length);
 
 	const keywordsValue = raw.keywords;
 	const keywords =
@@ -213,7 +217,7 @@ function parseEmailImportCreate(
 
 	return {
 		blobId,
-		mailboxIds: Array.from(new Set(targetMailboxIds)),
+		mailboxIds: uniqueMailboxIds,
 		keywords,
 	};
 }
@@ -256,6 +260,7 @@ async function loadEmailMetadataFromBlob(
 	const { structure, attachments } = await buildBodyStructure(parsed, size);
 	const hasAttachment = attachments.length > 0;
 	const bodyStructureJson = JSON.stringify(structure);
+	enforceAttachmentSizeLimit(attachments.reduce((sum, att) => sum + att.size, 0));
 
 	return {
 		email: parsed.email,
@@ -402,6 +407,32 @@ function normalizeKeywordName(keyword: string): string {
 		return `$${keyword.slice(1).toLowerCase()}`;
 	}
 	return keyword.toLowerCase();
+}
+
+function enforceMailboxLimit(count: number): void {
+	if (
+		MAX_MAILBOXES_PER_EMAIL !== null &&
+		typeof MAX_MAILBOXES_PER_EMAIL === "number" &&
+		count > MAX_MAILBOXES_PER_EMAIL
+	) {
+		throw new EmailImportProblem(
+			"limitExceeded",
+			`mailboxIds exceeds maxMailboxesPerEmail (${MAX_MAILBOXES_PER_EMAIL})`
+		);
+	}
+}
+
+function enforceAttachmentSizeLimit(totalBytes: number): void {
+	if (
+		MAX_ATTACHMENT_BYTES !== null &&
+		typeof MAX_ATTACHMENT_BYTES === "number" &&
+		totalBytes > MAX_ATTACHMENT_BYTES
+	) {
+		throw new EmailImportProblem(
+			"limitExceeded",
+			`attachments exceed maxSizeAttachmentsPerEmail (${MAX_ATTACHMENT_BYTES})`
+		);
+	}
 }
 
 class EmailImportProblem extends Error {

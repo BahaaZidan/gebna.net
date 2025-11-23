@@ -21,7 +21,7 @@ import {
 	purgeStaleQueryStates,
 } from "../helpers/query-state";
 
-type FilterCondition =
+export type FilterCondition =
 	| { operator: "none" }
 	| { operator: "text"; value: string }
 	| { operator: "subject"; value: string }
@@ -43,7 +43,7 @@ type FilterCondition =
 	| { operator: "and" | "or"; conditions: FilterCondition[] }
 	| { operator: "not"; condition: FilterCondition };
 
-type SortComparator = {
+export type SortComparator = {
 	property: "receivedAt" | "sentAt" | "size";
 	isAscending?: boolean;
 };
@@ -378,13 +378,13 @@ export async function filterIdsMatchingQuery(
 	return new Set(rows.map((row) => row.emailId));
 }
 
-function buildWhereClause(accountId: string, filter: FilterCondition) {
+export function buildWhereClause(accountId: string, filter: FilterCondition) {
 	const base = and(eq(accountMessageTable.accountId, accountId), eq(accountMessageTable.isDeleted, false));
 	const filterClause = buildFilterSql(filter);
 	return filterClause ? and(base, filterClause) : base;
 }
 
-function buildOrderBy(sort: SortComparator[]) {
+export function buildOrderBy(sort: SortComparator[]) {
 	const clauses = [];
 	for (const comparator of sort) {
 		switch (comparator.property) {
