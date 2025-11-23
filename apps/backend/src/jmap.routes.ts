@@ -31,7 +31,6 @@ import { handleIdentitySet } from "./lib/jmap/method-handlers/identity-set";
 import { handleIdentityChanges } from "./lib/jmap/method-handlers/identity-changes";
 import { handlePushSubscriptionGet } from "./lib/jmap/method-handlers/push-subscription-get";
 import { handlePushSubscriptionSet } from "./lib/jmap/method-handlers/push-subscription-set";
-import { handlePushSubscriptionDestroy } from "./lib/jmap/method-handlers/push-subscription-destroy";
 import { handleMailboxChanges } from "./lib/jmap/method-handlers/mailbox-changes";
 import { handleMailboxGet } from "./lib/jmap/method-handlers/mailbox-get";
 import { handleMailboxQuery } from "./lib/jmap/method-handlers/mailbox-query";
@@ -158,7 +157,6 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Identity/set": handleIdentitySet,
 	"PushSubscription/get": handlePushSubscriptionGet,
 	"PushSubscription/set": handlePushSubscriptionSet,
-	"PushSubscription/destroy": handlePushSubscriptionDestroy,
 	"VacationResponse/get": handleVacationResponseGet,
 	"VacationResponse/set": handleVacationResponseSet,
 	"Blob/get": handleBlobGet,
@@ -190,7 +188,6 @@ const METHOD_CAPABILITIES: Record<string, string[]> = {
 	"Identity/set": [JMAP_SUBMISSION],
 	"PushSubscription/get": [JMAP_PUSH],
 	"PushSubscription/set": [JMAP_PUSH],
-	"PushSubscription/destroy": [JMAP_PUSH],
 	"VacationResponse/get": [JMAP_VACATION],
 	"VacationResponse/set": [JMAP_VACATION],
 	"Blob/get": [JMAP_BLOB],
