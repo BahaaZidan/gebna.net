@@ -333,6 +333,7 @@ export const pushSubscriptionTable = sqliteTable(
 		keysP256dh: t.text(),
 		typesJson: t.text(),
 		verificationCode: t.text(),
+		verifiedAt: t.integer({ mode: "timestamp" }),
 		expiresAt: t.integer({ mode: "timestamp" }),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 		updatedAt: t.integer({ mode: "timestamp" }).notNull(),

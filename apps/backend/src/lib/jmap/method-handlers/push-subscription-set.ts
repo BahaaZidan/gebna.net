@@ -25,6 +25,7 @@ type PushSubscriptionUpdate = {
 	keys?: PushSubscriptionKeys;
 	types?: JmapStateType[] | null;
 	expiresAt?: Date | null;
+	verificationCode?: string;
 };
 
 const PUSH_SUBSCRIPTION_TYPES: readonly JmapStateType[] = [
@@ -197,6 +198,7 @@ export async function handlePushSubscriptionSet(
 					.select({
 						id: pushSubscriptionTable.id,
 						deviceClientId: pushSubscriptionTable.deviceClientId,
+						verificationCode: pushSubscriptionTable.verificationCode,
 					})
 					.from(pushSubscriptionTable)
 					.where(and(eq(pushSubscriptionTable.id, id), eq(pushSubscriptionTable.accountId, effectiveAccountId)))
@@ -219,6 +221,7 @@ export async function handlePushSubscriptionSet(
 				}
 
 				const updateData: Record<string, unknown> = {};
+				let requiresReverification = false;
 				if (patch.deviceClientId !== undefined && patch.deviceClientId !== existing.deviceClientId) {
 					const [conflict] = await tx
 						.select({ id: pushSubscriptionTable.id })
@@ -235,13 +238,16 @@ export async function handlePushSubscriptionSet(
 						continue;
 					}
 					updateData.deviceClientId = patch.deviceClientId;
+					requiresReverification = true;
 				}
 				if (patch.url !== undefined) {
 					updateData.url = patch.url;
+					requiresReverification = true;
 				}
 				if (patch.keys !== undefined) {
 					updateData.keysAuth = patch.keys?.auth ?? null;
 					updateData.keysP256dh = patch.keys?.p256dh ?? null;
+					requiresReverification = true;
 				}
 				if (patch.types !== undefined) {
 					updateData.typesJson = serializeTypes(patch.types);
@@ -249,11 +255,30 @@ export async function handlePushSubscriptionSet(
 				if (patch.expiresAt !== undefined) {
 					updateData.expiresAt = patch.expiresAt ?? null;
 				}
+				const now = new Date();
+				let verificationResponse: { verificationCode?: string | null } | null = null;
+				if (patch.verificationCode !== undefined) {
+					if (!existing.verificationCode) {
+						notUpdated[id] = { type: "invalidProperties", description: "No verification pending" };
+						continue;
+					}
+					if (patch.verificationCode !== existing.verificationCode) {
+						notUpdated[id] = { type: "invalidProperties", description: "Invalid verificationCode" };
+						continue;
+					}
+					updateData.verificationCode = null;
+					updateData.verifiedAt = now;
+					verificationResponse = { verificationCode: null };
+				} else if (requiresReverification) {
+					const newCode = generateVerificationCode();
+					updateData.verificationCode = newCode;
+					updateData.verifiedAt = null;
+					verificationResponse = { verificationCode: newCode };
+				}
 				if (Object.keys(updateData).length === 0) {
 					continue;
 				}
 
-				const now = new Date();
 				updateData.updatedAt = now;
 
 				await tx.update(pushSubscriptionTable).set(updateData).where(eq(pushSubscriptionTable.id, id));
@@ -264,7 +289,7 @@ export async function handlePushSubscriptionSet(
 					objectId: id,
 					now,
 				});
-				updated[id] = { id };
+				updated[id] = verificationResponse ? { id, ...verificationResponse } : { id };
 			}
 		});
 	} catch (err) {
@@ -332,6 +357,9 @@ function parsePushSubscriptionUpdate(raw: unknown): PushSubscriptionUpdate {
 	}
 	if (raw.expires !== undefined) {
 		patch.expiresAt = parseExpires(raw.expires);
+	}
+	if (raw.verificationCode !== undefined) {
+		patch.verificationCode = parseVerificationCodeInput(raw.verificationCode);
 	}
 
 	return patch;
@@ -410,6 +438,13 @@ function parseExpires(value: unknown): Date | null {
 		return date;
 	}
 	throw new PushSubscriptionProblem("invalidProperties", "expires must be an ISO date string or null");
+}
+
+function parseVerificationCodeInput(value: unknown): string {
+	if (typeof value !== "string" || value.trim().length === 0) {
+		throw new PushSubscriptionProblem("invalidProperties", "verificationCode must be a non-empty string");
+	}
+	return value.trim();
 }
 
 function generateVerificationCode(): string {
