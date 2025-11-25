@@ -16,6 +16,10 @@ type MailboxRecord = {
 	sortOrder?: number;
 	totalEmails?: number;
 	unreadEmails?: number;
+	totalThreads?: number;
+	unreadThreads?: number;
+	isSubscribed?: boolean;
+	hasChildren?: boolean;
 	myRights?: MailboxRights;
 };
 
@@ -27,6 +31,10 @@ const MAILBOX_PROPERTIES = [
 	"sortOrder",
 	"totalEmails",
 	"unreadEmails",
+	"totalThreads",
+	"unreadThreads",
+	"isSubscribed",
+	"hasChildren",
 	"myRights",
 ] as const;
 
@@ -122,6 +130,43 @@ export async function handleMailboxGet(
 		});
 	}
 
+	const threadCountRows = mailboxIds.length
+		? await db
+				.select({
+					mailboxId: mailboxMessageTable.mailboxId,
+					totalThreads: sql<number>`count(distinct ${accountMessageTable.threadId})`.as("totalThreads"),
+					unreadThreads: sql<number>`count(distinct case when ${accountMessageTable.isSeen} = 0 then ${accountMessageTable.threadId} end)`.as(
+						"unreadThreads"
+					),
+				})
+				.from(mailboxMessageTable)
+				.innerJoin(accountMessageTable, eq(mailboxMessageTable.accountMessageId, accountMessageTable.id))
+				.where(
+					and(
+						inArray(mailboxMessageTable.mailboxId, mailboxIds),
+						eq(accountMessageTable.isDeleted, false)
+					)
+				)
+				.groupBy(mailboxMessageTable.mailboxId)
+		: [];
+	const threadCountMap = new Map<string, { totalThreads: number; unreadThreads: number }>();
+	for (const row of threadCountRows) {
+		threadCountMap.set(row.mailboxId, {
+			totalThreads: Number(row.totalThreads ?? 0),
+			unreadThreads: Number(row.unreadThreads ?? 0),
+		});
+	}
+
+const childRows = await db
+	.select({ parentId: mailboxTable.parentId })
+	.from(mailboxTable)
+	.where(and(eq(mailboxTable.accountId, effectiveAccountId), sql`${mailboxTable.parentId} is not null`));
+const hasChildSet = new Set(
+	childRows
+		.map((row) => row.parentId)
+		.filter((value): value is string => typeof value === "string" && value.length > 0)
+);
+
 	const list: MailboxRecord[] = rows.map((row) => {
 		const entry: MailboxRecord = { id: row.id };
 		const role = row.role ?? null;
@@ -131,6 +176,11 @@ export async function handleMailboxGet(
 		if (includeProp("sortOrder")) entry.sortOrder = row.sortOrder;
 		if (includeProp("totalEmails")) entry.totalEmails = countMap.get(row.id)?.total ?? 0;
 		if (includeProp("unreadEmails")) entry.unreadEmails = countMap.get(row.id)?.unread ?? 0;
+		if (includeProp("totalThreads")) entry.totalThreads = threadCountMap.get(row.id)?.totalThreads ?? 0;
+		if (includeProp("unreadThreads"))
+			entry.unreadThreads = threadCountMap.get(row.id)?.unreadThreads ?? 0;
+		if (includeProp("isSubscribed")) entry.isSubscribed = true;
+		if (includeProp("hasChildren")) entry.hasChildren = hasChildSet.has(row.id);
 		if (includeProp("myRights")) {
 			entry.myRights = getRightsForRole(role);
 		}
