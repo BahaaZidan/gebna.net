@@ -223,13 +223,13 @@ const BASE_RIGHTS: MailboxRights = {
 	mayDelete: true,
 	maySetSeen: true,
 	maySetKeywords: true,
-	maySubmit: true,
+	maySubmit: false,
 };
 
 const ROLE_RIGHTS: Record<string, Partial<MailboxRights>> = {
 	inbox: { mayCreateChild: false, mayRename: false, mayDelete: false },
-	sent: { mayRename: false, mayDelete: false },
-	drafts: { mayRename: false, mayDelete: false },
+	sent: { mayCreateChild: false, mayRename: false, mayDelete: false },
+	drafts: { mayCreateChild: false, mayRename: false, mayDelete: false, maySubmit: true },
 	trash: { mayCreateChild: false, mayRename: false, mayDelete: false },
 	spam: { mayCreateChild: false, mayRename: false, mayDelete: false },
 };
