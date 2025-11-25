@@ -12,7 +12,7 @@ type IdentityAddress = { email: string; name?: string | null };
 
 type IdentityRecord = {
 	id: string;
-	name?: string;
+	name?: string | null;
 	email?: string;
 	replyTo?: IdentityAddress[] | null;
 	bcc?: IdentityAddress[] | null;
@@ -115,7 +115,7 @@ export async function handleIdentityGet(
 
 	const list: IdentityRecord[] = rows.map((row) => {
 		const entry: IdentityRecord = { id: row.id } as IdentityRecord;
-		if (includeProp("name")) entry.name = row.name;
+		if (includeProp("name")) entry.name = row.name?.length ? row.name : null;
 		if (includeProp("email")) entry.email = row.email;
 		if (includeProp("replyTo")) entry.replyTo = parseAddressJson(row.replyToJson);
 		if (includeProp("bcc")) entry.bcc = parseAddressJson(row.bccJson);

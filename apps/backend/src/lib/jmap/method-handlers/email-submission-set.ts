@@ -20,7 +20,7 @@ import { JMAPHonoAppEnv } from "../middlewares";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState, getAccountMailboxes, isRecord } from "../utils";
-import { recordCreate, recordUpdate } from "../change-log";
+import { recordCreate, recordDestroy, recordUpdate } from "../change-log";
 import { applyEmailSet } from "./email-set";
 
 export async function handleEmailSubmissionSet(
@@ -406,10 +406,40 @@ async function applyEmailSubmissionSet(
 	}
 
 	for (const destroyId of destroyList) {
-		notDestroyed[destroyId] = {
-			type: "invalidArguments",
-			description: "EmailSubmission destroy is not supported",
-		};
+		const [submission] = await db
+			.select({
+				id: emailSubmissionTable.id,
+				status: emailSubmissionTable.status,
+				undoStatus: emailSubmissionTable.undoStatus,
+			})
+			.from(emailSubmissionTable)
+			.where(and(eq(emailSubmissionTable.id, destroyId), eq(emailSubmissionTable.accountId, accountId)))
+			.limit(1);
+
+		if (!submission) {
+			notDestroyed[destroyId] = { type: "notFound", description: "EmailSubmission not found" };
+			continue;
+		}
+
+		if (submission.status === QUEUE_STATUS_PENDING) {
+			await db
+				.update(emailSubmissionTable)
+				.set({
+					status: QUEUE_STATUS_CANCELED,
+					undoStatus: "canceled",
+					nextAttemptAt: null,
+					updatedAt: now,
+				})
+				.where(and(eq(emailSubmissionTable.id, destroyId), eq(emailSubmissionTable.accountId, accountId)));
+			await recordDestroy(db, {
+				accountId,
+				type: "EmailSubmission",
+				objectId: destroyId,
+				now,
+			});
+		}
+
+		destroyed.push(destroyId);
 	}
 
 	for (const submissionId of submissionsToProcess) {
