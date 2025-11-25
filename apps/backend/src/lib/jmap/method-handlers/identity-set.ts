@@ -65,23 +65,23 @@ class IdentitySetProblem extends Error {
 	}
 }
 
-function parseIdentityCreate(raw: unknown, accountAddress: string): IdentityCreate {
+function parseIdentityCreate(raw: unknown, _accountAddress: string): IdentityCreate {
 	if (!isRecord(raw)) {
 		throw new IdentitySetProblem("invalidProperties", "Identity/create patch must be an object");
 	}
 
-	const name = raw.name;
-	if (typeof name !== "string" || name.length === 0) {
-		throw new IdentitySetProblem("invalidProperties", "Identity/create.name must be a string");
+	let name = "";
+	if (raw.name === null || raw.name === undefined) {
+		name = "";
+	} else if (typeof raw.name === "string") {
+		name = raw.name;
+	} else {
+		throw new IdentitySetProblem("invalidProperties", "Identity/create.name must be a string or null");
 	}
 
 	const email = raw.email;
 	if (typeof email !== "string" || email.length === 0) {
 		throw new IdentitySetProblem("invalidProperties", "Identity/create.email must be a string");
-	}
-
-	if (email.toLowerCase() !== accountAddress.toLowerCase()) {
-		throw new IdentitySetProblem("invalidProperties", "Identity email must match account address");
 	}
 
 	const replyTo = parseAddressList(raw.replyTo);
@@ -121,7 +121,7 @@ function parseIdentityCreate(raw: unknown, accountAddress: string): IdentityCrea
 	};
 }
 
-function parseIdentityUpdate(raw: unknown, accountAddress: string): IdentityUpdate {
+function parseIdentityUpdate(raw: unknown, _accountAddress: string): IdentityUpdate {
 	if (!isRecord(raw)) {
 		throw new IdentitySetProblem("invalidProperties", "Identity/update patch must be an object");
 	}
@@ -129,18 +129,15 @@ function parseIdentityUpdate(raw: unknown, accountAddress: string): IdentityUpda
 	const patch: IdentityUpdate = {};
 
 	if (raw.name !== undefined) {
-		if (raw.name === null || typeof raw.name !== "string" || raw.name.length === 0) {
-			throw new IdentitySetProblem("invalidProperties", "Identity/update.name must be a string");
+		if (raw.name !== null && typeof raw.name !== "string") {
+			throw new IdentitySetProblem("invalidProperties", "Identity/update.name must be a string or null");
 		}
-		patch.name = raw.name;
+		patch.name = raw.name ?? "";
 	}
 
 	if (raw.email !== undefined) {
 		if (raw.email === null || typeof raw.email !== "string" || raw.email.length === 0) {
 			throw new IdentitySetProblem("invalidProperties", "Identity/update.email must be a string");
-		}
-		if (raw.email.toLowerCase() !== accountAddress.toLowerCase()) {
-			throw new IdentitySetProblem("invalidProperties", "Identity email must match account address");
 		}
 		patch.email = raw.email;
 	}

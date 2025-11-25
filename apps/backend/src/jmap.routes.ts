@@ -62,9 +62,12 @@ function buildMailAccountCapability(): Record<string, unknown> {
 }
 
 function buildSubmissionAccountCapability(env: CloudflareBindings): Record<string, unknown> {
+	const maxDelayedSend = getUndoWindowSeconds(env);
+	const submissionExtensions =
+		maxDelayedSend && maxDelayedSend > 0 ? ["urn:ietf:params:jmap:submission:delay"] : [];
 	return {
-		maxDelayedSend: getUndoWindowSeconds(env),
-		submissionExtensions: [],
+		maxDelayedSend: maxDelayedSend ?? 0,
+		submissionExtensions,
 	};
 }
 
