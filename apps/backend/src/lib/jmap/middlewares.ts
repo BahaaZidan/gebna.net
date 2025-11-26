@@ -3,12 +3,14 @@ import { jwt, type JwtVariables } from "hono/jwt";
 
 import { getDB } from "../../db";
 import { userTable } from "../../db/schema";
+import type { CreationReferenceMap } from "./types";
 
 export type JMAPHonoAppEnv = {
 	Bindings: CloudflareBindings;
 	Variables: JwtVariables & {
 		user: typeof userTable.$inferSelect;
 		accountId: string;
+		creationReferences?: CreationReferenceMap;
 	};
 };
 
