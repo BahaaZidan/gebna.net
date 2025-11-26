@@ -55,6 +55,7 @@ type QueryOptions = {
 	filter: FilterCondition;
 	calculateTotal: boolean;
 	anchor?: { id: string; offset: number };
+	collapseThreads: boolean;
 };
 
 const DEFAULT_SORT: SortComparator[] = [{ property: "receivedAt", isAscending: false }];
@@ -122,6 +123,7 @@ export async function handleEmailQuery(
 				ids: result.ids,
 				position: result.position,
 				total: options.calculateTotal ? result.total : null,
+				collapseThreads: options.collapseThreads,
 			},
 			tag,
 		];
@@ -184,6 +186,14 @@ function parseQueryOptions(args: Record<string, unknown>): QueryOptions {
 			? args.position
 			: 0;
 
+	const collapseThreadsInput = args.collapseThreads;
+	if (collapseThreadsInput !== undefined && collapseThreadsInput !== false) {
+		throw new EmailQueryProblem(
+			"collapseThreadsNotSupported",
+			"collapseThreads is not supported by this server"
+		);
+	}
+
 	return {
 		limit,
 		position,
@@ -191,6 +201,7 @@ function parseQueryOptions(args: Record<string, unknown>): QueryOptions {
 		filter: normalizeFilter(args.filter),
 		calculateTotal: Boolean(args.calculateTotal) || Boolean(args.calculateChanges),
 		anchor: parseAnchor(args),
+		collapseThreads: Boolean(collapseThreadsInput),
 	};
 }
 
