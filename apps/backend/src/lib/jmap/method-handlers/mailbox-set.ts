@@ -19,11 +19,14 @@ type MailboxInfo = {
 type MailboxCreate = {
 	name: string;
 	parentId: string | null;
-	role: string | null;
 	sortOrder: number;
 };
 
-type MailboxUpdate = Partial<MailboxCreate>;
+type MailboxUpdate = {
+	name?: string;
+	parentId?: string | null;
+	sortOrder?: number;
+};
 
 class MailboxSetProblem extends Error {
 	readonly type: string;
@@ -32,12 +35,6 @@ class MailboxSetProblem extends Error {
 		super(message);
 		this.type = type;
 	}
-}
-
-function normalizeRole(value: string | null | undefined): string | null {
-	if (value === undefined || value === null) return null;
-	const trimmed = value.trim();
-	return trimmed ? trimmed.toLowerCase() : null;
 }
 
 function parseMailboxCreate(raw: unknown): MailboxCreate {
@@ -69,21 +66,13 @@ function parseMailboxCreate(raw: unknown): MailboxCreate {
 		}
 	}
 
-	let role: string | null = null;
 	if (raw.role !== undefined) {
-		if (raw.role === null) {
-			role = null;
-		} else if (typeof raw.role === "string") {
-			role = normalizeRole(raw.role);
-		} else {
-			throw new MailboxSetProblem("invalidProperties", "role must be a string or null");
-		}
+		throw new MailboxSetProblem("invalidProperties", "role is read-only");
 	}
 
 	return {
 		name: nameValue.trim(),
 		parentId,
-		role,
 		sortOrder,
 	};
 }
@@ -113,13 +102,7 @@ function parseMailboxUpdate(raw: unknown): MailboxUpdate {
 	}
 
 	if (raw.role !== undefined) {
-		if (raw.role === null) {
-			patch.role = null;
-		} else if (typeof raw.role === "string") {
-			patch.role = normalizeRole(raw.role);
-		} else {
-			throw new MailboxSetProblem("invalidProperties", "role must be a string or null");
-		}
+		throw new MailboxSetProblem("invalidProperties", "role is read-only");
 	}
 
 	if (raw.sortOrder !== undefined) {
@@ -162,18 +145,6 @@ function ensureParentValid(
 			throw new MailboxSetProblem("invalidProperties", "parentId creates a cycle");
 		}
 		cursor = mailboxes.get(cursor)?.parentId ?? null;
-	}
-}
-
-function ensureRoleAvailable(
-	roleOwners: Map<string, string>,
-	role: string | null,
-	mailboxId: string
-): void {
-	if (!role) return;
-	const owner = roleOwners.get(role);
-	if (owner && owner !== mailboxId) {
-		throw new MailboxSetProblem("roleConflict", `Role ${role} already assigned to another mailbox`);
 	}
 }
 
@@ -232,7 +203,6 @@ export async function handleMailboxSet(
 				.where(eq(mailboxTable.accountId, effectiveAccountId));
 
 			const mailboxMap = new Map<string, MailboxInfo>();
-			const roleOwners = new Map<string, string>();
 
 			for (const row of rows) {
 				const info: MailboxInfo = {
@@ -243,9 +213,6 @@ export async function handleMailboxSet(
 					sortOrder: row.sortOrder ?? 0,
 				};
 				mailboxMap.set(row.id, info);
-				if (info.role) {
-					roleOwners.set(info.role, info.id);
-				}
 			}
 
 			const creationResults = new Map<string, string>();
@@ -256,8 +223,6 @@ export async function handleMailboxSet(
 					const resolvedParentId = resolveCreationId(parsed.parentId, creationResults);
 					const mailboxId = crypto.randomUUID();
 
-					ensureRoleAvailable(roleOwners, parsed.role, mailboxId);
-
 					ensureParentValid(mailboxMap, resolvedParentId, mailboxId);
 
 					await tx.insert(mailboxTable).values({
@@ -265,7 +230,7 @@ export async function handleMailboxSet(
 						accountId: effectiveAccountId,
 						name: parsed.name,
 						parentId: resolvedParentId,
-						role: parsed.role,
+						role: null,
 						sortOrder: parsed.sortOrder,
 						createdAt: now,
 						updatedAt: now,
@@ -275,13 +240,10 @@ export async function handleMailboxSet(
 						id: mailboxId,
 						name: parsed.name,
 						parentId: resolvedParentId,
-						role: parsed.role,
+						role: null,
 						sortOrder: parsed.sortOrder,
 					};
 					mailboxMap.set(mailboxId, info);
-					if (parsed.role) {
-						roleOwners.set(parsed.role, mailboxId);
-					}
 					creationResults.set(creationId, mailboxId);
 					created[creationId] = { id: mailboxId };
 
@@ -323,15 +285,6 @@ export async function handleMailboxSet(
 
 					const nextParent = patch.parentId !== undefined ? patch.parentId : existing.parentId;
 					const resolvedParent = resolveCreationId(nextParent ?? null, creationResults);
-					const nextRole =
-						patch.role !== undefined
-							? normalizeRole(patch.role)
-							: normalizeRole(existing.role ?? null);
-
-					if (patch.role !== undefined) {
-						ensureRoleAvailable(roleOwners, nextRole, mailboxId);
-					}
-
 					ensureParentValid(mailboxMap, resolvedParent ?? null, mailboxId);
 
 					await tx
@@ -339,21 +292,10 @@ export async function handleMailboxSet(
 						.set({
 							...(patch.name !== undefined ? { name: patch.name } : {}),
 							...(patch.parentId !== undefined ? { parentId: resolvedParent } : {}),
-							...(patch.role !== undefined ? { role: nextRole } : {}),
 							...(patch.sortOrder !== undefined ? { sortOrder: patch.sortOrder } : {}),
 							updatedAt: now,
 						})
 						.where(and(eq(mailboxTable.id, mailboxId), eq(mailboxTable.accountId, effectiveAccountId)));
-
-					if (patch.role !== undefined) {
-						if (existing.role) {
-							roleOwners.delete(existing.role);
-						}
-						if (nextRole) {
-							roleOwners.set(nextRole, mailboxId);
-						}
-						existing.role = nextRole;
-					}
 
 					if (patch.parentId !== undefined) {
 						existing.parentId = resolvedParent ?? null;
@@ -414,9 +356,6 @@ export async function handleMailboxSet(
 						.where(and(eq(mailboxTable.id, resolvedId), eq(mailboxTable.accountId, effectiveAccountId)));
 
 					mailboxMap.delete(resolvedId);
-					if (existing.role) {
-						roleOwners.delete(existing.role);
-					}
 					destroyed.push(resolvedId);
 
 					await recordDestroy(tx, {
