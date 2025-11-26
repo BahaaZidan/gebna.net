@@ -238,18 +238,104 @@ function resolveStringReference(value: string, refs: CreationReferenceMap): stri
 	return value;
 }
 
-function cloneWithResultReferences<T>(value: T, refs: CreationReferenceMap): T {
+type ResultReferenceStore = Map<string, { name: string; payload: unknown }[]>;
+
+class ResultReferenceError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "ResultReferenceError";
+	}
+}
+
+type ResultReferenceObject = {
+	resultOf: string;
+	name: string;
+	path: string;
+};
+
+function isResultReferenceObject(value: unknown): value is ResultReferenceObject {
+	if (!isPlainObject(value)) return false;
+	const keys = Object.keys(value);
+	if (keys.length !== 3) return false;
+	return (
+		typeof value.resultOf === "string" &&
+		typeof value.name === "string" &&
+		typeof value.path === "string"
+	);
+}
+
+function decodePointerToken(token: string): string {
+	return token.replace(/~1/g, "/").replace(/~0/g, "~");
+}
+
+function resolveJsonPointer(payload: unknown, pointer: string): unknown {
+	if (pointer === "") {
+		return payload;
+	}
+	if (!pointer.startsWith("/")) {
+		throw new ResultReferenceError(`Invalid result reference path ${pointer}`);
+	}
+	const segments = pointer
+		.split("/")
+		.slice(1)
+		.map(decodePointerToken);
+	let current: unknown = payload;
+	for (const segment of segments) {
+		if (Array.isArray(current)) {
+			const index = Number(segment);
+			if (!Number.isFinite(index) || index < 0 || index >= current.length) {
+				throw new ResultReferenceError(`Path segment ${segment} is out of bounds`);
+			}
+			current = current[index];
+		} else if (isPlainObject(current)) {
+			if (!Object.prototype.hasOwnProperty.call(current, segment)) {
+				throw new ResultReferenceError(`Path segment ${segment} not found`);
+			}
+			current = (current as Record<string, unknown>)[segment];
+		} else {
+			throw new ResultReferenceError(`Cannot dereference path segment ${segment}`);
+		}
+	}
+	return current;
+}
+
+function resolveResultReferenceObject(
+	value: ResultReferenceObject,
+	store: ResultReferenceStore
+): unknown {
+	const entries = store.get(value.resultOf);
+	if (!entries) {
+		throw new ResultReferenceError(`Unknown resultOf reference ${value.resultOf}`);
+	}
+	const entry = entries.find((item) => item.name === value.name);
+	if (!entry) {
+		throw new ResultReferenceError(
+			`No response named ${value.name} for resultOf ${value.resultOf}`
+		);
+	}
+	return resolveJsonPointer(entry.payload, value.path);
+}
+
+function cloneWithResultReferences<T>(
+	value: T,
+	refs: CreationReferenceMap,
+	resultStore: ResultReferenceStore
+): T {
 	if (typeof value === "string") {
 		return resolveStringReference(value, refs) as T;
 	}
+	if (isResultReferenceObject(value)) {
+		const resolved = resolveResultReferenceObject(value, resultStore);
+		return cloneWithResultReferences(resolved as T, refs, resultStore);
+	}
 	if (Array.isArray(value)) {
-		return value.map((entry) => cloneWithResultReferences(entry, refs)) as T;
+		return value.map((entry) => cloneWithResultReferences(entry, refs, resultStore)) as T;
 	}
 	if (isPlainObject(value)) {
 		const next: Record<string, unknown> = {};
 		for (const [key, entry] of Object.entries(value)) {
 			const resolvedKey = resolveStringReference(key, refs);
-			next[resolvedKey] = cloneWithResultReferences(entry, refs);
+			next[resolvedKey] = cloneWithResultReferences(entry, refs, resultStore);
 		}
 		return next as T;
 	}
@@ -280,6 +366,17 @@ function captureCreationReferences(response: JmapMethodResponse, refs: CreationR
 			refs.set(creationId, objectId);
 		}
 	}
+}
+
+function captureResultReferencePayload(
+	response: JmapMethodResponse,
+	store: ResultReferenceStore
+): void {
+	const [methodName, payload, tag] = response;
+	if (typeof tag !== "string" || !tag) return;
+	const list = store.get(tag) ?? [];
+	list.push({ name: methodName, payload });
+	store.set(tag, list);
 }
 
 const requestTextEncoder = new TextEncoder();
@@ -338,6 +435,7 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 	const methodResponses: JmapMethodResponse[] = [];
 	const creationReferences: CreationReferenceMap = new Map();
 	c.set("creationReferences", creationReferences);
+	const resultReferenceStore: ResultReferenceStore = new Map();
 	const requestedCapabilities = new Set(req.using);
 
 	for (const [name, args, tag] of req.methodCalls) {
@@ -359,17 +457,36 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 				continue;
 			}
 
-			const resolvedArgs = cloneWithResultReferences(args as Record<string, unknown>, creationReferences);
+			let resolvedArgs: Record<string, unknown>;
+			try {
+				resolvedArgs = cloneWithResultReferences(
+					args as Record<string, unknown>,
+					creationReferences,
+					resultReferenceStore
+				);
+			} catch (err) {
+				if (err instanceof ResultReferenceError) {
+					methodResponses.push([
+						"error",
+						{ type: "invalidResultReference", description: err.message },
+						tag,
+					]);
+					continue;
+				}
+				throw err;
+			}
 			const resp = await handler(c, resolvedArgs, tag);
 			if (Array.isArray(resp[0])) {
 				for (const nested of resp as JmapMethodResponse[]) {
 					methodResponses.push(nested);
 					captureCreationReferences(nested, creationReferences);
+					captureResultReferencePayload(nested, resultReferenceStore);
 				}
 			} else {
 				const single = resp as JmapMethodResponse;
 				methodResponses.push(single);
 				captureCreationReferences(single, creationReferences);
+				captureResultReferencePayload(single, resultReferenceStore);
 			}
 		} catch (err) {
 			console.error("JMAP method error", name, err);
