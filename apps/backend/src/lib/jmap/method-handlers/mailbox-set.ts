@@ -1,9 +1,9 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB, type TransactionInstance } from "../../../db";
-import { mailboxMessageTable, mailboxTable } from "../../../db/schema";
-import { recordCreate, recordDestroy, recordUpdate } from "../change-log";
+import { accountMessageTable, mailboxMessageTable, mailboxTable } from "../../../db/schema";
+import { recordCreate, recordDestroy, recordEmailUpdateChanges, recordUpdate } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState, isRecord } from "../utils";
@@ -148,15 +148,52 @@ function ensureParentValid(
 	}
 }
 
-async function ensureMailboxEmpty(
+async function removeMailboxMemberships(
 	tx: TransactionInstance,
-	mailboxId: string
-): Promise<{ hasMessages: boolean }> {
-	const [{ count } = { count: 0 }] = await tx
-		.select({ count: sql<number>`count(*)` })
+	accountId: string,
+	mailboxId: string,
+	now: Date
+): Promise<void> {
+	const membershipRows = await tx
+		.select({
+			accountMessageId: mailboxMessageTable.accountMessageId,
+			threadId: accountMessageTable.threadId,
+		})
 		.from(mailboxMessageTable)
+		.innerJoin(
+			accountMessageTable,
+			and(
+				eq(mailboxMessageTable.accountMessageId, accountMessageTable.id),
+				eq(accountMessageTable.accountId, accountId),
+				eq(accountMessageTable.isDeleted, false)
+			)
+		)
 		.where(eq(mailboxMessageTable.mailboxId, mailboxId));
-	return { hasMessages: (count ?? 0) > 0 };
+
+	if (!membershipRows.length) {
+		await tx.delete(mailboxMessageTable).where(eq(mailboxMessageTable.mailboxId, mailboxId));
+		return;
+	}
+
+	const emailIds = membershipRows.map((row) => row.accountMessageId);
+
+	await tx.delete(mailboxMessageTable).where(eq(mailboxMessageTable.mailboxId, mailboxId));
+
+	await tx
+		.update(accountMessageTable)
+		.set({ updatedAt: now })
+		.where(inArray(accountMessageTable.id, emailIds));
+
+	for (const row of membershipRows) {
+		await recordEmailUpdateChanges({
+			tx,
+			accountId,
+			accountMessageId: row.accountMessageId,
+			threadId: row.threadId,
+			mailboxIds: [mailboxId],
+			now,
+		});
+	}
 }
 
 export async function handleMailboxSet(
@@ -346,10 +383,7 @@ export async function handleMailboxSet(
 						throw new MailboxSetProblem("mailboxHasChild", "Mailbox has child mailboxes");
 					}
 
-					const { hasMessages } = await ensureMailboxEmpty(tx, resolvedId);
-					if (hasMessages) {
-						throw new MailboxSetProblem("mailboxHasEmail", "Mailbox still contains emails");
-					}
+					await removeMailboxMemberships(tx, effectiveAccountId, resolvedId, now);
 
 					await tx
 						.delete(mailboxTable)
