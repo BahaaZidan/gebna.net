@@ -11,9 +11,15 @@ import {
 import { ensureAccountBlob } from "../../mail/ingest";
 import { recordEmailCreateChanges } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
-import { JmapMethodResponse } from "../types";
+import { CreationReferenceMap, JmapMethodResponse } from "../types";
 import { applyEmailSet } from "./email-set";
-import { ensureAccountAccess, getAccountMailboxes, getAccountState, isRecord } from "../utils";
+import {
+	ensureAccountAccess,
+	getAccountMailboxes,
+	getAccountState,
+	isRecord,
+	resolveCreationReference,
+} from "../utils";
 
 const KEYWORD_FLAG_MAP: Record<string, keyof KeywordFlags> = {
 	$seen: "isSeen",
@@ -36,6 +42,7 @@ type KeywordFlags = {
 type EmailCopyArgs = {
 	accountId: string;
 	create?: Record<string, unknown>;
+	creationRefs?: CreationReferenceMap;
 };
 
 type EmailCopyResult = {
@@ -86,6 +93,7 @@ export async function handleEmailCopy(
 	const input: EmailCopyArgs = {
 		accountId: effectiveAccountId,
 		create: (args.create as Record<string, unknown> | undefined) ?? undefined,
+		creationRefs: c.get("creationReferences") as CreationReferenceMap | undefined,
 	};
 
 	const result = await applyEmailCopy(db, input);
@@ -136,6 +144,7 @@ async function applyEmailCopy(
 ): Promise<EmailCopyResult> {
 	const accountId = args.accountId;
 	const createMap = args.create ?? {};
+	const creationRefs = args.creationRefs;
 
 	const created: Record<string, unknown> = {};
 	const notCreated: Record<string, { type: string; description?: string }> = {};
@@ -147,7 +156,7 @@ async function applyEmailCopy(
 	await db.transaction(async (tx) => {
 		for (const [creationId, raw] of Object.entries(createMap)) {
 			try {
-				const parsed = parseEmailCopyCreate(raw, mailboxInfo.byId);
+				const parsed = parseEmailCopyCreate(raw, mailboxInfo.byId, creationRefs);
 				const createResult = await cloneEmail(tx, accountId, parsed, mailboxInfo.byId);
 				created[creationId] = { id: createResult.accountMessageId };
 				destroySourceIds.push(parsed.emailId);
@@ -181,15 +190,25 @@ type EmailCopyCreate = {
 
 function parseEmailCopyCreate(
 	raw: unknown,
-	mailboxLookup: Map<string, { id: string; role: string | null }>
+	mailboxLookup: Map<string, { id: string; role: string | null }>,
+	creationRefs?: CreationReferenceMap
 ): EmailCopyCreate {
 	if (!isRecord(raw)) {
 		throw new EmailCopyProblem("invalidProperties", "Create entry must be an object");
 	}
 
-	const emailId = raw.id;
-	if (typeof emailId !== "string" || !emailId) {
+	const emailIdValue = raw.id;
+	if (typeof emailIdValue !== "string" || !emailIdValue) {
 		throw new EmailCopyProblem("invalidProperties", "id must be a string");
+	}
+	let emailId = emailIdValue;
+
+	if (emailId.startsWith("#")) {
+		const resolved = resolveCreationReference(emailId, creationRefs);
+		if (!resolved) {
+			throw new EmailCopyProblem("invalidProperties", `Unknown creation id reference ${emailId}`);
+		}
+		emailId = resolved;
 	}
 
 	const mailboxIdsValue = raw.mailboxIds;
@@ -200,10 +219,18 @@ function parseEmailCopyCreate(
 	const targetMailboxIds: string[] = [];
 	for (const [mailboxId, keep] of Object.entries(mailboxIdsValue)) {
 		if (keep !== true) continue;
-		if (!mailboxLookup.has(mailboxId)) {
+		let resolvedMailboxId = mailboxId;
+		if (mailboxId.startsWith("#")) {
+			const resolved = resolveCreationReference(mailboxId, creationRefs);
+			if (!resolved) {
+				throw new EmailCopyProblem("invalidProperties", `Unknown mailbox reference ${mailboxId}`);
+			}
+			resolvedMailboxId = resolved;
+		}
+		if (!mailboxLookup.has(resolvedMailboxId)) {
 			throw new EmailCopyProblem("notFound", `Mailbox ${mailboxId} not found`);
 		}
-		targetMailboxIds.push(mailboxId);
+		targetMailboxIds.push(resolvedMailboxId);
 	}
 
 	if (!targetMailboxIds.length) {

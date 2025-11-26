@@ -4,6 +4,7 @@ import { Context } from "hono";
 import { getDB } from "../../db";
 import { changeLogTable, jmapStateTable, mailboxTable } from "../../db/schema";
 import { JMAPHonoAppEnv } from "./middlewares";
+import type { CreationReferenceMap } from "./types";
 import { JmapStateType } from "./types";
 
 export function ensureAccountAccess(
@@ -218,4 +219,15 @@ export function parseRequestedProperties(
 		properties.add(entry);
 	}
 	return { properties };
+}
+
+export function resolveCreationReference(
+	value: string,
+	creationRefs?: CreationReferenceMap
+): string | null {
+	if (typeof value !== "string" || value.length === 0 || !value.startsWith("#")) {
+		return null;
+	}
+	const key = value.slice(1);
+	return creationRefs?.get(key) ?? null;
 }

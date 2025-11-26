@@ -5,8 +5,8 @@ import { getDB, type TransactionInstance } from "../../../db";
 import { accountMessageTable, mailboxMessageTable, mailboxTable } from "../../../db/schema";
 import { recordCreate, recordDestroy, recordEmailUpdateChanges, recordUpdate } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
-import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState, isRecord } from "../utils";
+import { CreationReferenceMap, JmapMethodResponse } from "../types";
+import { ensureAccountAccess, getAccountState, isRecord, resolveCreationReference } from "../utils";
 
 type MailboxInfo = {
 	id: string;
@@ -115,9 +115,17 @@ function parseMailboxUpdate(raw: unknown): MailboxUpdate {
 	return patch;
 }
 
-function resolveCreationId(ref: string | null, map: Map<string, string>): string | null {
+function resolveCreationId(
+	ref: string | null,
+	map: Map<string, string>,
+	creationRefs?: CreationReferenceMap
+): string | null {
 	if (!ref) return null;
 	if (!ref.startsWith("#")) return ref;
+	const fromRequest = resolveCreationReference(ref, creationRefs);
+	if (fromRequest) {
+		return fromRequest;
+	}
 	const resolved = map.get(ref.slice(1));
 	if (!resolved) {
 		throw new MailboxSetProblem("invalidProperties", `Unknown creation id reference ${ref}`);
@@ -294,6 +302,7 @@ export async function handleMailboxSet(
 	}
 
 	const oldState = await getAccountState(db, effectiveAccountId, "Mailbox");
+	const creationRefs = c.get("creationReferences") as CreationReferenceMap | undefined;
 	const ifInState = args.ifInState as string | undefined;
 	if (ifInState && ifInState !== oldState) {
 		return ["error", { type: "stateMismatch" }, tag];
@@ -342,7 +351,7 @@ export async function handleMailboxSet(
 			for (const [creationId, raw] of Object.entries(createMap)) {
 				try {
 					const parsed = parseMailboxCreate(raw);
-					const resolvedParentId = resolveCreationId(parsed.parentId, creationResults);
+					const resolvedParentId = resolveCreationId(parsed.parentId, creationResults, creationRefs);
 					const mailboxId = crypto.randomUUID();
 
 					ensureParentValid(mailboxMap, resolvedParentId, mailboxId);
@@ -407,7 +416,7 @@ export async function handleMailboxSet(
 					}
 
 					const nextParent = patch.parentId !== undefined ? patch.parentId : existing.parentId;
-					const resolvedParent = resolveCreationId(nextParent ?? null, creationResults);
+					const resolvedParent = resolveCreationId(nextParent ?? null, creationResults, creationRefs);
 					ensureParentValid(mailboxMap, resolvedParent ?? null, mailboxId);
 					const targetName = patch.name ?? existing.name;
 					ensureSiblingNameAvailable(mailboxMap, resolvedParent ?? null, targetName, mailboxId);
@@ -455,7 +464,7 @@ export async function handleMailboxSet(
 
 			for (const destroyRef of destroyList) {
 				try {
-					const resolvedId = resolveCreationId(destroyRef, creationResults);
+						const resolvedId = resolveCreationId(destroyRef, creationResults, creationRefs);
 					if (!resolvedId) {
 						throw new MailboxSetProblem("invalidArguments", "Invalid mailbox id");
 					}
