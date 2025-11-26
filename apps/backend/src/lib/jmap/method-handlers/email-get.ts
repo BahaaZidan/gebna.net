@@ -40,6 +40,49 @@ type StoredBodyRow = {
 	htmlBodyIsTruncated: boolean | null;
 };
 
+const EMAIL_PROPERTIES = [
+	"id",
+	"threadId",
+	"mailboxIds",
+	"messageId",
+	"inReplyTo",
+	"references",
+	"subject",
+	"sentAt",
+	"receivedAt",
+	"preview",
+	"size",
+	"blobId",
+	"hasAttachment",
+	"keywords",
+	"from",
+	"to",
+	"cc",
+	"bcc",
+	"replyTo",
+	"sender",
+	"bodyStructure",
+	"textBody",
+	"htmlBody",
+	"bodyValues",
+	"attachments",
+] as const;
+
+const BODY_PART_PROPERTIES = [
+	"partId",
+	"type",
+	"subtype",
+	"parameters",
+	"size",
+	"blobId",
+	"charset",
+	"disposition",
+	"name",
+	"cid",
+	"isInline",
+	"parts",
+] as const;
+
 export async function handleEmailGet(
 	c: Context<JMAPHonoAppEnv>,
 	args: Record<string, unknown>,
@@ -64,8 +107,12 @@ export async function handleEmailGet(
 		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: ids }, tag];
 	}
 
-	const propertiesArg = args.properties as string[] | undefined;
-	const properties = Array.isArray(propertiesArg) ? propertiesArg : undefined;
+	const propertyResult = parseEmailPropertiesArg(args.properties);
+	if ("error" in propertyResult) {
+		return ["error", { type: "invalidArguments", description: propertyResult.error }, tag];
+	}
+	const requestedProperties = propertyResult.properties;
+	const shouldInclude = (prop: string) => (requestedProperties ? requestedProperties.has(prop) : true);
 
 	const rows = await db
 		.select({
@@ -106,15 +153,14 @@ export async function handleEmailGet(
 		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: ids }, tag];
 	}
 
-	const includeAllProperties = !properties;
-	const propsSet = properties ? new Set(properties) : null;
-	const shouldInclude = (prop: string) => includeAllProperties || propsSet?.has(prop) || false;
-
-	const bodyPropertiesInput = args.bodyProperties as string[] | undefined;
 	const defaultBodyProperties = ["partId", "type", "subtype", "size", "name", "cid", "disposition"];
+	const bodyPropertiesResult = parseBodyPropertiesArg(args.bodyProperties);
+	if ("error" in bodyPropertiesResult) {
+		return ["error", { type: "invalidArguments", description: bodyPropertiesResult.error }, tag];
+	}
 	const bodyProperties =
-		Array.isArray(bodyPropertiesInput) && bodyPropertiesInput.length > 0
-			? bodyPropertiesInput
+		bodyPropertiesResult.properties && bodyPropertiesResult.properties.length > 0
+			? bodyPropertiesResult.properties
 			: defaultBodyProperties;
 	const bodyPropertySet = new Set(bodyProperties);
 	bodyPropertySet.add("partId");
@@ -220,7 +266,9 @@ export async function handleEmailGet(
 	}
 
 const headerProps =
-	properties?.filter((prop) => typeof prop === "string" && prop.startsWith("header:")) ?? [];
+	requestedProperties
+		? Array.from(requestedProperties).filter((prop) => prop.startsWith("header:"))
+		: [];
 const headerSpecs = new Map<string, HeaderSpec>();
 const headerNameSet = new Set<string>();
 for (const prop of headerProps) {
@@ -399,6 +447,61 @@ function parseBodyStructure(json: string): StoredBodyStructure | null {
 	} catch {
 		return null;
 	}
+}
+
+function parseEmailPropertiesArg(
+	value: unknown
+): { properties: Set<string> | null } | { error: string } {
+	if (value === undefined) {
+		return { properties: null };
+	}
+	if (!Array.isArray(value)) {
+		return { error: "properties must be an array of strings" };
+	}
+	const allowed = new Set<string>(EMAIL_PROPERTIES);
+	const properties = new Set<string>();
+	for (const entry of value) {
+		if (typeof entry !== "string" || entry.length === 0) {
+			return { error: "properties must be non-empty strings" };
+		}
+		if (entry.startsWith("header:")) {
+			const spec = parseHeaderProperty(entry);
+			if (!spec) {
+				return { error: `Invalid header property ${entry}` };
+			}
+			properties.add(entry);
+			continue;
+		}
+		if (!allowed.has(entry)) {
+			return { error: `Unsupported property ${entry}` };
+		}
+		properties.add(entry);
+	}
+	return { properties };
+}
+
+function parseBodyPropertiesArg(value: unknown): { properties: string[] | null } | { error: string } {
+	if (value === undefined) {
+		return { properties: null };
+	}
+	if (!Array.isArray(value)) {
+		return { error: "bodyProperties must be an array of strings" };
+	}
+	if (value.length === 0) {
+		return { properties: null };
+	}
+	const allowed = new Set<string>(BODY_PART_PROPERTIES);
+	const deduped = new Set<string>();
+	for (const entry of value) {
+		if (typeof entry !== "string" || entry.length === 0) {
+			return { error: "bodyProperties must be non-empty strings" };
+		}
+		if (!allowed.has(entry)) {
+			return { error: `Unsupported body property ${entry}` };
+		}
+		deduped.add(entry);
+	}
+	return { properties: Array.from(deduped) };
 }
 
 function parseReferencesArray(json: string | null): string[] {
