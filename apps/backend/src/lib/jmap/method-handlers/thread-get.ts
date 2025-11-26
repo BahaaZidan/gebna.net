@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
@@ -88,7 +88,7 @@ export async function handleThreadGet(
 				eq(accountMessageTable.isDeleted, false)
 			)
 		)
-		.orderBy(threadTable.id, desc(accountMessageTable.internalDate));
+		.orderBy(threadTable.id, asc(accountMessageTable.internalDate));
 
 	const byThread = new Map<string, string[]>();
 	for (const row of rows) {
