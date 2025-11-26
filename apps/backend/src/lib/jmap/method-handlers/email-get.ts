@@ -118,6 +118,16 @@ export async function handleEmailGet(
 		if (!providedIds || providedIds.length === 0) {
 			return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 		}
+		if (providedIds.length > maxObjectsLimit) {
+			return [
+				"error",
+				{
+					type: "limitExceeded",
+					description: `ids length exceeds maxObjectsInGet (${maxObjectsLimit})`,
+				},
+				tag,
+			];
+		}
 		idsToFetch = providedIds.slice(0, maxObjectsLimit);
 	}
 
