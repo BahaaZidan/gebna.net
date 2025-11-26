@@ -490,7 +490,10 @@ function buildFilterSql(filter: FilterCondition): SQL | undefined {
 			return sql`exists(select 1 from ${mailboxMessageTable} mm where mm.account_message_id = ${accountMessageTable.id} and mm.mailbox_id = ${filter.mailboxId})`;
 		case "inMailboxOtherThan": {
 			const list = filter.mailboxIds.map((id) => sql`${id}`);
-			return sql`not exists(select 1 from ${mailboxMessageTable} mm where mm.account_message_id = ${accountMessageTable.id} and mm.mailbox_id in (${sql.join(list, sql`, `)}))`;
+			if (!list.length) {
+				return sql`exists(select 1 from ${mailboxMessageTable} mm where mm.account_message_id = ${accountMessageTable.id})`;
+			}
+			return sql`exists(select 1 from ${mailboxMessageTable} mm where mm.account_message_id = ${accountMessageTable.id} and mm.mailbox_id not in (${sql.join(list, sql`, `)}))`;
 		}
 		case "and": {
 			const conditions = filter.conditions
