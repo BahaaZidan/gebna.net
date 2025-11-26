@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, like, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
@@ -12,10 +12,13 @@ import {
 	purgeStaleQueryStates,
 } from "../helpers/query-state";
 
-export type MailboxFilter = {
-	operator: "all" | "text" | "name" | "role";
-	value?: string;
-};
+export type MailboxFilter =
+	| { operator: "all" }
+	| { operator: "text"; value: string }
+	| { operator: "name"; value: string }
+	| { operator: "role"; value: string }
+	| { operator: "parentId"; value: string | null }
+	| { operator: "isSubscribed"; value: boolean };
 
 export type MailboxSort = {
 	property: "name" | "sortOrder";
@@ -131,7 +134,7 @@ function parseQueryOptions(args: Record<string, unknown>): MailboxQueryOptions {
 export function normalizeMailboxFilter(raw: unknown): MailboxFilter {
 	if (!raw || typeof raw !== "object") return { operator: "all" };
 	const value = raw as Record<string, unknown>;
-	const allowedKeys = new Set(["text", "name", "role"]);
+	const allowedKeys = new Set(["text", "name", "role", "parentId", "isSubscribed"]);
 	for (const key of Object.keys(value)) {
 		if (!allowedKeys.has(key)) {
 			throw new MailboxQueryProblem("unsupportedFilter", `Unsupported filter property ${key}`);
@@ -151,6 +154,23 @@ export function normalizeMailboxFilter(raw: unknown): MailboxFilter {
 	const role = value.role;
 	if (typeof role === "string" && role.trim()) {
 		return { operator: "role", value: role.trim().toLowerCase() };
+	}
+
+	if (value.parentId !== undefined) {
+		if (value.parentId === null) {
+			return { operator: "parentId", value: null };
+		}
+		if (typeof value.parentId === "string" && value.parentId.trim()) {
+			return { operator: "parentId", value: value.parentId };
+		}
+		throw new MailboxQueryProblem("invalidArguments", "parentId must be a string or null");
+	}
+
+	if (value.isSubscribed !== undefined) {
+		if (typeof value.isSubscribed !== "boolean") {
+			throw new MailboxQueryProblem("invalidArguments", "isSubscribed must be a boolean");
+		}
+		return { operator: "isSubscribed", value: value.isSubscribed };
 	}
 
 	return { operator: "all" };
@@ -174,7 +194,7 @@ export function normalizeMailboxSort(raw: unknown): MailboxSort[] {
 	return converted.length > 0 ? converted : DEFAULT_MAILBOX_SORT;
 }
 
-function applyFilter(accountId: string, filter: MailboxFilter) {
+export function applyFilter(accountId: string, filter: MailboxFilter) {
 	const base = eq(mailboxTable.accountId, accountId);
 	switch (filter.operator) {
 		case "text": {
@@ -187,6 +207,18 @@ function applyFilter(accountId: string, filter: MailboxFilter) {
 		}
 		case "role": {
 			return and(base, eq(mailboxTable.role, filter.value ?? ""));
+		}
+		case "parentId": {
+			if (filter.value === null) {
+				return and(base, isNull(mailboxTable.parentId));
+			}
+			return and(base, eq(mailboxTable.parentId, filter.value));
+		}
+		case "isSubscribed": {
+			if (filter.value) {
+				return base;
+			}
+			return and(base, sql`1 = 0`);
 		}
 		case "all":
 		default:

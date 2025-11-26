@@ -284,7 +284,7 @@ export function normalizeFilter(raw: unknown): FilterCondition {
 	}
 
 	if (typeof value.hasKeyword === "string" && value.hasKeyword) {
-		pushCondition({ operator: "hasKeyword", keyword: value.hasKeyword });
+		pushCondition({ operator: "hasKeyword", keyword: normalizeKeywordName(value.hasKeyword) });
 	}
 
 	if (typeof value.hasAttachment === "boolean") {
@@ -536,7 +536,8 @@ function buildAnyAddressCondition(value: string): SQL {
 }
 
 function buildKeywordCondition(keyword: string): SQL {
-	switch (keyword.toLowerCase()) {
+	const normalized = normalizeKeywordName(keyword);
+	switch (normalized) {
 		case "$seen":
 			return eq(accountMessageTable.isSeen, true);
 		case "$flagged":
@@ -546,6 +547,17 @@ function buildKeywordCondition(keyword: string): SQL {
 		case "$draft":
 			return eq(accountMessageTable.isDraft, true);
 		default:
-			return sql`exists(select 1 from ${emailKeywordTable} ek where ek.account_message_id = ${accountMessageTable.id} and ek.keyword = ${keyword})`;
+			return sql`exists(select 1 from ${emailKeywordTable} ek where ek.account_message_id = ${accountMessageTable.id} and ek.keyword = ${normalized})`;
 	}
+}
+
+function normalizeKeywordName(keyword: string): string {
+	if (!keyword) return keyword;
+	if (keyword.startsWith("\\")) {
+		return `\\${keyword.slice(1).toLowerCase()}`;
+	}
+	if (keyword.startsWith("$")) {
+		return `$${keyword.slice(1).toLowerCase()}`;
+	}
+	return keyword.toLowerCase();
 }

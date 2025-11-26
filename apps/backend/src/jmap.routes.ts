@@ -420,6 +420,15 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 			400
 		);
 	}
+	if (!req.using.includes(JMAP_CORE)) {
+		return c.json(
+			{
+				type: "unknownCapability",
+				capability: JMAP_CORE,
+			},
+			400
+		);
+	}
 
 	const maxCalls = JMAP_CONSTRAINTS[JMAP_CORE].maxCallsInRequest ?? null;
 	if (maxCalls && req.methodCalls.length > maxCalls) {
@@ -637,19 +646,25 @@ async function handleBlobDownloadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respo
 	const blobId = params.blobId;
 	const requestedName = decodeURIComponent(params.name ?? "blob");
 	const typeParam = c.req.query("type");
-	if (!typeParam) {
-		return c.json({ type: "invalidArguments", description: "type query param required" }, 400);
-	}
-	const decodedType = decodeURIComponent(typeParam);
-	const safeType = sanitizeMimeType(decodedType);
-	if (!safeType) {
-		return c.json({ type: "invalidArguments", description: "Invalid content type" }, 400);
+	let overrideType: string | null = null;
+	if (typeParam) {
+		const decodedType = decodeURIComponent(typeParam);
+		const safeType = sanitizeMimeType(decodedType);
+		if (!safeType) {
+			return c.json({ type: "invalidArguments", description: "Invalid content type" }, 400);
+		}
+		overrideType = safeType;
 	}
 
 	const safeName = sanitizeFileName(requestedName);
 	const db = getDB(c.env);
 	const [row] = await db
-		.select({ size: blobTable.size, r2Key: blobTable.r2Key })
+		.select({
+			size: blobTable.size,
+			r2Key: blobTable.r2Key,
+			type: accountBlobTable.type,
+			name: accountBlobTable.name,
+		})
 		.from(accountBlobTable)
 		.innerJoin(blobTable, eq(blobTable.sha256, accountBlobTable.sha256))
 		.where(and(eq(accountBlobTable.accountId, effectiveAccountId), eq(accountBlobTable.sha256, blobId)))
@@ -676,14 +691,25 @@ async function handleBlobDownloadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respo
 		});
 	}
 
+	const resolvedName =
+		typeof row.name === "string" && row.name.length > 0 ? row.name : safeName;
+	const effectiveName = sanitizeFileName(resolvedName);
+	const resolvedContentType =
+		overrideType ??
+		(row.type ? sanitizeMimeType(row.type) : null) ??
+		(object.httpMetadata?.contentType
+			? sanitizeMimeType(object.httpMetadata.contentType)
+			: null) ??
+		"application/octet-stream";
+
 	const headers: Record<string, string> = {
-		"Content-Type": safeType,
+		"Content-Type": resolvedContentType,
 		ETag: etag,
 		"Cache-Control": "private, immutable, max-age=31536000",
 		"X-Content-Type-Options": "nosniff",
 		"Content-Disposition": `attachment; filename="${encodeURIComponent(
-			safeName
-		)}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+			effectiveName
+		)}"; filename*=UTF-8''${encodeURIComponent(effectiveName)}`,
 	};
 	if (row.size !== null && row.size !== undefined) {
 		headers["Content-Length"] = String(row.size);

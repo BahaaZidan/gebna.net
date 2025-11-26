@@ -7,7 +7,14 @@ import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getChanges } from "../utils";
-import { normalizeMailboxFilter, normalizeMailboxSort, buildOrderBy, MailboxSort, MailboxFilter } from "./mailbox-query";
+import {
+	normalizeMailboxFilter,
+	normalizeMailboxSort,
+	buildOrderBy,
+	MailboxSort,
+	MailboxFilter,
+	applyFilter,
+} from "./mailbox-query";
 import {
 	StoredQueryStateRecord,
 	decodeQueryStateValue,
@@ -85,16 +92,6 @@ export async function handleMailboxQueryChanges(
 		];
 	}
 
-	if (normalizedFilter.operator !== "all") {
-		return [
-			"error",
-			{
-				type: "cannotCalculateChanges",
-				description: "Mailbox/queryChanges is only supported for the full mailbox list.",
-			},
-			tag,
-		];
-	}
 	const maxChangesArg = args.maxChanges as number | undefined;
 	const limitFromConstraints = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
 	const maxChanges =
@@ -108,7 +105,7 @@ export async function handleMailboxQueryChanges(
 		const orderedRows = await db
 			.select({ id: mailboxTable.id })
 			.from(mailboxTable)
-			.where(eq(mailboxTable.accountId, effectiveAccountId))
+			.where(applyFilter(effectiveAccountId, normalizedFilter))
 			.orderBy(...buildOrderBy(effectiveSort));
 		const indexMap = new Map<string, number>();
 		for (let i = 0; i < orderedRows.length; i++) {
@@ -124,7 +121,13 @@ export async function handleMailboxQueryChanges(
 				return { id, index };
 			})
 			.filter((entry): entry is { id: string; index: number } => entry !== null);
-		const removed = [...changeSet.destroyed];
+		const removedSet = new Set<string>(changeSet.destroyed);
+		for (const id of changeSet.updated) {
+			if (!indexMap.has(id)) {
+				removedSet.add(id);
+			}
+		}
+		const removed = Array.from(removedSet);
 		const totalChanged = added.length + removed.length;
 
 		return [

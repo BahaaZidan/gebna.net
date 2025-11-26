@@ -1245,6 +1245,19 @@ function normalizeKeywordName(keyword: string): string {
 	return keyword.toLowerCase();
 }
 
+function isValidKeywordName(keyword: string): boolean {
+	if (!keyword || keyword.length > 255) {
+		return false;
+	}
+	for (let i = 0; i < keyword.length; i++) {
+		const code = keyword.charCodeAt(i);
+		if (code < 0x21 || code > 0x7e) {
+			return false;
+		}
+	}
+	return true;
+}
+
 function splitKeywords(
 	keywordPatch: Record<string, boolean>,
 	baseFlags: KeywordFlags
@@ -1254,6 +1267,9 @@ function splitKeywords(
 
 	for (const [keyword, value] of Object.entries(keywordPatch)) {
 		const normalized = normalizeKeywordName(keyword);
+		if (!isValidKeywordName(normalized)) {
+			throw new EmailSetProblem("invalidProperties", `Invalid keyword name: ${keyword}`);
+		}
 		const mapped = KEYWORD_FLAG_MAP[normalized];
 		if (mapped) {
 			flags[mapped] = value;

@@ -4,6 +4,7 @@ import { Context } from "hono";
 import { getDB, type TransactionInstance } from "../../../db";
 import { accountMessageTable, mailboxMessageTable, mailboxTable } from "../../../db/schema";
 import { recordCreate, recordDestroy, recordEmailUpdateChanges, recordUpdate } from "../change-log";
+import { JMAP_CONSTRAINTS, JMAP_CORE, JMAP_MAIL } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { CreationReferenceMap, JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState, isRecord, resolveCreationReference } from "../utils";
@@ -46,6 +47,14 @@ function parseMailboxCreate(raw: unknown): MailboxCreate {
 	if (typeof nameValue !== "string" || nameValue.trim().length === 0) {
 		throw new MailboxSetProblem("invalidProperties", "Mailbox name must be a non-empty string");
 	}
+	const trimmedName = nameValue.trim();
+	const maxNameLength = JMAP_CONSTRAINTS[JMAP_MAIL].maxSizeMailboxName ?? null;
+	if (maxNameLength !== null && trimmedName.length > maxNameLength) {
+		throw new MailboxSetProblem(
+			"invalidProperties",
+			`Mailbox name exceeds maxSizeMailboxName (${maxNameLength})`
+		);
+	}
 
 	let sortOrder = 0;
 	if (raw.sortOrder !== undefined) {
@@ -71,7 +80,7 @@ function parseMailboxCreate(raw: unknown): MailboxCreate {
 	}
 
 	return {
-		name: nameValue.trim(),
+		name: trimmedName,
 		parentId,
 		sortOrder,
 	};
@@ -88,7 +97,15 @@ function parseMailboxUpdate(raw: unknown): MailboxUpdate {
 		if (raw.name === null || typeof raw.name !== "string" || raw.name.trim().length === 0) {
 			throw new MailboxSetProblem("invalidProperties", "name must be a non-empty string");
 		}
-		patch.name = raw.name.trim();
+		const trimmedName = raw.name.trim();
+		const maxNameLength = JMAP_CONSTRAINTS[JMAP_MAIL].maxSizeMailboxName ?? null;
+		if (maxNameLength !== null && trimmedName.length > maxNameLength) {
+			throw new MailboxSetProblem(
+				"invalidProperties",
+				`Mailbox name exceeds maxSizeMailboxName (${maxNameLength})`
+			);
+		}
+		patch.name = trimmedName;
 	}
 
 	if (raw.parentId !== undefined) {
@@ -311,6 +328,41 @@ export async function handleMailboxSet(
 	const updateMap = (args.update as Record<string, unknown> | undefined) ?? {};
 	const destroyList = (args.destroy as string[] | undefined) ?? [];
 
+	const maxSetObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInSet ?? 128;
+	const createCount = Object.keys(createMap).length;
+	const updateCount = Object.keys(updateMap).length;
+	const destroyCount = destroyList.length;
+	if (createCount > maxSetObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `create exceeds maxObjectsInSet (${maxSetObjects})`,
+			},
+			tag,
+		];
+	}
+	if (updateCount > maxSetObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `update exceeds maxObjectsInSet (${maxSetObjects})`,
+			},
+			tag,
+		];
+	}
+	if (destroyCount > maxSetObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `destroy exceeds maxObjectsInSet (${maxSetObjects})`,
+			},
+			tag,
+		];
+	}
+
 	const created: Record<string, unknown> = {};
 	const notCreated: Record<string, { type: string; description?: string }> = {};
 	const updated: Record<string, unknown> = {};
@@ -411,9 +463,17 @@ export async function handleMailboxSet(
 
 				try {
 					const patch = parseMailboxUpdate(raw);
-					if (Object.keys(patch).length === 0) {
-						continue;
-					}
+			if (Object.keys(patch).length === 0) {
+				continue;
+			}
+
+			if (existing.role) {
+				notUpdated[mailboxId] = {
+					type: "invalidProperties",
+					description: "Role mailboxes cannot be modified",
+				};
+				continue;
+			}
 
 					const nextParent = patch.parentId !== undefined ? patch.parentId : existing.parentId;
 					const resolvedParent = resolveCreationId(nextParent ?? null, creationResults, creationRefs);
@@ -473,6 +533,10 @@ export async function handleMailboxSet(
 					if (!existing) {
 						notDestroyed[destroyRef] = { type: "notFound", description: "Mailbox not found" };
 						continue;
+					}
+
+					if (existing.role) {
+						throw new MailboxSetProblem("invalidProperties", "Role mailboxes cannot be destroyed");
 					}
 
 					const hasChild = Array.from(mailboxMap.values()).some(

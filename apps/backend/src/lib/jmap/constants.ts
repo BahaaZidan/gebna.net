@@ -35,7 +35,7 @@ export const JMAP_CONSTRAINTS = {
 		maxSizeAttachmentsPerEmail: 18 * 1024 * 1024, // match maxSizeUpload
 
 		// You can add more later if your implementation supports them.
-		emailsListSortOptions: ["receivedAt", "sentAt"],
+		emailsListSortOptions: ["receivedAt", "sentAt", "size"],
 	},
 
 	[JMAP_SUBMISSION]: {},
@@ -52,6 +52,6 @@ export const JMAP_CONSTRAINTS = {
 export const JMAP_BLOB_ACCOUNT_CAPABILITY = {
 	maxSizeBlobSet: JMAP_CONSTRAINTS[JMAP_CORE].maxSizeUpload,
 	maxDataSources: 1,
-	supportedTypeNames: ["Email"],
+	supportedTypeNames: ["Email", "EmailBodyValue"],
 	supportedDigestAlgorithms: ["sha-256"],
 };
