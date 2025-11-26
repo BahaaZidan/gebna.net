@@ -40,7 +40,12 @@ import { handleThreadGet } from "./lib/jmap/method-handlers/thread-get";
 import { handleVacationResponseGet } from "./lib/jmap/method-handlers/vacation-get";
 import { handleVacationResponseSet } from "./lib/jmap/method-handlers/vacation-set";
 import { attachUserFromJwt, requireJWT, type JMAPHonoAppEnv } from "./lib/jmap/middlewares";
-import { JmapHandlerResult, JmapMethodResponse, JmapStateType } from "./lib/jmap/types";
+import {
+	CreationReferenceMap,
+	JmapHandlerResult,
+	JmapMethodResponse,
+	JmapStateType,
+} from "./lib/jmap/types";
 import { handleMailboxSet } from "./lib/jmap/method-handlers/mailbox-set";
 import { handleBlobCopy, handleBlobGet, handleBlobLookup } from "./lib/jmap/method-handlers/blob";
 import { sha256HexFromArrayBuffer } from "./lib/utils";
@@ -219,8 +224,6 @@ const METHOD_CAPABILITIES: Record<string, string[]> = {
 	"Blob/lookup": [JMAP_BLOB],
 };
 
-type CreationReferenceMap = Map<string, string>;
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -334,6 +337,7 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 
 	const methodResponses: JmapMethodResponse[] = [];
 	const creationReferences: CreationReferenceMap = new Map();
+	c.set("creationReferences", creationReferences);
 	const requestedCapabilities = new Set(req.using);
 
 	for (const [name, args, tag] of req.methodCalls) {

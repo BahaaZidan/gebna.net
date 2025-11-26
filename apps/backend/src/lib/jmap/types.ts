@@ -9,3 +9,5 @@ export type JmapStateType =
 	| "VacationResponse"
 	| "EmailSubmission"
 	| "PushSubscription";
+
+export type CreationReferenceMap = Map<string, string>;

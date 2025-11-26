@@ -37,7 +37,7 @@ import {
 	recordEmailUpdateChanges,
 } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
-import { JmapMethodResponse } from "../types";
+import { CreationReferenceMap, JmapMethodResponse } from "../types";
 import {
 	ensureAccountAccess,
 	getAccountMailboxes,
@@ -110,8 +110,9 @@ export async function handleEmailSet(
 		destroy: (args.destroy as string[] | undefined) ?? undefined,
 	};
 
+	const creationRefs = c.get("creationReferences") as CreationReferenceMap | undefined;
 	try {
-		const result = await applyEmailSet(c.env, db, input);
+		const result = await applyEmailSet(c.env, db, input, creationRefs);
 
 		return [
 			"Email/set",
@@ -137,7 +138,8 @@ export async function handleEmailSet(
 export async function applyEmailSet(
 	env: JMAPHonoAppEnv["Bindings"],
 	db: ReturnType<typeof getDB>,
-	args: EmailSetArgs
+	args: EmailSetArgs,
+	creationRefs?: CreationReferenceMap
 ): Promise<EmailSetResult> {
 	const accountId = args.accountId;
 	const oldState = await getAccountState(db, accountId, "Email");
@@ -165,6 +167,7 @@ export async function applyEmailSet(
 				creationId,
 				rawCreate,
 				mailboxLookup: mailboxInfo.byId,
+				creationRefs,
 			});
 			preparedCreates.push(prepared);
 		} catch (err) {
@@ -235,7 +238,7 @@ export async function applyEmailSet(
 			}
 
 			const mailboxUpdateResult = patch.mailboxIds
-				? await applyMailboxPatch(tx, row.id, patch.mailboxIds, mailboxInfo.byId, now)
+				? await applyMailboxPatch(tx, row.id, patch.mailboxIds, mailboxInfo.byId, now, creationRefs)
 				: { changed: false, touchedMailboxIds: [] };
 			const keywordUpdateResult = patch.keywords
 				? await applyKeywordPatch(
@@ -259,7 +262,7 @@ export async function applyEmailSet(
 					mailboxIds: mailboxUpdateResult.touchedMailboxIds,
 					now,
 				});
-				updated[resolvedEmailId] = { id: row.id };
+				updated[emailId] = { id: row.id };
 			}
 		}
 
@@ -344,6 +347,20 @@ function resolveEmailSetReference(
 	return resolved ?? null;
 }
 
+function resolveMailboxReference(id: string, creationRefs?: CreationReferenceMap): string {
+	if (typeof id !== "string" || id.length === 0) {
+		throw new EmailSetProblem("invalidProperties", "mailboxIds keys must be non-empty strings");
+	}
+	if (!id.startsWith("#")) {
+		return id;
+	}
+	const resolved = creationRefs?.get(id.slice(1));
+	if (!resolved) {
+		throw new EmailSetProblem("invalidArguments", `Unknown mailbox creation id ${id}`);
+	}
+	return resolved;
+}
+
 type EmailSetArgs = {
 	accountId: string;
 	create?: Record<string, unknown>;
@@ -395,8 +412,9 @@ async function prepareEmailCreate(opts: {
 	creationId: string;
 	rawCreate: unknown;
 	mailboxLookup: Map<string, { id: string; role: string | null }>;
+	creationRefs?: CreationReferenceMap;
 }): Promise<PreparedEmailCreate> {
-	const { env, db, accountId, creationId, rawCreate, mailboxLookup } = opts;
+	const { env, db, accountId, creationId, rawCreate, mailboxLookup, creationRefs } = opts;
 	const now = new Date();
 
 	if (!isRecord(rawCreate)) {
@@ -419,7 +437,7 @@ async function prepareEmailCreate(opts: {
 		throw new EmailSetProblem("invalidProperties", "mailboxIds must contain booleans");
 	}
 
-	const mailboxIds = extractMailboxTargets(mailboxPatch, mailboxLookup);
+	const mailboxIds = extractMailboxTargets(mailboxPatch, mailboxLookup, creationRefs);
 	enforceMailboxLimit(mailboxIds);
 	if (mailboxIds.length === 0) {
 		throw new EmailSetProblem("invalidProperties", "mailboxIds must include at least one mailbox");
@@ -1153,15 +1171,17 @@ await tx.insert(accountMessageTable).values({
 
 function extractMailboxTargets(
 	mailboxPatch: Record<string, boolean>,
-	mailboxLookup: Map<string, { id: string; role: string | null }>
+	mailboxLookup: Map<string, { id: string; role: string | null }>,
+	creationRefs?: CreationReferenceMap
 ): string[] {
 	const targets: string[] = [];
 	for (const [mailboxId, keep] of Object.entries(mailboxPatch)) {
-		if (!mailboxLookup.has(mailboxId)) {
-			throw new EmailSetProblem("notFound", `Mailbox ${mailboxId} not found`);
+		const resolvedMailboxId = resolveMailboxReference(mailboxId, creationRefs);
+		if (!mailboxLookup.has(resolvedMailboxId)) {
+			throw new EmailSetProblem("notFound", `Mailbox ${resolvedMailboxId} not found`);
 		}
 		if (keep) {
-			targets.push(mailboxId);
+			targets.push(resolvedMailboxId);
 		}
 	}
 	return Array.from(new Set(targets));
@@ -1499,7 +1519,8 @@ async function applyMailboxPatch(
 	accountMessageId: string,
 	mailboxPatch: Record<string, boolean>,
 	mailboxLookup: Map<string, { id: string; role: string | null }>,
-	now: Date
+	now: Date,
+	creationRefs?: CreationReferenceMap
 ): Promise<{ changed: boolean; touchedMailboxIds: string[] }> {
 	const existingRows = await tx
 		.select({
@@ -1514,17 +1535,18 @@ async function applyMailboxPatch(
 
 	for (const [mailboxId, keep] of Object.entries(mailboxPatch)) {
 		if (typeof keep !== "boolean") continue;
+		const resolvedMailboxId = resolveMailboxReference(mailboxId, creationRefs);
 		if (keep) {
-			if (!mailboxLookup.has(mailboxId)) {
-				throw new EmailSetProblem("notFound", `Mailbox ${mailboxId} not found`);
+			if (!mailboxLookup.has(resolvedMailboxId)) {
+				throw new EmailSetProblem("notFound", `Mailbox ${resolvedMailboxId} not found`);
 			}
-			if (!targetSet.has(mailboxId)) {
-				targetSet.add(mailboxId);
-				touched.add(mailboxId);
+			if (!targetSet.has(resolvedMailboxId)) {
+				targetSet.add(resolvedMailboxId);
+				touched.add(resolvedMailboxId);
 			}
-		} else if (targetSet.has(mailboxId)) {
-			targetSet.delete(mailboxId);
-			touched.add(mailboxId);
+		} else if (targetSet.has(resolvedMailboxId)) {
+			targetSet.delete(resolvedMailboxId);
+			touched.add(resolvedMailboxId);
 		}
 	}
 
