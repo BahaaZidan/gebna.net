@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
@@ -97,14 +97,32 @@ export async function handleEmailGet(
 	}
 	const state = await getAccountState(db, effectiveAccountId, "Email");
 
-	const ids = (args.ids as string[] | undefined) ?? [];
-	if (!ids.length) {
-		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
+	const idsArg = args.ids as string[] | null | undefined;
+	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
+	if (!shouldStreamDefaultList && !Array.isArray(idsArg)) {
+		return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
 	}
+	const providedIds = Array.isArray(idsArg) ? idsArg : null;
 	const maxObjectsLimit = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
-	const limitedIds = ids.slice(0, maxObjectsLimit);
-	if (!limitedIds.length) {
-		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: ids }, tag];
+
+	let idsToFetch: string[] = [];
+	if (shouldStreamDefaultList) {
+		const defaultRows = await db
+			.select({ id: accountMessageTable.id })
+			.from(accountMessageTable)
+			.where(and(eq(accountMessageTable.accountId, effectiveAccountId), eq(accountMessageTable.isDeleted, false)))
+			.orderBy(desc(accountMessageTable.internalDate), desc(accountMessageTable.id))
+			.limit(maxObjectsLimit);
+		idsToFetch = defaultRows.map((row) => row.id);
+	} else {
+		if (!providedIds || providedIds.length === 0) {
+			return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
+		}
+		idsToFetch = providedIds.slice(0, maxObjectsLimit);
+	}
+
+	if (!idsToFetch.length) {
+		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 	}
 
 	const propertyResult = parseEmailPropertiesArg(args.properties);
@@ -145,12 +163,13 @@ export async function handleEmailGet(
 			and(
 				eq(accountMessageTable.accountId, effectiveAccountId),
 				eq(accountMessageTable.isDeleted, false),
-				inArray(accountMessageTable.id, limitedIds)
+				inArray(accountMessageTable.id, idsToFetch)
 			)
 		);
 
 	if (!rows.length) {
-		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: ids }, tag];
+		const notFoundIds = providedIds ? providedIds : [];
+		return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: notFoundIds }, tag];
 	}
 
 	const defaultBodyProperties = ["partId", "type", "subtype", "size", "name", "cid", "disposition"];
@@ -417,13 +436,13 @@ const headerRows =
 
 	const list: EmailRecord[] = [];
 	const foundIds = new Set<string>();
-	for (const id of limitedIds) {
+	for (const id of idsToFetch) {
 		const email = emailsById.get(id);
 		if (!email) continue;
 		list.push(email);
 		foundIds.add(id);
 	}
-	const notFound = ids.filter((id) => !foundIds.has(id));
+	const notFound = providedIds ? providedIds.filter((id) => !foundIds.has(id)) : [];
 
 	return [
 		"Email/get",

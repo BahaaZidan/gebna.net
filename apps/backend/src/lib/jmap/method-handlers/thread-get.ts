@@ -27,9 +27,14 @@ export async function handleThreadGet(
 	}
 	const state = await getAccountState(db, effectiveAccountId, "Thread");
 
-	const ids = (args.ids as string[] | undefined) ?? [];
+	const idsArg = args.ids as string[] | null | undefined;
+	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
+	if (!shouldStreamDefaultList && !Array.isArray(idsArg)) {
+		return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+	}
+	const providedIds = Array.isArray(idsArg) ? idsArg : null;
 	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
-	if (ids.length > maxObjects) {
+	if (providedIds && providedIds.length > maxObjects) {
 		return [
 			"error",
 			{
@@ -39,7 +44,24 @@ export async function handleThreadGet(
 			tag,
 		];
 	}
-	if (!ids.length) {
+
+	let idsToFetch: string[] = [];
+	if (shouldStreamDefaultList) {
+		const defaultRows = await db
+			.select({ id: threadTable.id })
+			.from(threadTable)
+			.where(eq(threadTable.accountId, effectiveAccountId))
+			.orderBy(desc(threadTable.latestMessageAt), desc(threadTable.id))
+			.limit(maxObjects);
+		idsToFetch = defaultRows.map((row) => row.id);
+	} else if (providedIds) {
+		if (providedIds.length === 0) {
+			return ["Thread/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
+		}
+		idsToFetch = providedIds;
+	}
+
+	if (!idsToFetch.length) {
 		return ["Thread/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 	}
 
@@ -62,7 +84,7 @@ export async function handleThreadGet(
 		.where(
 			and(
 				eq(threadTable.accountId, effectiveAccountId),
-				inArray(threadTable.id, ids),
+				inArray(threadTable.id, idsToFetch),
 				eq(accountMessageTable.isDeleted, false)
 			)
 		)
@@ -84,7 +106,7 @@ export async function handleThreadGet(
 	});
 
 	const foundIds = new Set(list.map((t) => t.id));
-	const notFound = ids.filter((id) => !foundIds.has(id));
+	const notFound = providedIds ? providedIds.filter((id) => !foundIds.has(id)) : [];
 
 	return [
 		"Thread/get",

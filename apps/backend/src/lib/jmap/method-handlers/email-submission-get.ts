@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB } from "../../../db";
@@ -34,9 +34,14 @@ export async function handleEmailSubmissionGet(
 	}
 
 	const state = await getAccountState(db, effectiveAccountId, "EmailSubmission");
-	const ids = (args.ids as string[] | undefined) ?? [];
+	const idsArg = args.ids as string[] | null | undefined;
+	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
+	if (!shouldStreamDefaultList && !Array.isArray(idsArg)) {
+		return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+	}
+	const providedIds = Array.isArray(idsArg) ? idsArg : null;
 	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
-	if (ids.length > maxObjects) {
+	if (providedIds && providedIds.length > maxObjects) {
 		return [
 			"error",
 			{
@@ -46,7 +51,24 @@ export async function handleEmailSubmissionGet(
 			tag,
 		];
 	}
-	if (ids.length === 0) {
+
+	let idsToFetch: string[] = [];
+	if (shouldStreamDefaultList) {
+		const defaultRows = await db
+			.select({ id: emailSubmissionTable.id })
+			.from(emailSubmissionTable)
+			.where(eq(emailSubmissionTable.accountId, effectiveAccountId))
+			.orderBy(desc(emailSubmissionTable.createdAt), desc(emailSubmissionTable.id))
+			.limit(maxObjects);
+		idsToFetch = defaultRows.map((row) => row.id);
+	} else if (providedIds) {
+		if (providedIds.length === 0) {
+			return ["EmailSubmission/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
+		}
+		idsToFetch = providedIds;
+	}
+
+	if (!idsToFetch.length) {
 		return ["EmailSubmission/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 	}
 
@@ -61,10 +83,11 @@ export async function handleEmailSubmissionGet(
 	const rows = await db
 		.select()
 		.from(emailSubmissionTable)
-		.where(and(eq(emailSubmissionTable.accountId, effectiveAccountId), inArray(emailSubmissionTable.id, ids)));
+		.where(and(eq(emailSubmissionTable.accountId, effectiveAccountId), inArray(emailSubmissionTable.id, idsToFetch)));
 
 	const rowMap = new Map(rows.map((row) => [row.id, row]));
-	const list: EmailSubmissionRecord[] = ids
+	const orderedIds = providedIds ?? idsToFetch;
+	const list: EmailSubmissionRecord[] = orderedIds
 		.map((id) => {
 			const row = rowMap.get(id);
 			if (!row) return null;
@@ -81,7 +104,7 @@ export async function handleEmailSubmissionGet(
 		.filter((value): value is EmailSubmissionRecord => value !== null);
 
 	const foundIds = new Set(list.map((item) => item.id));
-	const notFound = ids.filter((id) => !foundIds.has(id));
+	const notFound = providedIds ? providedIds.filter((id) => !foundIds.has(id)) : [];
 
 	return [
 		"EmailSubmission/get",
