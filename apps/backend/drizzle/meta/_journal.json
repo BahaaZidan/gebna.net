@@ -78,6 +78,13 @@
       "when": 1763915256132,
       "tag": "0010_complex_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1764177475040,
+      "tag": "0011_updated_properties",
+      "breakpoints": true
     }
   ]
 }

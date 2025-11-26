@@ -221,6 +221,7 @@ export async function handlePushSubscriptionSet(
 				}
 
 				const updateData: Record<string, unknown> = {};
+				const updatedProps: string[] = [];
 				let requiresReverification = false;
 				if (patch.deviceClientId !== undefined && patch.deviceClientId !== existing.deviceClientId) {
 					const [conflict] = await tx
@@ -239,21 +240,26 @@ export async function handlePushSubscriptionSet(
 					}
 					updateData.deviceClientId = patch.deviceClientId;
 					requiresReverification = true;
+					updatedProps.push("deviceClientId");
 				}
 				if (patch.url !== undefined) {
 					updateData.url = patch.url;
 					requiresReverification = true;
+					updatedProps.push("url");
 				}
 				if (patch.keys !== undefined) {
 					updateData.keysAuth = patch.keys?.auth ?? null;
 					updateData.keysP256dh = patch.keys?.p256dh ?? null;
 					requiresReverification = true;
+					updatedProps.push("keys");
 				}
 				if (patch.types !== undefined) {
 					updateData.typesJson = serializeTypes(patch.types);
+					updatedProps.push("types");
 				}
 				if (patch.expiresAt !== undefined) {
 					updateData.expiresAt = patch.expiresAt ?? null;
+					updatedProps.push("expires");
 				}
 				const now = new Date();
 				let verificationResponse: { verificationCode?: string | null } | null = null;
@@ -269,11 +275,13 @@ export async function handlePushSubscriptionSet(
 					updateData.verificationCode = null;
 					updateData.verifiedAt = now;
 					verificationResponse = { verificationCode: null };
+					updatedProps.push("verificationCode");
 				} else if (requiresReverification) {
 					const newCode = generateVerificationCode();
 					updateData.verificationCode = newCode;
 					updateData.verifiedAt = null;
 					verificationResponse = { verificationCode: newCode };
+					updatedProps.push("verificationCode");
 				}
 				if (Object.keys(updateData).length === 0) {
 					continue;
@@ -288,6 +296,7 @@ export async function handlePushSubscriptionSet(
 					type: "PushSubscription",
 					objectId: id,
 					now,
+					updatedProperties: updatedProps,
 				});
 				updated[id] = verificationResponse ? { id, ...verificationResponse } : { id };
 			}

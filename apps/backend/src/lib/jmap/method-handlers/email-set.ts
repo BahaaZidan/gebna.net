@@ -254,6 +254,13 @@ export async function applyEmailSet(
 				: { changed: false };
 
 			if (mailboxUpdateResult.changed || keywordUpdateResult.changed) {
+				const emailUpdatedProperties: string[] = [];
+				if (mailboxUpdateResult.changed) {
+					emailUpdatedProperties.push("mailboxIds");
+				}
+				if (keywordUpdateResult.changed) {
+					emailUpdatedProperties.push("keywords");
+				}
 				await recordEmailUpdateChanges({
 					tx,
 					accountId,
@@ -261,6 +268,8 @@ export async function applyEmailSet(
 					threadId: row.threadId,
 					mailboxIds: mailboxUpdateResult.touchedMailboxIds,
 					now,
+					emailUpdatedProperties,
+					threadUpdatedProperties: mailboxUpdateResult.changed ? ["emailIds"] : null,
 				});
 				updated[emailId] = { id: row.id };
 			}
@@ -1367,6 +1376,7 @@ async function handleEmailDestroy(
 			mailboxIds,
 			now,
 			threadStillExists,
+			threadUpdatedProperties: ["emailIds"],
 		});
 
 		if (!threadStillExists) {

@@ -357,6 +357,7 @@ export async function handleIdentitySet(
 				type: "Identity",
 				objectId: id,
 				now,
+				updatedProperties: Object.keys(patch),
 			});
 			updated[id] = { id };
 		}

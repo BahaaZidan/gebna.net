@@ -133,6 +133,7 @@ export async function handleVacationResponseSet(
 	const now = new Date();
 
 	let didChange = false;
+	let updatedProperties: string[] | null = null;
 	await db.transaction(async (tx) => {
 		const [existing] = await tx
 			.select({
@@ -160,6 +161,7 @@ export async function handleVacationResponseSet(
 				updatedAt: now,
 			});
 			didChange = true;
+			updatedProperties = ["isEnabled", "fromDate", "toDate", "subject", "textBody", "htmlBody"];
 		} else {
 			const updateSet: Record<string, unknown> = {};
 			if (patch.isEnabled !== undefined && patch.isEnabled !== Boolean(existing.isEnabled)) {
@@ -188,6 +190,7 @@ export async function handleVacationResponseSet(
 					.set(updateSet)
 					.where(eq(vacationResponseTable.accountId, effectiveAccountId));
 				didChange = true;
+				updatedProperties = Object.keys(updateSet).filter((key) => key !== "updatedAt");
 			}
 		}
 
@@ -197,6 +200,7 @@ export async function handleVacationResponseSet(
 				type: "VacationResponse",
 				objectId: "singleton",
 				now,
+				updatedProperties: updatedProperties,
 			});
 		}
 	});

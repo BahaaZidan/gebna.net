@@ -54,6 +54,13 @@ export async function handleMailboxChanges(
 			tag,
 		];
 	} catch (err) {
+		if ((err as { jmapType?: string }).jmapType === "cannotCalculateChanges") {
+			return [
+				"error",
+				{ type: "cannotCalculateChanges", description: (err as Error).message },
+				tag,
+			];
+		}
 		console.error("Mailbox/changes error", err);
 		return ["error", { type: "serverError" }, tag];
 	}

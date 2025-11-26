@@ -212,6 +212,7 @@ sesWebhookApp.post("/events", async (c) => {
 			type: "EmailSubmission",
 			objectId: updated[0]!.id,
 			now,
+			updatedProperties: ["status", "nextAttemptAt", "deliveryStatus"],
 		});
 		processed += 1;
 	}

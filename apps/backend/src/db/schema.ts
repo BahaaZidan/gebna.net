@@ -432,6 +432,7 @@ export const changeLogTable = sqliteTable(
 		objectId: t.text().notNull(),
 		op: t.text().notNull().$type<ChangeLogOp>(),
 		modSeq: t.integer().notNull(),
+		updatedPropertiesJson: t.text(),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 	}),
 	(self) => [

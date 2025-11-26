@@ -50,6 +50,13 @@ export async function handleEmailSubmissionChanges(
 			tag,
 		];
 	} catch (err) {
+		if ((err as { jmapType?: string }).jmapType === "cannotCalculateChanges") {
+			return [
+				"error",
+				{ type: "cannotCalculateChanges", description: (err as Error).message },
+				tag,
+			];
+		}
 		console.error("EmailSubmission/changes error", err);
 		return ["error", { type: "serverError" }, tag];
 	}
