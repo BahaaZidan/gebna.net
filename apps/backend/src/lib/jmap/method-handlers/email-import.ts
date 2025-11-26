@@ -405,6 +405,9 @@ function splitKeywords(
 
 	for (const [keyword, value] of Object.entries(keywordPatch)) {
 		const normalized = normalizeKeywordName(keyword);
+		if (!isValidKeywordName(normalized)) {
+			throw new EmailImportProblem("invalidProperties", `Invalid keyword name: ${keyword}`);
+		}
 		const mapped = KEYWORD_FLAG_MAP[normalized];
 		if (mapped) {
 			flags[mapped] = value;
@@ -425,6 +428,19 @@ function normalizeKeywordName(keyword: string): string {
 		return `$${keyword.slice(1).toLowerCase()}`;
 	}
 	return keyword.toLowerCase();
+}
+
+function isValidKeywordName(keyword: string): boolean {
+	if (!keyword || keyword.length > 255) {
+		return false;
+	}
+	for (let i = 0; i < keyword.length; i++) {
+		const code = keyword.charCodeAt(i);
+		if (code < 0x21 || code > 0x7e) {
+			return false;
+		}
+	}
+	return true;
 }
 
 function enforceMailboxLimit(count: number): void {

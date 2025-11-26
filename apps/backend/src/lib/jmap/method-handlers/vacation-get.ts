@@ -51,14 +51,27 @@ export async function handleVacationResponseGet(
 		.where(eq(vacationResponseTable.accountId, effectiveAccountId))
 		.limit(1);
 
+	if (!row) {
+		return [
+			"VacationResponse/get",
+			{
+				accountId: effectiveAccountId,
+				state,
+				list: [],
+				notFound: ["singleton"],
+			},
+			tag,
+		];
+	}
+
 	const record: VacationRecord = {
 		id: "singleton",
-		isEnabled: Boolean(row?.isEnabled ?? false),
-		fromDate: dateToIso(row?.fromDate ?? null),
-		toDate: dateToIso(row?.toDate ?? null),
-		subject: row?.subject ?? null,
-		textBody: row?.textBody ?? null,
-		htmlBody: row?.htmlBody ?? null,
+		isEnabled: Boolean(row.isEnabled ?? false),
+		fromDate: dateToIso(row.fromDate ?? null),
+		toDate: dateToIso(row.toDate ?? null),
+		subject: row.subject ?? null,
+		textBody: row.textBody ?? null,
+		htmlBody: row.htmlBody ?? null,
 	};
 
 	return [

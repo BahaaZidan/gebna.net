@@ -15,9 +15,18 @@ type PushSubscriptionResponse = {
 	keys?: { auth?: string | null; p256dh?: string | null } | null;
 	types?: JmapStateType[] | null;
 	expires?: string | null;
+	verificationCode?: string | null;
 };
 
-const PUSH_SUBSCRIPTION_PROPERTIES = ["id", "deviceClientId", "url", "keys", "types", "expires"] as const;
+const PUSH_SUBSCRIPTION_PROPERTIES = [
+	"id",
+	"deviceClientId",
+	"url",
+	"keys",
+	"types",
+	"expires",
+	"verificationCode",
+] as const;
 
 const KNOWN_PUSH_TYPES: readonly JmapStateType[] = [
 	"Email",
@@ -76,6 +85,7 @@ export async function handlePushSubscriptionGet(
 					keysP256dh: pushSubscriptionTable.keysP256dh,
 					typesJson: pushSubscriptionTable.typesJson,
 					expiresAt: pushSubscriptionTable.expiresAt,
+					verificationCode: pushSubscriptionTable.verificationCode,
 				})
 				.from(pushSubscriptionTable)
 				.where(and(eq(pushSubscriptionTable.accountId, effectiveAccountId), inArray(pushSubscriptionTable.id, ids)))
@@ -88,6 +98,7 @@ export async function handlePushSubscriptionGet(
 					keysP256dh: pushSubscriptionTable.keysP256dh,
 					typesJson: pushSubscriptionTable.typesJson,
 					expiresAt: pushSubscriptionTable.expiresAt,
+					verificationCode: pushSubscriptionTable.verificationCode,
 				})
 				.from(pushSubscriptionTable)
 				.where(eq(pushSubscriptionTable.accountId, effectiveAccountId))
@@ -101,6 +112,9 @@ export async function handlePushSubscriptionGet(
 		if (includeProp("types")) entry.types = parseTypes(row.typesJson);
 		if (includeProp("expires")) {
 			entry.expires = row.expiresAt ? new Date(row.expiresAt).toISOString() : null;
+		}
+		if (includeProp("verificationCode")) {
+			entry.verificationCode = row.verificationCode ?? null;
 		}
 		return entry;
 	});

@@ -1,9 +1,10 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB, TransactionInstance } from "../../../db";
 import { accountTable, identityTable } from "../../../db/schema";
 import { recordCreate, recordDestroy, recordUpdate } from "../change-log";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess, getAccountState, isRecord } from "../utils";
@@ -182,6 +183,26 @@ function parseIdentityUpdate(raw: unknown, _accountAddress: string): IdentityUpd
 	return patch;
 }
 
+async function identityEmailExists(
+	tx: TransactionInstance,
+	accountId: string,
+	email: string,
+	excludeId?: string
+): Promise<boolean> {
+	const normalizedEmail = email.trim().toLowerCase();
+	const emailCondition = sql`lower(trim(${identityTable.email})) = ${normalizedEmail}`;
+	let whereClause = and(eq(identityTable.accountId, accountId), emailCondition);
+	if (excludeId) {
+		whereClause = and(whereClause, ne(identityTable.id, excludeId));
+	}
+	const rows = await tx
+		.select({ id: identityTable.id })
+		.from(identityTable)
+		.where(whereClause)
+		.limit(1);
+	return rows.length > 0;
+}
+
 async function ensureSingleDefaultIdentity(
 	tx: TransactionInstance,
 	accountId: string,
@@ -254,6 +275,41 @@ export async function handleIdentitySet(
 	const updateMap = (args.update as Record<string, unknown> | undefined) ?? {};
 	const destroyIds = (args.destroy as string[] | undefined) ?? [];
 
+	const maxSetObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInSet ?? 128;
+	const createCount = Object.keys(createMap).length;
+	const updateCount = Object.keys(updateMap).length;
+	const destroyCount = destroyIds.length;
+	if (createCount > maxSetObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `create exceeds maxObjectsInSet (${maxSetObjects})`,
+			},
+			tag,
+		];
+	}
+	if (updateCount > maxSetObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `update exceeds maxObjectsInSet (${maxSetObjects})`,
+			},
+			tag,
+		];
+	}
+	if (destroyCount > maxSetObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `destroy exceeds maxObjectsInSet (${maxSetObjects})`,
+			},
+			tag,
+		];
+	}
+
 	const created: Record<string, unknown> = {};
 	const notCreated: Record<string, { type: string; description?: string }> = {};
 	const updated: Record<string, unknown> = {};
@@ -274,6 +330,14 @@ export async function handleIdentitySet(
 					continue;
 				}
 				throw err;
+			}
+
+			if (await identityEmailExists(tx, effectiveAccountId, parsed.email)) {
+				notCreated[creationId] = {
+					type: "invalidProperties",
+					description: "Identity email already in use",
+				};
+				continue;
 			}
 
 			const id = crypto.randomUUID();
@@ -330,6 +394,17 @@ export async function handleIdentitySet(
 
 			if (Object.keys(patch).length === 0) {
 				continue;
+			}
+
+			if (patch.email !== undefined) {
+				const emailInUse = await identityEmailExists(tx, effectiveAccountId, patch.email, id);
+				if (emailInUse) {
+					notUpdated[id] = {
+						type: "invalidProperties",
+						description: "Identity email already in use",
+					};
+					continue;
+				}
 			}
 
 			await tx

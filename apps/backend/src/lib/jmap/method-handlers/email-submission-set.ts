@@ -990,11 +990,11 @@ function buildDefaultEmailSubmissionPatch(
 ): Record<string, unknown> | null {
 	const patch: Record<string, unknown> = {};
 	const mailboxPatch: Record<string, boolean> = {};
-	if (draftsMailboxId) {
-		mailboxPatch[draftsMailboxId] = false;
-	}
 	if (sentMailboxId) {
 		mailboxPatch[sentMailboxId] = true;
+		if (draftsMailboxId) {
+			mailboxPatch[draftsMailboxId] = false;
+		}
 	}
 	if (Object.keys(mailboxPatch).length > 0) {
 		patch.mailboxIds = mailboxPatch;
