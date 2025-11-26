@@ -66,8 +66,8 @@ export async function handleEmailCopy(
 		return ["error", { type: "accountNotFound" }, tag];
 	}
 
-	const fromAccountId = args.fromAccountId as string | undefined;
-	if (!fromAccountId || fromAccountId !== effectiveAccountId) {
+	const fromAccountId = (args.fromAccountId as string | undefined) ?? effectiveAccountId;
+	if (fromAccountId !== effectiveAccountId) {
 		return [
 			"error",
 			{ type: "accountNotFound", description: "Cross-account copy not supported" },
