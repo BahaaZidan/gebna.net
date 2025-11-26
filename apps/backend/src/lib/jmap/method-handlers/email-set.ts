@@ -154,6 +154,7 @@ export async function applyEmailSet(
 
 	const createEntries = Object.entries(args.create ?? {});
 	const preparedCreates: PreparedEmailCreate[] = [];
+	const creationResults = new Map<string, string>();
 
 	for (const [creationId, rawCreate] of createEntries) {
 		try {
@@ -190,12 +191,21 @@ export async function applyEmailSet(
 				prepared,
 				now,
 			});
+			creationResults.set(prepared.creationId, accountMessageId);
 			created[prepared.creationId] = { id: accountMessageId };
 		}
 
 		for (const [emailId, rawPatch] of Object.entries(updateMap)) {
-			const patch = parseEmailUpdatePatch(rawPatch);
+			const resolvedEmailId = resolveEmailSetReference(emailId, creationResults);
+			if (!resolvedEmailId) {
+				notUpdated[emailId] = {
+					type: "invalidArguments",
+					description: "Unknown creation id reference",
+				};
+				continue;
+			}
 
+			const patch = parseEmailUpdatePatch(rawPatch);
 			if (!patch.mailboxIds && !patch.keywords) {
 				continue;
 			}
@@ -212,7 +222,7 @@ export async function applyEmailSet(
 				.from(accountMessageTable)
 				.where(
 					and(
-						eq(accountMessageTable.id, emailId),
+						eq(accountMessageTable.id, resolvedEmailId),
 						eq(accountMessageTable.accountId, accountId),
 						eq(accountMessageTable.isDeleted, false)
 					)
@@ -228,7 +238,16 @@ export async function applyEmailSet(
 				? await applyMailboxPatch(tx, row.id, patch.mailboxIds, mailboxInfo.byId, now)
 				: { changed: false, touchedMailboxIds: [] };
 			const keywordUpdateResult = patch.keywords
-				? await applyKeywordPatch(tx, row.id, row.isSeen, row.isFlagged, row.isAnswered, row.isDraft, patch.keywords, now)
+				? await applyKeywordPatch(
+						tx,
+						row.id,
+						row.isSeen,
+						row.isFlagged,
+						row.isAnswered,
+						row.isDraft,
+						patch.keywords,
+						now
+				  )
 				: { changed: false };
 
 			if (mailboxUpdateResult.changed || keywordUpdateResult.changed) {
@@ -240,12 +259,25 @@ export async function applyEmailSet(
 					mailboxIds: mailboxUpdateResult.touchedMailboxIds,
 					now,
 				});
-				updated[emailId] = { id: row.id };
+				updated[resolvedEmailId] = { id: row.id };
 			}
 		}
 
-		await handleEmailDestroy(env, tx, accountId, destroyIds, destroyed, notDestroyed, now);
-	});
+		const destroyTargets: { input: string; id: string }[] = [];
+		for (const ref of destroyIds) {
+			const resolved = resolveEmailSetReference(ref, creationResults);
+			if (!resolved) {
+				notDestroyed[ref] = {
+					type: "invalidArguments",
+					description: "Unknown creation id reference",
+				};
+				continue;
+			}
+			destroyTargets.push({ input: ref, id: resolved });
+		}
+
+		await handleEmailDestroy(env, tx, accountId, destroyTargets, destroyed, notDestroyed, now);
+		});
 
 	const newState = await getAccountState(db, accountId, "Email");
 
@@ -296,6 +328,20 @@ function parseEmailUpdatePatch(raw: unknown): EmailUpdatePatch {
 	}
 
 	return patch;
+}
+
+function resolveEmailSetReference(
+	id: string,
+	creationResults: Map<string, string>
+): string | null {
+	if (typeof id !== "string" || id.length === 0) {
+		return null;
+	}
+	if (!id.startsWith("#")) {
+		return id;
+	}
+	const resolved = creationResults.get(id.slice(1));
+	return resolved ?? null;
 }
 
 type EmailSetArgs = {
@@ -1235,12 +1281,13 @@ async function handleEmailDestroy(
 	env: JMAPHonoAppEnv["Bindings"],
 	tx: TransactionInstance,
 	accountId: string,
-	destroyIds: string[],
+	destroyTargets: { input: string; id: string }[],
 	destroyed: string[],
 	notDestroyed: Record<string, EmailSetFailure>,
 	now: Date
 ): Promise<void> {
-	for (const emailId of destroyIds) {
+	for (const target of destroyTargets) {
+		const emailId = target.id;
 		const [row] = await tx
 			.select({
 				id: accountMessageTable.id,
@@ -1258,7 +1305,7 @@ async function handleEmailDestroy(
 			.limit(1);
 
 		if (!row) {
-			notDestroyed[emailId] = { type: "notFound", description: "Email not found" };
+			notDestroyed[target.input] = { type: "notFound", description: "Email not found" };
 			continue;
 		}
 
