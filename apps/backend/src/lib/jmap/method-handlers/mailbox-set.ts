@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { Context } from "hono";
 
 import { getDB, type TransactionInstance } from "../../../db";
@@ -148,10 +148,31 @@ function ensureParentValid(
 	}
 }
 
+function ensureSiblingNameAvailable(
+	mailboxes: Map<string, MailboxInfo>,
+	parentId: string | null,
+	name: string,
+	excludeId?: string
+): void {
+	const normalizedParent = parentId ?? null;
+	const normalizedName = name.trim().toLowerCase();
+	for (const mailbox of mailboxes.values()) {
+		if (excludeId && mailbox.id === excludeId) continue;
+		const mailboxParent = mailbox.parentId ?? null;
+		if (mailboxParent === normalizedParent && mailbox.name.trim().toLowerCase() === normalizedName) {
+			throw new MailboxSetProblem(
+				"invalidProperties",
+				"Mailbox names must be unique within the same parent"
+			);
+		}
+	}
+}
+
 async function removeMailboxMemberships(
 	tx: TransactionInstance,
 	accountId: string,
 	mailboxId: string,
+	mailboxMap: Map<string, MailboxInfo>,
 	now: Date
 ): Promise<void> {
 	const membershipRows = await tx
@@ -177,6 +198,32 @@ async function removeMailboxMemberships(
 
 	const emailIds = membershipRows.map((row) => row.accountMessageId);
 
+	const otherMembershipRows = await tx
+		.select({
+			accountMessageId: mailboxMessageTable.accountMessageId,
+		})
+		.from(mailboxMessageTable)
+		.where(
+			and(
+				inArray(mailboxMessageTable.accountMessageId, emailIds),
+				ne(mailboxMessageTable.mailboxId, mailboxId)
+			)
+		);
+	const emailHasOtherMailbox = new Set(otherMembershipRows.map((row) => row.accountMessageId));
+	const needsFallback = membershipRows
+		.filter((row) => !emailHasOtherMailbox.has(row.accountMessageId))
+		.map((row) => row.accountMessageId);
+	let fallbackMailboxId: string | null = null;
+	if (needsFallback.length > 0) {
+		fallbackMailboxId = pickFallbackMailboxId(mailboxMap, mailboxId);
+		if (!fallbackMailboxId) {
+			throw new MailboxSetProblem(
+				"mailboxHasEmail",
+				"Cannot remove the last mailbox containing remaining emails"
+			);
+		}
+	}
+
 	await tx.delete(mailboxMessageTable).where(eq(mailboxMessageTable.mailboxId, mailboxId));
 
 	await tx
@@ -184,16 +231,52 @@ async function removeMailboxMemberships(
 		.set({ updatedAt: now })
 		.where(inArray(accountMessageTable.id, emailIds));
 
+	if (fallbackMailboxId && needsFallback.length > 0) {
+		await tx.insert(mailboxMessageTable).values(
+			needsFallback.map((accountMessageId) => ({
+				accountMessageId,
+				mailboxId: fallbackMailboxId!,
+				addedAt: now,
+			}))
+		);
+	}
+
 	for (const row of membershipRows) {
+		const fallbackAdded = !emailHasOtherMailbox.has(row.accountMessageId) ? fallbackMailboxId : null;
+		const changedMailboxes = fallbackAdded ? [mailboxId, fallbackAdded] : [mailboxId];
 		await recordEmailUpdateChanges({
 			tx,
 			accountId,
 			accountMessageId: row.accountMessageId,
 			threadId: row.threadId,
-			mailboxIds: [mailboxId],
+			mailboxIds: changedMailboxes,
 			now,
 		});
 	}
+}
+
+function pickFallbackMailboxId(
+	mailboxMap: Map<string, MailboxInfo>,
+	excludeId: string
+): string | null {
+	const prefer = (role: string) => {
+		for (const info of mailboxMap.values()) {
+			if (info.id === excludeId) continue;
+			if (info.role === role) {
+				return info.id;
+			}
+		}
+		return null;
+	};
+	const trash = prefer("trash");
+	if (trash) return trash;
+	const inbox = prefer("inbox");
+	if (inbox) return inbox;
+	for (const info of mailboxMap.values()) {
+		if (info.id === excludeId) continue;
+		return info.id;
+	}
+	return null;
 }
 
 export async function handleMailboxSet(
@@ -261,6 +344,7 @@ export async function handleMailboxSet(
 					const mailboxId = crypto.randomUUID();
 
 					ensureParentValid(mailboxMap, resolvedParentId, mailboxId);
+					ensureSiblingNameAvailable(mailboxMap, resolvedParentId ?? null, parsed.name);
 
 					await tx.insert(mailboxTable).values({
 						id: mailboxId,
@@ -323,6 +407,8 @@ export async function handleMailboxSet(
 					const nextParent = patch.parentId !== undefined ? patch.parentId : existing.parentId;
 					const resolvedParent = resolveCreationId(nextParent ?? null, creationResults);
 					ensureParentValid(mailboxMap, resolvedParent ?? null, mailboxId);
+					const targetName = patch.name ?? existing.name;
+					ensureSiblingNameAvailable(mailboxMap, resolvedParent ?? null, targetName, mailboxId);
 
 					await tx
 						.update(mailboxTable)
@@ -383,7 +469,7 @@ export async function handleMailboxSet(
 						throw new MailboxSetProblem("mailboxHasChild", "Mailbox has child mailboxes");
 					}
 
-					await removeMailboxMemberships(tx, effectiveAccountId, resolvedId, now);
+					await removeMailboxMemberships(tx, effectiveAccountId, resolvedId, mailboxMap, now);
 
 					await tx
 						.delete(mailboxTable)
