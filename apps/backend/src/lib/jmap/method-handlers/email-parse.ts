@@ -27,6 +27,7 @@ import {
 	parseHeaderProperty,
 	truncateStringToBytes,
 } from "../email-format";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess } from "../utils";
@@ -63,8 +64,20 @@ export async function handleEmailParse(
 	}
 
 	const input: EmailParseArgs = parsedArgs.output;
-	if (input.blobIds.length === 0) {
+	const blobIds = input.blobIds;
+	if (blobIds.length === 0) {
 		return ["error", { type: "invalidArguments", description: "blobIds must include at least one id" }, tag];
+	}
+	const maxObjectsLimit = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
+	if (blobIds.length > maxObjectsLimit) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `blobIds length exceeds maxObjectsInGet (${maxObjectsLimit})`,
+			},
+			tag,
+		];
 	}
 
 	const db = getDB(c.env);
@@ -110,7 +123,7 @@ export async function handleEmailParse(
 			accountBlobTable,
 			and(eq(accountBlobTable.sha256, blobTable.sha256), eq(accountBlobTable.accountId, effectiveAccountId))
 		)
-		.where(inArray(blobTable.sha256, input.blobIds));
+		.where(inArray(blobTable.sha256, blobIds));
 	const blobMap = new Map<string, { size: number | null; r2Key: string | null }>();
 	for (const row of blobRows) {
 		blobMap.set(row.sha, { size: row.size, r2Key: row.r2Key });
@@ -120,7 +133,7 @@ export async function handleEmailParse(
 	const notParsable: string[] = [];
 	const notFound: string[] = [];
 
-	for (const blobId of input.blobIds) {
+	for (const blobId of blobIds) {
 		const meta = blobMap.get(blobId);
 		if (!meta) {
 			if (allowMissingIds) {
