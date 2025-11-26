@@ -11,6 +11,7 @@ import {
 import { ensureAccountBlob } from "../../mail/ingest";
 import { recordEmailCreateChanges } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
+import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { CreationReferenceMap, JmapMethodResponse } from "../types";
 import { applyEmailSet } from "./email-set";
 import {
@@ -95,6 +96,19 @@ export async function handleEmailCopy(
 		create: (args.create as Record<string, unknown> | undefined) ?? undefined,
 		creationRefs: c.get("creationReferences") as CreationReferenceMap | undefined,
 	};
+
+	const maxSetObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInSet ?? 128;
+	const createCount = isRecord(args.create) ? Object.keys(args.create).length : 0;
+	if (createCount > maxSetObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `create exceeds maxObjectsInSet (${maxSetObjects})`,
+			},
+			tag,
+		];
+	}
 
 	const result = await applyEmailCopy(db, input);
 
@@ -184,7 +198,7 @@ async function applyEmailCopy(
 
 type EmailCopyCreate = {
 	emailId: string;
-	mailboxIds: string[];
+	mailboxIds: string[] | null;
 	keywords: Record<string, boolean> | null;
 };
 
@@ -212,29 +226,31 @@ function parseEmailCopyCreate(
 	}
 
 	const mailboxIdsValue = raw.mailboxIds;
-	if (!isRecord(mailboxIdsValue)) {
-		throw new EmailCopyProblem("invalidProperties", "mailboxIds must be provided");
-	}
-
-	const targetMailboxIds: string[] = [];
-	for (const [mailboxId, keep] of Object.entries(mailboxIdsValue)) {
-		if (keep !== true) continue;
-		let resolvedMailboxId = mailboxId;
-		if (mailboxId.startsWith("#")) {
-			const resolved = resolveCreationReference(mailboxId, creationRefs);
-			if (!resolved) {
-				throw new EmailCopyProblem("invalidProperties", `Unknown mailbox reference ${mailboxId}`);
+	let targetMailboxIds: string[] | null = null;
+	if (mailboxIdsValue !== undefined) {
+		if (!isRecord(mailboxIdsValue)) {
+			throw new EmailCopyProblem("invalidProperties", "mailboxIds must be an object when provided");
+		}
+		const collected: string[] = [];
+		for (const [mailboxId, keep] of Object.entries(mailboxIdsValue)) {
+			if (keep !== true) continue;
+			let resolvedMailboxId = mailboxId;
+			if (mailboxId.startsWith("#")) {
+				const resolved = resolveCreationReference(mailboxId, creationRefs);
+				if (!resolved) {
+					throw new EmailCopyProblem("invalidProperties", `Unknown mailbox reference ${mailboxId}`);
+				}
+				resolvedMailboxId = resolved;
 			}
-			resolvedMailboxId = resolved;
+			if (!mailboxLookup.has(resolvedMailboxId)) {
+				throw new EmailCopyProblem("notFound", `Mailbox ${mailboxId} not found`);
+			}
+			collected.push(resolvedMailboxId);
 		}
-		if (!mailboxLookup.has(resolvedMailboxId)) {
-			throw new EmailCopyProblem("notFound", `Mailbox ${mailboxId} not found`);
+		if (!collected.length) {
+			throw new EmailCopyProblem("invalidProperties", "mailboxIds must include at least one mailbox");
 		}
-		targetMailboxIds.push(resolvedMailboxId);
-	}
-
-	if (!targetMailboxIds.length) {
-		throw new EmailCopyProblem("invalidProperties", "mailboxIds must include at least one mailbox");
+		targetMailboxIds = collected;
 	}
 
 	const keywordsValue = raw.keywords;
@@ -288,6 +304,18 @@ async function cloneEmail(
 		throw new EmailCopyProblem("notFound", "Email not found");
 	}
 
+	let targetMailboxIds = create.mailboxIds;
+	if (!targetMailboxIds || targetMailboxIds.length === 0) {
+		const memberships = await tx
+			.select({ mailboxId: mailboxMessageTable.mailboxId })
+			.from(mailboxMessageTable)
+			.where(eq(mailboxMessageTable.accountMessageId, source.accountMessageId));
+		targetMailboxIds = memberships.map((entry) => entry.mailboxId);
+		if (!targetMailboxIds.length) {
+			throw new EmailCopyProblem("notFound", "Source email has no mailboxes to inherit");
+		}
+	}
+
 	const customKeywordRows = await tx
 		.select({ keyword: emailKeywordTable.keyword })
 		.from(emailKeywordTable)
@@ -330,7 +358,7 @@ async function cloneEmail(
 	});
 
 	await tx.insert(mailboxMessageTable).values(
-		create.mailboxIds.map((mailboxId) => ({
+		targetMailboxIds.map((mailboxId) => ({
 			accountMessageId: newId,
 			mailboxId,
 			addedAt: now,
@@ -361,7 +389,7 @@ async function cloneEmail(
 		accountId,
 		accountMessageId: newId,
 		threadId: source.threadId,
-		mailboxIds: create.mailboxIds,
+		mailboxIds: targetMailboxIds,
 		now,
 	});
 
