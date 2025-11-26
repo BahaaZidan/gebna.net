@@ -32,6 +32,15 @@ type MailboxQueryOptions = {
 
 export const DEFAULT_MAILBOX_SORT: MailboxSort[] = [{ property: "sortOrder", isAscending: true }];
 
+class MailboxQueryProblem extends Error {
+	readonly type: string;
+
+	constructor(type: string, message: string) {
+		super(message);
+		this.type = type;
+	}
+}
+
 export async function handleMailboxQuery(
 	c: Context<JMAPHonoAppEnv>,
 	args: Record<string, unknown>,
@@ -46,7 +55,15 @@ export async function handleMailboxQuery(
 	}
 	const mailboxState = await getAccountState(db, effectiveAccountId, "Mailbox");
 
-	const options = parseQueryOptions(args);
+	let options: MailboxQueryOptions;
+	try {
+		options = parseQueryOptions(args);
+	} catch (err) {
+		if (err instanceof MailboxQueryProblem) {
+			return ["error", { type: err.type, description: err.message }, tag];
+		}
+		throw err;
+	}
 
 	const rows = await db
 		.select({ id: mailboxTable.id })
@@ -114,6 +131,12 @@ function parseQueryOptions(args: Record<string, unknown>): MailboxQueryOptions {
 export function normalizeMailboxFilter(raw: unknown): MailboxFilter {
 	if (!raw || typeof raw !== "object") return { operator: "all" };
 	const value = raw as Record<string, unknown>;
+	const allowedKeys = new Set(["text", "name", "role"]);
+	for (const key of Object.keys(value)) {
+		if (!allowedKeys.has(key)) {
+			throw new MailboxQueryProblem("unsupportedFilter", `Unsupported filter property ${key}`);
+		}
+	}
 
 	const text = value.text;
 	if (typeof text === "string" && text.trim()) {

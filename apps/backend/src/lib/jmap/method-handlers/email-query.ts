@@ -58,6 +58,28 @@ type QueryOptions = {
 };
 
 const DEFAULT_SORT: SortComparator[] = [{ property: "receivedAt", isAscending: false }];
+const EMAIL_FILTER_ALLOWED_KEYS = new Set([
+	"text",
+	"subject",
+	"from",
+	"to",
+	"cc",
+	"bcc",
+	"body",
+	"after",
+	"before",
+	"sizeLarger",
+	"sizeSmaller",
+	"inMailbox",
+	"inMailboxOtherThan",
+	"hasKeyword",
+	"hasAttachment",
+	"attachmentName",
+	"attachmentType",
+	"and",
+	"or",
+	"not",
+]);
 function escapeLikePattern(input: string): string {
 	return input.replace(/[\\_%]/g, (ch) => `\\${ch}`);
 }
@@ -75,9 +97,8 @@ export async function handleEmailQuery(
 	}
 	const accountState = await getAccountState(db, effectiveAccountId, "Email");
 
-	const options = parseQueryOptions(args);
-
 	try {
+		const options = parseQueryOptions(args);
 		const result = await runQuery(db, effectiveAccountId, options);
 		const queryStateId = await persistQueryStateRecord(
 			db,
@@ -176,6 +197,11 @@ function parseQueryOptions(args: Record<string, unknown>): QueryOptions {
 export function normalizeFilter(raw: unknown): FilterCondition {
 	if (!raw || typeof raw !== "object") return { operator: "none" };
 	const value = raw as Record<string, unknown>;
+	for (const key of Object.keys(value)) {
+		if (!EMAIL_FILTER_ALLOWED_KEYS.has(key)) {
+			throw new EmailQueryProblem("unsupportedFilter", `Unsupported filter property ${key}`);
+		}
+	}
 	const conditions: FilterCondition[] = [];
 
 	const pushCondition = (condition: FilterCondition | undefined) => {
