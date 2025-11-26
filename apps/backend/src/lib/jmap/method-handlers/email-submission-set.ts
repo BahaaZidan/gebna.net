@@ -18,8 +18,14 @@ import {
 import { DeliveryStatusRecord } from "../../types";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
-import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState, getAccountMailboxes, isRecord } from "../utils";
+import { CreationReferenceMap, JmapMethodResponse } from "../types";
+import {
+	ensureAccountAccess,
+	getAccountState,
+	getAccountMailboxes,
+	isRecord,
+	resolveCreationReference,
+} from "../utils";
 import { recordCreate, recordDestroy, recordUpdate } from "../change-log";
 import { applyEmailSet } from "./email-set";
 
@@ -93,6 +99,7 @@ export async function handleEmailSubmissionSet(
 		create: createMap,
 		update: (args.update as Record<string, unknown> | undefined) ?? undefined,
 		destroy: (args.destroy as string[] | undefined) ?? undefined,
+		creationReferences: c.get("creationReferences") as CreationReferenceMap | undefined,
 	};
 
 	try {
@@ -121,6 +128,7 @@ export async function handleEmailSubmissionSet(
 			creationMeta: result.creationMeta,
 			onSuccessDestroyEmail,
 			onSuccessUpdateEmail,
+			creationRefs: input.creationReferences,
 		});
 
 		if ("error" in implicitEmailOps) {
@@ -188,6 +196,7 @@ async function applyEmailSubmissionSet(
 	const createEntries = Object.entries(createMap);
 	const updateEntries = Object.entries(updateMap);
 	const oldStateValue = await getAccountState(db, accountId, "EmailSubmission");
+	const creationRefs = args.creationReferences;
 
 	if (createEntries.length === 0 && updateEntries.length === 0 && destroyList.length === 0) {
 		return {
@@ -212,6 +221,10 @@ async function applyEmailSubmissionSet(
 		let parsed: EmailSubmissionCreate;
 		try {
 			parsed = parseEmailSubmissionCreate(raw);
+			const resolvedEmailId = resolveSubmissionEmailReference(parsed.emailId, creationRefs);
+			if (resolvedEmailId) {
+				parsed.emailId = resolvedEmailId;
+			}
 		} catch (err) {
 			if (err instanceof EmailSubmissionProblem) {
 				notCreated[createId] = { type: err.jmapType, description: err.message };
@@ -347,6 +360,16 @@ async function applyEmailSubmissionSet(
 	}
 
 	for (const [updateId, rawPatch] of updateEntries) {
+		let resolvedUpdateId: string;
+		try {
+			resolvedUpdateId = resolveSubmissionIdReference(updateId, creationRefs);
+		} catch (err) {
+			if (err instanceof EmailSubmissionProblem) {
+				notUpdated[updateId] = { type: err.jmapType, description: err.message };
+				continue;
+			}
+			throw err;
+		}
 		let patch: EmailSubmissionUpdate;
 		try {
 			patch = parseEmailSubmissionUpdate(rawPatch);
@@ -369,7 +392,7 @@ async function applyEmailSubmissionSet(
 				undoStatus: emailSubmissionTable.undoStatus,
 			})
 			.from(emailSubmissionTable)
-			.where(and(eq(emailSubmissionTable.id, updateId), eq(emailSubmissionTable.accountId, accountId)))
+			.where(and(eq(emailSubmissionTable.id, resolvedUpdateId), eq(emailSubmissionTable.accountId, accountId)))
 			.limit(1);
 
 		if (!row) {
@@ -394,19 +417,29 @@ async function applyEmailSubmissionSet(
 				nextAttemptAt: null,
 				updatedAt: updateTime,
 			})
-			.where(and(eq(emailSubmissionTable.id, updateId), eq(emailSubmissionTable.accountId, accountId)));
+			.where(and(eq(emailSubmissionTable.id, resolvedUpdateId), eq(emailSubmissionTable.accountId, accountId)));
 
-			await recordUpdate(db, {
-				accountId,
-				type: "EmailSubmission",
-				objectId: row.id,
-				now: updateTime,
-				updatedProperties: ["status", "undoStatus", "nextAttemptAt"],
-			});
+		await recordUpdate(db, {
+			accountId,
+			type: "EmailSubmission",
+			objectId: row.id,
+			now: updateTime,
+			updatedProperties: ["status", "undoStatus", "nextAttemptAt"],
+		});
 		updated[updateId] = { id: row.id };
 	}
 
 	for (const destroyId of destroyList) {
+		let resolvedDestroyId: string;
+		try {
+			resolvedDestroyId = resolveSubmissionIdReference(destroyId, creationRefs);
+		} catch (err) {
+			if (err instanceof EmailSubmissionProblem) {
+				notDestroyed[destroyId] = { type: err.jmapType, description: err.message };
+				continue;
+			}
+			throw err;
+		}
 		const [submission] = await db
 			.select({
 				id: emailSubmissionTable.id,
@@ -414,7 +447,7 @@ async function applyEmailSubmissionSet(
 				undoStatus: emailSubmissionTable.undoStatus,
 			})
 			.from(emailSubmissionTable)
-			.where(and(eq(emailSubmissionTable.id, destroyId), eq(emailSubmissionTable.accountId, accountId)))
+			.where(and(eq(emailSubmissionTable.id, resolvedDestroyId), eq(emailSubmissionTable.accountId, accountId)))
 			.limit(1);
 
 		if (!submission) {
@@ -431,16 +464,16 @@ async function applyEmailSubmissionSet(
 					nextAttemptAt: null,
 					updatedAt: now,
 				})
-				.where(and(eq(emailSubmissionTable.id, destroyId), eq(emailSubmissionTable.accountId, accountId)));
+				.where(and(eq(emailSubmissionTable.id, resolvedDestroyId), eq(emailSubmissionTable.accountId, accountId)));
 			await recordDestroy(db, {
 				accountId,
 				type: "EmailSubmission",
-				objectId: destroyId,
+				objectId: resolvedDestroyId,
 				now,
 			});
 		}
 
-		destroyed.push(destroyId);
+		destroyed.push(resolvedDestroyId);
 	}
 
 	for (const submissionId of submissionsToProcess) {
@@ -719,6 +752,7 @@ type EmailSubmissionSetArgs = {
 	create?: Record<string, unknown>;
 	update?: Record<string, unknown>;
 	destroy?: string[];
+	creationReferences?: CreationReferenceMap;
 };
 
 type EmailSubmissionSetResult = {
@@ -743,6 +777,34 @@ type EmailSubmissionFailure = {
 	type: string;
 	description?: string;
 };
+
+function resolveSubmissionEmailReference(
+	value: string,
+	creationRefs?: CreationReferenceMap
+): string | undefined {
+	if (!value.startsWith("#")) {
+		return undefined;
+	}
+	const resolved = resolveCreationReference(value, creationRefs);
+	if (!resolved) {
+		throw new EmailSubmissionProblem("invalidProperties", `Unknown creation id reference ${value}`);
+	}
+	return resolved;
+}
+
+function resolveSubmissionIdReference(
+	value: string,
+	creationRefs?: CreationReferenceMap
+): string {
+	if (!value.startsWith("#")) {
+		return value;
+	}
+	const resolved = resolveCreationReference(value, creationRefs);
+	if (!resolved) {
+		throw new EmailSubmissionProblem("invalidProperties", `Unknown creation id reference ${value}`);
+	}
+	return resolved;
+}
 
 class EmailSubmissionProblem extends Error {
 	readonly jmapType: string;
@@ -803,6 +865,7 @@ function buildImplicitEmailSubmissionOps(opts: {
 	creationMeta: Record<string, { emailId: string }>;
 	onSuccessDestroyEmail: string[];
 	onSuccessUpdateEmail: OnSuccessUpdateMap;
+	creationRefs?: CreationReferenceMap;
 }): ImplicitEmailOpsResult {
 	const requestedCreations = new Set(Object.keys(opts.createMap ?? {}));
 	const resolveReference = (
