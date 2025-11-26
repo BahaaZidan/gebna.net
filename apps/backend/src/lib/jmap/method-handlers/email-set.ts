@@ -1501,21 +1501,6 @@ async function applyMailboxPatch(
 	mailboxLookup: Map<string, { id: string; role: string | null }>,
 	now: Date
 ): Promise<{ changed: boolean; touchedMailboxIds: string[] }> {
-	let targetMailboxIds: string[];
-	try {
-		targetMailboxIds = extractMailboxTargets(mailboxPatch, mailboxLookup);
-	} catch (err) {
-		if (err instanceof EmailSetProblem) {
-			throw err;
-		}
-		throw err;
-	}
-
-	if (targetMailboxIds.length === 0) {
-		throw new EmailSetProblem("invalidProperties", "mailboxIds must include at least one mailbox");
-	}
-	enforceMailboxLimit(targetMailboxIds);
-
 	const existingRows = await tx
 		.select({
 			mailboxId: mailboxMessageTable.mailboxId,
@@ -1524,10 +1509,34 @@ async function applyMailboxPatch(
 		.where(eq(mailboxMessageTable.accountMessageId, accountMessageId));
 
 	const existingSet = new Set(existingRows.map((r) => r.mailboxId));
-	const targetSet = new Set(targetMailboxIds);
+	const targetSet = new Set(existingSet);
+	const touched = new Set<string>();
+
+	for (const [mailboxId, keep] of Object.entries(mailboxPatch)) {
+		if (typeof keep !== "boolean") continue;
+		if (keep) {
+			if (!mailboxLookup.has(mailboxId)) {
+				throw new EmailSetProblem("notFound", `Mailbox ${mailboxId} not found`);
+			}
+			if (!targetSet.has(mailboxId)) {
+				targetSet.add(mailboxId);
+				touched.add(mailboxId);
+			}
+		} else if (targetSet.has(mailboxId)) {
+			targetSet.delete(mailboxId);
+			touched.add(mailboxId);
+		}
+	}
+
+	if (!targetSet.size) {
+		throw new EmailSetProblem("invalidProperties", "Email must remain in at least one mailbox");
+	}
+
+	const finalMailboxes = Array.from(targetSet);
+	enforceMailboxLimit(finalMailboxes);
 
 	const toDelete = existingRows.filter((r) => !targetSet.has(r.mailboxId)).map((r) => r.mailboxId);
-	const toInsert = targetMailboxIds.filter((mailboxId) => !existingSet.has(mailboxId));
+	const toInsert = finalMailboxes.filter((mailboxId) => !existingSet.has(mailboxId));
 
 	let changed = false;
 
@@ -1559,7 +1568,7 @@ async function applyMailboxPatch(
 			.where(eq(accountMessageTable.id, accountMessageId));
 	}
 
-	return { changed, touchedMailboxIds: Array.from(new Set([...toDelete, ...toInsert])) };
+	return { changed, touchedMailboxIds: Array.from(new Set([...touched, ...toDelete, ...toInsert])) };
 }
 
 async function applyKeywordPatch(
