@@ -43,6 +43,7 @@ const EmailParseArgsSchema = v.object({
 	fetchHTMLBodyValues: v.optional(v.boolean()),
 	fetchAllBodyValues: v.optional(v.boolean()),
 	maxBodyValueBytes: v.optional(v.number()),
+	allowMissingIds: v.optional(v.boolean()),
 });
 
 type EmailParseArgs = v.InferOutput<typeof EmailParseArgsSchema>;
@@ -72,6 +73,7 @@ export async function handleEmailParse(
 		return ["error", { type: "accountNotFound" }, tag];
 	}
 
+	const allowMissingIds = input.allowMissingIds !== undefined ? Boolean(input.allowMissingIds) : true;
 	const bodyProperties = input.bodyProperties ?? DEFAULT_BODY_PROPERTIES;
 	const bodyPropertySet = new Set(bodyProperties);
 	bodyPropertySet.add("partId");
@@ -116,18 +118,27 @@ export async function handleEmailParse(
 
 	const parsed: Record<string, Record<string, unknown>> = {};
 	const notParsable: string[] = [];
+	const notFound: string[] = [];
 
 	for (const blobId of input.blobIds) {
 		const meta = blobMap.get(blobId);
 		if (!meta) {
-			notParsable.push(blobId);
+			if (allowMissingIds) {
+				notFound.push(blobId);
+			} else {
+				notParsable.push(blobId);
+			}
 			continue;
 		}
 
 		try {
 			const object = await c.env.R2_EMAILS.get(meta.r2Key ?? blobId);
 			if (!object || !object.body) {
-				notParsable.push(blobId);
+				if (allowMissingIds) {
+					notFound.push(blobId);
+				} else {
+					notParsable.push(blobId);
+				}
 				continue;
 			}
 			const rawBuffer = await object.arrayBuffer();
@@ -171,6 +182,7 @@ export async function handleEmailParse(
 			accountId: effectiveAccountId,
 			parsed,
 			notParsable,
+			notFound,
 		},
 		tag,
 	];
