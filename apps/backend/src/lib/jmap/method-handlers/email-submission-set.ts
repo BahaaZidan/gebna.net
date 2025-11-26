@@ -215,6 +215,8 @@ async function applyEmailSubmissionSet(
 
 	const now = new Date();
 	const undoWindowMs = getUndoWindowDurationMs(env);
+	const maxDelayedSendMs = undoWindowMs;
+	const maxDelayedSendSeconds = Math.floor(maxDelayedSendMs / 1000);
 	const submissionsToProcess: string[] = [];
 
 	for (const [createId, raw] of createEntries) {
@@ -231,6 +233,19 @@ async function applyEmailSubmissionSet(
 				continue;
 			}
 			throw err;
+		}
+		if (parsed.sendAt) {
+			const diffMs = parsed.sendAt.getTime() - now.getTime();
+			if (diffMs > maxDelayedSendMs) {
+				notCreated[createId] = {
+					type: "invalidProperties",
+					description:
+						maxDelayedSendMs > 0
+							? `sendAt exceeds maxDelayedSend (${maxDelayedSendSeconds} seconds)`
+							: "sendAt is not supported by this account",
+				};
+				continue;
+			}
 		}
 		const [identity] = await db
 			.select({
