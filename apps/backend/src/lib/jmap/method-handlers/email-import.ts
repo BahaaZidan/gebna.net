@@ -26,13 +26,20 @@ import {
 import type { PreparedAttachmentInput } from "../../mail/ingest";
 import { recordEmailCreateChanges } from "../change-log";
 import { JMAPHonoAppEnv } from "../middlewares";
-import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountMailboxes, getAccountState, isRecord } from "../utils";
+import { CreationReferenceMap, JmapMethodResponse } from "../types";
+import {
+	ensureAccountAccess,
+	getAccountMailboxes,
+	getAccountState,
+	isRecord,
+	resolveCreationReference,
+} from "../utils";
 import { JMAP_CONSTRAINTS, JMAP_CORE, JMAP_MAIL } from "../constants";
 
 type EmailImportArgs = {
 	accountId: string;
 	create?: Record<string, unknown>;
+	creationRefs?: CreationReferenceMap;
 };
 
 type EmailImportResult = {
@@ -102,6 +109,7 @@ export async function handleEmailImport(
 	const input: EmailImportArgs = {
 		accountId: effectiveAccountId,
 		create: (args.emails as Record<string, unknown> | undefined) ?? undefined,
+		creationRefs: c.get("creationReferences") as CreationReferenceMap | undefined,
 	};
 
 	const result = await applyEmailImport(c.env, db, input);
@@ -126,6 +134,7 @@ async function applyEmailImport(
 ): Promise<EmailImportResult> {
 	const accountId = args.accountId;
 	const createMap = args.create ?? {};
+	const creationRefs = args.creationRefs;
 
 	const created: Record<string, unknown> = {};
 	const notCreated: Record<string, { type: string; description?: string }> = {};
@@ -136,7 +145,7 @@ async function applyEmailImport(
 	await db.transaction(async (tx) => {
 		for (const [creationId, raw] of Object.entries(createMap)) {
 			try {
-				const parsed = parseEmailImportCreate(raw, mailboxInfo.byId);
+				const parsed = parseEmailImportCreate(raw, mailboxInfo.byId, creationRefs);
 				const metadata = await loadEmailMetadataFromBlob(env, db, accountId, parsed.blobId);
 				const { accountMessageId } = await persistImportedEmail({
 					tx,
@@ -177,7 +186,8 @@ type EmailImportCreate = {
 
 function parseEmailImportCreate(
 	raw: unknown,
-	mailboxLookup: Map<string, { id: string; role: string | null }>
+	mailboxLookup: Map<string, { id: string; role: string | null }>,
+	creationRefs?: CreationReferenceMap
 ): EmailImportCreate {
 	if (!isRecord(raw)) {
 		throw new EmailImportProblem("invalidProperties", "Import entry must be an object");
@@ -196,10 +206,18 @@ function parseEmailImportCreate(
 	const targetMailboxIds: string[] = [];
 	for (const [mailboxId, keep] of Object.entries(mailboxIdsValue)) {
 		if (keep !== true) continue;
-		if (!mailboxLookup.has(mailboxId)) {
+		let resolvedMailboxId = mailboxId;
+		if (mailboxId.startsWith("#")) {
+			const resolved = resolveCreationReference(mailboxId, creationRefs);
+			if (!resolved) {
+				throw new EmailImportProblem("invalidProperties", `Unknown mailbox reference ${mailboxId}`);
+			}
+			resolvedMailboxId = resolved;
+		}
+		if (!mailboxLookup.has(resolvedMailboxId)) {
 			throw new EmailImportProblem("notFound", `Mailbox ${mailboxId} not found`);
 		}
-		targetMailboxIds.push(mailboxId);
+		targetMailboxIds.push(resolvedMailboxId);
 	}
 
 	const uniqueMailboxIds = Array.from(new Set(targetMailboxIds));
