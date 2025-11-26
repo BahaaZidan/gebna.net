@@ -113,6 +113,7 @@ async function claimSubmission(
 					type: "EmailSubmission",
 					objectId: failed[0]!.id,
 					now,
+					updatedProperties: ["status", "nextAttemptAt", "undoStatus", "deliveryStatus"],
 				});
 			}
 			return null;
@@ -146,6 +147,7 @@ async function claimSubmission(
 					type: "EmailSubmission",
 					objectId: failed[0]!.id,
 					now,
+					updatedProperties: ["status", "nextAttemptAt", "undoStatus", "deliveryStatus"],
 				});
 			}
 			return null;
@@ -166,6 +168,7 @@ async function claimSubmission(
 			type: "EmailSubmission",
 			objectId: updated[0]!.id,
 			now,
+			updatedProperties: ["status", "undoStatus"],
 		});
 
 		return {
@@ -215,6 +218,7 @@ async function handleSendResult(
 		type: "EmailSubmission",
 		objectId: updated[0]!.id,
 		now,
+		updatedProperties: ["status", "nextAttemptAt", "retryCount", "deliveryStatus"],
 	});
 }
 

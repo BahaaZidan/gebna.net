@@ -53,10 +53,14 @@ export async function handleIdentityChanges(
 			tag,
 		];
 	} catch (err) {
-		console.error("Identity/changes error", err);
-		if (err instanceof Error && (err as { jmapType?: string }).jmapType === "cannotCalculateChanges") {
-			return ["error", { type: "cannotCalculateChanges", description: err.message }, tag];
+		if ((err as { jmapType?: string }).jmapType === "cannotCalculateChanges") {
+			return [
+				"error",
+				{ type: "cannotCalculateChanges", description: (err as Error).message },
+				tag,
+			];
 		}
+		console.error("Identity/changes error", err);
 		return ["error", { type: "serverError" }, tag];
 	}
 }

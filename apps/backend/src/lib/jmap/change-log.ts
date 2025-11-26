@@ -9,6 +9,9 @@ import {
 } from "../../db/schema";
 import type { JmapStateType } from "./types";
 
+const THREAD_EMAIL_ID_PROPS = ["emailIds"] as const;
+const MAILBOX_COUNT_PROPS = ["totalEmails", "totalThreads", "unreadEmails", "unreadThreads"] as const;
+
 type DBLike = DBInstance | TransactionInstance;
 
 type ChangeLogParamsBase = {
@@ -17,11 +20,37 @@ type ChangeLogParamsBase = {
 	objectId: string;
 	stateTypes?: readonly JmapStateType[];
 	now?: Date;
+	updatedProperties?: readonly string[] | null;
 };
 
 type ChangeLogParams = ChangeLogParamsBase & {
 	op: ChangeLogOp;
 };
+
+function normalizeUpdatedProperties(
+	props?: readonly string[] | null
+): string[] | null {
+	if (!props || props.length === 0) {
+		return null;
+	}
+	const seen = new Set<string>();
+	const normalized: string[] = [];
+	for (const prop of props) {
+		if (typeof prop !== "string") continue;
+		const trimmed = prop.trim();
+		if (!trimmed || seen.has(trimmed)) continue;
+		seen.add(trimmed);
+		normalized.push(trimmed);
+	}
+	return normalized.length ? normalized : null;
+}
+
+function serializeUpdatedProperties(
+	props?: readonly string[] | null
+): string | null {
+	const normalized = normalizeUpdatedProperties(props);
+	return normalized ? JSON.stringify(normalized) : null;
+}
 
 async function getNextModSeq(db: DBLike, accountId: string): Promise<number> {
 	const rows = await db
@@ -61,7 +90,7 @@ function defaultStateTypesForChangeType(type: ChangeLogType): readonly JmapState
 }
 
 export async function recordChange(db: DBLike, params: ChangeLogParams): Promise<number> {
-	const { accountId, type, objectId, op, now, stateTypes } = params;
+	const { accountId, type, objectId, op, now, stateTypes, updatedProperties } = params;
 
 	const modSeq = await getNextModSeq(db, accountId);
 	const affectedTypes =
@@ -76,6 +105,7 @@ export async function recordChange(db: DBLike, params: ChangeLogParams): Promise
 		objectId,
 		op,
 		modSeq,
+		updatedPropertiesJson: serializeUpdatedProperties(updatedProperties),
 		createdAt,
 	});
 
@@ -122,6 +152,8 @@ type EmailChangeParams = {
 	threadId: string;
 	mailboxIds: string[];
 	now: Date;
+	emailUpdatedProperties?: readonly string[] | null;
+	threadUpdatedProperties?: readonly string[] | null;
 };
 
 async function bumpStateTx(
@@ -156,6 +188,7 @@ export async function recordEmailCreateChanges(params: EmailChangeParams): Promi
 		objectId: accountMessageId,
 		op: "create",
 		modSeq: emailModSeq,
+		updatedPropertiesJson: null,
 		createdAt: now,
 	});
 
@@ -167,6 +200,7 @@ export async function recordEmailCreateChanges(params: EmailChangeParams): Promi
 		objectId: threadId,
 		op: "create",
 		modSeq: threadModSeq,
+		updatedPropertiesJson: null,
 		createdAt: now,
 	});
 
@@ -180,6 +214,7 @@ export async function recordEmailCreateChanges(params: EmailChangeParams): Promi
 				objectId: mailboxId,
 				op: "create",
 				modSeq: mailboxModSeq,
+				updatedPropertiesJson: serializeUpdatedProperties(MAILBOX_COUNT_PROPS),
 				createdAt: now,
 			});
 		}
@@ -187,7 +222,16 @@ export async function recordEmailCreateChanges(params: EmailChangeParams): Promi
 }
 
 export async function recordEmailUpdateChanges(params: EmailChangeParams): Promise<void> {
-	const { tx, accountId, accountMessageId, threadId, mailboxIds, now } = params;
+	const {
+		tx,
+		accountId,
+		accountMessageId,
+		threadId,
+		mailboxIds,
+		now,
+		emailUpdatedProperties,
+		threadUpdatedProperties,
+	} = params;
 
 	const emailModSeq = await bumpStateTx(tx, accountId, "Email");
 	await tx.insert(changeLogTable).values({
@@ -197,6 +241,7 @@ export async function recordEmailUpdateChanges(params: EmailChangeParams): Promi
 		objectId: accountMessageId,
 		op: "update",
 		modSeq: emailModSeq,
+		updatedPropertiesJson: serializeUpdatedProperties(emailUpdatedProperties ?? null),
 		createdAt: now,
 	});
 
@@ -208,6 +253,7 @@ export async function recordEmailUpdateChanges(params: EmailChangeParams): Promi
 		objectId: threadId,
 		op: "update",
 		modSeq: threadModSeq,
+		updatedPropertiesJson: serializeUpdatedProperties(threadUpdatedProperties ?? null),
 		createdAt: now,
 	});
 
@@ -221,6 +267,7 @@ export async function recordEmailUpdateChanges(params: EmailChangeParams): Promi
 				objectId: mailboxId,
 				op: "update",
 				modSeq: mailboxModSeq,
+				updatedPropertiesJson: serializeUpdatedProperties(MAILBOX_COUNT_PROPS),
 				createdAt: now,
 			});
 		}
@@ -232,7 +279,16 @@ type EmailDestroyChangeParams = EmailChangeParams & {
 };
 
 export async function recordEmailDestroyChanges(params: EmailDestroyChangeParams): Promise<void> {
-	const { tx, accountId, accountMessageId, threadId, mailboxIds, now, threadStillExists } = params;
+	const {
+		tx,
+		accountId,
+		accountMessageId,
+		threadId,
+		mailboxIds,
+		now,
+		threadStillExists,
+		threadUpdatedProperties,
+	} = params;
 
 	const emailModSeq = await bumpStateTx(tx, accountId, "Email");
 	await tx.insert(changeLogTable).values({
@@ -242,6 +298,7 @@ export async function recordEmailDestroyChanges(params: EmailDestroyChangeParams
 		objectId: accountMessageId,
 		op: "destroy",
 		modSeq: emailModSeq,
+		updatedPropertiesJson: null,
 		createdAt: now,
 	});
 
@@ -254,6 +311,9 @@ export async function recordEmailDestroyChanges(params: EmailDestroyChangeParams
 			objectId: threadId,
 			op: "update",
 			modSeq: threadModSeq,
+			updatedPropertiesJson: serializeUpdatedProperties(
+				threadUpdatedProperties ?? THREAD_EMAIL_ID_PROPS
+			),
 			createdAt: now,
 		});
 	}
@@ -268,6 +328,7 @@ export async function recordEmailDestroyChanges(params: EmailDestroyChangeParams
 				objectId: mailboxId,
 				op: "update",
 				modSeq: mailboxModSeq,
+				updatedPropertiesJson: serializeUpdatedProperties(MAILBOX_COUNT_PROPS),
 				createdAt: now,
 			});
 		}

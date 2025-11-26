@@ -396,12 +396,13 @@ async function applyEmailSubmissionSet(
 			})
 			.where(and(eq(emailSubmissionTable.id, updateId), eq(emailSubmissionTable.accountId, accountId)));
 
-		await recordUpdate(db, {
-			accountId,
-			type: "EmailSubmission",
-			objectId: row.id,
-			now: updateTime,
-		});
+			await recordUpdate(db, {
+				accountId,
+				type: "EmailSubmission",
+				objectId: row.id,
+				now: updateTime,
+				updatedProperties: ["status", "undoStatus", "nextAttemptAt"],
+			});
 		updated[updateId] = { id: row.id };
 	}
 

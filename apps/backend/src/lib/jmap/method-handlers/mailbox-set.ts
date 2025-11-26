@@ -244,14 +244,16 @@ async function removeMailboxMemberships(
 	for (const row of membershipRows) {
 		const fallbackAdded = !emailHasOtherMailbox.has(row.accountMessageId) ? fallbackMailboxId : null;
 		const changedMailboxes = fallbackAdded ? [mailboxId, fallbackAdded] : [mailboxId];
-		await recordEmailUpdateChanges({
-			tx,
-			accountId,
-			accountMessageId: row.accountMessageId,
-			threadId: row.threadId,
-			mailboxIds: changedMailboxes,
-			now,
-		});
+			await recordEmailUpdateChanges({
+				tx,
+				accountId,
+				accountMessageId: row.accountMessageId,
+				threadId: row.threadId,
+				mailboxIds: changedMailboxes,
+				now,
+				emailUpdatedProperties: ["mailboxIds"],
+				threadUpdatedProperties: ["emailIds"],
+			});
 	}
 }
 
@@ -434,12 +436,14 @@ export async function handleMailboxSet(
 
 					updated[mailboxId] = { id: mailboxId };
 
-					await recordUpdate(tx, {
-						accountId: effectiveAccountId,
-						type: "Mailbox",
-						objectId: mailboxId,
-						now,
-					});
+						const changedProps = Object.keys(patch);
+						await recordUpdate(tx, {
+							accountId: effectiveAccountId,
+							type: "Mailbox",
+							objectId: mailboxId,
+							now,
+							updatedProperties: changedProps,
+						});
 				} catch (err) {
 					if (err instanceof MailboxSetProblem) {
 						notUpdated[mailboxId] = { type: err.type, description: err.message };

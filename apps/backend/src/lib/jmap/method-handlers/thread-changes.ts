@@ -54,6 +54,13 @@ export async function handleThreadChanges(
 			tag,
 		];
 	} catch (err) {
+		if ((err as { jmapType?: string }).jmapType === "cannotCalculateChanges") {
+			return [
+				"error",
+				{ type: "cannotCalculateChanges", description: (err as Error).message },
+				tag,
+			];
+		}
 		console.error("Thread/changes error", err);
 		return ["error", { type: "serverError" }, tag];
 	}

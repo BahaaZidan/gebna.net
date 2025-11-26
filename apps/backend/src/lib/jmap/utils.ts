@@ -56,11 +56,13 @@ export async function getChanges(
 		});
 	}
 
+	const shouldCollectProperties = Boolean(options?.includeUpdatedProperties);
 	const rows = await db
 		.select({
 			objectId: changeLogTable.objectId,
 			modSeq: changeLogTable.modSeq,
 			op: changeLogTable.op,
+			updatedPropsJson: changeLogTable.updatedPropertiesJson,
 		})
 		.from(changeLogTable)
 		.where(
@@ -84,7 +86,7 @@ export async function getChanges(
 			updated: [],
 			destroyed: [],
 			hasMoreChanges: false,
-			updatedProperties: null,
+			updatedProperties: shouldCollectProperties ? [] : null,
 		};
 	}
 
@@ -96,7 +98,25 @@ const hasMoreChanges = rows.length > maxChanges;
 		{ firstOp: (typeof rows)[number]["op"]; lastOp: (typeof rows)[number]["op"] }
 	>();
 
+	const updatedPropertySet = shouldCollectProperties ? new Set<string>() : null;
+	const appendUpdatedProps = (json: string | null | undefined) => {
+		if (!shouldCollectProperties || !updatedPropertySet || !json) return;
+		try {
+			const parsed = JSON.parse(json);
+			if (Array.isArray(parsed)) {
+				for (const prop of parsed) {
+					if (typeof prop === "string" && prop.length > 0) {
+						updatedPropertySet.add(prop);
+					}
+				}
+			}
+		} catch (err) {
+			console.warn("Failed to parse updatedPropertiesJson", err);
+		}
+	};
+
 	for (const row of slice) {
+		appendUpdatedProps(row.updatedPropsJson);
 		const existing = perId.get(row.objectId);
 		if (!existing) {
 			perId.set(row.objectId, { firstOp: row.op, lastOp: row.op });
@@ -121,7 +141,9 @@ const hasMoreChanges = rows.length > maxChanges;
 	}
 
 	const newState = String(slice[slice.length - 1]!.modSeq);
-	const updatedProperties: string[] | null = null;
+	const updatedProperties = shouldCollectProperties
+		? Array.from(updatedPropertySet ?? [])
+		: null;
 
 	return {
 		oldState: sinceState,
