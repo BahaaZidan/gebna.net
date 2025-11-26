@@ -9,6 +9,7 @@ import {
 	blobTable,
 	messageTable,
 } from "../../../db/schema";
+import { JMAP_BLOB_ACCOUNT_CAPABILITY, JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
 import { ensureAccountAccess } from "../utils";
@@ -39,6 +40,7 @@ export async function handleBlobGet(
 		return ["error", { type: "accountNotFound" }, tag];
 	}
 
+	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
 	const idsInput = args.ids;
 	if (!Array.isArray(idsInput) || idsInput.length === 0) {
 		return ["error", { type: "invalidArguments", description: "ids must be a non-empty array" }, tag];
@@ -51,6 +53,16 @@ export async function handleBlobGet(
 	}
 	if (!ids.length) {
 		return ["error", { type: "invalidArguments", description: "ids must include strings" }, tag];
+	}
+	if (ids.length > maxObjects) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
+			},
+			tag,
+		];
 	}
 
 	const propertiesInput = args.properties;
@@ -285,10 +297,41 @@ export async function handleBlobCopy(
 		return ["error", { type: "invalidArguments", description: "blobIds must be strings" }, tag];
 	}
 
+	const maxCopyCount = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInSet ?? 128;
+	if (blobIds.length > maxCopyCount) {
+		return [
+			"error",
+			{
+				type: "limitExceeded",
+				description: `blobIds length exceeds maxObjectsInSet (${maxCopyCount})`,
+			},
+			tag,
+		];
+	}
+
 	const rows = await db
-		.select({ sha: accountBlobTable.sha256 })
+		.select({ sha: accountBlobTable.sha256, size: blobTable.size })
 		.from(accountBlobTable)
+		.innerJoin(blobTable, eq(accountBlobTable.sha256, blobTable.sha256))
 		.where(and(eq(accountBlobTable.accountId, effectiveAccountId), inArray(accountBlobTable.sha256, blobIds)));
+
+	const maxBlobSetSize = JMAP_BLOB_ACCOUNT_CAPABILITY.maxSizeBlobSet ?? null;
+	if (typeof maxBlobSetSize === "number" && Number.isFinite(maxBlobSetSize)) {
+		let totalBytes = 0;
+		for (const row of rows) {
+			totalBytes += Number(row.size ?? 0);
+			if (totalBytes > maxBlobSetSize) {
+				return [
+					"error",
+					{
+						type: "limitExceeded",
+						description: `blobIds total size exceeds maxSizeBlobSet (${maxBlobSetSize})`,
+					},
+					tag,
+				];
+			}
+		}
+	}
 
 	const accessible = new Set(rows.map((row) => row.sha));
 	const copied: Record<string, string> = {};
@@ -340,18 +383,23 @@ export async function handleBlobLookup(
 	}
 
 	const typeNamesInput = args.typeNames;
-	if (!Array.isArray(typeNamesInput) || typeNamesInput.length === 0) {
-		return ["error", { type: "invalidArguments", description: "typeNames must be provided" }, tag];
-	}
-	const typeNames: string[] = [];
-	for (const value of typeNamesInput) {
-		if (typeof value !== "string" || value.length === 0) {
-			return ["error", { type: "invalidArguments", description: "typeNames must be strings" }, tag];
+	let typeNames: string[];
+	if (typeNamesInput === undefined || typeNamesInput === null) {
+		typeNames = Array.from(SUPPORTED_LOOKUP_TYPES);
+	} else {
+		if (!Array.isArray(typeNamesInput) || typeNamesInput.length === 0) {
+			return ["error", { type: "invalidArguments", description: "typeNames must be provided" }, tag];
 		}
-		if (!SUPPORTED_LOOKUP_TYPES.has(value)) {
-			return ["error", { type: "unknownDataType", description: value }, tag];
+		typeNames = [];
+		for (const value of typeNamesInput) {
+			if (typeof value !== "string" || value.length === 0) {
+				return ["error", { type: "invalidArguments", description: "typeNames must be strings" }, tag];
+			}
+			if (!SUPPORTED_LOOKUP_TYPES.has(value)) {
+				return ["error", { type: "unknownDataType", description: value }, tag];
+			}
+			typeNames.push(value);
 		}
-		typeNames.push(value);
 	}
 
 	const rows = await db

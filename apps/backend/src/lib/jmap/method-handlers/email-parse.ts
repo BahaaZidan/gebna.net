@@ -34,6 +34,32 @@ import { ensureAccountAccess } from "../utils";
 
 const DEFAULT_BODY_PROPERTIES = ["partId", "type", "subtype", "size", "name", "cid", "disposition"];
 const DEFAULT_MAX_BODY_VALUE_BYTES = 64 * 1024;
+const EMAIL_PARSE_ALLOWED_PROPERTIES = new Set([
+	"blobId",
+	"size",
+	"subject",
+	"messageId",
+	"inReplyTo",
+	"references",
+	"sentAt",
+	"receivedAt",
+	"preview",
+	"hasAttachment",
+	"keywords",
+	"mailboxIds",
+	"threadId",
+	"bodyStructure",
+	"attachments",
+	"textBody",
+	"htmlBody",
+	"bodyValues",
+	"from",
+	"to",
+	"cc",
+	"bcc",
+	"replyTo",
+	"sender",
+]);
 
 const EmailParseArgsSchema = v.object({
 	accountId: v.optional(v.string()),
@@ -93,8 +119,12 @@ export async function handleEmailParse(
 	bodyPropertySet.add("type");
 	bodyPropertySet.add("subtype");
 
-	const includeAllProperties = !input.properties;
-	const propertySet = input.properties ? new Set(input.properties) : null;
+	const propertiesResult = parseEmailParseProperties(input.properties);
+	if ("error" in propertiesResult) {
+		return ["error", { type: "invalidArguments", description: propertiesResult.error }, tag];
+	}
+	const propertySet = propertiesResult.properties;
+	const includeAllProperties = propertySet === null;
 	const shouldInclude = (prop: string) => includeAllProperties || propertySet?.has(prop) || false;
 
 	const includeBodyStructure = shouldInclude("bodyStructure");
@@ -110,7 +140,7 @@ export async function handleEmailParse(
 
 	const maxBodyValueBytes = normalizeMaxBodyValueBytes(input.maxBodyValueBytes);
 
-	const headerSpecs = collectHeaderSpecs(input.properties ?? []);
+	const headerSpecs = propertiesResult.headerSpecs;
 
 	const blobRows = await db
 		.select({
@@ -201,15 +231,35 @@ export async function handleEmailParse(
 	];
 }
 
-function collectHeaderSpecs(properties: string[]): Map<string, HeaderSpec> {
-	const specs = new Map<string, HeaderSpec>();
-	for (const prop of properties) {
-		if (!prop.startsWith("header:")) continue;
-		const spec = parseHeaderProperty(prop);
-		if (!spec) continue;
-		specs.set(prop, spec);
+function parseEmailParseProperties(
+	properties: string[] | undefined
+):
+	| { properties: Set<string> | null; headerSpecs: Map<string, HeaderSpec> }
+	| { error: string } {
+	if (properties === undefined) {
+		return { properties: null, headerSpecs: new Map() };
 	}
-	return specs;
+	const propertySet = new Set<string>();
+	const headerSpecs = new Map<string, HeaderSpec>();
+	for (const prop of properties) {
+		if (typeof prop !== "string" || prop.length === 0) {
+			return { error: "properties must be non-empty strings" };
+		}
+		if (prop.startsWith("header:")) {
+			const spec = parseHeaderProperty(prop);
+			if (!spec) {
+				return { error: `Invalid header property ${prop}` };
+			}
+			propertySet.add(prop);
+			headerSpecs.set(prop, spec);
+			continue;
+		}
+		if (!EMAIL_PARSE_ALLOWED_PROPERTIES.has(prop)) {
+			return { error: `Unsupported property ${prop}` };
+		}
+		propertySet.add(prop);
+	}
+	return { properties: propertySet, headerSpecs };
 }
 
 function normalizeMaxBodyValueBytes(value: number | undefined): number {
