@@ -890,14 +890,18 @@ function buildImplicitEmailSubmissionOps(opts: {
 			return { emailId: ref };
 		}
 		const creationId = ref.slice(1);
-		if (!requestedCreations.has(creationId)) {
+		if (requestedCreations.has(creationId)) {
+			const meta = opts.creationMeta[creationId];
+			if (!meta) {
+				return null;
+			}
+			return { emailId: meta.emailId };
+		}
+		const resolved = resolveCreationReference(ref, opts.creationRefs);
+		if (!resolved) {
 			return { error: `Unknown onSuccess reference ${ref}` };
 		}
-		const meta = opts.creationMeta[creationId];
-		if (!meta) {
-			return null;
-		}
-		return { emailId: meta.emailId };
+		return { emailId: resolved };
 	};
 
 	const destroyTargets = new Set<string>();
