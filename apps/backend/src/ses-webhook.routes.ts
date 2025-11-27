@@ -4,12 +4,29 @@ import { Hono } from "hono";
 
 import { getDB } from "./db";
 import { emailSubmissionTable } from "./db/schema";
-import { applyDeliveryStatusToRecipients, normalizeDeliveryStatusMap } from "./lib/email-submission/delivery-status";
+import {
+	applyDeliveryStatusToRecipients,
+	formatSmtpReply,
+	normalizeDeliveryStatusMap,
+} from "./lib/email-submission/delivery-status";
 import { recordUpdate } from "./lib/jmap/change-log";
 import { isRecord } from "./lib/jmap/utils";
 import { DeliveryStatusRecord } from "./lib/types";
 
 type SnsRecord = SNSEvent["Records"][number];
+
+function buildWebhookStatus(params: {
+	code: number;
+	enhanced: string;
+	text: string;
+	delivered: DeliveryStatusRecord["delivered"];
+}): DeliveryStatusRecord {
+	return {
+		smtpReply: formatSmtpReply(params.code, params.enhanced, params.text),
+		delivered: params.delivered,
+		displayed: "unknown",
+	};
+}
 
 function isSnsRecord(value: unknown): value is SnsRecord {
 	if (!isRecord(value)) return false;
@@ -49,35 +66,21 @@ function extractSubmissionId(message: Record<string, unknown>): string | null {
 	return typeof candidate === "string" && candidate.length > 0 ? candidate : null;
 }
 
-function parseTimestamp(value: unknown): number | null {
-	if (typeof value !== "string") return null;
-	const parsed = Date.parse(value);
-	return Number.isFinite(parsed) ? parsed : null;
-}
-
 function mapNotificationToStatus(
 	message: Record<string, unknown>
 ): { queueStatus: string; status: DeliveryStatusRecord } | null {
 	const eventTypeValue = message.eventType;
 	if (typeof eventTypeValue !== "string") return null;
-	const delivery = message.delivery;
-	const mail = message.mail;
-	const timestamp =
-		(isRecord(delivery) && parseTimestamp(delivery.timestamp)) ||
-		(isRecord(mail) && parseTimestamp(mail.timestamp)) ||
-		Date.now();
-	const lastAttempt = Math.floor(timestamp / 1000);
-	const base: DeliveryStatusRecord = {
-		status: "pending",
-		lastAttempt,
-		retryCount: 0,
-	};
-
 	switch (eventTypeValue.toUpperCase()) {
 		case "DELIVERY":
 			return {
 				queueStatus: "sent",
-				status: { ...base, status: "accepted", reason: "Delivered" },
+				status: buildWebhookStatus({
+					code: 250,
+					enhanced: "2.0.0",
+					text: "Delivered to recipient",
+					delivered: "yes",
+				}),
 			};
 		case "BOUNCE": {
 			const bounce = message.bounce;
@@ -90,12 +93,12 @@ function mapNotificationToStatus(
 			}
 			return {
 				queueStatus: "failed",
-				status: {
-					...base,
-					status: "rejected",
-					reason: diagnostic ?? "Bounce",
-					permanent: true,
-				},
+				status: buildWebhookStatus({
+					code: 550,
+					enhanced: "5.1.1",
+					text: diagnostic ?? "Bounce",
+					delivered: "no",
+				}),
 			};
 		}
 		case "REJECT": {
@@ -103,12 +106,12 @@ function mapNotificationToStatus(
 			const reason = isRecord(reject) && typeof reject.reason === "string" ? reject.reason : "Rejected";
 			return {
 				queueStatus: "failed",
-				status: {
-					...base,
-					status: "rejected",
-					reason,
-					permanent: true,
-				},
+				status: buildWebhookStatus({
+					code: 550,
+					enhanced: "5.7.1",
+					text: reason,
+					delivered: "no",
+				}),
 			};
 		}
 		case "FAILURE": {
@@ -117,7 +120,12 @@ function mapNotificationToStatus(
 				isRecord(failure) && typeof failure.errorMessage === "string" ? failure.errorMessage : "Failure";
 			return {
 				queueStatus: "failed",
-				status: { ...base, status: "failed", reason },
+				status: buildWebhookStatus({
+					code: 550,
+					enhanced: "5.4.0",
+					text: reason,
+					delivered: "no",
+				}),
 			};
 		}
 		case "COMPLAINT": {
@@ -128,12 +136,12 @@ function mapNotificationToStatus(
 					: "Complaint";
 			return {
 				queueStatus: "failed",
-				status: {
-					...base,
-					status: "rejected",
-					reason,
-					permanent: true,
-				},
+				status: buildWebhookStatus({
+					code: 550,
+					enhanced: "5.7.1",
+					text: reason,
+					delivered: "yes",
+				}),
 			};
 		}
 		default:

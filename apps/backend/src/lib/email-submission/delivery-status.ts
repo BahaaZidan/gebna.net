@@ -2,6 +2,19 @@ import { DeliveryStatusRecord } from "../types";
 
 type StatusMap = Record<string, DeliveryStatusRecord>;
 
+const DELIVERED_STATES = new Set(["queued", "yes", "no", "unknown"] as const);
+const DISPLAYED_STATES = new Set(["unknown", "yes"] as const);
+
+export function formatSmtpReply(code: number, enhancedStatus: string, text: string): string {
+	const codeString = Number.isFinite(code) ? String(Math.trunc(code)).padStart(3, "0") : "000";
+	const enhanced =
+		typeof enhancedStatus === "string" && enhancedStatus.trim().length > 0
+			? enhancedStatus.trim()
+			: "0.0.0";
+	const description = typeof text === "string" ? text.trim() : "";
+	return `${codeString} ${enhanced}${description ? ` ${description}` : ""}`;
+}
+
 function cloneStatus(record: DeliveryStatusRecord): DeliveryStatusRecord {
 	return { ...record };
 }
@@ -12,34 +25,85 @@ function sanitizeRecipient(value: string): string | null {
 	return trimmed.length > 0 ? trimmed : null;
 }
 
-function createPendingRecord(): DeliveryStatusRecord {
+function createInitialRecord(): DeliveryStatusRecord {
 	return {
-		status: "pending",
-		lastAttempt: 0,
-		retryCount: 0,
+		smtpReply: null,
+		delivered: "queued",
+		displayed: "unknown",
 	};
 }
 
 function isDeliveryStatusRecord(value: unknown): value is DeliveryStatusRecord {
 	if (!value || typeof value !== "object") return false;
 	const record = value as Record<string, unknown>;
-	if (!["pending", "accepted", "rejected", "failed"].includes(String(record.status))) {
+	const delivered = record.delivered;
+	const displayed = record.displayed;
+	if (delivered === undefined || typeof delivered !== "string" || !DELIVERED_STATES.has(delivered as never)) {
 		return false;
 	}
-	if (typeof record.lastAttempt !== "number" || !Number.isFinite(record.lastAttempt)) {
+	if (displayed === undefined || typeof displayed !== "string" || !DISPLAYED_STATES.has(displayed as never)) {
 		return false;
 	}
-	if (typeof record.retryCount !== "number" || !Number.isFinite(record.retryCount)) {
+	const smtpReply = record.smtpReply;
+	if (smtpReply !== null && smtpReply !== undefined && typeof smtpReply !== "string") {
 		return false;
 	}
 	return true;
 }
 
+function isLegacyStatusRecord(value: unknown): value is Record<string, unknown> {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+	const record = value as Record<string, unknown>;
+	return typeof record.status === "string";
+}
+
+function convertLegacyRecord(value: Record<string, unknown>): DeliveryStatusRecord | null {
+	const status = typeof value.status === "string" ? value.status : null;
+	if (!status) return null;
+	const reason = typeof value.reason === "string" ? value.reason : null;
+	const permanent = value.permanent === true;
+	const providerMessageId =
+		typeof value.providerMessageId === "string" ? value.providerMessageId : undefined;
+	const providerRequestId =
+		typeof value.providerRequestId === "string" ? value.providerRequestId : undefined;
+
+	let delivered: DeliveryStatusRecord["delivered"] = "queued";
+	if (status === "accepted" || status === "pending") {
+		delivered = "queued";
+	} else if (status === "rejected" || status === "failed") {
+		delivered = permanent ? "no" : "queued";
+	}
+
+	const smtpReply =
+		reason === null
+			? null
+			: formatSmtpReply(permanent ? 550 : 451, permanent ? "5.0.0" : "4.0.0", reason);
+
+	return {
+		smtpReply,
+		delivered,
+		displayed: "unknown",
+		providerMessageId,
+		providerRequestId,
+	};
+}
+
+function coerceRecord(value: unknown): DeliveryStatusRecord | null {
+	if (isDeliveryStatusRecord(value)) {
+		return cloneStatus(value);
+	}
+	if (isLegacyStatusRecord(value)) {
+		return convertLegacyRecord(value);
+	}
+	return null;
+}
+
 function cloneMap(map: StatusMap): StatusMap {
 	const next: StatusMap = {};
 	for (const [key, value] of Object.entries(map)) {
-		if (!isDeliveryStatusRecord(value)) continue;
-		next[key] = cloneStatus(value);
+		const coerced = coerceRecord(value);
+		if (!coerced) continue;
+		next[key] = coerced;
 	}
 	return next;
 }
@@ -57,13 +121,12 @@ function ensureMap(value: unknown): StatusMap | null {
 		return null;
 	}
 
-	if (isDeliveryStatusRecord(sampledValue)) {
-		// Need to make sure every entry is a DeliveryStatusRecord.
-		const allRecords = entries.every(([, entry]) => isDeliveryStatusRecord(entry));
-		if (!allRecords) {
+	if (coerceRecord(sampledValue)) {
+		const cloned = cloneMap(value as StatusMap);
+		if (Object.keys(cloned).length !== entries.length) {
 			return null;
 		}
-		return cloneMap(value as StatusMap);
+		return cloned;
 	}
 
 	return null;
@@ -74,10 +137,10 @@ export function buildInitialDeliveryStatusMap(recipients: string[]): StatusMap {
 	for (const recipient of recipients) {
 		const sanitized = sanitizeRecipient(recipient);
 		if (!sanitized) continue;
-		map[sanitized] = createPendingRecord();
+		map[sanitized] = createInitialRecord();
 	}
 	if (!Object.keys(map).length) {
-		map["unknown"] = createPendingRecord();
+		map["unknown"] = createInitialRecord();
 	}
 	return map;
 }
@@ -91,17 +154,18 @@ export function normalizeDeliveryStatusMap(
 		return coerced;
 	}
 
-	if (isDeliveryStatusRecord(value)) {
+	const converted = coerceRecord(value);
+	if (converted) {
 		const recipients =
 			fallbackRecipients && fallbackRecipients.length ? fallbackRecipients : ["unknown"];
 		const map: StatusMap = {};
 		for (const recipient of recipients) {
 			const sanitized = sanitizeRecipient(recipient);
 			if (!sanitized) continue;
-			map[sanitized] = cloneStatus(value);
+			map[sanitized] = cloneStatus(converted);
 		}
 		if (!Object.keys(map).length) {
-			map["unknown"] = cloneStatus(value);
+			map["unknown"] = cloneStatus(converted);
 		}
 		return map;
 	}

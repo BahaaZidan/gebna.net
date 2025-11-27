@@ -7,7 +7,11 @@ import {
 	messageTable,
 } from "../../db/schema";
 import { createOutboundTransport } from ".";
-import { applyDeliveryStatusToRecipients, normalizeDeliveryStatusMap } from "../email-submission/delivery-status";
+import {
+	applyDeliveryStatusToRecipients,
+	formatSmtpReply,
+	normalizeDeliveryStatusMap,
+} from "../email-submission/delivery-status";
 import { DeliveryStatusRecord } from "../types";
 import { recordUpdate } from "../jmap/change-log";
 
@@ -32,6 +36,23 @@ type ClaimedSubmission = {
 	size: number;
 };
 
+function buildDeliveryStatus(params: {
+	code: number;
+	enhanced: string;
+	text: string;
+	delivered: DeliveryStatusRecord["delivered"];
+	providerMessageId?: string;
+	providerRequestId?: string;
+}): DeliveryStatusRecord {
+	return {
+		smtpReply: formatSmtpReply(params.code, params.enhanced, params.text),
+		delivered: params.delivered,
+		displayed: "unknown",
+		providerMessageId: params.providerMessageId,
+		providerRequestId: params.providerRequestId,
+	};
+}
+
 function computeNextAttemptDate(retryCount: number, now: Date): Date {
 	const idx = Math.min(retryCount, RETRY_DELAYS_SECONDS.length - 1);
 	return new Date(now.getTime() + RETRY_DELAYS_SECONDS[idx] * 1000);
@@ -54,7 +75,6 @@ async function claimSubmission(
 	submissionId: string
 ): Promise<ClaimedSubmission | null> {
 	const now = new Date();
-	const nowEpochSeconds = Math.floor(now.getTime() / 1000);
 
 	return db.transaction(async (tx) => {
 		const rows = await tx
@@ -90,13 +110,12 @@ async function claimSubmission(
 		if (row.undoStatus === "canceled") return null;
 
 		if (!row.accountMessageId || row.accountMessageDeleted || !row.threadId) {
-			const deliveryStatus: DeliveryStatusRecord = {
-				status: "failed",
-				reason: "Email deleted before sending",
-				lastAttempt: nowEpochSeconds,
-				retryCount: row.retryCount,
-				permanent: true,
-			};
+			const deliveryStatus: DeliveryStatusRecord = buildDeliveryStatus({
+				code: 550,
+				enhanced: "5.2.0",
+				text: "Email deleted before sending",
+				delivered: "no",
+			});
 			const statusMap = applyDeliveryStatusToRecipients(currentStatusMap, null, deliveryStatus);
 			const failed = await tx
 				.update(emailSubmissionTable)
@@ -125,13 +144,12 @@ async function claimSubmission(
 		}
 
 		if (!row.rawBlobSha256 || row.size === null || row.size === undefined) {
-			const deliveryStatus: DeliveryStatusRecord = {
-				status: "failed",
-				reason: "Email blob missing before sending",
-				lastAttempt: nowEpochSeconds,
-				retryCount: row.retryCount,
-				permanent: true,
-			};
+			const deliveryStatus: DeliveryStatusRecord = buildDeliveryStatus({
+				code: 550,
+				enhanced: "5.3.0",
+				text: "Email blob missing before sending",
+				delivered: "no",
+			});
 			const statusMap = applyDeliveryStatusToRecipients(currentStatusMap, null, deliveryStatus);
 			const failed = await tx
 				.update(emailSubmissionTable)
@@ -236,17 +254,15 @@ async function sendClaimedSubmission(
 	const envConfig = env;
 	const transport = createOutboundTransport(envConfig);
 	const now = new Date();
-	const nowEpochSeconds = Math.floor(now.getTime() / 1000);
 	const envelope = parseEnvelope(claimed.envelopeJson);
 
 	if (!envelope || envelope.rcptTo.length === 0) {
-		const deliveryStatus: DeliveryStatusRecord = {
-			status: "failed",
-			reason: "Invalid envelope",
-			lastAttempt: nowEpochSeconds,
-			retryCount: claimed.retryCount,
-			permanent: true,
-		};
+		const deliveryStatus: DeliveryStatusRecord = buildDeliveryStatus({
+			code: 550,
+			enhanced: "5.5.4",
+			text: "Invalid envelope",
+			delivered: "no",
+		});
 		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, null, deliveryStatus);
 		await handleSendResult(
 			db,
@@ -279,13 +295,12 @@ async function sendClaimedSubmission(
 	} catch (err) {
 		const nextRetryCount = claimed.retryCount + 1;
 		if (nextRetryCount > MAX_RETRY_ATTEMPTS) {
-			const deliveryStatus: DeliveryStatusRecord = {
-				status: "failed",
-				reason: "Transport error",
-				lastAttempt: nowEpochSeconds,
-				retryCount: nextRetryCount,
-				permanent: false,
-			};
+			const deliveryStatus: DeliveryStatusRecord = buildDeliveryStatus({
+				code: 550,
+				enhanced: "5.4.4",
+				text: "Transport error",
+				delivered: "no",
+			});
 			const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, deliveryStatus);
 			await handleSendResult(
 				db,
@@ -299,13 +314,12 @@ async function sendClaimedSubmission(
 			return;
 		}
 
-		const deliveryStatus: DeliveryStatusRecord = {
-			status: "pending",
-			reason: err instanceof Error ? err.message : "Unknown transport error",
-			lastAttempt: nowEpochSeconds,
-			retryCount: nextRetryCount,
-			permanent: false,
-		};
+		const deliveryStatus: DeliveryStatusRecord = buildDeliveryStatus({
+			code: 451,
+			enhanced: "4.4.0",
+			text: err instanceof Error ? err.message : "Unknown transport error",
+			delivered: "queued",
+		});
 		const nextAttempt = computeNextAttemptDate(nextRetryCount, now);
 		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, deliveryStatus);
 		await handleSendResult(
@@ -321,54 +335,59 @@ async function sendClaimedSubmission(
 	}
 
 	const nextRetryCount = claimed.retryCount + 1;
-	let statusLabel: DeliveryStatusRecord["status"];
-	if (deliveryOutcome.status === "accepted") {
-		statusLabel = "accepted";
-	} else if (deliveryOutcome.status === "rejected") {
-		statusLabel = deliveryOutcome.permanent ? "rejected" : "pending";
-	} else {
-		statusLabel = deliveryOutcome.status;
-	}
-
-	const mappedStatus: DeliveryStatusRecord = {
-		status: statusLabel,
-		providerMessageId: deliveryOutcome.providerMessageId,
-		providerRequestId: deliveryOutcome.providerRequestId,
-		reason: deliveryOutcome.reason,
-		lastAttempt: nowEpochSeconds,
-		retryCount: nextRetryCount,
-		permanent: deliveryOutcome.permanent,
-	};
 
 	if (deliveryOutcome.status === "accepted") {
-		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, mappedStatus);
+		const acceptedStatus = buildDeliveryStatus({
+			code: 250,
+			enhanced: "2.0.0",
+			text: deliveryOutcome.reason ?? "Accepted by outbound transport",
+			delivered: "queued",
+			providerMessageId: deliveryOutcome.providerMessageId,
+			providerRequestId: deliveryOutcome.providerRequestId,
+		});
+		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, acceptedStatus);
 		await handleSendResult(db, claimed.id, statusMap, QUEUE_STATUS_SENT, null, nextRetryCount, now);
 		return;
 	}
 
 	if (deliveryOutcome.status === "rejected" && deliveryOutcome.permanent) {
-		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, mappedStatus);
+		const rejectedStatus = buildDeliveryStatus({
+			code: 550,
+			enhanced: "5.7.1",
+			text: deliveryOutcome.reason ?? "Message rejected by outbound transport",
+			delivered: "no",
+			providerMessageId: deliveryOutcome.providerMessageId,
+			providerRequestId: deliveryOutcome.providerRequestId,
+		});
+		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, rejectedStatus);
 		await handleSendResult(db, claimed.id, statusMap, QUEUE_STATUS_FAILED, null, nextRetryCount, now);
 		return;
 	}
 
 	const shouldAbort = nextRetryCount > MAX_RETRY_ATTEMPTS;
 	if (shouldAbort) {
-		const finalStatus: DeliveryStatusRecord = {
-			...mappedStatus,
-			status: "failed",
-			permanent: mappedStatus.permanent ?? false,
-		};
+		const finalStatus = buildDeliveryStatus({
+			code: 550,
+			enhanced: "5.4.1",
+			text: deliveryOutcome.reason ?? "Delivery failed after retries",
+			delivered: "no",
+			providerMessageId: deliveryOutcome.providerMessageId,
+			providerRequestId: deliveryOutcome.providerRequestId,
+		});
 		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, finalStatus);
 		await handleSendResult(db, claimed.id, statusMap, QUEUE_STATUS_FAILED, null, nextRetryCount, now);
 		return;
 	}
 
 	const nextAttempt = computeNextAttemptDate(nextRetryCount, now);
-	const pendingStatus: DeliveryStatusRecord = {
-		...mappedStatus,
-		status: "pending",
-	};
+	const pendingStatus = buildDeliveryStatus({
+		code: 451,
+		enhanced: "4.4.0",
+		text: deliveryOutcome.reason ?? "Temporary delivery issue",
+		delivered: "queued",
+		providerMessageId: deliveryOutcome.providerMessageId,
+		providerRequestId: deliveryOutcome.providerRequestId,
+	});
 	const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, pendingStatus);
 	await handleSendResult(
 		db,
