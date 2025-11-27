@@ -4,8 +4,9 @@ import { Hono } from "hono";
 
 import { getDB } from "./db";
 import { emailSubmissionTable } from "./db/schema";
-import { isRecord } from "./lib/jmap/utils";
+import { applyDeliveryStatusToRecipients, normalizeDeliveryStatusMap } from "./lib/email-submission/delivery-status";
 import { recordUpdate } from "./lib/jmap/change-log";
+import { isRecord } from "./lib/jmap/utils";
 import { DeliveryStatusRecord } from "./lib/types";
 
 type SnsRecord = SNSEvent["Records"][number];
@@ -140,6 +141,74 @@ function mapNotificationToStatus(
 	}
 }
 
+function collectRecipientStrings(
+	target: Set<string>,
+	value: unknown,
+	selector?: (input: unknown) => unknown
+): void {
+	if (!Array.isArray(value)) return;
+	for (const entry of value) {
+		const selected = selector ? selector(entry) : entry;
+		if (typeof selected !== "string") continue;
+		const normalized = selected.trim();
+		if (!normalized) continue;
+		target.add(normalized);
+	}
+}
+
+function extractRecipientsFromNotification(message: Record<string, unknown>): string[] | null {
+	const recipients = new Set<string>();
+	const delivery = message.delivery;
+	if (isRecord(delivery)) {
+		collectRecipientStrings(recipients, delivery.recipients);
+	}
+	const bounce = message.bounce;
+	if (isRecord(bounce)) {
+		collectRecipientStrings(recipients, bounce.bouncedRecipients, (entry) =>
+			isRecord(entry) ? entry.emailAddress : undefined
+		);
+	}
+	const complaint = message.complaint;
+	if (isRecord(complaint)) {
+		collectRecipientStrings(recipients, complaint.complainedRecipients, (entry) =>
+			isRecord(entry) ? entry.emailAddress : undefined
+		);
+	}
+	const reject = message.reject;
+	if (isRecord(reject)) {
+		collectRecipientStrings(recipients, reject.recipients);
+	}
+	const failure = message.failure;
+	if (isRecord(failure)) {
+		collectRecipientStrings(recipients, failure.recipients);
+	}
+	const mail = message.mail;
+	if (isRecord(mail)) {
+		collectRecipientStrings(recipients, mail.destination);
+	}
+	return recipients.size ? Array.from(recipients) : null;
+}
+
+function parseEnvelopeRecipients(json: string | null | undefined): string[] | null {
+	if (!json) return null;
+	try {
+		const parsed = JSON.parse(json);
+		if (!isRecord(parsed)) return null;
+		const rcptTo = parsed.rcptTo;
+		if (!Array.isArray(rcptTo)) return null;
+		const recipients: string[] = [];
+		for (const entry of rcptTo) {
+			if (typeof entry !== "string") continue;
+			const normalized = entry.trim();
+			if (!normalized) continue;
+			recipients.push(normalized);
+		}
+		return recipients.length ? recipients : null;
+	} catch {
+		return null;
+	}
+}
+
 export const sesWebhookApp = new Hono<{ Bindings: CloudflareBindings }>();
 
 sesWebhookApp.post("/events", async (c) => {
@@ -192,13 +261,29 @@ sesWebhookApp.post("/events", async (c) => {
 		if (!submissionId) continue;
 		const mapped = mapNotificationToStatus(message);
 		if (!mapped) continue;
+		const recipientsFromEvent = extractRecipientsFromNotification(message);
+		const existingRows = await db
+			.select({
+				accountId: emailSubmissionTable.accountId,
+				deliveryStatus: emailSubmissionTable.deliveryStatusJson,
+				envelopeJson: emailSubmissionTable.envelopeJson,
+			})
+			.from(emailSubmissionTable)
+			.where(eq(emailSubmissionTable.id, submissionId))
+			.limit(1);
+		if (!existingRows.length) continue;
+		const existing = existingRows[0]!;
+		const envelopeRecipients = parseEnvelopeRecipients(existing.envelopeJson);
+		const normalizedStatus = normalizeDeliveryStatusMap(existing.deliveryStatus, envelopeRecipients);
+		const targetRecipients = recipientsFromEvent ?? envelopeRecipients ?? null;
+		const nextStatusMap = applyDeliveryStatusToRecipients(normalizedStatus, targetRecipients, mapped.status);
 		const now = new Date();
 		const updated = await db
 			.update(emailSubmissionTable)
 			.set({
 				status: mapped.queueStatus,
 				nextAttemptAt: null,
-				deliveryStatusJson: mapped.status,
+				deliveryStatusJson: nextStatusMap,
 				updatedAt: now,
 			})
 			.where(eq(emailSubmissionTable.id, submissionId))

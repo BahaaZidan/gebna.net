@@ -6,7 +6,7 @@ import { pushSubscriptionTable } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse, JmapStateType } from "../types";
-import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
+import { dedupeIds, ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
 
 type PushSubscriptionResponse = {
 	id: string;
@@ -53,19 +53,31 @@ export async function handlePushSubscriptionGet(
 	const state = await getAccountState(db, effectiveAccountId, "PushSubscription");
 	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
 
-	const idsInput = args.ids as string[] | undefined;
-	if (Array.isArray(idsInput) && idsInput.length > maxObjects) {
-		return [
-			"error",
-			{
-				type: "limitExceeded",
-				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
-			},
-			tag,
-		];
+	const idsArg = args.ids as unknown;
+	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
+	let providedIds: string[] | null = null;
+	let requestedIdCount = 0;
+	if (!shouldStreamDefaultList) {
+		if (!Array.isArray(idsArg)) {
+			return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+		}
+		const cleanedIds = idsArg.filter((id): id is string => typeof id === "string" && id.length > 0);
+		if (cleanedIds.length !== idsArg.length) {
+			return ["error", { type: "invalidArguments", description: "ids must be non-empty strings" }, tag];
+		}
+		requestedIdCount = cleanedIds.length;
+		providedIds = dedupeIds(cleanedIds);
+		if (requestedIdCount > maxObjects) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
+				},
+				tag,
+			];
+		}
 	}
-
-	const ids = Array.isArray(idsInput) ? idsInput.filter((id) => typeof id === "string" && id.length > 0) : null;
 
 	const propertiesResult = parseRequestedProperties(args.properties, PUSH_SUBSCRIPTION_PROPERTIES);
 	if ("error" in propertiesResult) {
@@ -75,34 +87,61 @@ export async function handlePushSubscriptionGet(
 	const includeProp = (prop: (typeof PUSH_SUBSCRIPTION_PROPERTIES)[number]) =>
 		!requestedProperties || requestedProperties.has(prop);
 
-	const rows = await (ids
-		? db
-				.select({
-					id: pushSubscriptionTable.id,
-					deviceClientId: pushSubscriptionTable.deviceClientId,
-					url: pushSubscriptionTable.url,
-					keysAuth: pushSubscriptionTable.keysAuth,
-					keysP256dh: pushSubscriptionTable.keysP256dh,
-					typesJson: pushSubscriptionTable.typesJson,
-					expiresAt: pushSubscriptionTable.expiresAt,
-					verificationCode: pushSubscriptionTable.verificationCode,
-				})
-				.from(pushSubscriptionTable)
-				.where(and(eq(pushSubscriptionTable.accountId, effectiveAccountId), inArray(pushSubscriptionTable.id, ids)))
-		: db
-				.select({
-					id: pushSubscriptionTable.id,
-					deviceClientId: pushSubscriptionTable.deviceClientId,
-					url: pushSubscriptionTable.url,
-					keysAuth: pushSubscriptionTable.keysAuth,
-					keysP256dh: pushSubscriptionTable.keysP256dh,
-					typesJson: pushSubscriptionTable.typesJson,
-					expiresAt: pushSubscriptionTable.expiresAt,
-					verificationCode: pushSubscriptionTable.verificationCode,
-				})
-				.from(pushSubscriptionTable)
-				.where(eq(pushSubscriptionTable.accountId, effectiveAccountId))
-				.limit(maxObjects));
+	if (providedIds && providedIds.length === 0) {
+		return ["PushSubscription/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
+	}
+
+	let rows: {
+		id: string;
+		deviceClientId: string;
+		url: string;
+		keysAuth: string | null;
+		keysP256dh: string | null;
+		typesJson: string | null;
+		expiresAt: Date | null;
+		verificationCode: string | null;
+	}[];
+	if (providedIds) {
+		rows = await db
+			.select({
+				id: pushSubscriptionTable.id,
+				deviceClientId: pushSubscriptionTable.deviceClientId,
+				url: pushSubscriptionTable.url,
+				keysAuth: pushSubscriptionTable.keysAuth,
+				keysP256dh: pushSubscriptionTable.keysP256dh,
+				typesJson: pushSubscriptionTable.typesJson,
+				expiresAt: pushSubscriptionTable.expiresAt,
+				verificationCode: pushSubscriptionTable.verificationCode,
+			})
+			.from(pushSubscriptionTable)
+			.where(and(eq(pushSubscriptionTable.accountId, effectiveAccountId), inArray(pushSubscriptionTable.id, providedIds)));
+	} else {
+		const defaultRows = await db
+			.select({
+				id: pushSubscriptionTable.id,
+				deviceClientId: pushSubscriptionTable.deviceClientId,
+				url: pushSubscriptionTable.url,
+				keysAuth: pushSubscriptionTable.keysAuth,
+				keysP256dh: pushSubscriptionTable.keysP256dh,
+				typesJson: pushSubscriptionTable.typesJson,
+				expiresAt: pushSubscriptionTable.expiresAt,
+				verificationCode: pushSubscriptionTable.verificationCode,
+			})
+			.from(pushSubscriptionTable)
+			.where(eq(pushSubscriptionTable.accountId, effectiveAccountId))
+			.limit(maxObjects + 1);
+		if (defaultRows.length > maxObjects) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `Too many PushSubscription records to return when ids is null (max ${maxObjects})`,
+				},
+				tag,
+			];
+		}
+		rows = defaultRows;
+	}
 
 	const list: PushSubscriptionResponse[] = rows.map((row) => {
 		const entry: PushSubscriptionResponse = { id: row.id } as PushSubscriptionResponse;
@@ -120,7 +159,7 @@ export async function handlePushSubscriptionGet(
 	});
 
 	const foundIds = new Set(list.map((entry) => entry.id));
-	const notFound = ids ? ids.filter((id) => !foundIds.has(id)) : [];
+	const notFound = providedIds ? providedIds.filter((id) => !foundIds.has(id)) : [];
 
 	return [
 		"PushSubscription/get",

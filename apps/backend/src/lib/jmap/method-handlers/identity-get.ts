@@ -6,7 +6,7 @@ import { identityTable } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
+import { dedupeIds, ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
 
 type IdentityAddress = { email: string; name?: string | null };
 
@@ -63,17 +63,31 @@ export async function handleIdentityGet(
 	}
 
 	const state = await getAccountState(db, effectiveAccountId, "Identity");
-	const ids = (args.ids as string[] | undefined) ?? null;
+	const idsArg = args.ids as unknown;
+	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
+	let providedIds: string[] | null = null;
+	let requestedIdCount = 0;
 	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
-	if (Array.isArray(ids) && ids.length > maxObjects) {
-		return [
-			"error",
-			{
-				type: "limitExceeded",
-				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
-			},
-			tag,
-		];
+	if (!shouldStreamDefaultList) {
+		if (!Array.isArray(idsArg)) {
+			return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+		}
+		const cleanedIds = idsArg.filter((value): value is string => typeof value === "string" && value.length > 0);
+		if (cleanedIds.length !== idsArg.length) {
+			return ["error", { type: "invalidArguments", description: "ids must be non-empty strings" }, tag];
+		}
+		requestedIdCount = cleanedIds.length;
+		providedIds = dedupeIds(cleanedIds);
+		if (requestedIdCount > maxObjects) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
+				},
+				tag,
+			];
+		}
 	}
 
 	const propertiesResult = parseRequestedProperties(args.properties, IDENTITY_PROPERTIES);
@@ -84,34 +98,61 @@ export async function handleIdentityGet(
 	const includeProp = (prop: (typeof IDENTITY_PROPERTIES)[number]) =>
 		!requestedProperties || requestedProperties.has(prop);
 
-	const rows = await (ids?.length
-		? db
-				.select({
-					id: identityTable.id,
-					name: identityTable.name,
-					email: identityTable.email,
-					replyToJson: identityTable.replyToJson,
-					bccJson: identityTable.bccJson,
-					textSignature: identityTable.textSignature,
-					htmlSignature: identityTable.htmlSignature,
-					isDefault: identityTable.isDefault,
-				})
-				.from(identityTable)
-				.where(and(eq(identityTable.accountId, effectiveAccountId), inArray(identityTable.id, ids)))
-		: db
-				.select({
-					id: identityTable.id,
-					name: identityTable.name,
-					email: identityTable.email,
-					replyToJson: identityTable.replyToJson,
-					bccJson: identityTable.bccJson,
-					textSignature: identityTable.textSignature,
-					htmlSignature: identityTable.htmlSignature,
-					isDefault: identityTable.isDefault,
-				})
-				.from(identityTable)
-				.where(eq(identityTable.accountId, effectiveAccountId))
-				.limit(maxObjects));
+	if (providedIds && providedIds.length === 0) {
+		return ["Identity/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
+	}
+
+	let rows: {
+		id: string;
+		name: string;
+		email: string;
+		replyToJson: string | null;
+		bccJson: string | null;
+		textSignature: string | null;
+		htmlSignature: string | null;
+		isDefault: boolean;
+	}[];
+	if (providedIds) {
+		rows = await db
+			.select({
+				id: identityTable.id,
+				name: identityTable.name,
+				email: identityTable.email,
+				replyToJson: identityTable.replyToJson,
+				bccJson: identityTable.bccJson,
+				textSignature: identityTable.textSignature,
+				htmlSignature: identityTable.htmlSignature,
+				isDefault: identityTable.isDefault,
+			})
+			.from(identityTable)
+			.where(and(eq(identityTable.accountId, effectiveAccountId), inArray(identityTable.id, providedIds)));
+	} else {
+		const defaultRows = await db
+			.select({
+				id: identityTable.id,
+				name: identityTable.name,
+				email: identityTable.email,
+				replyToJson: identityTable.replyToJson,
+				bccJson: identityTable.bccJson,
+				textSignature: identityTable.textSignature,
+				htmlSignature: identityTable.htmlSignature,
+				isDefault: identityTable.isDefault,
+			})
+			.from(identityTable)
+			.where(eq(identityTable.accountId, effectiveAccountId))
+			.limit(maxObjects + 1);
+		if (defaultRows.length > maxObjects) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `Too many Identity records to return when ids is null (max ${maxObjects})`,
+				},
+				tag,
+			];
+		}
+		rows = defaultRows;
+	}
 
 	const list: IdentityRecord[] = rows.map((row) => {
 		const entry: IdentityRecord = { id: row.id } as IdentityRecord;
@@ -126,7 +167,7 @@ export async function handleIdentityGet(
 	});
 
 	const foundIds = new Set(list.map((r) => r.id));
-	const notFound = ids ? ids.filter((id) => !foundIds.has(id)) : [];
+	const notFound = providedIds ? providedIds.filter((id) => !foundIds.has(id)) : [];
 
 	return [
 		"Identity/get",

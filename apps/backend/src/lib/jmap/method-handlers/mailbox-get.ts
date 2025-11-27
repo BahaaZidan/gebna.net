@@ -6,7 +6,7 @@ import { accountMessageTable, mailboxMessageTable, mailboxTable } from "../../..
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
+import { dedupeIds, ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
 
 type MailboxRecord = {
 	id: string;
@@ -52,17 +52,31 @@ export async function handleMailboxGet(
 	}
 	const state = await getAccountState(db, effectiveAccountId, "Mailbox");
 
-	const ids = (args.ids as string[] | undefined) ?? null;
+	const idsArg = args.ids as unknown;
+	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
+	let providedIds: string[] | null = null;
+	let requestedIdCount = 0;
 	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
-	if (Array.isArray(ids) && ids.length > maxObjects) {
-		return [
-			"error",
-			{
-				type: "limitExceeded",
-				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
-			},
-			tag,
-		];
+	if (!shouldStreamDefaultList) {
+		if (!Array.isArray(idsArg)) {
+			return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+		}
+		const cleanedIds = idsArg.filter((value): value is string => typeof value === "string" && value.length > 0);
+		if (cleanedIds.length !== idsArg.length) {
+			return ["error", { type: "invalidArguments", description: "ids must be non-empty strings" }, tag];
+		}
+		requestedIdCount = cleanedIds.length;
+		providedIds = dedupeIds(cleanedIds);
+		if (requestedIdCount > maxObjects) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
+				},
+				tag,
+			];
+		}
 	}
 
 	const condition = eq(mailboxTable.accountId, effectiveAccountId);
@@ -75,28 +89,52 @@ export async function handleMailboxGet(
 	const includeProp = (prop: (typeof MAILBOX_PROPERTIES)[number]) =>
 		!requestedProperties || requestedProperties.has(prop);
 
-	const rows = await (ids?.length
-		? db
-				.select({
-					id: mailboxTable.id,
-					name: mailboxTable.name,
-					parentId: mailboxTable.parentId,
-					role: mailboxTable.role,
-					sortOrder: mailboxTable.sortOrder,
-				})
-				.from(mailboxTable)
-				.where(and(condition, inArray(mailboxTable.id, ids)))
-		: db
-				.select({
-					id: mailboxTable.id,
-					name: mailboxTable.name,
-					parentId: mailboxTable.parentId,
-					role: mailboxTable.role,
-					sortOrder: mailboxTable.sortOrder,
-				})
-				.from(mailboxTable)
-				.where(condition)
-				.limit(maxObjects));
+	if (providedIds && providedIds.length === 0) {
+		return ["Mailbox/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
+	}
+
+	let rows: {
+		id: string;
+		name: string;
+		parentId: string | null;
+		role: string | null;
+		sortOrder: number | null;
+	}[];
+	if (providedIds) {
+		rows = await db
+			.select({
+				id: mailboxTable.id,
+				name: mailboxTable.name,
+				parentId: mailboxTable.parentId,
+				role: mailboxTable.role,
+				sortOrder: mailboxTable.sortOrder,
+			})
+			.from(mailboxTable)
+			.where(and(condition, inArray(mailboxTable.id, providedIds)));
+	} else {
+		const defaultRows = await db
+			.select({
+				id: mailboxTable.id,
+				name: mailboxTable.name,
+				parentId: mailboxTable.parentId,
+				role: mailboxTable.role,
+				sortOrder: mailboxTable.sortOrder,
+			})
+			.from(mailboxTable)
+			.where(condition)
+			.limit(maxObjects + 1);
+		if (defaultRows.length > maxObjects) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `Too many Mailbox records to return when ids is null (max ${maxObjects})`,
+				},
+				tag,
+			];
+		}
+		rows = defaultRows;
+	}
 
 	const mailboxIds = rows.map((row) => row.id);
 	const countRows = mailboxIds.length
@@ -173,7 +211,7 @@ const hasChildSet = new Set(
 		if (includeProp("name")) entry.name = row.name;
 		if (includeProp("parentId")) entry.parentId = row.parentId;
 		if (includeProp("role")) entry.role = role;
-		if (includeProp("sortOrder")) entry.sortOrder = row.sortOrder;
+		if (includeProp("sortOrder")) entry.sortOrder = row.sortOrder ?? undefined;
 		if (includeProp("totalEmails")) entry.totalEmails = countMap.get(row.id)?.total ?? 0;
 		if (includeProp("unreadEmails")) entry.unreadEmails = countMap.get(row.id)?.unread ?? 0;
 		if (includeProp("totalThreads")) entry.totalThreads = threadCountMap.get(row.id)?.totalThreads ?? 0;
@@ -188,7 +226,7 @@ const hasChildSet = new Set(
 	});
 
 	const foundIds = new Set(list.map((m) => m.id));
-	const notFound = ids ? ids.filter((id) => !foundIds.has(id)) : [];
+	const notFound = providedIds ? providedIds.filter((id) => !foundIds.has(id)) : [];
 
 	return [
 		"Mailbox/get",

@@ -6,7 +6,7 @@ import { emailSubmissionTable } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
+import { dedupeIds, ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
 
 type EmailSubmissionRecord = { id: string } & Record<string, unknown>;
 
@@ -14,11 +14,14 @@ const EMAIL_SUBMISSION_PROPERTIES = [
 	"id",
 	"emailId",
 	"identityId",
+	"threadId",
 	"envelope",
 	"sendAt",
 	"status",
 	"undoStatus",
 	"deliveryStatus",
+	"dsnBlobIds",
+	"mdnBlobIds",
 ] as const;
 
 export async function handleEmailSubmissionGet(
@@ -34,18 +37,27 @@ export async function handleEmailSubmissionGet(
 	}
 
 	const state = await getAccountState(db, effectiveAccountId, "EmailSubmission");
-	const idsArg = args.ids as string[] | null | undefined;
+	const idsArg = args.ids as unknown;
 	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
-	if (!shouldStreamDefaultList && !Array.isArray(idsArg)) {
-		return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+	let providedIds: string[] | null = null;
+	let requestedIdCount = 0;
+	if (!shouldStreamDefaultList) {
+		if (!Array.isArray(idsArg)) {
+			return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+		}
+		const cleanedIds = idsArg.filter((value): value is string => typeof value === "string" && value.length > 0);
+		if (cleanedIds.length !== idsArg.length) {
+			return ["error", { type: "invalidArguments", description: "ids must be non-empty strings" }, tag];
+		}
+		requestedIdCount = cleanedIds.length;
+		providedIds = dedupeIds(cleanedIds);
 	}
-	const providedIds = Array.isArray(idsArg) ? idsArg : null;
 	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
-	if (providedIds && providedIds.length > maxObjects) {
+	if (!shouldStreamDefaultList && requestedIdCount > maxObjects) {
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
 			},
 			tag,
@@ -59,7 +71,17 @@ export async function handleEmailSubmissionGet(
 			.from(emailSubmissionTable)
 			.where(eq(emailSubmissionTable.accountId, effectiveAccountId))
 			.orderBy(desc(emailSubmissionTable.createdAt), desc(emailSubmissionTable.id))
-			.limit(maxObjects);
+			.limit(maxObjects + 1);
+		if (defaultRows.length > maxObjects) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `Too many EmailSubmission records to return when ids is null (max ${maxObjects})`,
+				},
+				tag,
+			];
+		}
 		idsToFetch = defaultRows.map((row) => row.id);
 	} else if (providedIds) {
 		if (providedIds.length === 0) {
@@ -92,13 +114,16 @@ export async function handleEmailSubmissionGet(
 			const row = rowMap.get(id);
 			if (!row) return null;
 			const entry: EmailSubmissionRecord = { id: row.id };
+			if (includeProp("threadId")) entry.threadId = row.threadId;
 			if (includeProp("emailId")) entry.emailId = row.emailId;
 			if (includeProp("identityId")) entry.identityId = row.identityId;
 			if (includeProp("envelope")) entry.envelope = row.envelopeJson ? JSON.parse(row.envelopeJson) : null;
 			if (includeProp("sendAt")) entry.sendAt = row.sendAt?.toISOString() ?? null;
 			if (includeProp("status")) entry.status = row.status;
 			if (includeProp("undoStatus")) entry.undoStatus = row.undoStatus ?? "final";
-			if (includeProp("deliveryStatus")) entry.deliveryStatus = row.deliveryStatusJson ?? null;
+			if (includeProp("deliveryStatus")) entry.deliveryStatus = row.deliveryStatusJson ?? {};
+			if (includeProp("dsnBlobIds")) entry.dsnBlobIds = row.dsnBlobIdsJson ?? [];
+			if (includeProp("mdnBlobIds")) entry.mdnBlobIds = row.mdnBlobIdsJson ?? [];
 			return entry;
 		})
 		.filter((value): value is EmailSubmissionRecord => value !== null);

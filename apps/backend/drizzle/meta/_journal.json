@@ -85,6 +85,13 @@
       "when": 1764177475040,
       "tag": "0011_updated_properties",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1764230218570,
+      "tag": "0012_narrow_lord_tyger",
+      "breakpoints": true
     }
   ]
 }

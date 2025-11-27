@@ -6,7 +6,7 @@ import { accountMessageTable, threadTable } from "../../../db/schema";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
+import { dedupeIds, ensureAccountAccess, getAccountState, parseRequestedProperties } from "../utils";
 
 type ThreadRecord = {
 	id: string;
@@ -27,18 +27,27 @@ export async function handleThreadGet(
 	}
 	const state = await getAccountState(db, effectiveAccountId, "Thread");
 
-	const idsArg = args.ids as string[] | null | undefined;
+	const idsArg = args.ids as unknown;
 	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
-	if (!shouldStreamDefaultList && !Array.isArray(idsArg)) {
-		return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+	let providedIds: string[] | null = null;
+	let requestedIdCount = 0;
+	if (!shouldStreamDefaultList) {
+		if (!Array.isArray(idsArg)) {
+			return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+		}
+		const cleanedIds = idsArg.filter((value): value is string => typeof value === "string" && value.length > 0);
+		if (cleanedIds.length !== idsArg.length) {
+			return ["error", { type: "invalidArguments", description: "ids must be non-empty strings" }, tag];
+		}
+		requestedIdCount = cleanedIds.length;
+		providedIds = dedupeIds(cleanedIds);
 	}
-	const providedIds = Array.isArray(idsArg) ? idsArg : null;
 	const maxObjects = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
-	if (providedIds && providedIds.length > maxObjects) {
+	if (!shouldStreamDefaultList && requestedIdCount > maxObjects) {
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
 			},
 			tag,
@@ -52,7 +61,17 @@ export async function handleThreadGet(
 			.from(threadTable)
 			.where(eq(threadTable.accountId, effectiveAccountId))
 			.orderBy(desc(threadTable.latestMessageAt), desc(threadTable.id))
-			.limit(maxObjects);
+			.limit(maxObjects + 1);
+		if (defaultRows.length > maxObjects) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `Too many Thread records to return when ids is null (max ${maxObjects})`,
+				},
+				tag,
+			];
+		}
 		idsToFetch = defaultRows.map((row) => row.id);
 	} else if (providedIds) {
 		if (providedIds.length === 0) {

@@ -76,7 +76,7 @@ export async function handlePushSubscriptionSet(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `Too many create/update/destroy operations (max ${maxSetObjects} each)`,
 			},
 			tag,
@@ -130,7 +130,7 @@ export async function handlePushSubscriptionSet(
 				if (count + createEntries.length > maxSubscriptions) {
 					throw Object.assign(
 						new Error(`maxSubscriptionsPerAccount (${maxSubscriptions}) exceeded`),
-						{ jmapType: "limitExceeded" }
+						{ jmapType: "requestTooLarge" }
 					);
 				}
 			}
@@ -302,8 +302,8 @@ export async function handlePushSubscriptionSet(
 			}
 		});
 	} catch (err) {
-		if ((err as { jmapType?: string }).jmapType === "limitExceeded") {
-			return ["error", { type: "limitExceeded", description: (err as Error).message }, tag];
+		if ((err as { jmapType?: string }).jmapType === "requestTooLarge") {
+			return ["error", { type: "requestTooLarge", description: (err as Error).message }, tag];
 		}
 		console.error("PushSubscription/set error", err);
 		return ["error", { type: "serverError" }, tag];

@@ -15,7 +15,7 @@ import {
 	QUEUE_STATUS_CANCELED,
 	QUEUE_STATUS_PENDING,
 } from "../../outbound/submission-queue";
-import { DeliveryStatusRecord } from "../../types";
+import { buildInitialDeliveryStatusMap } from "../../email-submission/delivery-status";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { CreationReferenceMap, JmapMethodResponse } from "../types";
@@ -53,13 +53,25 @@ export async function handleEmailSubmissionSet(
 	const updateCount = isRecord(args.update) ? Object.keys(args.update).length : 0;
 	const destroyCount = Array.isArray(args.destroy) ? args.destroy.length : 0;
 	if (createCount > maxSetObjects) {
-		return ["error", { type: "limitExceeded", description: `create exceeds maxObjectsInSet (${maxSetObjects})` }, tag];
+		return [
+			"error",
+			{ type: "requestTooLarge", description: `create exceeds maxObjectsInSet (${maxSetObjects})` },
+			tag,
+		];
 	}
 	if (updateCount > maxSetObjects) {
-		return ["error", { type: "limitExceeded", description: `update exceeds maxObjectsInSet (${maxSetObjects})` }, tag];
+		return [
+			"error",
+			{ type: "requestTooLarge", description: `update exceeds maxObjectsInSet (${maxSetObjects})` },
+			tag,
+		];
 	}
 	if (destroyCount > maxSetObjects) {
-		return ["error", { type: "limitExceeded", description: `destroy exceeds maxObjectsInSet (${maxSetObjects})` }, tag];
+		return [
+			"error",
+			{ type: "requestTooLarge", description: `destroy exceeds maxObjectsInSet (${maxSetObjects})` },
+			tag,
+		];
 	}
 
 	const createMap = (args.create as Record<string, unknown> | undefined) ?? {};
@@ -331,16 +343,13 @@ async function applyEmailSubmissionSet(
 		const shouldProcessNow = releaseAt.getTime() <= now.getTime();
 		const undoStatusValue = shouldProcessNow ? "final" : "pending";
 
-		const deliveryStatus: DeliveryStatusRecord = {
-			status: "pending",
-			lastAttempt: 0,
-			retryCount: 0,
-		};
+		const deliveryStatus = buildInitialDeliveryStatusMap(envelope.rcptTo);
 
 		await db.insert(emailSubmissionTable).values({
 			id: submissionId,
 			accountId,
 			emailId: parsed.emailId,
+			threadId: accountMessage.threadId,
 			identityId: parsed.identityId,
 			envelopeJson: JSON.stringify(envelope),
 			sendAt: releaseAt,
@@ -348,6 +357,8 @@ async function applyEmailSubmissionSet(
 			nextAttemptAt: releaseAt,
 			retryCount: 0,
 			deliveryStatusJson: deliveryStatus,
+			dsnBlobIdsJson: [],
+			mdnBlobIdsJson: [],
 			undoStatus: undoStatusValue,
 			createdAt: now,
 			updatedAt: now,
@@ -367,9 +378,14 @@ async function applyEmailSubmissionSet(
 		created[createId] = {
 			id: submissionId,
 			emailId: parsed.emailId,
+			threadId: accountMessage.threadId,
 			identityId: parsed.identityId,
+			status: QUEUE_STATUS_PENDING,
 			sendAt: releaseAt.toISOString(),
 			undoStatus: undoStatusValue,
+			deliveryStatus,
+			dsnBlobIds: [],
+			mdnBlobIds: [],
 		};
 		creationMeta[createId] = { emailId: parsed.emailId };
 	}

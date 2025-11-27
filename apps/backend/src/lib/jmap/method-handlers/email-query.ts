@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, gt, inArray, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, like, lt, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import type { SQL } from "drizzle-orm";
 import { Context } from "hono";
 
@@ -10,6 +11,7 @@ import {
 	mailboxMessageTable,
 	messageAddressTable,
 	messageTable,
+	messageHeaderTable,
 	attachmentTable,
 } from "../../../db/schema";
 import { JMAPHonoAppEnv } from "../middlewares";
@@ -20,6 +22,9 @@ import {
 	persistQueryStateRecord,
 	purgeStaleQueryStates,
 } from "../helpers/query-state";
+
+const _accountMessageAliasPrototype = alias(accountMessageTable, "thread_msg");
+type AccountMessageAlias = typeof _accountMessageAliasPrototype;
 
 export type FilterCondition =
 	| { operator: "none" }
@@ -32,12 +37,17 @@ export type FilterCondition =
 	| { operator: "body"; value: string }
 	| { operator: "after"; value: Date }
 	| { operator: "before"; value: Date }
-	| { operator: "sizeLarger"; value: number }
-	| { operator: "sizeSmaller"; value: number }
+	| { operator: "minSize"; value: number }
+	| { operator: "maxSize"; value: number }
 	| { operator: "hasKeyword"; keyword: string }
+	| { operator: "notKeyword"; keyword: string }
+	| { operator: "allInThreadHaveKeyword"; keyword: string }
+	| { operator: "someInThreadHaveKeyword"; keyword: string }
+	| { operator: "noneInThreadHaveKeyword"; keyword: string }
 	| { operator: "hasAttachment"; value: boolean }
 	| { operator: "attachmentName"; value: string }
 	| { operator: "attachmentType"; value: string }
+	| { operator: "header"; name: string; value?: string }
 	| { operator: "inMailbox"; mailboxId: string }
 	| { operator: "inMailboxOtherThan"; mailboxIds: string[] }
 	| { operator: "and" | "or"; conditions: FilterCondition[] }
@@ -69,14 +79,21 @@ const EMAIL_FILTER_ALLOWED_KEYS = new Set([
 	"body",
 	"after",
 	"before",
+	"minSize",
+	"maxSize",
 	"sizeLarger",
 	"sizeSmaller",
 	"inMailbox",
 	"inMailboxOtherThan",
 	"hasKeyword",
+	"notKeyword",
+	"allInThreadHaveKeyword",
+	"someInThreadHaveKeyword",
+	"noneInThreadHaveKeyword",
 	"hasAttachment",
 	"attachmentName",
 	"attachmentType",
+	"header",
 	"and",
 	"or",
 	"not",
@@ -228,6 +245,8 @@ export function normalizeFilter(raw: unknown): FilterCondition {
 		}
 		return null;
 	};
+	const coerceFiniteNumber = (input: unknown): number | null =>
+		typeof input === "number" && Number.isFinite(input) ? input : null;
 
 	const text = stringProp("text");
 	if (text) pushCondition({ operator: "text", value: text });
@@ -264,12 +283,14 @@ export function normalizeFilter(raw: unknown): FilterCondition {
 		}
 	}
 
-	if (typeof value.sizeLarger === "number" && Number.isFinite(value.sizeLarger)) {
-		pushCondition({ operator: "sizeLarger", value: value.sizeLarger });
+	const minSizeNumber = coerceFiniteNumber(value.minSize) ?? coerceFiniteNumber(value.sizeLarger);
+	if (minSizeNumber !== null) {
+		pushCondition({ operator: "minSize", value: minSizeNumber });
 	}
 
-	if (typeof value.sizeSmaller === "number" && Number.isFinite(value.sizeSmaller)) {
-		pushCondition({ operator: "sizeSmaller", value: value.sizeSmaller });
+	const maxSizeNumber = coerceFiniteNumber(value.maxSize) ?? coerceFiniteNumber(value.sizeSmaller);
+	if (maxSizeNumber !== null) {
+		pushCondition({ operator: "maxSize", value: maxSizeNumber });
 	}
 
 	if (typeof value.inMailbox === "string" && value.inMailbox) {
@@ -287,8 +308,50 @@ export function normalizeFilter(raw: unknown): FilterCondition {
 		pushCondition({ operator: "hasKeyword", keyword: normalizeKeywordName(value.hasKeyword) });
 	}
 
+	if (typeof value.notKeyword === "string" && value.notKeyword) {
+		pushCondition({ operator: "notKeyword", keyword: normalizeKeywordName(value.notKeyword) });
+	}
+
+	const allThreadKeyword = stringProp("allInThreadHaveKeyword");
+	if (allThreadKeyword) {
+		pushCondition({
+			operator: "allInThreadHaveKeyword",
+			keyword: normalizeKeywordName(allThreadKeyword),
+		});
+	}
+	const someThreadKeyword = stringProp("someInThreadHaveKeyword");
+	if (someThreadKeyword) {
+		pushCondition({
+			operator: "someInThreadHaveKeyword",
+			keyword: normalizeKeywordName(someThreadKeyword),
+		});
+	}
+	const noneThreadKeyword = stringProp("noneInThreadHaveKeyword");
+	if (noneThreadKeyword) {
+		pushCondition({
+			operator: "noneInThreadHaveKeyword",
+			keyword: normalizeKeywordName(noneThreadKeyword),
+		});
+	}
+
 	if (typeof value.hasAttachment === "boolean") {
 		pushCondition({ operator: "hasAttachment", value: value.hasAttachment });
+	}
+
+	const headerValue = value.header;
+	if (Array.isArray(headerValue)) {
+		const [rawName, rawContent] = headerValue;
+		if (typeof rawName === "string" && rawName.trim().length > 0) {
+			const name = rawName.trim();
+			const headerCondition: FilterCondition = {
+				operator: "header",
+				name,
+			};
+			if (typeof rawContent === "string" && rawContent.trim().length > 0) {
+				headerCondition.value = rawContent.trim();
+			}
+			pushCondition(headerCondition);
+		}
 	}
 
 	const attachmentName = stringProp("attachmentName");
@@ -472,15 +535,25 @@ function buildFilterSql(filter: FilterCondition): SQL | undefined {
 		case "bcc":
 			return buildAddressCondition("bcc", filter.value);
 		case "after":
-			return gt(accountMessageTable.internalDate, filter.value);
+			return gte(accountMessageTable.internalDate, filter.value);
 		case "before":
 			return lt(accountMessageTable.internalDate, filter.value);
-		case "sizeLarger":
-			return gt(messageTable.size, filter.value);
-		case "sizeSmaller":
+		case "minSize":
+			return gte(messageTable.size, filter.value);
+		case "maxSize":
 			return lt(messageTable.size, filter.value);
 		case "hasKeyword":
 			return buildKeywordCondition(filter.keyword);
+		case "notKeyword": {
+			const clause = buildKeywordCondition(filter.keyword);
+			return sql`not (${clause})`;
+		}
+		case "allInThreadHaveKeyword":
+			return buildThreadKeywordCondition("all", filter.keyword);
+		case "someInThreadHaveKeyword":
+			return buildThreadKeywordCondition("some", filter.keyword);
+		case "noneInThreadHaveKeyword":
+			return buildThreadKeywordCondition("none", filter.keyword);
 	case "body": {
 		const pattern = `%${escapeLikePattern(filter.value)}%`;
 		return or(like(messageTable.textBody, pattern), like(messageTable.htmlBody, pattern));
@@ -497,6 +570,8 @@ function buildFilterSql(filter: FilterCondition): SQL | undefined {
 			const pattern = `%${escapeLikePattern(filter.value)}%`;
 			return sql`exists(select 1 from ${attachmentTable} att where att.message_id = ${messageTable.id} and att.mime_type like ${pattern})`;
 		}
+		case "header":
+			return buildHeaderCondition(filter.name, filter.value);
 		case "inMailbox":
 			return sql`exists(select 1 from ${mailboxMessageTable} mm where mm.account_message_id = ${accountMessageTable.id} and mm.mailbox_id = ${filter.mailboxId})`;
 		case "inMailboxOtherThan": {
@@ -549,6 +624,66 @@ function buildKeywordCondition(keyword: string): SQL {
 		default:
 			return sql`exists(select 1 from ${emailKeywordTable} ek where ek.account_message_id = ${accountMessageTable.id} and ek.keyword = ${normalized})`;
 	}
+}
+
+function buildThreadKeywordCondition(
+	mode: "all" | "some" | "none",
+	keyword: string
+): SQL {
+	const threadMsg = alias(accountMessageTable, "thread_msg");
+	const keywordMatch = buildKeywordMatchClause(threadMsg, keyword);
+	const baseScope = and(
+		eq(threadMsg.accountId, accountMessageTable.accountId),
+		eq(threadMsg.threadId, accountMessageTable.threadId),
+		eq(threadMsg.isDeleted, false)
+	);
+	if (mode === "some") {
+		return sql`exists(
+			select 1 from ${threadMsg}
+			where ${and(baseScope, keywordMatch)}
+		)`;
+	}
+	if (mode === "none") {
+		return sql`not exists(
+			select 1 from ${threadMsg}
+			where ${and(baseScope, keywordMatch)}
+		)`;
+	}
+	return sql`not exists(
+		select 1 from ${threadMsg}
+		where ${and(baseScope, sql`not (${keywordMatch})`)}
+	)`;
+}
+
+function buildKeywordMatchClause(tableAlias: AccountMessageAlias, keyword: string): SQL {
+	const normalized = normalizeKeywordName(keyword);
+	switch (normalized) {
+		case "$seen":
+			return eq(tableAlias.isSeen, true);
+		case "$flagged":
+			return eq(tableAlias.isFlagged, true);
+		case "$answered":
+			return eq(tableAlias.isAnswered, true);
+		case "$draft":
+			return eq(tableAlias.isDraft, true);
+		default: {
+			const keywordAlias = alias(emailKeywordTable, "thread_keyword");
+			return sql`exists(
+				select 1 from ${keywordAlias}
+				where ${keywordAlias.accountMessageId} = ${tableAlias.id}
+				and ${keywordAlias.keyword} = ${normalized}
+			)`;
+		}
+	}
+}
+
+function buildHeaderCondition(name: string, value?: string): SQL {
+	const normalizedName = name.trim().toLowerCase();
+	if (value && value.trim().length > 0) {
+		const pattern = `%${escapeLikePattern(value)}%`;
+		return sql`exists(select 1 from ${messageHeaderTable} mh where mh.message_id = ${messageTable.id} and mh.lower_name = ${normalizedName} and mh.value like ${pattern})`;
+	}
+	return sql`exists(select 1 from ${messageHeaderTable} mh where mh.message_id = ${messageTable.id} and mh.lower_name = ${normalizedName})`;
 }
 
 function normalizeKeywordName(keyword: string): string {

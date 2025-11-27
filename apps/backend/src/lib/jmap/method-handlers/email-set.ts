@@ -76,7 +76,7 @@ export async function handleEmailSet(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `create exceeds maxObjectsInSet (${maxSetObjects})`,
 			},
 			tag,
@@ -86,7 +86,7 @@ export async function handleEmailSet(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `update exceeds maxObjectsInSet (${maxSetObjects})`,
 			},
 			tag,
@@ -96,7 +96,7 @@ export async function handleEmailSet(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `destroy exceeds maxObjectsInSet (${maxSetObjects})`,
 			},
 			tag,
@@ -923,7 +923,7 @@ function enforceMailboxLimit(mailboxIds: string[]): void {
 		mailboxIds.length > MAX_MAILBOXES_PER_EMAIL
 	) {
 		throw new EmailSetProblem(
-			"limitExceeded",
+			"requestTooLarge",
 			`mailboxIds exceeds maxMailboxesPerEmail (${MAX_MAILBOXES_PER_EMAIL})`
 		);
 	}
@@ -936,7 +936,7 @@ function enforceAttachmentAggregateLimit(totalBytes: number): void {
 		totalBytes > MAX_ATTACHMENT_BYTES
 	) {
 		throw new EmailSetProblem(
-			"limitExceeded",
+			"requestTooLarge",
 			`attachments exceed maxSizeAttachmentsPerEmail (${MAX_ATTACHMENT_BYTES})`
 		);
 	}

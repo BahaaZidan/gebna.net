@@ -99,7 +99,7 @@ export async function handleEmailParse(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `blobIds length exceeds maxObjectsInGet (${maxObjectsLimit})`,
 			},
 			tag,
