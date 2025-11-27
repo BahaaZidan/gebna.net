@@ -99,7 +99,7 @@ export async function handleEmailImport(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `emails exceeds maxObjectsInSet (${maxSetObjects})`,
 			},
 			tag,
@@ -450,7 +450,7 @@ function enforceMailboxLimit(count: number): void {
 		count > MAX_MAILBOXES_PER_EMAIL
 	) {
 		throw new EmailImportProblem(
-			"limitExceeded",
+			"requestTooLarge",
 			`mailboxIds exceeds maxMailboxesPerEmail (${MAX_MAILBOXES_PER_EMAIL})`
 		);
 	}
@@ -463,7 +463,7 @@ function enforceAttachmentSizeLimit(totalBytes: number): void {
 		totalBytes > MAX_ATTACHMENT_BYTES
 	) {
 		throw new EmailImportProblem(
-			"limitExceeded",
+			"requestTooLarge",
 			`attachments exceed maxSizeAttachmentsPerEmail (${MAX_ATTACHMENT_BYTES})`
 		);
 	}

@@ -356,6 +356,10 @@ export const emailSubmissionTable = sqliteTable(
 			.text()
 			.notNull()
 			.references(() => accountMessageTable.id, { onDelete: "cascade" }),
+		threadId: t
+			.text()
+			.notNull()
+			.references(() => threadTable.id, { onDelete: "cascade" }),
 		identityId: t
 			.text()
 			.notNull()
@@ -365,7 +369,12 @@ export const emailSubmissionTable = sqliteTable(
 		status: t.text().notNull().default("pending"),
 		nextAttemptAt: t.integer({ mode: "timestamp" }),
 		retryCount: t.integer().notNull().default(0),
-		deliveryStatusJson: t.text({ mode: "json" }).notNull().$type<DeliveryStatusRecord>(),
+		deliveryStatusJson: t
+			.text({ mode: "json" })
+			.notNull()
+			.$type<Record<string, DeliveryStatusRecord>>(),
+		dsnBlobIdsJson: t.text({ mode: "json" }).notNull().$type<string[]>(),
+		mdnBlobIdsJson: t.text({ mode: "json" }).notNull().$type<string[]>(),
 		undoStatus: t.text(),
 		createdAt: t.integer({ mode: "timestamp" }).notNull(),
 		updatedAt: t.integer({ mode: "timestamp" }),

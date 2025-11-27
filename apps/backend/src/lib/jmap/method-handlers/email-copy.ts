@@ -103,7 +103,7 @@ export async function handleEmailCopy(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `create exceeds maxObjectsInSet (${maxSetObjects})`,
 			},
 			tag,

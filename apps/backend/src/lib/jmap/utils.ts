@@ -231,3 +231,15 @@ export function resolveCreationReference(
 	const key = value.slice(1);
 	return creationRefs?.get(key) ?? null;
 }
+
+export function dedupeIds(ids: string[]): string[] {
+	const seen = new Set<string>();
+	const result: string[] = [];
+	for (const id of ids) {
+		if (!seen.has(id)) {
+			seen.add(id);
+			result.push(id);
+		}
+	}
+	return result;
+}

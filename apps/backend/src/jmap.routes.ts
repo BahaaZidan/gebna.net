@@ -1,4 +1,3 @@
-import { v } from "@gebna/validation";
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -26,6 +25,8 @@ import { handleEmailParse } from "./lib/jmap/method-handlers/email-parse";
 import { handleEmailSubmissionSet } from "./lib/jmap/method-handlers/email-submission-set";
 import { handleEmailSubmissionGet } from "./lib/jmap/method-handlers/email-submission-get";
 import { handleEmailSubmissionChanges } from "./lib/jmap/method-handlers/email-submission-changes";
+import { handleEmailSubmissionQuery } from "./lib/jmap/method-handlers/email-submission-query";
+import { handleEmailSubmissionQueryChanges } from "./lib/jmap/method-handlers/email-submission-query-changes";
 import { handleIdentityGet } from "./lib/jmap/method-handlers/identity-get";
 import { handleIdentitySet } from "./lib/jmap/method-handlers/identity-set";
 import { handleIdentityChanges } from "./lib/jmap/method-handlers/identity-changes";
@@ -68,8 +69,7 @@ function buildMailAccountCapability(): Record<string, unknown> {
 
 function buildSubmissionAccountCapability(env: CloudflareBindings): Record<string, unknown> {
 	const maxDelayedSend = getUndoWindowSeconds(env);
-	const submissionExtensions =
-		maxDelayedSend && maxDelayedSend > 0 ? ["urn:ietf:params:jmap:submission:delay"] : [];
+	const submissionExtensions: Record<string, string[]> = {};
 	return {
 		maxDelayedSend: maxDelayedSend ?? 0,
 		submissionExtensions,
@@ -83,24 +83,72 @@ function buildVacationAccountCapability(): Record<string, unknown> {
 	};
 }
 
-const JmapMethodCallSchema = v.tuple([
-	v.string(), // name
-	v.record(v.string(), v.unknown()), // args
-	v.string(), // tag
-]);
+type JmapMethodCall = [string, Record<string, unknown>, string];
 
-const JmapRequestSchema = v.object({
-	using: v.array(v.string()),
-	methodCalls: v.array(JmapMethodCallSchema),
-});
-
-type JmapRequest = v.InferOutput<typeof JmapRequestSchema>;
+type JmapRequest = {
+	using: string[];
+	methodCalls: JmapMethodCall[];
+	createdIds?: Record<string, string>;
+	extraProperties?: Record<string, unknown>;
+};
 
 type JmapHandler = (
 	c: Context<JMAPHonoAppEnv>,
 	args: Record<string, unknown>,
 	tag: string
 ) => Promise<JmapHandlerResult>;
+
+function parseJmapRequest(body: unknown): { success: true; value: JmapRequest } | { success: false; error: string } {
+	if (!body || typeof body !== "object" || Array.isArray(body)) {
+		return { success: false, error: "Request body must be a JSON object" };
+	}
+	const record = body as Record<string, unknown>;
+	const using = record.using;
+	if (!Array.isArray(using) || using.some((entry) => typeof entry !== "string")) {
+		return { success: false, error: "using must be an array of strings" };
+	}
+	const methodCalls = record.methodCalls;
+	if (!Array.isArray(methodCalls)) {
+		return { success: false, error: "methodCalls must be an array" };
+	}
+	const normalizedCalls: JmapMethodCall[] = [];
+	for (const [index, call] of methodCalls.entries()) {
+		if (!Array.isArray(call) || call.length !== 3) {
+			return { success: false, error: `methodCalls[${index}] must be a tuple of [name, args, tag]` };
+		}
+		const [name, args, tag] = call;
+		if (typeof name !== "string" || typeof tag !== "string") {
+			return { success: false, error: `methodCalls[${index}] must include string name and tag` };
+		}
+		if (!args || typeof args !== "object" || Array.isArray(args)) {
+			return { success: false, error: `methodCalls[${index}] args must be an object` };
+		}
+		normalizedCalls.push([name, args as Record<string, unknown>, tag]);
+	}
+	let createdIds: Record<string, string> | undefined;
+	if (record.createdIds !== undefined) {
+		if (!record.createdIds || typeof record.createdIds !== "object" || Array.isArray(record.createdIds)) {
+			return { success: false, error: "createdIds must be an object when present" };
+		}
+		const map: Record<string, string> = {};
+		for (const [key, value] of Object.entries(record.createdIds)) {
+			if (typeof value !== "string" || value.length === 0) {
+				return { success: false, error: "createdIds values must be non-empty strings" };
+			}
+			map[key] = value;
+		}
+		createdIds = map;
+	}
+	const extraProperties: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(record)) {
+		if (key === "using" || key === "methodCalls" || key === "createdIds") {
+			continue;
+		}
+		extraProperties[key] = value;
+	}
+
+	return { success: true, value: { using, methodCalls: normalizedCalls, createdIds, extraProperties } };
+}
 
 async function getGlobalAccountState(
 	db: ReturnType<typeof getDB>,
@@ -180,6 +228,8 @@ const methodHandlers: Record<string, JmapHandler> = {
 	"Email/set": handleEmailSet,
 	"EmailSubmission/set": handleEmailSubmissionSet,
 	"EmailSubmission/get": handleEmailSubmissionGet,
+	"EmailSubmission/query": handleEmailSubmissionQuery,
+	"EmailSubmission/queryChanges": handleEmailSubmissionQueryChanges,
 	"EmailSubmission/changes": handleEmailSubmissionChanges,
 	"Identity/get": handleIdentityGet,
 	"Identity/changes": handleIdentityChanges,
@@ -211,6 +261,8 @@ const METHOD_CAPABILITIES: Record<string, string[]> = {
 	"Mailbox/set": [JMAP_MAIL],
 	"EmailSubmission/set": [JMAP_SUBMISSION],
 	"EmailSubmission/get": [JMAP_SUBMISSION],
+	"EmailSubmission/query": [JMAP_SUBMISSION],
+	"EmailSubmission/queryChanges": [JMAP_SUBMISSION],
 	"EmailSubmission/changes": [JMAP_SUBMISSION],
 	"Identity/get": [JMAP_SUBMISSION],
 	"Identity/changes": [JMAP_SUBMISSION],
@@ -403,13 +455,13 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 		return c.json({ type: "invalidArguments", description: "Invalid JSON body" }, 400);
 	}
 
-	const parsed = v.safeParse(JmapRequestSchema, body);
-
+	const parsed = parseJmapRequest(body);
 	if (!parsed.success) {
-		return c.json({ type: "invalidArguments", errors: parsed.issues }, 400);
+		return c.json({ type: "invalidArguments", description: parsed.error }, 400);
 	}
 
-	const req: JmapRequest = parsed.output;
+	const req = parsed.value;
+	c.set("requestProperties", req.extraProperties ?? {});
 	const unknownCapability = req.using.find((capability) => !SUPPORTED_CAPABILITIES.has(capability));
 	if (unknownCapability) {
 		return c.json(
@@ -434,7 +486,7 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 	if (maxCalls && req.methodCalls.length > maxCalls) {
 		return c.json(
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `methodCalls exceeds maxCallsInRequest (${maxCalls})`,
 			},
 			400
@@ -442,7 +494,15 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 	}
 
 	const methodResponses: JmapMethodResponse[] = [];
+	const shouldReturnCreatedIds = req.createdIds !== undefined;
 	const creationReferences: CreationReferenceMap = new Map();
+	if (req.createdIds) {
+		for (const [creationId, recordId] of Object.entries(req.createdIds)) {
+			if (typeof recordId === "string" && recordId.length > 0) {
+				creationReferences.set(creationId, recordId);
+			}
+		}
+	}
 	c.set("creationReferences", creationReferences);
 	const resultReferenceStore: ResultReferenceStore = new Map();
 	const requestedCapabilities = new Set(req.using);
@@ -504,7 +564,14 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 	}
 
 	const sessionState = await getGlobalAccountState(db, accountId);
-	return c.json({ sessionState, methodResponses });
+	const responseBody: Record<string, unknown> = {
+		sessionState,
+		methodResponses,
+	};
+	if (shouldReturnCreatedIds) {
+		responseBody.createdIds = Object.fromEntries(creationReferences);
+	}
+	return c.json(responseBody);
 }
 
 async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Response> {

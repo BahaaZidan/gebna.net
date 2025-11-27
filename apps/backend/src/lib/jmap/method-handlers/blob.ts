@@ -12,7 +12,7 @@ import {
 import { JMAP_BLOB_ACCOUNT_CAPABILITY, JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess } from "../utils";
+import { dedupeIds, ensureAccountAccess } from "../utils";
 
 const ALLOWED_BLOB_PROPERTIES = new Set([
 	"data",
@@ -58,12 +58,13 @@ export async function handleBlobGet(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `ids length exceeds maxObjectsInGet (${maxObjects})`,
 			},
 			tag,
 		];
 	}
+	const uniqueIds = dedupeIds(ids);
 
 	const propertiesInput = args.properties;
 	let requestedProps: string[] = ["data", "size"];
@@ -140,7 +141,9 @@ export async function handleBlobGet(
 		})
 		.from(accountBlobTable)
 		.innerJoin(blobTable, eq(accountBlobTable.sha256, blobTable.sha256))
-		.where(and(eq(accountBlobTable.accountId, effectiveAccountId), inArray(accountBlobTable.sha256, ids)));
+		.where(
+			and(eq(accountBlobTable.accountId, effectiveAccountId), inArray(accountBlobTable.sha256, uniqueIds))
+		);
 
 	const blobMap = new Map<
 		string,
@@ -153,7 +156,7 @@ export async function handleBlobGet(
 	const notFound: string[] = [];
 	const list: Record<string, unknown>[] = [];
 
-	for (const id of ids) {
+	for (const id of uniqueIds) {
 		const meta = blobMap.get(id);
 		if (!meta) {
 			notFound.push(id);
@@ -302,7 +305,7 @@ export async function handleBlobCopy(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `blobIds length exceeds maxObjectsInSet (${maxCopyCount})`,
 			},
 			tag,
@@ -324,7 +327,7 @@ export async function handleBlobCopy(
 				return [
 					"error",
 					{
-						type: "limitExceeded",
+						type: "requestTooLarge",
 						description: `blobIds total size exceeds maxSizeBlobSet (${maxBlobSetSize})`,
 					},
 					tag,

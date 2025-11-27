@@ -283,7 +283,7 @@ export async function handleIdentitySet(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `create exceeds maxObjectsInSet (${maxSetObjects})`,
 			},
 			tag,
@@ -293,7 +293,7 @@ export async function handleIdentitySet(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `update exceeds maxObjectsInSet (${maxSetObjects})`,
 			},
 			tag,
@@ -303,7 +303,7 @@ export async function handleIdentitySet(
 		return [
 			"error",
 			{
-				type: "limitExceeded",
+				type: "requestTooLarge",
 				description: `destroy exceeds maxObjectsInSet (${maxSetObjects})`,
 			},
 			tag,

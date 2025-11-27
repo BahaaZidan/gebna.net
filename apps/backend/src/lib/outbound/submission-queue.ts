@@ -7,6 +7,7 @@ import {
 	messageTable,
 } from "../../db/schema";
 import { createOutboundTransport } from ".";
+import { applyDeliveryStatusToRecipients, normalizeDeliveryStatusMap } from "../email-submission/delivery-status";
 import { DeliveryStatusRecord } from "../types";
 import { recordUpdate } from "../jmap/change-log";
 
@@ -26,7 +27,7 @@ type ClaimedSubmission = {
 	threadId: string;
 	envelopeJson: string;
 	retryCount: number;
-	deliveryStatus: DeliveryStatusRecord;
+	deliveryStatus: Record<string, DeliveryStatusRecord>;
 	rawBlobSha256: string;
 	size: number;
 };
@@ -69,7 +70,7 @@ async function claimSubmission(
 				undoStatus: emailSubmissionTable.undoStatus,
 				accountMessageId: accountMessageTable.id,
 				accountMessageDeleted: accountMessageTable.isDeleted,
-				threadId: accountMessageTable.threadId,
+				threadId: emailSubmissionTable.threadId,
 				rawBlobSha256: messageTable.rawBlobSha256,
 				size: messageTable.size,
 			})
@@ -81,6 +82,9 @@ async function claimSubmission(
 
 		if (!rows.length) return null;
 		const row = rows[0]!;
+		const envelopeForStatus = parseEnvelope(row.envelopeJson);
+		const statusRecipients = envelopeForStatus?.rcptTo ?? null;
+		const currentStatusMap = normalizeDeliveryStatusMap(row.deliveryStatus, statusRecipients);
 		if (row.status !== QUEUE_STATUS_PENDING) return null;
 		if (row.nextAttemptAt && row.nextAttemptAt > now) return null;
 		if (row.undoStatus === "canceled") return null;
@@ -93,13 +97,14 @@ async function claimSubmission(
 				retryCount: row.retryCount,
 				permanent: true,
 			};
+			const statusMap = applyDeliveryStatusToRecipients(currentStatusMap, null, deliveryStatus);
 			const failed = await tx
 				.update(emailSubmissionTable)
 				.set({
 					status: QUEUE_STATUS_FAILED,
 					nextAttemptAt: null,
 					undoStatus: "final",
-					deliveryStatusJson: deliveryStatus,
+					deliveryStatusJson: statusMap,
 					updatedAt: now,
 				})
 				.where(eq(emailSubmissionTable.id, submissionId))
@@ -127,13 +132,14 @@ async function claimSubmission(
 				retryCount: row.retryCount,
 				permanent: true,
 			};
+			const statusMap = applyDeliveryStatusToRecipients(currentStatusMap, null, deliveryStatus);
 			const failed = await tx
 				.update(emailSubmissionTable)
 				.set({
 					status: QUEUE_STATUS_FAILED,
 					nextAttemptAt: null,
 					undoStatus: "final",
-					deliveryStatusJson: deliveryStatus,
+					deliveryStatusJson: statusMap,
 					updatedAt: now,
 				})
 				.where(eq(emailSubmissionTable.id, submissionId))
@@ -178,7 +184,7 @@ async function claimSubmission(
 			threadId: row.threadId,
 			envelopeJson: row.envelopeJson,
 			retryCount: row.retryCount,
-			deliveryStatus: row.deliveryStatus,
+			deliveryStatus: currentStatusMap,
 			rawBlobSha256: row.rawBlobSha256,
 			size: row.size,
 		};
@@ -188,7 +194,7 @@ async function claimSubmission(
 async function handleSendResult(
 	db: ReturnType<typeof getDB>,
 	submissionId: string,
-	result: DeliveryStatusRecord,
+	statusMap: Record<string, DeliveryStatusRecord>,
 	queueStatus: string,
 	nextAttemptAt: Date | null,
 	retryCount: number,
@@ -200,7 +206,7 @@ async function handleSendResult(
 			status: queueStatus,
 			nextAttemptAt,
 			retryCount,
-			deliveryStatusJson: result,
+			deliveryStatusJson: statusMap,
 			updatedAt: now,
 		})
 		.where(eq(emailSubmissionTable.id, submissionId))
@@ -241,7 +247,16 @@ async function sendClaimedSubmission(
 			retryCount: claimed.retryCount,
 			permanent: true,
 		};
-		await handleSendResult(db, claimed.id, deliveryStatus, QUEUE_STATUS_FAILED, null, claimed.retryCount, now);
+		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, null, deliveryStatus);
+		await handleSendResult(
+			db,
+			claimed.id,
+			statusMap,
+			QUEUE_STATUS_FAILED,
+			null,
+			claimed.retryCount,
+			now
+		);
 		return;
 	}
 
@@ -271,10 +286,11 @@ async function sendClaimedSubmission(
 				retryCount: nextRetryCount,
 				permanent: false,
 			};
+			const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, deliveryStatus);
 			await handleSendResult(
 				db,
 				claimed.id,
-				deliveryStatus,
+				statusMap,
 				QUEUE_STATUS_FAILED,
 				null,
 				nextRetryCount,
@@ -291,10 +307,11 @@ async function sendClaimedSubmission(
 			permanent: false,
 		};
 		const nextAttempt = computeNextAttemptDate(nextRetryCount, now);
+		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, deliveryStatus);
 		await handleSendResult(
 			db,
 			claimed.id,
-			deliveryStatus,
+			statusMap,
 			QUEUE_STATUS_PENDING,
 			nextAttempt,
 			nextRetryCount,
@@ -324,12 +341,14 @@ async function sendClaimedSubmission(
 	};
 
 	if (deliveryOutcome.status === "accepted") {
-		await handleSendResult(db, claimed.id, mappedStatus, QUEUE_STATUS_SENT, null, nextRetryCount, now);
+		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, mappedStatus);
+		await handleSendResult(db, claimed.id, statusMap, QUEUE_STATUS_SENT, null, nextRetryCount, now);
 		return;
 	}
 
 	if (deliveryOutcome.status === "rejected" && deliveryOutcome.permanent) {
-		await handleSendResult(db, claimed.id, mappedStatus, QUEUE_STATUS_FAILED, null, nextRetryCount, now);
+		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, mappedStatus);
+		await handleSendResult(db, claimed.id, statusMap, QUEUE_STATUS_FAILED, null, nextRetryCount, now);
 		return;
 	}
 
@@ -340,7 +359,8 @@ async function sendClaimedSubmission(
 			status: "failed",
 			permanent: mappedStatus.permanent ?? false,
 		};
-		await handleSendResult(db, claimed.id, finalStatus, QUEUE_STATUS_FAILED, null, nextRetryCount, now);
+		const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, finalStatus);
+		await handleSendResult(db, claimed.id, statusMap, QUEUE_STATUS_FAILED, null, nextRetryCount, now);
 		return;
 	}
 
@@ -349,10 +369,11 @@ async function sendClaimedSubmission(
 		...mappedStatus,
 		status: "pending",
 	};
+	const statusMap = applyDeliveryStatusToRecipients(claimed.deliveryStatus, envelope.rcptTo, pendingStatus);
 	await handleSendResult(
 		db,
 		claimed.id,
-		pendingStatus,
+		statusMap,
 		QUEUE_STATUS_PENDING,
 		nextAttempt,
 		nextRetryCount,

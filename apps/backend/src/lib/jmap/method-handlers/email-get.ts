@@ -26,7 +26,7 @@ import {
 import { JMAP_CONSTRAINTS, JMAP_CORE } from "../constants";
 import { JMAPHonoAppEnv } from "../middlewares";
 import { JmapMethodResponse } from "../types";
-import { ensureAccountAccess, getAccountState } from "../utils";
+import { dedupeIds, ensureAccountAccess, getAccountState } from "../utils";
 import { parseRawEmail, type StoredBodyPart } from "../../mail/ingest";
 
 const INGEST_BODY_CACHE_LIMIT = 256 * 1024;
@@ -97,12 +97,21 @@ export async function handleEmailGet(
 	}
 	const state = await getAccountState(db, effectiveAccountId, "Email");
 
-	const idsArg = args.ids as string[] | null | undefined;
+	const idsArg = args.ids as unknown;
 	const shouldStreamDefaultList = idsArg === null || idsArg === undefined;
-	if (!shouldStreamDefaultList && !Array.isArray(idsArg)) {
-		return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+	let providedIds: string[] | null = null;
+	let requestedIdCount = 0;
+	if (!shouldStreamDefaultList) {
+		if (!Array.isArray(idsArg)) {
+			return ["error", { type: "invalidArguments", description: "ids must be an array or null" }, tag];
+		}
+		const cleanedIds = idsArg.filter((value): value is string => typeof value === "string" && value.length > 0);
+		if (cleanedIds.length !== idsArg.length) {
+			return ["error", { type: "invalidArguments", description: "ids must be non-empty strings" }, tag];
+		}
+		requestedIdCount = cleanedIds.length;
+		providedIds = dedupeIds(cleanedIds);
 	}
-	const providedIds = Array.isArray(idsArg) ? idsArg : null;
 	const maxObjectsLimit = JMAP_CONSTRAINTS[JMAP_CORE].maxObjectsInGet ?? 256;
 
 	let idsToFetch: string[] = [];
@@ -112,23 +121,33 @@ export async function handleEmailGet(
 			.from(accountMessageTable)
 			.where(and(eq(accountMessageTable.accountId, effectiveAccountId), eq(accountMessageTable.isDeleted, false)))
 			.orderBy(desc(accountMessageTable.internalDate), desc(accountMessageTable.id))
-			.limit(maxObjectsLimit);
+			.limit(maxObjectsLimit + 1);
+		if (defaultRows.length > maxObjectsLimit) {
+			return [
+				"error",
+				{
+					type: "requestTooLarge",
+					description: `Too many Email records to return when ids is null (max ${maxObjectsLimit})`,
+				},
+				tag,
+			];
+		}
 		idsToFetch = defaultRows.map((row) => row.id);
 	} else {
 		if (!providedIds || providedIds.length === 0) {
 			return ["Email/get", { accountId: effectiveAccountId, state, list: [], notFound: [] }, tag];
 		}
-		if (providedIds.length > maxObjectsLimit) {
+		if (requestedIdCount > maxObjectsLimit) {
 			return [
 				"error",
 				{
-					type: "limitExceeded",
+					type: "requestTooLarge",
 					description: `ids length exceeds maxObjectsInGet (${maxObjectsLimit})`,
 				},
 				tag,
 			];
 		}
-		idsToFetch = providedIds.slice(0, maxObjectsLimit);
+		idsToFetch = providedIds;
 	}
 
 	if (!idsToFetch.length) {

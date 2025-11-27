@@ -11,6 +11,7 @@ export type JMAPHonoAppEnv = {
 		user: typeof userTable.$inferSelect;
 		accountId: string;
 		creationReferences?: CreationReferenceMap;
+		requestProperties?: Record<string, unknown>;
 	};
 };
 
