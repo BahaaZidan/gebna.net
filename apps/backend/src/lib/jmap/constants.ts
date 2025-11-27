@@ -35,7 +35,7 @@ export const JMAP_CONSTRAINTS = {
 		maxSizeAttachmentsPerEmail: 18 * 1024 * 1024, // match maxSizeUpload
 
 		// You can add more later if your implementation supports them.
-		emailsListSortOptions: ["receivedAt", "sentAt", "size"],
+		emailQuerySortOptions: ["receivedAt", "sentAt", "size"],
 	},
 
 	[JMAP_SUBMISSION]: {},

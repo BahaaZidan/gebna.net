@@ -413,12 +413,20 @@ async function runQuery(
 	let start = options.position;
 
 	if (options.anchor) {
-		const rowNumberExpr = sql<number>`row_number() over (ORDER BY ${orderForWindow}) - 1`.as("rowIndex");
-		const anchorRows = await db
-			.select({ rowIndex: rowNumberExpr })
+		const orderedEmails = db
+			.select({
+				emailId: accountMessageTable.id,
+				rowIndex: sql<number>`row_number() over (ORDER BY ${orderForWindow}) - 1`.as("rowIndex"),
+			})
 			.from(accountMessageTable)
 			.innerJoin(messageTable, eq(accountMessageTable.messageId, messageTable.id))
-			.where(and(filterWhere, eq(accountMessageTable.id, options.anchor.id)))
+			.where(filterWhere)
+			.as("ordered_emails");
+
+		const anchorRows = await db
+			.select({ rowIndex: orderedEmails.rowIndex })
+			.from(orderedEmails)
+			.where(eq(orderedEmails.emailId, options.anchor.id))
 			.limit(1);
 
 		if (!anchorRows.length) {

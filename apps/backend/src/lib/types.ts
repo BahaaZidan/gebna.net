@@ -1,9 +1,7 @@
 export type DeliveryStatusRecord = {
-	status: "pending" | "accepted" | "rejected" | "failed";
+	smtpReply: string | null;
+	delivered: "queued" | "yes" | "no" | "unknown";
+	displayed: "unknown" | "yes";
 	providerMessageId?: string;
 	providerRequestId?: string;
-	reason?: string;
-	lastAttempt: number; // unix timestamp
-	retryCount: number;
-	permanent?: boolean;
 };
