@@ -14,28 +14,30 @@ import {
 	JMAP_SUBMISSION,
 	JMAP_VACATION,
 } from "./lib/jmap/constants";
+import { handleBlobCopy, handleBlobGet, handleBlobLookup } from "./lib/jmap/method-handlers/blob";
 import { handleEmailChanges } from "./lib/jmap/method-handlers/email-changes";
+import { handleEmailCopy } from "./lib/jmap/method-handlers/email-copy";
 import { handleEmailGet } from "./lib/jmap/method-handlers/email-get";
+import { handleEmailImport } from "./lib/jmap/method-handlers/email-import";
+import { handleEmailParse } from "./lib/jmap/method-handlers/email-parse";
 import { handleEmailQuery } from "./lib/jmap/method-handlers/email-query";
 import { handleEmailQueryChanges } from "./lib/jmap/method-handlers/email-query-changes";
 import { handleEmailSet } from "./lib/jmap/method-handlers/email-set";
-import { handleEmailCopy } from "./lib/jmap/method-handlers/email-copy";
-import { handleEmailImport } from "./lib/jmap/method-handlers/email-import";
-import { handleEmailParse } from "./lib/jmap/method-handlers/email-parse";
-import { handleEmailSubmissionSet } from "./lib/jmap/method-handlers/email-submission-set";
-import { handleEmailSubmissionGet } from "./lib/jmap/method-handlers/email-submission-get";
 import { handleEmailSubmissionChanges } from "./lib/jmap/method-handlers/email-submission-changes";
+import { handleEmailSubmissionGet } from "./lib/jmap/method-handlers/email-submission-get";
 import { handleEmailSubmissionQuery } from "./lib/jmap/method-handlers/email-submission-query";
 import { handleEmailSubmissionQueryChanges } from "./lib/jmap/method-handlers/email-submission-query-changes";
+import { handleEmailSubmissionSet } from "./lib/jmap/method-handlers/email-submission-set";
+import { handleIdentityChanges } from "./lib/jmap/method-handlers/identity-changes";
 import { handleIdentityGet } from "./lib/jmap/method-handlers/identity-get";
 import { handleIdentitySet } from "./lib/jmap/method-handlers/identity-set";
-import { handleIdentityChanges } from "./lib/jmap/method-handlers/identity-changes";
-import { handlePushSubscriptionGet } from "./lib/jmap/method-handlers/push-subscription-get";
-import { handlePushSubscriptionSet } from "./lib/jmap/method-handlers/push-subscription-set";
 import { handleMailboxChanges } from "./lib/jmap/method-handlers/mailbox-changes";
 import { handleMailboxGet } from "./lib/jmap/method-handlers/mailbox-get";
 import { handleMailboxQuery } from "./lib/jmap/method-handlers/mailbox-query";
 import { handleMailboxQueryChanges } from "./lib/jmap/method-handlers/mailbox-query-changes";
+import { handleMailboxSet } from "./lib/jmap/method-handlers/mailbox-set";
+import { handlePushSubscriptionGet } from "./lib/jmap/method-handlers/push-subscription-get";
+import { handlePushSubscriptionSet } from "./lib/jmap/method-handlers/push-subscription-set";
 import { handleThreadChanges } from "./lib/jmap/method-handlers/thread-changes";
 import { handleThreadGet } from "./lib/jmap/method-handlers/thread-get";
 import { handleVacationResponseGet } from "./lib/jmap/method-handlers/vacation-get";
@@ -47,8 +49,6 @@ import {
 	JmapMethodResponse,
 	JmapStateType,
 } from "./lib/jmap/types";
-import { handleMailboxSet } from "./lib/jmap/method-handlers/mailbox-set";
-import { handleBlobCopy, handleBlobGet, handleBlobLookup } from "./lib/jmap/method-handlers/blob";
 import { sha256HexFromArrayBuffer } from "./lib/utils";
 
 const SUPPORTED_CAPABILITIES = new Set([
@@ -98,7 +98,9 @@ type JmapHandler = (
 	tag: string
 ) => Promise<JmapHandlerResult>;
 
-function parseJmapRequest(body: unknown): { success: true; value: JmapRequest } | { success: false; error: string } {
+function parseJmapRequest(
+	body: unknown
+): { success: true; value: JmapRequest } | { success: false; error: string } {
 	if (!body || typeof body !== "object" || Array.isArray(body)) {
 		return { success: false, error: "Request body must be a JSON object" };
 	}
@@ -114,7 +116,10 @@ function parseJmapRequest(body: unknown): { success: true; value: JmapRequest } 
 	const normalizedCalls: JmapMethodCall[] = [];
 	for (const [index, call] of methodCalls.entries()) {
 		if (!Array.isArray(call) || call.length !== 3) {
-			return { success: false, error: `methodCalls[${index}] must be a tuple of [name, args, tag]` };
+			return {
+				success: false,
+				error: `methodCalls[${index}] must be a tuple of [name, args, tag]`,
+			};
 		}
 		const [name, args, tag] = call;
 		if (typeof name !== "string" || typeof tag !== "string") {
@@ -127,7 +132,11 @@ function parseJmapRequest(body: unknown): { success: true; value: JmapRequest } 
 	}
 	let createdIds: Record<string, string> | undefined;
 	if (record.createdIds !== undefined) {
-		if (!record.createdIds || typeof record.createdIds !== "object" || Array.isArray(record.createdIds)) {
+		if (
+			!record.createdIds ||
+			typeof record.createdIds !== "object" ||
+			Array.isArray(record.createdIds)
+		) {
 			return { success: false, error: "createdIds must be an object when present" };
 		}
 		const map: Record<string, string> = {};
@@ -147,7 +156,10 @@ function parseJmapRequest(body: unknown): { success: true; value: JmapRequest } 
 		extraProperties[key] = value;
 	}
 
-	return { success: true, value: { using, methodCalls: normalizedCalls, createdIds, extraProperties } };
+	return {
+		success: true,
+		value: { using, methodCalls: normalizedCalls, createdIds, extraProperties },
+	};
 }
 
 async function getGlobalAccountState(
@@ -186,7 +198,8 @@ async function handleSession(c: Context<JMAPHonoAppEnv>) {
 					[JMAP_VACATION]: buildVacationAccountCapability(),
 					[JMAP_BLOB]: JMAP_BLOB_ACCOUNT_CAPABILITY,
 					[JMAP_PUSH]: {
-						maxSubscriptionsPerAccount: JMAP_CONSTRAINTS[JMAP_PUSH]?.maxSubscriptionsPerAccount ?? 0,
+						maxSubscriptionsPerAccount:
+							JMAP_CONSTRAINTS[JMAP_PUSH]?.maxSubscriptionsPerAccount ?? 0,
 					},
 				},
 			},
@@ -327,10 +340,7 @@ function resolveJsonPointer(payload: unknown, pointer: string): unknown {
 	if (!pointer.startsWith("/")) {
 		throw new ResultReferenceError(`Invalid result reference path ${pointer}`);
 	}
-	const segments = pointer
-		.split("/")
-		.slice(1)
-		.map(decodePointerToken);
+	const segments = pointer.split("/").slice(1).map(decodePointerToken);
 	let current: unknown = payload;
 	for (const segment of segments) {
 		if (Array.isArray(current)) {
@@ -516,7 +526,9 @@ async function handleJmap(c: Context<JMAPHonoAppEnv>) {
 			}
 
 			const requiredCapabilities = METHOD_CAPABILITIES[name] ?? [];
-			const missingCapability = requiredCapabilities.find((capability) => !requestedCapabilities.has(capability));
+			const missingCapability = requiredCapabilities.find(
+				(capability) => !requestedCapabilities.has(capability)
+			);
 			if (missingCapability) {
 				methodResponses.push([
 					"error",
@@ -606,7 +618,8 @@ async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respons
 	const contentTypeHeader = c.req.header("Content-Type") ?? "application/octet-stream";
 	const blobId = await sha256HexFromArrayBuffer(body);
 	const sanitizedHeaderType =
-		sanitizeMimeType(contentTypeHeader.split(";")[0] ?? contentTypeHeader) ?? "application/octet-stream";
+		sanitizeMimeType(contentTypeHeader.split(";")[0] ?? contentTypeHeader) ??
+		"application/octet-stream";
 	const typeQuery = c.req.query("type");
 	const requestedType = typeQuery ? sanitizeMimeType(typeQuery) : null;
 	const storedContentType = requestedType ?? sanitizedHeaderType;
@@ -619,7 +632,9 @@ async function handleBlobUploadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respons
 	const accountHasBlob = await db
 		.select({ sha256: accountBlobTable.sha256 })
 		.from(accountBlobTable)
-		.where(and(eq(accountBlobTable.accountId, effectiveAccountId), eq(accountBlobTable.sha256, blobId)))
+		.where(
+			and(eq(accountBlobTable.accountId, effectiveAccountId), eq(accountBlobTable.sha256, blobId))
+		)
 		.limit(1);
 
 	if (!accountHasBlob.length) {
@@ -734,7 +749,9 @@ async function handleBlobDownloadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respo
 		})
 		.from(accountBlobTable)
 		.innerJoin(blobTable, eq(blobTable.sha256, accountBlobTable.sha256))
-		.where(and(eq(accountBlobTable.accountId, effectiveAccountId), eq(accountBlobTable.sha256, blobId)))
+		.where(
+			and(eq(accountBlobTable.accountId, effectiveAccountId), eq(accountBlobTable.sha256, blobId))
+		)
 		.limit(1);
 
 	if (!row) {
@@ -748,7 +765,13 @@ async function handleBlobDownloadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respo
 
 	const etag = `"${blobId}"`;
 	const ifNoneMatch = c.req.header("If-None-Match");
-	if (ifNoneMatch && ifNoneMatch.split(",").map((v) => v.trim()).includes(etag)) {
+	if (
+		ifNoneMatch &&
+		ifNoneMatch
+			.split(",")
+			.map((v) => v.trim())
+			.includes(etag)
+	) {
 		return new Response(null, {
 			status: 304,
 			headers: {
@@ -758,15 +781,12 @@ async function handleBlobDownloadHttp(c: Context<JMAPHonoAppEnv>): Promise<Respo
 		});
 	}
 
-	const resolvedName =
-		typeof row.name === "string" && row.name.length > 0 ? row.name : safeName;
+	const resolvedName = typeof row.name === "string" && row.name.length > 0 ? row.name : safeName;
 	const effectiveName = sanitizeFileName(resolvedName);
 	const resolvedContentType =
 		overrideType ??
 		(row.type ? sanitizeMimeType(row.type) : null) ??
-		(object.httpMetadata?.contentType
-			? sanitizeMimeType(object.httpMetadata.contentType)
-			: null) ??
+		(object.httpMetadata?.contentType ? sanitizeMimeType(object.httpMetadata.contentType) : null) ??
 		"application/octet-stream";
 
 	const headers: Record<string, string> = {
@@ -931,7 +951,10 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 			};
 
 			const sendEvent = () => {
-				const payload = JSON.stringify({ accountId: effectiveAccountId, changed: { ...changeMap } });
+				const payload = JSON.stringify({
+					accountId: effectiveAccountId,
+					changed: { ...changeMap },
+				});
 				controller.enqueue(encoder.encode(`event: state\ndata: ${payload}\n\n`));
 				scheduleIdleClose();
 			};
@@ -1032,11 +1055,13 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 
 export const jmapApp = new Hono<JMAPHonoAppEnv>();
 
-jmapApp.use(requireJWT);
-jmapApp.use(attachUserFromJwt);
-
 jmapApp.get("/.well-known/jmap", handleSession);
-jmapApp.post("/jmap", handleJmap);
-jmapApp.post("/jmap/upload/:accountId", handleBlobUploadHttp);
-jmapApp.get("/jmap/download/:accountId/:blobId/:name", handleBlobDownloadHttp);
-jmapApp.get("/jmap/event-source/:accountId", handleEventSource);
+jmapApp.post("/jmap", requireJWT, attachUserFromJwt, handleJmap);
+jmapApp.post("/jmap/upload/:accountId", requireJWT, attachUserFromJwt, handleBlobUploadHttp);
+jmapApp.get(
+	"/jmap/download/:accountId/:blobId/:name",
+	requireJWT,
+	attachUserFromJwt,
+	handleBlobDownloadHttp
+);
+jmapApp.get("/jmap/event-source/:accountId", requireJWT, attachUserFromJwt, handleEventSource);
