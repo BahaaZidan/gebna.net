@@ -20,7 +20,6 @@ app.route("/ses", sesWebhookApp);
 
 app.get("/lolo", (c) => {
 	const lolo = { lolo: "lolo" };
-	console.log(c.env);
 
 	return c.json(lolo);
 });
