@@ -1,14 +1,19 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { Hono } from "hono";
+import { logger } from "hono/logger";
 
 import { auth } from "./auth.routes";
 import { email } from "./email-inbound";
 import { jmapApp } from "./jmap.routes";
-import { cleanupOrphanedBlobsForEnv, enforceMailboxRoleConstraintsForEnv } from "./lib/maintenance/upload-cleanup";
+import {
+	cleanupOrphanedBlobsForEnv,
+	enforceMailboxRoleConstraintsForEnv,
+} from "./lib/maintenance/upload-cleanup";
 import { processEmailSubmissionQueue } from "./lib/outbound/submission-queue";
 import { sesWebhookApp } from "./ses-webhook.routes";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
+app.use(logger());
 app.route("/auth", auth);
 app.route("/", jmapApp);
 app.route("/ses", sesWebhookApp);
