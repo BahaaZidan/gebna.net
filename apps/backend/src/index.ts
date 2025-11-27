@@ -5,6 +5,7 @@ import { logger } from "hono/logger";
 import { auth } from "./auth.routes";
 import { email } from "./email-inbound";
 import { jmapApp } from "./jmap.routes";
+import { oidcApp } from "./oidc.routes";
 import {
 	cleanupOrphanedBlobsForEnv,
 	enforceMailboxRoleConstraintsForEnv,
@@ -16,6 +17,7 @@ const app = new Hono<{ Bindings: CloudflareBindings }>();
 app.use(logger());
 app.route("/auth", auth);
 app.route("/", jmapApp);
+app.route("/", oidcApp);
 app.route("/ses", sesWebhookApp);
 
 app.get("/lolo", (c) => {

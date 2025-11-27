@@ -22,6 +22,8 @@ declare namespace Cloudflare {
 		SES_TOPIC_ARN: string;
 		MAIL_UNDO_WINDOW_SECONDS: string;
 		JMAP_UPLOAD_ACCOUNT_LIMIT_BYTES: string;
+		OIDC_PRIVATE_KEY: string;
+		OIDC_JWKS: string;
 	}
 }
 interface CloudflareBindings extends Cloudflare.Env {}

@@ -1,8 +1,9 @@
 import type { MiddlewareHandler } from "hono";
-import { jwt, type JwtVariables } from "hono/jwt";
+import { type JwtVariables, verify as verifyJwt } from "hono/jwt";
 
-import { getDB } from "../../db";
 import { userTable } from "../../db/schema";
+import { loadUserWithPrimaryAccount } from "../auth/session";
+import { verifyAccessToken } from "../oidc/verify";
 import type { CreationReferenceMap } from "./types";
 
 export type JMAPHonoAppEnv = {
@@ -15,13 +16,26 @@ export type JMAPHonoAppEnv = {
 	};
 };
 
-export const requireJWT: MiddlewareHandler<JMAPHonoAppEnv> = (c, next) => {
-	const requireAuth = jwt({
-		secret: c.env.JWT_SECRET,
-		alg: "HS256",
-	});
+export const requireJWT: MiddlewareHandler<JMAPHonoAppEnv> = async (c, next) => {
+	const header = c.req.header("Authorization");
+	if (!header?.startsWith("Bearer ")) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+	const token = header.slice("Bearer ".length).trim();
 
-	return requireAuth(c, next);
+	const legacyPayload = await verifyLegacyJwt(c.env, token);
+	if (legacyPayload) {
+		c.set("jwtPayload", legacyPayload);
+		return next();
+	}
+
+	const oidcPayload = await verifyOidcBearer(c.env, token);
+	if (oidcPayload) {
+		c.set("jwtPayload", oidcPayload);
+		return next();
+	}
+
+	return c.json({ error: "Unauthorized" }, 401);
 };
 
 export const attachUserFromJwt: MiddlewareHandler<JMAPHonoAppEnv> = async (c, next) => {
@@ -29,19 +43,30 @@ export const attachUserFromJwt: MiddlewareHandler<JMAPHonoAppEnv> = async (c, ne
 
 	if (!payload || typeof payload.sub !== "string") return c.json({ error: "Unauthorized" }, 401);
 
-	const db = getDB(c.env);
-	const user = await db.query.userTable.findFirst({
-		where: (t, { eq }) => eq(t.id, payload.sub),
-	});
-	if (!user) return c.json({ error: "Unauthorized" }, 401);
-	c.set("user", user);
-
-	const account = await db.query.accountTable.findFirst({
-		columns: { id: true },
-		where: (t, { eq }) => eq(t.userId, user.id),
-	});
-	if (!account) return c.json({ error: "Unauthorized" }, 401);
-	c.set("accountId", account.id);
-
+	const pair = await loadUserWithPrimaryAccount(c.env, payload.sub);
+	if (!pair) return c.json({ error: "Unauthorized" }, 401);
+	c.set("user", pair.user);
+	c.set("accountId", pair.account.id);
 	await next();
 };
+
+async function verifyLegacyJwt(env: CloudflareBindings, token: string) {
+	try {
+		return await verifyJwt(token, env.JWT_SECRET, "HS256");
+	} catch {
+		return null;
+	}
+}
+
+async function verifyOidcBearer(env: CloudflareBindings, token: string) {
+	try {
+		const payload = await verifyAccessToken(env, token);
+		const scopes = payload.scope.split(" ").filter((entry) => entry);
+		if (!scopes.includes("jmap")) {
+			return null;
+		}
+		return payload;
+	} catch {
+		return null;
+	}
+}

@@ -41,6 +41,77 @@ export const sessionTable = sqliteTable("session", {
 	revoked: integer({ mode: "boolean" }).notNull().default(false),
 });
 
+export const oidcClientTable = sqliteTable(
+	"oidc_client",
+	(t) => ({
+		id: t.text().primaryKey(),
+		clientSecret: t.text(),
+		name: t.text().notNull(),
+		redirectUrisJson: t.text({ mode: "json" }).notNull().$type<string[]>(),
+		allowedScopesJson: t.text({ mode: "json" }).notNull().$type<string[]>(),
+		isConfidential: t.integer({ mode: "boolean" }).notNull().default(false),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
+		updatedAt: t.integer({ mode: "timestamp" }),
+	}),
+	(self) => [index("idx_oidc_client_name").on(self.name)]
+);
+
+export const oidcAuthCodeTable = sqliteTable(
+	"oidc_auth_code",
+	(t) => ({
+		code: t.text().primaryKey(),
+		clientId: t
+			.text()
+			.notNull()
+			.references(() => oidcClientTable.id, { onDelete: "cascade" }),
+		userId: t
+			.text()
+			.notNull()
+			.references(() => userTable.id, { onDelete: "cascade" }),
+		redirectUri: t.text().notNull(),
+		scope: t.text().notNull(),
+		codeChallenge: t.text().notNull(),
+		codeChallengeMethod: t.text().notNull().default("S256"),
+		nonce: t.text(),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
+		expiresAt: t.integer({ mode: "timestamp" }).notNull(),
+	}),
+	(self) => [
+		index("idx_oidc_auth_code_client").on(self.clientId),
+		index("idx_oidc_auth_code_user").on(self.userId),
+		index("idx_oidc_auth_code_expires").on(self.expiresAt),
+	]
+);
+
+export const oidcTokenTypeValues = ["access", "refresh", "id"] as const;
+export type OidcTokenType = (typeof oidcTokenTypeValues)[number];
+
+export const oidcTokenTable = sqliteTable(
+	"oidc_token",
+	(t) => ({
+		id: t.text().primaryKey(),
+		clientId: t
+			.text()
+			.notNull()
+			.references(() => oidcClientTable.id, { onDelete: "cascade" }),
+		userId: t
+			.text()
+			.notNull()
+			.references(() => userTable.id, { onDelete: "cascade" }),
+		scope: t.text().notNull(),
+		type: t.text().notNull().$type<OidcTokenType>(),
+		expiresAt: t.integer({ mode: "timestamp" }).notNull(),
+		revokedAt: t.integer({ mode: "timestamp" }),
+		createdAt: t.integer({ mode: "timestamp" }).notNull(),
+	}),
+	(self) => [
+		index("idx_oidc_token_client").on(self.clientId),
+		index("idx_oidc_token_user").on(self.userId),
+		index("idx_oidc_token_type").on(self.type),
+		index("idx_oidc_token_expires").on(self.expiresAt),
+	]
+);
+
 export const accountTable = sqliteTable(
 	"account",
 	(t) => ({
