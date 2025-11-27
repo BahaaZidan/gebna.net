@@ -1055,7 +1055,7 @@ async function handleEventSource(c: Context<JMAPHonoAppEnv>): Promise<Response> 
 
 export const jmapApp = new Hono<JMAPHonoAppEnv>();
 
-jmapApp.get("/.well-known/jmap", handleSession);
+jmapApp.get("/.well-known/jmap", requireJWT, attachUserFromJwt, handleSession);
 jmapApp.post("/jmap", requireJWT, attachUserFromJwt, handleJmap);
 jmapApp.post("/jmap/upload/:accountId", requireJWT, attachUserFromJwt, handleBlobUploadHttp);
 jmapApp.get(
