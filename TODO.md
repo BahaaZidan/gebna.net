@@ -1,6 +1,8 @@
 ## TODOs
 
-- [ ] Drop JMAP
+- [x] Drop JMAP (I ended up deleting everything)
+- [x] Better structure
+- [ ] Rework authentication
 - [ ] Setup graphql-yoga with hono
 - [ ] Stitch existing authentication with the graphql-yoga instance
 - [ ] Setup server codegen for GQL typesafety
