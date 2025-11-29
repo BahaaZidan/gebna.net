@@ -1,1 +1,0 @@
-ALTER TABLE `push_subscription` ADD `verifiedAt` integer;

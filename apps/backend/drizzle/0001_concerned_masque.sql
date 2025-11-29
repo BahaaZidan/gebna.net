@@ -1,1 +1,0 @@
-ALTER TABLE `change_log` ADD `op` text NOT NULL;
