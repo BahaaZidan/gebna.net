@@ -23,17 +23,7 @@
 			"bucket_name": "gebna-emails",
 		},
 	],
-	"triggers": {
-		"crons": ["*/1 * * * *", "0 * * * *"],
-	},
 	"vars": {
 		"BASE_API_URL": "https://api.gebna.net",
-		"JMAP_BASE_PATH": "/jmap",
-		"JMAP_UPLOAD_PATH": "/jmap/upload/{accountId}",
-		"JMAP_DOWNLOAD_PATH": "/jmap/download/{accountId}/{blobId}/{name}?type={type}",
-		"AWS_SES_REGION": "eu-central-1",
-		"MAIL_UNDO_WINDOW_SECONDS": "30",
-		"JMAP_UPLOAD_ACCOUNT_LIMIT_BYTES": "536870912",
-		"SES_TOPIC_ARN": "change-me",
 	},
 }
