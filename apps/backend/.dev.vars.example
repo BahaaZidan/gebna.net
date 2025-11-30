@@ -1,3 +1,4 @@
 BASE_API_URL="https://api.dev-gebna.net"
 TURSO_DATABASE_URL="http://127.0.0.1:8080"
 TURSO_AUTH_TOKEN=""
+JWT_SECRET="openssl rand -hex 32"
