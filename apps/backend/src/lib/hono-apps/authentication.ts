@@ -1,7 +1,7 @@
 import { v } from "@gebna/validation";
 import { loginSchema, registerSchema } from "@gebna/validation/auth";
-import { encodeBase64url, decodeBase64url } from "@oslojs/encoding";
-import { argon2Verify, argon2id, setWASMModules } from "argon2-wasm-edge";
+import { decodeBase64url, encodeBase64url } from "@oslojs/encoding";
+import { argon2id, argon2Verify, setWASMModules } from "argon2-wasm-edge";
 // @ts-expect-error - wasm imports are handled by the bundler for workers
 import argon2WASM from "argon2-wasm-edge/wasm/argon2.wasm";
 // @ts-expect-error - wasm imports are handled by the bundler for workers
@@ -11,6 +11,7 @@ import { Hono, type Context } from "hono";
 import { ulid } from "ulid";
 
 import { getDB, schema } from "../db";
+import { mailboxTable } from "../db/schema";
 
 type JwtPayload = {
 	sub: string;
@@ -69,10 +70,23 @@ authenticationApp.post("/register", async (c) => {
 	const userId = ulid();
 
 	try {
-		await db.insert(schema.userTable).values({
-			id: userId,
-			username: parsed.data.username,
-			passwordHash,
+		await db.transaction(async (tx) => {
+			const [newUser] = await tx
+				.insert(schema.userTable)
+				.values({
+					id: userId,
+					username: parsed.data.username,
+					passwordHash,
+				})
+				.returning();
+
+			await tx.insert(mailboxTable).values([
+				{ userId: newUser.id, type: "screener", name: "Screener", id: ulid() },
+				{ userId: newUser.id, type: "important", name: "important", id: ulid() },
+				{ userId: newUser.id, type: "news", name: "News", id: ulid() },
+				{ userId: newUser.id, type: "transactional", name: "Transactional", id: ulid() },
+				{ userId: newUser.id, type: "trash", name: "Trash", id: ulid() },
+			]);
 		});
 	} catch (error) {
 		if (isUniqueConstraintError(error)) {
@@ -230,14 +244,10 @@ authenticationApp.get("/me", async (c) => {
 	});
 });
 
-async function readBody<
-	TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>
->(
+async function readBody<TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>>(
 	c: AppContext,
 	schema: TSchema
-): Promise<
-	{ ok: true; data: v.InferOutput<TSchema> } | { ok: false; res: Response }
-> {
+): Promise<{ ok: true; data: v.InferOutput<TSchema> } | { ok: false; res: Response }> {
 	let body: unknown;
 	try {
 		body = await c.req.json();
@@ -518,10 +528,13 @@ function getSigningKey(secret: string) {
 	if (!keyCache.has(secret)) {
 		keyCache.set(
 			secret,
-			crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
-				"sign",
-				"verify",
-			])
+			crypto.subtle.importKey(
+				"raw",
+				encoder.encode(secret),
+				{ name: "HMAC", hash: "SHA-256" },
+				false,
+				["sign", "verify"]
+			)
 		);
 	}
 	return keyCache.get(secret)!;
