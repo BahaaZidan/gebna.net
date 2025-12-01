@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
 import PostalMime, { type Email } from "postal-mime";
 import { ulid } from "ulid";
+import { filterXSS } from "xss";
 
 import { getDB, TransactionInstance } from "../lib/db";
 import { messageTable, threadTable } from "../lib/db/schema";
+import { increment } from "../lib/db/utils";
 import { extractLocalPart } from "../lib/utils/email";
 
 export async function emailHandler(
@@ -33,7 +35,7 @@ export async function emailHandler(
 
 		const parsedEmail = await PostalMime.parse(envelope.raw);
 
-		const createdThread = await findOrCreateThread({
+		const thread = await findOrCreateThread({
 			tx,
 			envelope,
 			parsedEmail,
@@ -46,16 +48,16 @@ export async function emailHandler(
 			from: envelope.from,
 			mailboxId: targetMailboxId,
 			recipientId: recipientUser.id,
-			threadId: createdThread.id,
+			threadId: thread.id,
 			to: parsedEmail.to?.map((a) => a.address).filter(Boolean),
 			cc: parsedEmail.cc?.map((a) => a.address).filter(Boolean),
 			bcc: parsedEmail.bcc?.map((a) => a.address).filter(Boolean),
 			subject: parsedEmail.subject,
 			messageId: parsedEmail.messageId,
-			references: parsedEmail.references,
 			replyTo: parsedEmail.replyTo?.map((a) => a.address).filter(Boolean),
+			references: parsedEmail.references,
 			inReplyTo: parsedEmail.inReplyTo,
-			bodyHTML: parsedEmail.html,
+			bodyHTML: parsedEmail.html ? filterXSS(parsedEmail.html) : null,
 			bodyText: parsedEmail.text,
 			snippet: parsedEmail.text?.slice(0, 50),
 		});
@@ -76,12 +78,12 @@ async function findOrCreateThread({
 	parsedEmail: Email;
 }) {
 	const replyThread = await getThreadFromMessageId(tx, recipientId, parsedEmail.inReplyTo);
-	if (replyThread) return bumpThread(tx, replyThread);
+	if (replyThread) return incrementThreadUnreadCount(tx, replyThread);
 
 	const referenceIds = parseReferences(parsedEmail.references);
 	for (const referenceId of referenceIds) {
 		const referenceThread = await getThreadFromMessageId(tx, recipientId, referenceId);
-		if (referenceThread) return bumpThread(tx, referenceThread);
+		if (referenceThread) return incrementThreadUnreadCount(tx, referenceThread);
 	}
 
 	const [createdThread] = await tx
@@ -117,24 +119,25 @@ async function getThreadFromMessageId(
 ) {
 	if (!messageId) return null;
 
-	const parentMessage = await tx.query.messageTable.findFirst({
+	const message = await tx.query.messageTable.findFirst({
+		columns: { threadId: true },
 		where: (t, { eq, and }) => and(eq(t.recipientId, recipientId), eq(t.messageId, messageId)),
 	});
-	if (!parentMessage) return null;
+	if (!message) return null;
 
 	return tx.query.threadTable.findFirst({
-		where: (t, { eq, and }) =>
-			and(eq(t.id, parentMessage.threadId), eq(t.recipientId, recipientId)),
+		where: (t, { eq, and }) => and(eq(t.id, message.threadId), eq(t.recipientId, recipientId)),
 	});
 }
 
-async function bumpThread(tx: TransactionInstance, thread: typeof threadTable.$inferSelect) {
-	const unreadCount = thread.unreadCount + 1;
-
+async function incrementThreadUnreadCount(
+	tx: TransactionInstance,
+	thread: typeof threadTable.$inferSelect
+) {
 	await tx
 		.update(threadTable)
-		.set({ unreadCount, lastMessageAt: new Date() })
+		.set({ unreadCount: increment(threadTable.unreadCount), lastMessageAt: new Date() })
 		.where(eq(threadTable.id, thread.id));
 
-	return { ...thread, unreadCount, lastMessageAt: new Date() };
+	return { ...thread, unreadCount: thread.unreadCount + 1, lastMessageAt: new Date() };
 }

@@ -82,7 +82,7 @@ authenticationApp.post("/register", async (c) => {
 
 			await tx.insert(mailboxTable).values([
 				{ userId: newUser.id, type: "screener", name: "Screener", id: ulid() },
-				{ userId: newUser.id, type: "important", name: "important", id: ulid() },
+				{ userId: newUser.id, type: "important", name: "Important", id: ulid() },
 				{ userId: newUser.id, type: "news", name: "News", id: ulid() },
 				{ userId: newUser.id, type: "transactional", name: "Transactional", id: ulid() },
 				{ userId: newUser.id, type: "trash", name: "Trash", id: ulid() },
