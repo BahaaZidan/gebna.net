@@ -9,7 +9,7 @@
 - [x] Redo the inbound worker code to reflect the new design
 - [x] Sanitize PostalMime.Email.html
 - [x] Parse PostalMime.Email.references into an array of addresses instead of the raw string
-- [ ] Manually Test inbound again
+- [x] Manually Test inbound again
 - [ ] Attachments
 - [ ] LLM-generate a test script for inbound including threads
 - [ ] Cron to delete emails that has been in a trash mailbox for more than (?) days
