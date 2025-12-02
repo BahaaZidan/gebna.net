@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
-import PostalMime, { type Email } from "postal-mime";
+import PostalMime, { type Attachment, type Email } from "postal-mime";
 import { ulid } from "ulid";
 import { filterXSS } from "xss";
 
 import { getDB, TransactionInstance } from "../lib/db";
-import { messageTable, threadTable } from "../lib/db/schema";
+import { attachmentTable, messageTable, threadTable } from "../lib/db/schema";
 import { increment } from "../lib/db/utils";
 import { extractLocalPart } from "../lib/utils/email";
 
@@ -43,8 +43,10 @@ export async function emailHandler(
 			targetMailboxId,
 		});
 
+		const createdMessageId = ulid();
+
 		await tx.insert(messageTable).values({
-			id: ulid(),
+			id: createdMessageId,
 			from: envelope.from,
 			mailboxId: targetMailboxId,
 			recipientId: recipientUser.id,
@@ -60,7 +62,36 @@ export async function emailHandler(
 			bodyHTML: parsedEmail.html ? filterXSS(parsedEmail.html) : null,
 			bodyText: parsedEmail.text,
 			snippet: parsedEmail.text?.slice(0, 50),
+			sizeInBytes: envelope.rawSize,
 		});
+
+		if (parsedEmail.attachments.length) {
+			const attachmentsToInsert = await Promise.all(
+				parsedEmail.attachments.map(async (attachment) => {
+					const createdAttachmentId = ulid();
+					const storageKey = `u/${recipientUser.id}/m/${createdMessageId}/a/${createdAttachmentId}`;
+
+					const body = getAttachmentBody(attachment);
+					await bindings.R2_EMAILS.put(storageKey, body, {
+						httpMetadata: { contentType: attachment.mimeType },
+					});
+
+					return {
+						id: createdAttachmentId,
+						userId: recipientUser.id,
+						messageId: createdMessageId,
+						storageKey,
+						sizeInBytes: body.byteLength,
+						fileName: attachment.filename,
+						mimeType: attachment.mimeType,
+						disposition: attachment.disposition,
+						contentId: attachment.contentId,
+					};
+				})
+			);
+
+			await tx.insert(attachmentTable).values(attachmentsToInsert);
+		}
 	});
 }
 
@@ -140,4 +171,20 @@ async function incrementThreadUnreadCount(
 		.where(eq(threadTable.id, thread.id));
 
 	return { ...thread, unreadCount: thread.unreadCount + 1, lastMessageAt: new Date() };
+}
+
+const utf8Encoder = new TextEncoder();
+function getAttachmentBody(attachment: Attachment) {
+	const content = attachment.content;
+	if (typeof content === "string") {
+		if (attachment.encoding === "base64") {
+			const binary = atob(content);
+			const bytes = new Uint8Array(binary.length);
+			for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+			return bytes;
+		}
+		return utf8Encoder.encode(content);
+	}
+	if (content instanceof ArrayBuffer) return content;
+	return new Uint8Array();
 }

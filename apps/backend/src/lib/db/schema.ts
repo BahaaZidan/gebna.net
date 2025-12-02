@@ -72,29 +72,33 @@ export const address_userTable = sqliteTable(
 	(self) => [uniqueIndex("address_user_uniq").on(self.address, self.userId)]
 );
 
-export const threadTable = sqliteTable("thread", {
-	/** thread.id based on Headers.messageId if it exists. Otherwise, we make our own id */
-	id: text().primaryKey(),
-	/** The sender. Based on the first envelope */
-	from: text().notNull(),
-	/** The reciever. Based on the first envelope */
-	recipientId: text()
-		.notNull()
-		.references(() => userTable.id, { onDelete: "cascade" }),
-	mailboxId: text()
-		.notNull()
-		.references(() => mailboxTable.id, { onDelete: "cascade" }),
-	unreadCount: integer().notNull().default(1),
-	/** based on the subject of the first message or its' snippet */
-	title: text(),
-	lastMessageAt: integer({ mode: "timestamp" })
-		.notNull()
-		.$default(() => new Date()),
-	/** Headers.messageId of the first message */
-	firstMessageId: text(),
-	/** Headers.subject of the first message */
-	firstMessageSubject: text(),
-});
+export const threadTable = sqliteTable(
+	"thread",
+	{
+		/** thread.id based on Headers.messageId if it exists. Otherwise, we make our own id */
+		id: text().primaryKey(),
+		/** The sender. Based on the first envelope */
+		from: text().notNull(),
+		/** The reciever. Based on the first envelope */
+		recipientId: text()
+			.notNull()
+			.references(() => userTable.id, { onDelete: "cascade" }),
+		mailboxId: text()
+			.notNull()
+			.references(() => mailboxTable.id, { onDelete: "cascade" }),
+		unreadCount: integer().notNull().default(1),
+		/** based on the subject of the first message or its' snippet */
+		title: text(),
+		lastMessageAt: integer({ mode: "timestamp" })
+			.notNull()
+			.$default(() => new Date()),
+		/** Headers.messageId of the first message */
+		firstMessageId: text(),
+		/** Headers.subject of the first message */
+		firstMessageSubject: text(),
+	},
+	(self) => [index("idx_thread_mailbox").on(self.mailboxId)]
+);
 
 export const messageTable = sqliteTable(
 	"message",
@@ -140,6 +144,34 @@ export const messageTable = sqliteTable(
 		bodyText: text(),
 		/** PostalMime.Email.html */
 		bodyHTML: text(),
+		/** Size of the whole Envelope */
+		sizeInBytes: integer().notNull(),
 	},
-	(self) => [uniqueIndex("uniq_message_recipientId_messageId").on(self.recipientId, self.messageId)]
+	(self) => [
+		index("message_thread_idx").on(self.threadId),
+		uniqueIndex("uniq_message_recipientId_messageId").on(self.recipientId, self.messageId),
+	]
+);
+
+export const attachmentTable = sqliteTable(
+	"attachment",
+	{
+		id: text().primaryKey(),
+		messageId: text()
+			.notNull()
+			.references(() => messageTable.id, { onDelete: "cascade" }),
+		userId: text()
+			.notNull()
+			.references(() => userTable.id, { onDelete: "cascade" }),
+		storageKey: text().notNull(),
+		sizeInBytes: integer().notNull(),
+		fileName: text(),
+		mimeType: text(),
+		disposition: text().$type<"attachment" | "inline">(),
+		contentId: text(),
+	},
+	(self) => [
+		index("attachment_messageId_idx").on(self.messageId),
+		index("attachment_userId_idx").on(self.userId),
+	]
 );
