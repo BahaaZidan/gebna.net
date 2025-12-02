@@ -11,14 +11,14 @@
 - [x] Parse PostalMime.Email.references into an array of addresses instead of the raw string
 - [x] Manually Test inbound again
 - [x] Attachments
-- [ ] LLM-generate a test script for inbound including threads
-- [ ] Cron to delete emails that has been in a trash mailbox for more than (?) days
-- [ ] Setup graphql-yoga with hono
-- [ ] Stitch existing authentication with the graphql-yoga instance
+- [x] Setup graphql-yoga with hono
 - [ ] Setup server codegen for GQL typesafety
+- [ ] Stitch existing authentication with the graphql-yoga instance
 - [ ] Query to list threads
 - [ ] Query to view thread(s?) detail
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
+- [ ] LLM-generate a test script for inbound including threads
+- [ ] Cron to delete emails that has been in a trash mailbox for more than (?) days
 
 ### Web UI
 
