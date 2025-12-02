@@ -24,3 +24,5 @@ export type TransactionInstance = SQLiteTransaction<
 	typeof schema,
 	ExtractTablesWithRelations<typeof schema>
 >;
+
+export type UserSelectModel = typeof schema.userTable.$inferSelect;

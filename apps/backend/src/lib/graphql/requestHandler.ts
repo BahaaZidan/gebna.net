@@ -1,27 +1,18 @@
 import { createSchema, createYoga } from "graphql-yoga";
 
-import { getDB } from "../db";
+import { context } from "./context";
+import { resolvers } from "./resolvers";
+import { YogaServerContext } from "./types";
 
-type YogaServerContext = {
-	env: CloudflareBindings;
-	executionCtx: ExecutionContext;
-};
-
-export const schema = createSchema<YogaServerContext>({
-	typeDefs: /* GraphQL */ `
-		type Query {
-			hello: String
-		}
-	`,
-	resolvers: {
-		Query: {
-			hello: () => "world",
-		},
-	},
+const schemaFiles = import.meta.glob("$lib/graphql/schema.graphql", {
+	query: "?raw",
+	import: "default",
+	eager: true,
 });
+const typeDefs = [Object.values(schemaFiles)[0] as string];
 
 export const graphqlRequestHandler = createYoga<YogaServerContext>({
-	schema,
+	schema: createSchema({ typeDefs, resolvers }),
 	graphqlEndpoint: "/graphql",
 	fetchAPI: {
 		fetch: globalThis.fetch,
@@ -29,8 +20,5 @@ export const graphqlRequestHandler = createYoga<YogaServerContext>({
 		Response,
 		Headers,
 	},
-	context: (event) => {
-		const db = getDB(event.env);
-		return { ...event, db };
-	},
+	context,
 });
