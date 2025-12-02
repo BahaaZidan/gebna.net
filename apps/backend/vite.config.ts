@@ -1,10 +1,23 @@
+import path from "path";
 import { cloudflare } from "@cloudflare/vite-plugin";
-import { defineConfig } from "vite";
+import { defineConfig, Plugin } from "vite";
+import { watchAndRun } from "vite-plugin-watch-and-run";
 
 const libAlias = new URL("./src/lib", import.meta.url).pathname;
 
 export default defineConfig({
-	plugins: [cloudflare()],
+	plugins: [
+		cloudflare(),
+		watchAndRun([
+			{
+				name: "graphql:generate",
+				watch: [path.resolve("src/lib/graphql/schema.graphql"), path.resolve("graphql.config.ts")],
+				run: "pnpm graphql:generate",
+				delay: 10,
+				logs: ["streamError"],
+			},
+		]) as Plugin[],
+	],
 	resolve: {
 		alias: {
 			"@whatwg-node/fetch": "@whatwg-node/fetch/dist/esm-ponyfill.js",
