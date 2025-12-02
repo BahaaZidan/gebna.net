@@ -504,8 +504,9 @@ async function verifyJwt(token: string, secret: string): Promise<JwtPayload> {
 	const data = `${headerB64}.${payloadB64}`;
 
 	const key = await getSigningKey(secret);
-	const signature = decodeBase64url(sigB64);
-	const ok = await crypto.subtle.verify("HMAC", key, signature, encoder.encode(data));
+	const signatureBytes = decodeBase64url(sigB64);
+	const signatureBuffer = new Uint8Array(signatureBytes).buffer;
+	const ok = await crypto.subtle.verify("HMAC", key, signatureBuffer, encoder.encode(data));
 	if (!ok) throw new Error("INVALID_SIGNATURE");
 
 	const payloadJson = decoder.decode(decodeBase64url(payloadB64));
