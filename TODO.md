@@ -12,7 +12,8 @@
 - [x] Manually Test inbound again
 - [x] Attachments
 - [x] Setup graphql-yoga with hono
-- [ ] Setup server codegen for GQL typesafety
+- [x] Setup server codegen for GQL typesafety
+- [ ] Watch and run codegen
 - [ ] Stitch existing authentication with the graphql-yoga instance
 - [ ] Query to list threads
 - [ ] Query to view thread(s?) detail
