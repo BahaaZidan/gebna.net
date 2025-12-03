@@ -1,4 +1,5 @@
 import type { Resolvers } from "./resolvers.types";
+import { toGlobalId } from "./utils";
 
 export const resolvers: Resolvers = {
 	Query: {
@@ -9,5 +10,13 @@ export const resolvers: Resolvers = {
 			});
 			return currentUser;
 		},
+	},
+	Node: {
+		__resolveType(parent) {
+			return parent.__typename;
+		},
+	},
+	User: {
+		id: (parent) => toGlobalId("User", parent.id),
 	},
 };
