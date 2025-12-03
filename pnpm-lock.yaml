@@ -50,6 +50,9 @@ importers:
       hono:
         specifier: ^4.10.4
         version: 4.10.4
+      js-base64:
+        specifier: ^3.7.8
+        version: 3.7.8
       postal-mime:
         specifier: ^2.6.0
         version: 2.6.0
