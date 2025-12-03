@@ -10,8 +10,8 @@ import { eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { ulid } from "ulid";
 
-import { getDB } from "../db";
-import { mailboxTable, sessionTable, userTable } from "../db/schema";
+import { getDB } from "$lib/db";
+import { mailboxTable, sessionTable, userTable } from "$lib/db/schema";
 
 type JwtPayload = {
 	sub: string;
@@ -195,22 +195,6 @@ authenticationApp.post("/logout", async (c) => {
 	return c.body(null, 204);
 });
 
-authenticationApp.get("/me", async (c) => {
-	const db = getDB(c.env);
-	const auth = await authenticateAccess(c, db);
-	if (!auth) return c.json({ error: "UNAUTHORIZED" }, 401);
-
-	const user = await db.query.userTable.findFirst({
-		where: (t, { eq }) => eq(t.id, auth.userId),
-	});
-	if (!user) return c.json({ error: "UNAUTHORIZED" }, 401);
-
-	return c.json({
-		user,
-		sessionId: auth.sessionId,
-	});
-});
-
 async function issueTokens({
 	c,
 	db,
@@ -307,16 +291,16 @@ async function rotateTokens({
 	};
 }
 
-async function authenticateAccess(
-	c: AppContext,
-	db: ReturnType<typeof getDB>
+export async function getCurrentSession(
+	bindings: CloudflareBindings,
+	db: ReturnType<typeof getDB>,
+	bearer?: string | null
 ): Promise<{ userId: string; sessionId: string } | null> {
-	const bearer = getBearer(c);
 	if (!bearer) return null;
 
 	let payload: JwtPayload;
 	try {
-		payload = await verifyJwt(bearer, c.env.JWT_SECRET);
+		payload = await verifyJwt(bearer, bindings.JWT_SECRET);
 	} catch {
 		return null;
 	}
@@ -324,7 +308,7 @@ async function authenticateAccess(
 	if (
 		payload.exp <= nowSeconds() ||
 		payload.typ !== "access" ||
-		payload.iss !== c.env.BASE_API_URL ||
+		payload.iss !== bindings.BASE_API_URL ||
 		(payload.aud && payload.aud !== "api")
 	)
 		return null;
