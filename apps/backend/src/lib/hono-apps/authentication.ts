@@ -10,8 +10,8 @@ import { eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { ulid } from "ulid";
 
-import { getDB, schema } from "../db";
-import { mailboxTable } from "../db/schema";
+import { getDB } from "../db";
+import { mailboxTable, sessionTable, userTable } from "../db/schema";
 
 type JwtPayload = {
 	sub: string;
@@ -43,39 +43,32 @@ const argonParams = {
 	outputType: "encoded" as const,
 };
 
-const refreshSchema = v.object({
-	refreshToken: v.pipe(v.string(), v.minLength(40), v.maxLength(256)),
-});
-
 const argonReady = setWASMModules({ argon2WASM, blake2bWASM });
 
 const authenticationApp = new Hono<{ Bindings: CloudflareBindings }>();
 type AppContext = Context<{ Bindings: CloudflareBindings }>;
 
 authenticationApp.post("/register", async (c) => {
-	const parsed = await readBody(c, registerSchema);
-	if (!parsed.ok) return parsed.res;
+	const bodyValidation = v.safeParse(registerSchema, await c.req.json());
+	if (!bodyValidation.success) return c.json({ error: "BAD_REQUEST" }, 400);
 
 	const db = getDB(c.env);
-	const existing = await db
-		.select({ id: schema.userTable.id })
-		.from(schema.userTable)
-		.where(eq(schema.userTable.username, parsed.data.username))
-		.limit(1);
-	if (existing.length > 0) {
-		return c.json({ error: "USERNAME_TAKEN" }, 409);
-	}
+	const existing = await db.query.userTable.findFirst({
+		columns: { id: true },
+		where: (t, { eq }) => eq(t.username, bodyValidation.output.username),
+	});
+	if (existing) return c.json({ error: "USERNAME_TAKEN" }, 409);
 
-	const passwordHash = await hashPassword(parsed.data.password);
+	const passwordHash = await hashPassword(bodyValidation.output.password);
 	const userId = ulid();
 
 	try {
 		await db.transaction(async (tx) => {
 			const [newUser] = await tx
-				.insert(schema.userTable)
+				.insert(userTable)
 				.values({
 					id: userId,
-					username: parsed.data.username,
+					username: bodyValidation.output.username,
 					passwordHash,
 				})
 				.returning();
@@ -105,7 +98,7 @@ authenticationApp.post("/register", async (c) => {
 
 	return c.json(
 		{
-			user: { id: userId, username: parsed.data.username },
+			user: { id: userId, username: bodyValidation.output.username },
 			...tokens,
 		},
 		201
@@ -113,74 +106,55 @@ authenticationApp.post("/register", async (c) => {
 });
 
 authenticationApp.post("/login", async (c) => {
-	const parsed = await readBody(c, loginSchema);
-	if (!parsed.ok) return parsed.res;
+	const bodyValidation = v.safeParse(loginSchema, await c.req.json());
+	if (!bodyValidation.success) return c.json({ error: "BAD_INPUT" }, 400);
 
 	const db = getDB(c.env);
-	const user = await db
-		.select({
-			id: schema.userTable.id,
-			username: schema.userTable.username,
-			passwordHash: schema.userTable.passwordHash,
-		})
-		.from(schema.userTable)
-		.where(eq(schema.userTable.username, parsed.data.username))
-		.limit(1);
+	const user = await db.query.userTable.findFirst({
+		where: (t, { eq }) => eq(t.username, bodyValidation.output.username),
+	});
+	if (!user) return c.json({ error: "UNAUTHORIZED" }, 401);
 
-	if (user.length === 0) {
-		return unauthorized(c);
-	}
-
-	const valid = await verifyPassword(parsed.data.password, user[0].passwordHash);
-	if (!valid) {
-		return unauthorized(c);
-	}
+	const valid = await verifyPassword(bodyValidation.output.password, user.passwordHash);
+	if (!valid) return c.json({ error: "UNAUTHORIZED" }, 401);
 
 	const tokens = await issueTokens({
 		c,
 		db,
-		userId: user[0].id,
+		userId: user.id,
 		userAgent: c.req.header("user-agent"),
 		ip: getRequestIp(c),
 	});
 
 	return c.json({
-		user: { id: user[0].id, username: user[0].username },
+		user: { id: user.id, username: user.username },
 		...tokens,
 	});
 });
 
 authenticationApp.post("/refresh", async (c) => {
 	const bearer = getBearer(c);
-	const parsedBody = bearer ? null : await readBody(c, refreshSchema);
-	if (!bearer && !parsedBody?.ok) return parsedBody!.res;
+	if (!bearer) return c.json({ error: "UNAUTHORIZED" }, 401);
 
-	const rawRefresh = bearer ?? (parsedBody?.ok ? parsedBody.data.refreshToken : null);
-	if (!rawRefresh) return unauthorized(c);
-
-	const parsed = parseRefreshToken(rawRefresh);
-	if (!parsed) return unauthorized(c);
+	const parsed = parseRefreshToken(bearer);
+	if (!parsed) return c.json({ error: "UNAUTHORIZED" }, 401);
 
 	const db = getDB(c.env);
-	const sessionRows = await db
-		.select()
-		.from(schema.sessionTable)
-		.where(eq(schema.sessionTable.id, parsed.sessionId))
-		.limit(1);
-	if (sessionRows.length === 0) return unauthorized(c);
+	const session = await db.query.sessionTable.findFirst({
+		where: (t, { eq }) => eq(t.id, parsed.sessionId),
+	});
+	if (!session) return c.json({ error: "UNAUTHORIZED" }, 401);
 
-	const session = sessionRows[0];
-	if (session.revoked || session.expiresAt <= nowSeconds()) return unauthorized(c);
+	if (session.revoked || session.expiresAt <= nowSeconds())
+		return c.json({ error: "UNAUTHORIZED" }, 401);
 
 	const refreshOk = await verifyRefreshSecret(parsed.secret, session.refreshHash);
-	if (!refreshOk) return unauthorized(c);
+	if (!refreshOk) return c.json({ error: "UNAUTHORIZED" }, 401);
 
-	const userRows = await db
-		.select({ id: schema.userTable.id, username: schema.userTable.username })
-		.from(schema.userTable)
-		.where(eq(schema.userTable.id, session.userId))
-		.limit(1);
-	if (userRows.length === 0) return unauthorized(c);
+	const user = await db.query.userTable.findFirst({
+		where: (t, { eq }) => eq(t.id, session.userId),
+	});
+	if (!user) return c.json({ error: "UNAUTHORIZED" }, 401);
 
 	const tokens = await rotateTokens({
 		c,
@@ -192,35 +166,30 @@ authenticationApp.post("/refresh", async (c) => {
 	});
 
 	return c.json({
-		user: userRows[0],
+		user,
 		...tokens,
 	});
 });
 
 authenticationApp.post("/logout", async (c) => {
 	const bearer = getBearer(c);
-	const parsedBody = bearer ? null : await readBody(c, refreshSchema);
-	const rawRefresh = bearer ?? (parsedBody?.ok ? parsedBody.data.refreshToken : null);
-	if (!rawRefresh) return c.body(null, 204);
+	if (!bearer) return c.body(null, 204);
 
-	const parsed = parseRefreshToken(rawRefresh);
+	const parsed = parseRefreshToken(bearer);
 	if (!parsed) return c.body(null, 204);
 
 	const db = getDB(c.env);
-	const sessionRows = await db
-		.select()
-		.from(schema.sessionTable)
-		.where(eq(schema.sessionTable.id, parsed.sessionId))
-		.limit(1);
-	if (sessionRows.length === 0) return c.body(null, 204);
+	const session = await db.query.sessionTable.findFirst({
+		where: (t, { eq }) => eq(t.id, parsed.sessionId),
+	});
+	if (!session) return c.body(null, 204);
 
-	const session = sessionRows[0];
 	const refreshOk = await verifyRefreshSecret(parsed.secret, session.refreshHash);
 	if (refreshOk) {
 		await db
-			.update(schema.sessionTable)
+			.update(sessionTable)
 			.set({ revoked: true, expiresAt: nowSeconds() })
-			.where(eq(schema.sessionTable.id, session.id));
+			.where(eq(sessionTable.id, session.id));
 	}
 
 	return c.body(null, 204);
@@ -229,42 +198,18 @@ authenticationApp.post("/logout", async (c) => {
 authenticationApp.get("/me", async (c) => {
 	const db = getDB(c.env);
 	const auth = await authenticateAccess(c, db);
-	if (!auth) return unauthorized(c);
+	if (!auth) return c.json({ error: "UNAUTHORIZED" }, 401);
 
-	const userRows = await db
-		.select({ id: schema.userTable.id, username: schema.userTable.username })
-		.from(schema.userTable)
-		.where(eq(schema.userTable.id, auth.userId))
-		.limit(1);
-	if (userRows.length === 0) return unauthorized(c);
+	const user = await db.query.userTable.findFirst({
+		where: (t, { eq }) => eq(t.id, auth.userId),
+	});
+	if (!user) return c.json({ error: "UNAUTHORIZED" }, 401);
 
 	return c.json({
-		user: userRows[0],
+		user,
 		sessionId: auth.sessionId,
 	});
 });
-
-async function readBody<TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>>(
-	c: AppContext,
-	schema: TSchema
-): Promise<{ ok: true; data: v.InferOutput<TSchema> } | { ok: false; res: Response }> {
-	let body: unknown;
-	try {
-		body = await c.req.json();
-	} catch {
-		return { ok: false, res: c.json({ error: "INVALID_JSON" }, 400) };
-	}
-
-	const parsed = v.safeParse(schema, body);
-	if (!parsed.success) {
-		return {
-			ok: false,
-			res: c.json({ error: "INVALID_INPUT", issues: parsed.issues }, 400),
-		};
-	}
-
-	return { ok: true, data: parsed.output };
-}
 
 async function issueTokens({
 	c,
@@ -285,7 +230,7 @@ async function issueTokens({
 	const refreshHash = await hashRefreshSecret(refresh.secret);
 	const refreshExpiresAt = now + REFRESH_TTL_SECONDS;
 
-	await db.insert(schema.sessionTable).values({
+	await db.insert(sessionTable).values({
 		id: sessionId,
 		userId,
 		refreshHash,
@@ -334,7 +279,7 @@ async function rotateTokens({
 	const refreshExpiresAt = now + REFRESH_TTL_SECONDS;
 
 	await db
-		.update(schema.sessionTable)
+		.update(sessionTable)
 		.set({
 			refreshHash,
 			expiresAt: refreshExpiresAt,
@@ -342,7 +287,7 @@ async function rotateTokens({
 			ip,
 			revoked: false,
 		})
-		.where(eq(schema.sessionTable.id, sessionId));
+		.where(eq(sessionTable.id, sessionId));
 
 	const { token: accessToken, exp: accessTokenExpiresAt } = await signAccessToken(
 		{
@@ -371,7 +316,7 @@ async function authenticateAccess(
 
 	let payload: JwtPayload;
 	try {
-		payload = await verifyJwt(bearer, getJwtSecret(c.env));
+		payload = await verifyJwt(bearer, c.env.JWT_SECRET);
 	} catch {
 		return null;
 	}
@@ -384,20 +329,17 @@ async function authenticateAccess(
 	)
 		return null;
 
-	const sessionRows = await db
-		.select({
-			id: schema.sessionTable.id,
-			userId: schema.sessionTable.userId,
-			expiresAt: schema.sessionTable.expiresAt,
-			revoked: schema.sessionTable.revoked,
-		})
-		.from(schema.sessionTable)
-		.where(eq(schema.sessionTable.id, payload.sid))
-		.limit(1);
+	const session = await db.query.sessionTable.findFirst({
+		columns: {
+			id: true,
+			userId: true,
+			expiresAt: true,
+			revoked: true,
+		},
+		where: (t, { eq }) => eq(t.id, payload.sid),
+	});
 
-	if (sessionRows.length === 0) return null;
-	const session = sessionRows[0];
-
+	if (!session) return null;
 	if (session.revoked || session.expiresAt <= nowSeconds()) return null;
 	if (session.userId !== payload.sub) return null;
 
@@ -482,7 +424,7 @@ async function signAccessToken(
 	};
 
 	return {
-		token: await signJwt(payload, getJwtSecret(input.env)),
+		token: await signJwt(payload, input.env.JWT_SECRET),
 		exp,
 	};
 }
@@ -541,24 +483,8 @@ function getSigningKey(secret: string) {
 	return keyCache.get(secret)!;
 }
 
-function getJwtSecret(env: CloudflareBindings) {
-	const secret =
-		(env as unknown as { JWT_SECRET?: string; JWT_SIGNING_SECRET?: string }).JWT_SECRET ||
-		(env as unknown as { JWT_SIGNING_SECRET?: string }).JWT_SIGNING_SECRET;
-
-	if (!secret || secret.length < 16) {
-		throw new Error("JWT secret is not configured or too short");
-	}
-
-	return secret;
-}
-
 function nowSeconds() {
 	return Math.floor(Date.now() / 1000);
-}
-
-function unauthorized(c: AppContext): Response {
-	return c.json({ error: "INVALID_CREDENTIALS" }, 401);
 }
 
 function isUniqueConstraintError(error: unknown) {
