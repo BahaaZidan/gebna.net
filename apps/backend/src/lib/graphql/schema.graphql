@@ -13,7 +13,7 @@ type Mailbox implements Node {
 	type: MailboxType!
 	name: String!
 	threads(first: Int, after: String): ThreadsConnection!
-	unreadThreadsCount: Int
+	unreadThreadsCount: Int!
 }
 
 enum MailboxType {

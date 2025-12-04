@@ -46,7 +46,7 @@ export type Mailbox = Node & {
   name: Scalars['String']['output'];
   threads: ThreadsConnection;
   type: MailboxType;
-  unreadThreadsCount?: Maybe<Scalars['Int']['output']>;
+  unreadThreadsCount: Scalars['Int']['output'];
 };
 
 
@@ -278,7 +278,7 @@ export type MailboxResolvers<ContextType = Context, ParentType extends Resolvers
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   threads?: Resolver<ResolversTypes['ThreadsConnection'], ParentType, ContextType, Partial<MailboxThreadsArgs>>;
   type?: Resolver<ResolversTypes['MailboxType'], ParentType, ContextType>;
-  unreadThreadsCount?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  unreadThreadsCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
