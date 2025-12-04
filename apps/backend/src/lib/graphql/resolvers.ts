@@ -10,12 +10,27 @@ export const resolvers: Resolvers = {
 	DateTime: DateTimeResolver,
 	URL: URLResolver,
 	Query: {
-		viewer: async (_parent, _input, { session, db }) => {
+		viewer: async (_parent, _args, { session, db }) => {
 			if (!session) return null;
 			const currentUser = db.query.userTable.findFirst({
 				where: (t, { eq }) => eq(t.id, session.userId),
 			});
 			return currentUser;
+		},
+		node: async (_parent, args, { session, db }) => {
+			const { type, id } = fromGlobalId(args.id);
+			switch (type) {
+				case "Thread": {
+					const thread =
+						session &&
+						(await db.query.threadTable.findFirst({
+							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.recipientId, session.userId)),
+						}));
+					return thread ? { ...thread, __typename: "Thread" } : null;
+				}
+				default:
+					return null;
+			}
 		},
 	},
 	Node: {
@@ -63,8 +78,23 @@ export const resolvers: Resolvers = {
 	},
 	Thread: {
 		id: (parent) => toGlobalId("Thread", parent.id),
+		unreadMessagesCount: (parent) => parent.unreadCount,
+		messages: async (parent, _, { db }) => {
+			const messages = await db.query.messageTable.findMany({
+				where: (t, { eq }) => eq(t.threadId, parent.id),
+				orderBy: (t, { desc }) => desc(t.createdAt),
+			});
+			return messages;
+		},
 	},
 	Message: {
 		id: (parent) => toGlobalId("Message", parent.id),
+		recievedAt: (parent) => parent.createdAt,
+		attachments: async (parent, _, { db }) => {
+			const attachments = await db.query.attachmentTable.findMany({
+				where: (t, { eq }) => eq(t.messageId, parent.id),
+			});
+			return attachments;
+		},
 	},
 };
