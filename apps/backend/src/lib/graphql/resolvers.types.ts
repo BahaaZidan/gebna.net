@@ -51,8 +51,8 @@ export type Mailbox = Node & {
 
 
 export type MailboxThreadsArgs = {
-  before?: InputMaybe<Scalars['String']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type MailboxType =

@@ -17,7 +17,7 @@
 - [x] Stitch existing authentication with the graphql-yoga instance
 - [x] Rough graphql schema draft
 - [x] Resolvers for the rough schema draft
-- [ ] Mailbox.threads
+- [x] Mailbox.threads
 - [ ] Mailbox.unreadThreadsCount
 - [ ] Query to view thread(s?) detail
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box

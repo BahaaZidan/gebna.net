@@ -1,7 +1,7 @@
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
 
 import type { Resolvers } from "./resolvers.types";
-import { toGlobalId } from "./utils";
+import { fromGlobalId, toGlobalId } from "./utils";
 
 export const resolvers: Resolvers = {
 	DateTime: DateTimeResolver,
@@ -31,6 +31,25 @@ export const resolvers: Resolvers = {
 	},
 	Mailbox: {
 		id: (parent) => toGlobalId("Mailbox", parent.id),
+		threads: async (parent, args, { db }) => {
+			const pageSize = args.first || 30;
+			const cursor = args.after;
+			const threadsPlusOne = await db.query.threadTable.findMany({
+				where: (t, { eq, and, lt }) =>
+					and(eq(t.mailboxId, parent.id), cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined),
+				orderBy: (t, { desc }) => desc(t.lastMessageAt),
+				limit: pageSize + 1,
+			});
+			const threads = threadsPlusOne.slice(0, pageSize);
+
+			return {
+				edges: threads.map((node) => ({ node, cursor: toGlobalId("Thread", node.id) })),
+				pageInfo: {
+					hasNextPage: threadsPlusOne.length > threads.length,
+					endCursor: threads.length ? toGlobalId("Thread", threads[threads.length - 1].id) : null,
+				},
+			};
+		},
 	},
 	Thread: {
 		id: (parent) => toGlobalId("Thread", parent.id),
