@@ -12,7 +12,7 @@ type Mailbox implements Node {
 	id: ID!
 	type: MailboxType!
 	name: String!
-	threads(last: Int, before: String): ThreadsConnection!
+	threads(first: Int, after: String): ThreadsConnection!
 	unreadThreadsCount: Int
 }
 
