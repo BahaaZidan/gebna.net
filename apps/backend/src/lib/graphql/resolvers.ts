@@ -1,4 +1,7 @@
+import { and, count, eq, gt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
+
+import { threadTable } from "$lib/db/schema";
 
 import type { Resolvers } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
@@ -49,6 +52,13 @@ export const resolvers: Resolvers = {
 					endCursor: threads.length ? toGlobalId("Thread", threads[threads.length - 1].id) : null,
 				},
 			};
+		},
+		unreadThreadsCount: async (parent, _, { db }) => {
+			const [{ unreadThreadsCount }] = await db
+				.select({ unreadThreadsCount: count() })
+				.from(threadTable)
+				.where(and(eq(threadTable.mailboxId, parent.id), gt(threadTable.unreadCount, 0)));
+			return unreadThreadsCount;
 		},
 	},
 	Thread: {
