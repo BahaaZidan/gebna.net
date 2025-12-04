@@ -14,8 +14,11 @@
 - [x] Setup graphql-yoga with hono
 - [x] Setup server codegen for GQL typesafety
 - [x] Watch and run codegen
-- [ ] Stitch existing authentication with the graphql-yoga instance
-- [ ] Query to list threads
+- [x] Stitch existing authentication with the graphql-yoga instance
+- [x] Rough graphql schema draft
+- [x] Resolvers for the rough schema draft
+- [ ] Mailbox.threads
+- [ ] Mailbox.unreadThreadsCount
 - [ ] Query to view thread(s?) detail
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
 - [ ] LLM-generate a test script for inbound including threads

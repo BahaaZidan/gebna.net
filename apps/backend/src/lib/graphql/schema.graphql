@@ -5,8 +5,87 @@ type Query {
 type User implements Node {
 	id: ID!
 	username: String!
+	mailboxes: [Mailbox!]!
+}
+
+type Mailbox implements Node {
+	id: ID!
+	type: MailboxType!
+	name: String!
+	threads(last: Int, before: String): ThreadsConnection!
+	unreadThreadsCount: Int
+}
+
+enum MailboxType {
+	screener
+	important
+	news
+	transactional
+	trash
+}
+
+type ThreadsConnection implements Connection {
+	pageInfo: PageInfo!
+	edges: [ThreadEdge!]!
+}
+
+type ThreadEdge implements Edge {
+	cursor: String
+	node: Thread!
+}
+
+type Thread implements Node {
+	id: ID!
+	from: String!
+	unreadMessagesCount: Int!
+	title: String
+	lastMessageAt: DateTime!
+	messages: [Message!]!
+}
+
+type Message implements Node {
+	id: ID!
+	from: String!
+	unread: Boolean!
+	recievedAt: DateTime!
+	subject: String
+	to: [String!]
+	cc: [String!]
+	replyTo: [String!]
+	snippet: String
+	bodyText: String
+	bodyHTML: String
+	attachments: [Attachment!]!
+}
+
+type Attachment implements Node {
+	id: ID!
+	fileName: String
+	mimeType: String
+	contentId: String
+	downloadURL: URL
+}
+
+interface Connection {
+	pageInfo: PageInfo!
+	edges: [Edge!]!
+}
+
+type PageInfo {
+	startCursor: String
+	endCursor: String
+	hasNextPage: Boolean
+	hasPreviousPage: Boolean
+}
+
+interface Edge {
+	cursor: String
+	node: Node!
 }
 
 interface Node {
 	id: ID!
 }
+
+scalar DateTime
+scalar URL
