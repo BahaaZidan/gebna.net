@@ -10,6 +10,7 @@ export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Mayb
 export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+export type RequireFields<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: { input: string; output: string; }
@@ -92,7 +93,13 @@ export type PageInfo = {
 
 export type Query = {
   __typename?: 'Query';
+  node?: Maybe<Node>;
   viewer?: Maybe<User>;
+};
+
+
+export type QueryNodeArgs = {
+  id: Scalars['ID']['input'];
 };
 
 export type Thread = Node & {
@@ -310,6 +317,7 @@ export type PageInfoResolvers<ContextType = Context, ParentType extends Resolver
 };
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+  node?: Resolver<Maybe<ResolversTypes['Node']>, ParentType, ContextType, RequireFields<QueryNodeArgs, 'id'>>;
   viewer?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
 };
 

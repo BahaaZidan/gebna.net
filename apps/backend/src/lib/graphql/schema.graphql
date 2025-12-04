@@ -1,5 +1,6 @@
 type Query {
 	viewer: User
+	node(id: ID!): Node
 }
 
 type User implements Node {

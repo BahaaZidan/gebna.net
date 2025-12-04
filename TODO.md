@@ -19,7 +19,7 @@
 - [x] Resolvers for the rough schema draft
 - [x] Mailbox.threads
 - [x] Mailbox.unreadThreadsCount
-- [ ] Query to view thread(s?) detail
+- [x] Query to view thread(s?) detail
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
 - [ ] LLM-generate a test script for inbound including threads
 - [ ] Cron to delete emails that has been in a trash mailbox for more than (?) days
