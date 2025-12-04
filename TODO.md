@@ -18,7 +18,7 @@
 - [x] Rough graphql schema draft
 - [x] Resolvers for the rough schema draft
 - [x] Mailbox.threads
-- [ ] Mailbox.unreadThreadsCount
+- [x] Mailbox.unreadThreadsCount
 - [ ] Query to view thread(s?) detail
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
 - [ ] LLM-generate a test script for inbound including threads
