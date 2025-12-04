@@ -26,3 +26,6 @@ export type TransactionInstance = SQLiteTransaction<
 >;
 
 export type UserSelectModel = typeof schema.userTable.$inferSelect;
+export type MailboxSelectModel = typeof schema.mailboxTable.$inferSelect;
+export type ThreadSelectModel = typeof schema.threadTable.$inferSelect;
+export type MessageSelectModel = typeof schema.messageTable.$inferSelect;
