@@ -1,15 +1,15 @@
 <script lang="ts" generics="T extends Record<string, unknown>">
-	import type { Snippet } from 'svelte';
-	import type { HTMLInputTypeAttribute } from 'svelte/elements';
+	import type { Snippet } from "svelte";
+	import type { HTMLInputTypeAttribute } from "svelte/elements";
 	import {
 		formFieldProxy,
 		type FormPathArrays,
 		type FormPathLeaves,
 		type SuperForm,
-	} from 'sveltekit-superforms';
+	} from "sveltekit-superforms";
 
-	import InputFieldError from './InputFieldError.svelte';
-	import RemoveInputButton from './RemoveInputButton.svelte';
+	import InputFieldError from "./InputFieldError.svelte";
+	import RemoveInputButton from "./RemoveInputButton.svelte";
 
 	interface Props {
 		superform: SuperForm<T>;
@@ -33,7 +33,7 @@
 		label,
 		placeholder,
 		hint,
-		type = 'text',
+		type = "text",
 		remover,
 		join,
 		disabled,
@@ -51,7 +51,7 @@
 			<legend class="fieldset-legend">{label}</legend>
 		{/if}
 		<div class={{ join: isJoined }}>
-			<label class={['input', { 'input-error': !!$errors, 'join-item': isJoined }]}>
+			<label class={["input w-full", { "input-error": !!$errors, "join-item": isJoined }]}>
 				{@render prepend?.()}
 				<input
 					{type}
