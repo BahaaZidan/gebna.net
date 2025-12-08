@@ -129,6 +129,9 @@ importers:
       '@gebna/validation':
         specifier: workspace:*
         version: link:../../packages/validation
+      '@lucide/svelte':
+        specifier: ^0.556.0
+        version: 0.556.0(svelte@5.43.4)
     devDependencies:
       '@sveltejs/adapter-cloudflare':
         specifier: ^7.2.4
@@ -1583,6 +1586,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@lucide/svelte@0.556.0':
+    resolution: {integrity: sha512-jsJhyyd2xrJ4WtflO5TrTtyCBacF4OLBNCzotvwh4zfbbuE6aqdblx+OB0zg6zOno06ib1GJGdDcfR/2TUcb7g==}
+    peerDependencies:
+      svelte: ^5
+
   '@neon-rs/load@0.0.4':
     resolution: {integrity: sha512-kTPhdZyTQxB+2wpiRcFWrDcejc4JI6tkPuS7UZCG4l6Zvc5kU/gGQ/ozvHTh1XR5tS+UlfAfGuPajjzQjCiHCw==}
 
@@ -3019,6 +3027,7 @@ packages:
 
   libsql@0.5.22:
     resolution: {integrity: sha512-NscWthMQt7fpU8lqd7LXMvT9pi+KhhmTHAJWUB/Lj6MWa0MKFv0F2V4C6WKKpjCVZl0VwcDz4nOI3CyaT1DDiA==}
+    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lightningcss-android-arm64@1.30.2:
@@ -5462,6 +5471,10 @@ snapshots:
 
   '@libsql/win32-x64-msvc@0.5.22':
     optional: true
+
+  '@lucide/svelte@0.556.0(svelte@5.43.4)':
+    dependencies:
+      svelte: 5.43.4
 
   '@neon-rs/load@0.0.4': {}
 
