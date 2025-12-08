@@ -10,14 +10,7 @@ export async function context(event: YogaInitialContext & YogaServerContext) {
 	if (event.env.FORCED_USER_ID)
 		return { ...event, db, session: { userId: event.env.FORCED_USER_ID, sessionId: "" } };
 
-	const getBearer = () => {
-		const header =
-			event.request.headers.get("authorization") || event.request.headers.get("Authorization");
-		if (!header || !header.toLowerCase().startsWith("bearer ")) return null;
-		return header.slice(7).trim();
-	};
-
-	const session = await getCurrentSession(event.env, db, getBearer());
+	const session = await getCurrentSession(event.env, db, event.request);
 	return { ...event, db, session };
 }
 

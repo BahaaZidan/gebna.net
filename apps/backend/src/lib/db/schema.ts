@@ -29,7 +29,7 @@ export const sessionTable = sqliteTable("session", {
 	userId: text()
 		.notNull()
 		.references(() => userTable.id, { onDelete: "cascade" }),
-	refreshHash: text().notNull(),
+	sessionSecretHash: text().notNull(),
 	userAgent: text(),
 	ip: text(),
 	createdAt: integer().notNull(),
