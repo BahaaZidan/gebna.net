@@ -25,7 +25,7 @@
 				});
 				const response = await result.json();
 				const createdUserId = response?.user?.id;
-				if (!!createdUserId) return await goto(resolve("/app/mail/"));
+				// if (!!createdUserId) return await goto(resolve("/app/mail/"));
 				form.message = response.error;
 			}
 		},
