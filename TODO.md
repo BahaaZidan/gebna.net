@@ -20,6 +20,8 @@
 - [x] Mailbox.threads
 - [x] Mailbox.unreadThreadsCount
 - [x] Query to view thread(s?) detail
+- [x] Basic UI layout
+- [x] Basic login/signup UI
 - [ ] Research capacitor limitations
 - [ ] Research using react-native for the web ui SPA and mobile 😢
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
@@ -30,6 +32,7 @@
 - [ ] The ability to add a profile picture
 - [ ] Storing the profile pictures and names of addresses
 - [ ] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
+- [ ] Tighter security by creating machine id for every session and checking against it pre usage
 
 ### v0.5
 

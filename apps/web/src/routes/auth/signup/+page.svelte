@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isSessionCreatedErrorResponse, isSessionCreatedSuccessResponse } from "@gebna/types";
 	import { registerSchema } from "@gebna/validation/auth";
 	import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
 	import { defaults, superForm } from "sveltekit-superforms";
@@ -8,6 +9,7 @@
 	import { resolve } from "$app/paths";
 	import { PUBLIC_API_URL } from "$env/static/public";
 
+	import { setAccessToken } from "$lib/authentication";
 	import TextInput from "$lib/components/forms/TextInput.svelte";
 
 	const superform = superForm(defaults(valibot(registerSchema)), {
@@ -24,9 +26,10 @@
 					body: JSON.stringify(form.data),
 				});
 				const response = await result.json();
-				const createdUserId = response?.user?.id;
-				// if (!!createdUserId) return await goto(resolve("/app/mail/"));
-				form.message = response.error;
+				if (isSessionCreatedErrorResponse(response)) return (form.message = response.error);
+				if (!isSessionCreatedSuccessResponse(response)) return;
+				setAccessToken(response.accessToken);
+				return await goto(resolve("/app/mail/"));
 			}
 		},
 	});

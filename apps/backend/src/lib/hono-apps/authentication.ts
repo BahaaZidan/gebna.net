@@ -1,3 +1,4 @@
+import type { SessionCreatedErrorResponse, SessionCreatedSuccessResponse } from "@gebna/types";
 import { v } from "@gebna/validation";
 import { loginSchema, registerSchema } from "@gebna/validation/auth";
 import { decodeBase64url, encodeBase64url } from "@oslojs/encoding";
@@ -47,14 +48,15 @@ type AppContext = Context<{ Bindings: CloudflareBindings }>;
 
 authenticationApp.post("/register", async (c) => {
 	const bodyValidation = v.safeParse(registerSchema, await c.req.json());
-	if (!bodyValidation.success) return c.json({ error: "BAD_REQUEST" }, 400);
+	if (!bodyValidation.success)
+		return c.json<SessionCreatedErrorResponse>({ error: "BAD_REQUEST" }, 400);
 
 	const db = getDB(c.env);
 	const existing = await db.query.userTable.findFirst({
 		columns: { id: true },
 		where: (t, { eq }) => eq(t.username, bodyValidation.output.username),
 	});
-	if (existing) return c.json({ error: "USERNAME_TAKEN" }, 409);
+	if (existing) return c.json<SessionCreatedErrorResponse>({ error: "USERNAME_TAKEN" }, 409);
 
 	const passwordHash = await hashPassword(bodyValidation.output.password);
 	const userId = ulid();
@@ -80,7 +82,7 @@ authenticationApp.post("/register", async (c) => {
 		});
 	} catch (error) {
 		if (isUniqueConstraintError(error)) {
-			return c.json({ error: "USERNAME_TAKEN" }, 409);
+			return c.json<SessionCreatedErrorResponse>({ error: "USERNAME_TAKEN" }, 409);
 		}
 		throw error;
 	}
@@ -93,7 +95,7 @@ authenticationApp.post("/register", async (c) => {
 		ip: getRequestIp(c),
 	});
 
-	return c.json(
+	return c.json<SessionCreatedSuccessResponse>(
 		{
 			user: { id: userId, username: bodyValidation.output.username },
 			...tokens,
@@ -104,16 +106,17 @@ authenticationApp.post("/register", async (c) => {
 
 authenticationApp.post("/login", async (c) => {
 	const bodyValidation = v.safeParse(loginSchema, await c.req.json());
-	if (!bodyValidation.success) return c.json({ error: "BAD_INPUT" }, 400);
+	if (!bodyValidation.success)
+		return c.json<SessionCreatedErrorResponse>({ error: "BAD_REQUEST" }, 400);
 
 	const db = getDB(c.env);
 	const user = await db.query.userTable.findFirst({
 		where: (t, { eq }) => eq(t.username, bodyValidation.output.username),
 	});
-	if (!user) return c.json({ error: "UNAUTHORIZED" }, 401);
+	if (!user) return c.json<SessionCreatedErrorResponse>({ error: "UNAUTHORIZED" }, 401);
 
 	const valid = await verifyPassword(bodyValidation.output.password, user.passwordHash);
-	if (!valid) return c.json({ error: "UNAUTHORIZED" }, 401);
+	if (!valid) return c.json<SessionCreatedErrorResponse>({ error: "UNAUTHORIZED" }, 401);
 
 	const tokens = await issueTokens({
 		c,
@@ -123,7 +126,7 @@ authenticationApp.post("/login", async (c) => {
 		ip: getRequestIp(c),
 	});
 
-	return c.json({
+	return c.json<SessionCreatedSuccessResponse>({
 		user: { id: user.id, username: user.username },
 		...tokens,
 	});
