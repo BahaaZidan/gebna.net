@@ -22,8 +22,8 @@
 - [x] Query to view thread(s?) detail
 - [x] Basic UI layout
 - [x] Basic login/signup UI
-- [ ] Research capacitor limitations
-- [ ] Research using react-native for the web ui SPA and mobile 😢
+- [x] Research capacitor limitations
+- [x] Research using react-native for the web ui SPA and mobile 😢
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
 - [ ] LLM-generate a test script for inbound including threads
 - [ ] Cron to delete emails that has been in a trash mailbox for more than (?) days
