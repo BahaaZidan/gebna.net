@@ -26,15 +26,12 @@ type JwtPayload = {
 type TokenBundle = {
 	accessToken: string;
 	accessTokenExpiresAt: number;
-	refreshToken: string;
-	refreshTokenExpiresAt: number;
 	sessionId: string;
 };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-const ACCESS_TTL_SECONDS = 15 * 60;
-const REFRESH_TTL_SECONDS = 60 * 60 * 24 * 30;
+const ACCESS_TTL_SECONDS = 60 * 60 * 24 * 30;
 const argonParams = {
 	memorySize: 19456,
 	iterations: 3,
@@ -132,65 +129,18 @@ authenticationApp.post("/login", async (c) => {
 	});
 });
 
-authenticationApp.post("/refresh", async (c) => {
-	const bearer = getBearer(c);
-	if (!bearer) return c.json({ error: "UNAUTHORIZED" }, 401);
-
-	const parsed = parseRefreshToken(bearer);
-	if (!parsed) return c.json({ error: "UNAUTHORIZED" }, 401);
-
-	const db = getDB(c.env);
-	const session = await db.query.sessionTable.findFirst({
-		where: (t, { eq }) => eq(t.id, parsed.sessionId),
-	});
-	if (!session) return c.json({ error: "UNAUTHORIZED" }, 401);
-
-	if (session.revoked || session.expiresAt <= nowSeconds())
-		return c.json({ error: "UNAUTHORIZED" }, 401);
-
-	const refreshOk = await verifyRefreshSecret(parsed.secret, session.refreshHash);
-	if (!refreshOk) return c.json({ error: "UNAUTHORIZED" }, 401);
-
-	const user = await db.query.userTable.findFirst({
-		where: (t, { eq }) => eq(t.id, session.userId),
-	});
-	if (!user) return c.json({ error: "UNAUTHORIZED" }, 401);
-
-	const tokens = await rotateTokens({
-		c,
-		db,
-		sessionId: session.id,
-		userId: session.userId,
-		userAgent: c.req.header("user-agent"),
-		ip: getRequestIp(c),
-	});
-
-	return c.json({
-		user,
-		...tokens,
-	});
-});
-
 authenticationApp.post("/logout", async (c) => {
 	const bearer = getBearer(c);
 	if (!bearer) return c.body(null, 204);
 
-	const parsed = parseRefreshToken(bearer);
-	if (!parsed) return c.body(null, 204);
-
 	const db = getDB(c.env);
-	const session = await db.query.sessionTable.findFirst({
-		where: (t, { eq }) => eq(t.id, parsed.sessionId),
-	});
+	const session = await getCurrentSession(c.env, db, bearer);
 	if (!session) return c.body(null, 204);
 
-	const refreshOk = await verifyRefreshSecret(parsed.secret, session.refreshHash);
-	if (refreshOk) {
-		await db
-			.update(sessionTable)
-			.set({ revoked: true, expiresAt: nowSeconds() })
-			.where(eq(sessionTable.id, session.id));
-	}
+	await db
+		.update(sessionTable)
+		.set({ revoked: true, expiresAt: nowSeconds() })
+		.where(eq(sessionTable.id, session.sessionId));
 
 	return c.body(null, 204);
 });
@@ -210,83 +160,29 @@ async function issueTokens({
 }): Promise<TokenBundle> {
 	const now = nowSeconds();
 	const sessionId = ulid();
-	const refresh = createRefreshToken(sessionId);
-	const refreshHash = await hashRefreshSecret(refresh.secret);
-	const refreshExpiresAt = now + REFRESH_TTL_SECONDS;
+
+	const { token: accessToken, exp: accessTokenExpiresAt } = await signAccessToken(
+		{
+			env: c.env,
+			userId,
+			sessionId,
+		},
+		now
+	);
 
 	await db.insert(sessionTable).values({
 		id: sessionId,
 		userId,
-		refreshHash,
+		refreshHash: "unused",
 		userAgent,
 		ip,
 		createdAt: now,
-		expiresAt: refreshExpiresAt,
+		expiresAt: accessTokenExpiresAt,
 	});
 
-	const { token: accessToken, exp: accessTokenExpiresAt } = await signAccessToken(
-		{
-			env: c.env,
-			userId,
-			sessionId,
-		},
-		now
-	);
-
 	return {
 		accessToken,
 		accessTokenExpiresAt,
-		refreshToken: refresh.token,
-		refreshTokenExpiresAt: refreshExpiresAt,
-		sessionId,
-	};
-}
-
-async function rotateTokens({
-	c,
-	db,
-	sessionId,
-	userId,
-	userAgent,
-	ip,
-}: {
-	c: AppContext;
-	db: ReturnType<typeof getDB>;
-	sessionId: string;
-	userId: string;
-	userAgent?: string;
-	ip?: string;
-}): Promise<TokenBundle> {
-	const now = nowSeconds();
-	const refresh = createRefreshToken(sessionId);
-	const refreshHash = await hashRefreshSecret(refresh.secret);
-	const refreshExpiresAt = now + REFRESH_TTL_SECONDS;
-
-	await db
-		.update(sessionTable)
-		.set({
-			refreshHash,
-			expiresAt: refreshExpiresAt,
-			userAgent,
-			ip,
-			revoked: false,
-		})
-		.where(eq(sessionTable.id, sessionId));
-
-	const { token: accessToken, exp: accessTokenExpiresAt } = await signAccessToken(
-		{
-			env: c.env,
-			userId,
-			sessionId,
-		},
-		now
-	);
-
-	return {
-		accessToken,
-		accessTokenExpiresAt,
-		refreshToken: refresh.token,
-		refreshTokenExpiresAt: refreshExpiresAt,
 		sessionId,
 	};
 }
@@ -344,19 +240,6 @@ function getRequestIp(c: AppContext) {
 	return undefined;
 }
 
-function createRefreshToken(sessionId: string) {
-	const bytes = new Uint8Array(32);
-	crypto.getRandomValues(bytes);
-	const secret = encodeBase64url(bytes);
-	return { token: `${sessionId}.${secret}`, secret };
-}
-
-function parseRefreshToken(raw: string): { sessionId: string; secret: string } | null {
-	const [sessionId, secret] = raw.split(".");
-	if (!sessionId || !secret) return null;
-	return { sessionId, secret };
-}
-
 async function hashPassword(password: string) {
 	await argonReady;
 	const salt = new Uint8Array(16);
@@ -371,25 +254,6 @@ async function hashPassword(password: string) {
 async function verifyPassword(password: string, hash: string) {
 	await argonReady;
 	return argon2Verify({ password, hash });
-}
-
-async function hashRefreshSecret(secret: string) {
-	const digest = await crypto.subtle.digest("SHA-256", encoder.encode(secret));
-	return encodeBase64url(new Uint8Array(digest));
-}
-
-async function verifyRefreshSecret(secret: string, hash: string) {
-	const calculated = await hashRefreshSecret(secret);
-	return timingSafeEqual(calculated, hash);
-}
-
-function timingSafeEqual(a: string, b: string) {
-	if (a.length !== b.length) return false;
-	let diff = 0;
-	for (let i = 0; i < a.length; i += 1) {
-		diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-	}
-	return diff === 0;
 }
 
 async function signAccessToken(
