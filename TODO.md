@@ -24,6 +24,8 @@
 - [x] Basic login/signup UI
 - [x] Research capacitor limitations
 - [x] Research using react-native for the web ui SPA and mobile 😢
+- [x] Setup URQL
+- [x] Setup graphql-codegen client preset w/ watchmode
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
 - [ ] LLM-generate a test script for inbound including threads
 - [ ] Cron to delete emails that has been in a trash mailbox for more than (?) days
