@@ -4,7 +4,7 @@ import { context } from "./context";
 import { resolvers } from "./resolvers";
 import { YogaServerContext } from "./types";
 
-const schemaFiles = import.meta.glob("$lib/graphql/schema.graphql", {
+const schemaFiles = import.meta.glob("../../../../../packages/graphql/schema.graphql", {
 	query: "?raw",
 	import: "default",
 	eager: true,
