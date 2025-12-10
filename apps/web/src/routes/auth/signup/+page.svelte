@@ -9,8 +9,13 @@
 	import { resolve } from "$app/paths";
 	import { PUBLIC_API_URL } from "$env/static/public";
 
-	import { setAccessToken } from "$lib/authentication";
+	import { getAccessToken, setAccessToken } from "$lib/authentication";
 	import TextInput from "$lib/components/forms/TextInput.svelte";
+
+	$effect(() => {
+		// WORKAROUND: I don't like this. Server-side solution for protected routes would be better
+		if (getAccessToken()) goto(resolve("/app/mail/"));
+	});
 
 	const superform = superForm(defaults(valibot(registerSchema)), {
 		SPA: true,
@@ -29,7 +34,8 @@
 				if (isSessionCreatedErrorResponse(response)) return (form.message = response.error);
 				if (!isSessionCreatedSuccessResponse(response)) return;
 				setAccessToken(response.accessToken);
-				return await goto(resolve("/app/mail/"));
+				await goto(resolve("/app/mail/"));
+				location.reload();
 			}
 		},
 	});
