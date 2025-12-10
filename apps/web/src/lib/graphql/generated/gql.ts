@@ -14,9 +14,11 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
+    "\n\t\tquery NavbarQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t}\n\t\t}\n\t": typeof types.NavbarQueryDocument,
     "\n\t\tquery Viewer {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\tmailboxes {\n\t\t\t\t\tid\n\t\t\t\t\ttype\n\t\t\t\t\tname\n\t\t\t\t\tunreadThreadsCount\n\t\t\t\t\tthreads {\n\t\t\t\t\t\tpageInfo {\n\t\t\t\t\t\t\thasNextPage\n\t\t\t\t\t\t\tendCursor\n\t\t\t\t\t\t}\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tcursor\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tfrom\n\t\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\t\tlastMessageAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.ViewerDocument,
 };
 const documents: Documents = {
+    "\n\t\tquery NavbarQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t}\n\t\t}\n\t": types.NavbarQueryDocument,
     "\n\t\tquery Viewer {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\tmailboxes {\n\t\t\t\t\tid\n\t\t\t\t\ttype\n\t\t\t\t\tname\n\t\t\t\t\tunreadThreadsCount\n\t\t\t\t\tthreads {\n\t\t\t\t\t\tpageInfo {\n\t\t\t\t\t\t\thasNextPage\n\t\t\t\t\t\t\tendCursor\n\t\t\t\t\t\t}\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tcursor\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tfrom\n\t\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\t\tlastMessageAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.ViewerDocument,
 };
 
@@ -34,6 +36,10 @@ const documents: Documents = {
  */
 export function graphql(source: string): unknown;
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\tquery NavbarQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t}\n\t\t}\n\t"): (typeof documents)["\n\t\tquery NavbarQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t}\n\t\t}\n\t"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
