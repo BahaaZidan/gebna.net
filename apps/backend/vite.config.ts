@@ -11,7 +11,10 @@ export default defineConfig({
 		watchAndRun([
 			{
 				name: "graphql:generate",
-				watch: [path.resolve("src/lib/graphql/schema.graphql"), path.resolve("graphql.config.ts")],
+				watch: [
+					path.resolve("../../packages/graphql/schema.graphql"),
+					path.resolve("graphql.config.ts"),
+				],
 				run: "pnpm graphql:generate",
 				delay: 10,
 				logs: ["streamError"],

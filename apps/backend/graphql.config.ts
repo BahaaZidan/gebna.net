@@ -4,7 +4,7 @@ import type { TypeScriptResolversPluginConfig } from "@graphql-codegen/typescrip
 import type { IGraphQLConfig } from "graphql-config";
 
 const config: IGraphQLConfig = {
-	schema: ["src/lib/graphql/schema.graphql"],
+	schema: ["../../packages/graphql/schema.graphql"],
 	extensions: {
 		codegen: {
 			generates: {
