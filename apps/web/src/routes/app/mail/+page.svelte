@@ -8,7 +8,13 @@
 			viewer {
 				id
 				username
-				mailboxes {
+				screenerMailbox: mailbox(type: screener) {
+					id
+					type
+					name
+					unreadThreadsCount
+				}
+				importantMailbox: mailbox(type: important) {
 					id
 					type
 					name
