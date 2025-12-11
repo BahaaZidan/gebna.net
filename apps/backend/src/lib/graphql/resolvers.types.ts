@@ -53,6 +53,7 @@ export type Mailbox = Node & {
 
 export type MailboxThreadsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ThreadsFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -122,6 +123,10 @@ export type ThreadsConnection = Connection & {
   __typename?: 'ThreadsConnection';
   edges: Array<ThreadEdge>;
   pageInfo: PageInfo;
+};
+
+export type ThreadsFilter = {
+  unread: Scalars['Boolean']['input'];
 };
 
 export type User = Node & {
@@ -238,6 +243,7 @@ export type ResolversTypes = {
   Thread: ResolverTypeWrapper<ThreadSelectModel>;
   ThreadEdge: ResolverTypeWrapper<Omit<ThreadEdge, 'node'> & { node: ResolversTypes['Thread'] }>;
   ThreadsConnection: ResolverTypeWrapper<Omit<ThreadsConnection, 'edges'> & { edges: Array<ResolversTypes['ThreadEdge']> }>;
+  ThreadsFilter: ThreadsFilter;
   URL: ResolverTypeWrapper<Scalars['URL']['output']>;
   User: ResolverTypeWrapper<UserSelectModel>;
 };
@@ -260,6 +266,7 @@ export type ResolversParentTypes = {
   Thread: ThreadSelectModel;
   ThreadEdge: Omit<ThreadEdge, 'node'> & { node: ResolversParentTypes['Thread'] };
   ThreadsConnection: Omit<ThreadsConnection, 'edges'> & { edges: Array<ResolversParentTypes['ThreadEdge']> };
+  ThreadsFilter: ThreadsFilter;
   URL: Scalars['URL']['output'];
   User: UserSelectModel;
 };

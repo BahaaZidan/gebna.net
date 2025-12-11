@@ -13,7 +13,7 @@ type Mailbox implements Node {
 	id: ID!
 	type: MailboxType!
 	name: String!
-	threads(first: Int, after: String): ThreadsConnection!
+	threads(first: Int, after: String, filter: ThreadsFilter): ThreadsConnection!
 	unreadThreadsCount: Int!
 }
 
@@ -23,6 +23,10 @@ enum MailboxType {
 	news
 	transactional
 	trash
+}
+
+input ThreadsFilter {
+	unread: Boolean!
 }
 
 type ThreadsConnection implements Connection {

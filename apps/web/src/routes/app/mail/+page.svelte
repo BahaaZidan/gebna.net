@@ -10,8 +10,8 @@
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { graphql } from "$lib/graphql/generated";
 
-	const ViewerQuery = graphql(`
-		query Viewer {
+	const ImportantPageQuery = graphql(`
+		query ImportantPageQuery {
 			viewer {
 				id
 				username
@@ -26,40 +26,47 @@
 					type
 					name
 					unreadThreadsCount
-					threads {
-						pageInfo {
-							hasNextPage
-							endCursor
-						}
-						edges {
-							cursor
-							node {
-								id
-								from
-								title
-								lastMessageAt
-							}
-						}
+					unreadThreads: threads(filter: { unread: true }) {
+						...ImportantThreadDetails
 					}
+					readThreads: threads(filter: { unread: false }) {
+						...ImportantThreadDetails
+					}
+				}
+			}
+		}
+
+		fragment ImportantThreadDetails on ThreadsConnection {
+			pageInfo {
+				hasNextPage
+				endCursor
+			}
+			edges {
+				cursor
+				node {
+					id
+					from
+					title
+					lastMessageAt
 				}
 			}
 		}
 	`);
 
-	const viewerQuery = queryStore({
+	const importantPageQuery = queryStore({
 		client: getContextClient(),
-		query: ViewerQuery,
+		query: ImportantPageQuery,
 	});
 </script>
 
 <Navbar />
 <Container>
-	{#if $viewerQuery.fetching}
+	{#if $importantPageQuery.fetching}
 		<p>Loading...</p>
-	{:else if $viewerQuery.error}
-		<p>Oh no... {$viewerQuery.error.message}</p>
-	{:else if $viewerQuery.data?.viewer?.username}
-		{@const viewer = $viewerQuery.data.viewer}
+	{:else if $importantPageQuery.error}
+		<p>Oh no... {$importantPageQuery.error.message}</p>
+	{:else if $importantPageQuery.data?.viewer?.username}
+		{@const viewer = $importantPageQuery.data.viewer}
 
 		<div class="flex w-full justify-between">
 			<a href={resolve("/app/mail/screener")} class="btn rounded-3xl btn-accent">
