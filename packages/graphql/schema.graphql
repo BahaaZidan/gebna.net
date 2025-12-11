@@ -6,7 +6,7 @@ type Query {
 type User implements Node {
 	id: ID!
 	username: String!
-	mailboxes: [Mailbox!]!
+	mailbox(type: MailboxType!): Mailbox
 }
 
 type Mailbox implements Node {

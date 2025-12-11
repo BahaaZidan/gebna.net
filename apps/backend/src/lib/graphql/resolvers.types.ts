@@ -127,8 +127,13 @@ export type ThreadsConnection = Connection & {
 export type User = Node & {
   __typename?: 'User';
   id: Scalars['ID']['output'];
-  mailboxes: Array<Mailbox>;
+  mailbox?: Maybe<Mailbox>;
   username: Scalars['String']['output'];
+};
+
+
+export type UserMailboxArgs = {
+  type: MailboxType;
 };
 
 
@@ -349,7 +354,7 @@ export interface UrlScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes[
 
 export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  mailboxes?: Resolver<Array<ResolversTypes['Mailbox']>, ParentType, ContextType>;
+  mailbox?: Resolver<Maybe<ResolversTypes['Mailbox']>, ParentType, ContextType, RequireFields<UserMailboxArgs, 'type'>>;
   username?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };

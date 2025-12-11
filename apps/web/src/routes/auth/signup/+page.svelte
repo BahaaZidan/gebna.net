@@ -9,13 +9,8 @@
 	import { resolve } from "$app/paths";
 	import { PUBLIC_API_URL } from "$env/static/public";
 
-	import { getAccessToken, setAccessToken } from "$lib/authentication";
+	import { setAccessToken } from "$lib/authentication";
 	import TextInput from "$lib/components/forms/TextInput.svelte";
-
-	$effect(() => {
-		// WORKAROUND: I don't like this. Server-side solution for protected routes would be better
-		if (getAccessToken()) goto(resolve("/app/mail/"));
-	});
 
 	const superform = superForm(defaults(valibot(registerSchema)), {
 		SPA: true,
@@ -42,7 +37,7 @@
 	let { message } = superform;
 </script>
 
-<div class="flex h-[calc(100vh-4rem)] flex-col items-center justify-center">
+<div class="flex h-screen flex-col items-center justify-center">
 	<div role="alert" class={["alert alert-error", { invisible: !$message }]}>
 		<TriangleAlertIcon />
 		<span>{$message}</span>
