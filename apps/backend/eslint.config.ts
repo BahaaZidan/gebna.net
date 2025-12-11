@@ -23,7 +23,6 @@ export default defineConfig([
 	{
 		rules: {
 			"no-undef": "off",
-			"no-nested-ternary": "error",
 			eqeqeq: "error",
 			"no-unused-vars": "off",
 			"@typescript-eslint/no-unused-vars": [

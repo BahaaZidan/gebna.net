@@ -53,8 +53,16 @@ export const resolvers: Resolvers = {
 			const pageSize = args.first || 30;
 			const cursor = args.after;
 			const threadsPlusOne = await db.query.threadTable.findMany({
-				where: (t, { eq, and, lt }) =>
-					and(eq(t.mailboxId, parent.id), cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined),
+				where: (t, { eq, and, lt, gt }) =>
+					and(
+						eq(t.mailboxId, parent.id),
+						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined,
+						args.filter
+							? args.filter.unread
+								? gt(t.unreadCount, 0)
+								: eq(t.unreadCount, 0)
+							: undefined
+					),
 				orderBy: (t, { desc }) => desc(t.lastMessageAt),
 				limit: pageSize + 1,
 			});
