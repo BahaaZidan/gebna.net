@@ -13,6 +13,7 @@ import { ulid } from "ulid";
 
 import { getDB } from "$lib/db";
 import { mailboxTable, sessionTable, userTable } from "$lib/db/schema";
+import { generateImagePlaceholder } from "$lib/utils/users";
 
 type JwtPayload = {
 	sub: string;
@@ -69,6 +70,8 @@ authenticationApp.post("/register", async (c) => {
 					id: userId,
 					username: bodyValidation.output.username,
 					passwordHash,
+					name: bodyValidation.output.name,
+					avatarPlaceholder: generateImagePlaceholder(bodyValidation.output.name),
 				})
 				.returning();
 

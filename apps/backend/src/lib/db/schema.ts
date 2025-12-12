@@ -22,6 +22,9 @@ export const userTable = sqliteTable("user", {
 	id: text().primaryKey(),
 	username: citext().notNull().unique(),
 	passwordHash: text().notNull(),
+	name: text().notNull(),
+	avatar: text(),
+	avatarPlaceholder: text().notNull(),
 });
 
 export const sessionTable = sqliteTable("session", {
@@ -59,6 +62,8 @@ export const mailboxTable = sqliteTable(
 export const address_userTable = sqliteTable(
 	"address_user",
 	{
+		/** Makes life a little easier with profile operations */
+		id: text().primaryKey(),
 		/** The sender. Based on the envelope */
 		address: text().notNull(),
 		/** The reciever. Based on the envelope */
@@ -68,6 +73,9 @@ export const address_userTable = sqliteTable(
 		targetMailboxId: text()
 			.notNull()
 			.references(() => mailboxTable.id, { onDelete: "cascade" }),
+		name: text().notNull(),
+		avatar: text(),
+		avatarPlaceholder: text().notNull(),
 	},
 	(self) => [uniqueIndex("address_user_uniq").on(self.address, self.userId)]
 );
@@ -89,6 +97,8 @@ export const threadTable = sqliteTable(
 		unreadCount: integer().notNull().default(1),
 		/** based on the subject of the first message or its' snippet */
 		title: text(),
+		/** based on the snippet of the first message */
+		snippet: text(),
 		lastMessageAt: integer({ mode: "timestamp" })
 			.notNull()
 			.$default(() => new Date()),

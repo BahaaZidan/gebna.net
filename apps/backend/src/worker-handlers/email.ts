@@ -3,10 +3,12 @@ import PostalMime, { type Attachment, type Email } from "postal-mime";
 import { ulid } from "ulid";
 import { filterXSS } from "xss";
 
+import { generateImagePlaceholder } from "$lib/utils/users";
+
 import { getDB, TransactionInstance } from "../lib/db";
-import { attachmentTable, messageTable, threadTable } from "../lib/db/schema";
+import { address_userTable, attachmentTable, messageTable, threadTable } from "../lib/db/schema";
 import { increment } from "../lib/db/utils";
-import { extractLocalPart } from "../lib/utils/email";
+import { extractLocalPart, resolveAvatar } from "../lib/utils/email";
 
 export async function emailHandler(
 	envelope: ForwardableEmailMessage,
@@ -20,20 +22,36 @@ export async function emailHandler(
 	});
 	if (!recipientUser) return envelope.setReject("ADDRESS NOT FOUND!");
 
-	await db.transaction(async (tx) => {
-		const user_address = await tx.query.address_userTable.findFirst({
-			where: (t, { eq, and }) => and(eq(t.userId, recipientUser.id), eq(t.address, envelope.from)),
-		});
-		const targetMailboxId = user_address
-			? user_address.targetMailboxId
-			: (
-					await tx.query.mailboxTable.findFirst({
-						where: (t, { eq, and }) => and(eq(t.userId, recipientUser.id), eq(t.type, "screener")),
-					})
-				)?.id;
-		if (!targetMailboxId) throw new Error("SOMETHING_WENT_WRONG");
+	const parsedEmail = await PostalMime.parse(envelope.raw);
+	if (!parsedEmail.from?.name) return envelope.setReject("FROM NOT SET!");
 
-		const parsedEmail = await PostalMime.parse(envelope.raw);
+	const avatarInference = resolveAvatar(db, envelope.from).catch(() => undefined);
+
+	await db.transaction(async (tx) => {
+		const user_address =
+			(await tx.query.address_userTable.findFirst({
+				where: (t, { eq, and }) =>
+					and(eq(t.userId, recipientUser.id), eq(t.address, envelope.from)),
+			})) ||
+			(
+				await tx
+					.insert(address_userTable)
+					.values({
+						id: ulid(),
+						address: envelope.from,
+						userId: recipientUser.id,
+						targetMailboxId: (await tx.query.mailboxTable.findFirst({
+							where: (t, { eq, and }) =>
+								and(eq(t.userId, recipientUser.id), eq(t.type, "screener")),
+						}))!.id,
+						name: parsedEmail.from!.name,
+						avatarPlaceholder: generateImagePlaceholder(parsedEmail.from!.name),
+						avatar: await avatarInference,
+					})
+					.returning()
+			)[0];
+		const targetMailboxId = user_address.targetMailboxId;
+		if (!targetMailboxId) throw new Error("SOMETHING_WENT_WRONG");
 
 		const thread = await findOrCreateThread({
 			tx,
@@ -127,6 +145,7 @@ async function findOrCreateThread({
 			title: parsedEmail.subject,
 			firstMessageSubject: parsedEmail.subject,
 			firstMessageId: parsedEmail.messageId,
+			snippet: parsedEmail.text?.slice(0, 50),
 		})
 		.returning();
 

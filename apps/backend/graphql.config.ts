@@ -33,6 +33,7 @@ const config: IGraphQLConfig = {
 							Mailbox: "$lib/db#MailboxSelectModel",
 							Thread: "$lib/db#ThreadSelectModel",
 							Message: "$lib/db#MessageSelectModel",
+							AddressProfile: "$lib/db#AddressUserSelectModel",
 						},
 						resolversNonOptionalTypename: true,
 					} satisfies TypeScriptPluginConfig & TypeScriptResolversPluginConfig,

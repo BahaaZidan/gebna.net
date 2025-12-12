@@ -48,6 +48,7 @@
 		class="m-2 flex w-xl flex-col gap-2 rounded-2xl bg-base-200 p-6"
 	>
 		<TextInput {superform} field="username" label="Username" />
+		<TextInput {superform} field="name" label="Name" />
 		<TextInput {superform} field="password" type="password" label="Password" />
 		<TextInput {superform} field="passwordConfirm" type="password" label="Confirm password" />
 		<button type="submit" class="btn btn-primary">Submit</button>
