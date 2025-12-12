@@ -48,8 +48,10 @@
 					from {
 						id
 						address
+						avatar
 					}
 					title
+					snippet
 					lastMessageAt
 				}
 			}
@@ -91,12 +93,12 @@
 			<div class="flex w-full">
 				<div class="avatar">
 					<div class="w-16 rounded-full">
-						<img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+						<img src={node.from.avatar} />
 					</div>
 				</div>
 				<div class="flex flex-col gap-1">
 					<div>{node.title}</div>
-					<div>{node.title}</div>
+					<div>{node.snippet}</div>
 				</div>
 				<div>{node.lastMessageAt}</div>
 			</div>

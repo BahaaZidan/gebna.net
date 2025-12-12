@@ -33,6 +33,8 @@
 								from {
 									id
 									address
+									name
+									avatar
 								}
 								title
 								lastMessageAt
@@ -82,13 +84,13 @@
 			<div class="ml-4 flex gap-2">
 				<div class="avatar">
 					<div class="w-16 rounded-full">
-						<img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+						<img src={node.from.avatar} />
 					</div>
 				</div>
 				<div class="flex flex-col">
 					<div class="flex gap-2">
-						<div class="font-bold">John Doe</div>
-						<div class="text-accent-content">{node.from}</div>
+						<div class="font-bold">{node.from.name}</div>
+						<div class="text-accent-content">{node.from.address}</div>
 					</div>
 					<div>{node.title}</div>
 				</div>
