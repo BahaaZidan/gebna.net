@@ -5,9 +5,9 @@
 
 @plugin "daisyui/theme" {
 	name: "retro";
-	--radius-selector: 1.5srem;
-	--radius-field: 1.5srem;
-	--radius-box: 1.5srem;
+	--radius-selector: 1.5rem;
+	--radius-field: 1.5rem;
+	--radius-box: 1.5rem;
 	--size-selector: 0.25rem;
 	--size-field: 0.25rem;
 }
