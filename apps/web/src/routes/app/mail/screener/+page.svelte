@@ -30,7 +30,10 @@
 							cursor
 							node {
 								id
-								from
+								from {
+									id
+									address
+								}
 								title
 								lastMessageAt
 							}

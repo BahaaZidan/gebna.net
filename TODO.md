@@ -26,14 +26,18 @@
 - [x] Research using react-native for the web ui SPA and mobile 😢
 - [x] Setup URQL
 - [x] Setup graphql-codegen client preset w/ watchmode
+- [x] Missing data
+  - [x] Thread.snippet
+  - [x] Address.profile_picture
+  - [x] Address.full_name
+  - [x] User.profile_picture
+  - [x] User.name
+- [ ] Allow user to change their profile picture
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
 - [ ] LLM-generate a test script for inbound including threads
 - [ ] Cron to delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Downloadable attachments
-- [ ] The ability to change your name
-- [ ] The ability to add a profile picture
-- [ ] Storing the profile pictures and names of addresses
-- [ ] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
+- [x] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
 - [ ] Tighter security by creating machine id for every session and checking against it pre usage
 
 ### v0.5

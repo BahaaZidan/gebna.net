@@ -45,7 +45,10 @@
 				cursor
 				node {
 					id
-					from
+					from {
+						id
+						address
+					}
 					title
 					lastMessageAt
 				}
@@ -82,6 +85,23 @@
 				Write
 			</button>
 		</div>
-		<h1>Important</h1>
+		<h1 class="text-5xl font-bold">Important</h1>
+		<div class="divider divider-start">New for you</div>
+		{#each viewer.importantMailbox?.unreadThreads.edges as { node } (node.id)}
+			<div class="flex w-full">
+				<div class="avatar">
+					<div class="w-16 rounded-full">
+						<img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+					</div>
+				</div>
+				<div class="flex flex-col gap-1">
+					<div>{node.title}</div>
+					<div>{node.title}</div>
+				</div>
+				<div>{node.lastMessageAt}</div>
+			</div>
+		{/each}
+		<div class="divider divider-start">Previously seen</div>
+		{#each viewer.importantMailbox?.readThreads.edges as { node } (node.id)}{/each}
 	{/if}
 </Container>

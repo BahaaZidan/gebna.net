@@ -1,6 +1,6 @@
 /* eslint-disable */
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
-import type { UserSelectModel, MailboxSelectModel, ThreadSelectModel, MessageSelectModel } from '$lib/db';
+import type { UserSelectModel, MailboxSelectModel, ThreadSelectModel, MessageSelectModel, AddressUserSelectModel } from '$lib/db';
 import type { Context } from '$lib/graphql/context';
 export type Maybe<T> = T | null | undefined;
 export type InputMaybe<T> = T | null | undefined;
@@ -20,6 +20,15 @@ export type Scalars = {
   Float: { input: number; output: number; }
   DateTime: { input: Date; output: Date; }
   URL: { input: URL; output: URL; }
+};
+
+export type AddressProfile = Node & {
+  __typename?: 'AddressProfile';
+  address: Scalars['String']['output'];
+  avatar: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  targetMailbox: Mailbox;
 };
 
 export type Attachment = Node & {
@@ -70,7 +79,7 @@ export type Message = Node & {
   bodyHTML?: Maybe<Scalars['String']['output']>;
   bodyText?: Maybe<Scalars['String']['output']>;
   cc?: Maybe<Array<Scalars['String']['output']>>;
-  from: Scalars['String']['output'];
+  from: AddressProfile;
   id: Scalars['ID']['output'];
   recievedAt: Scalars['DateTime']['output'];
   replyTo?: Maybe<Array<Scalars['String']['output']>>;
@@ -105,10 +114,11 @@ export type QueryNodeArgs = {
 
 export type Thread = Node & {
   __typename?: 'Thread';
-  from: Scalars['String']['output'];
+  from: AddressProfile;
   id: Scalars['ID']['output'];
   lastMessageAt: Scalars['DateTime']['output'];
   messages: Array<Message>;
+  snippet?: Maybe<Scalars['String']['output']>;
   title?: Maybe<Scalars['String']['output']>;
   unreadMessagesCount: Scalars['Int']['output'];
 };
@@ -131,8 +141,10 @@ export type ThreadsFilter = {
 
 export type User = Node & {
   __typename?: 'User';
+  avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   mailbox?: Maybe<Mailbox>;
+  name: Scalars['String']['output'];
   username: Scalars['String']['output'];
 };
 
@@ -216,6 +228,7 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
   Connection: ( Omit<ThreadsConnection, 'edges'> & { edges: Array<_RefType['ThreadEdge']> } & { __typename: 'ThreadsConnection' } );
   Edge: ( Omit<ThreadEdge, 'node'> & { node: _RefType['Thread'] } & { __typename: 'ThreadEdge' } );
   Node:
+    | ( AddressUserSelectModel & { __typename: 'AddressProfile' } )
     | ( Attachment & { __typename: 'Attachment' } )
     | ( MailboxSelectModel & { __typename: 'Mailbox' } )
     | ( MessageSelectModel & { __typename: 'Message' } )
@@ -226,6 +239,7 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
+  AddressProfile: ResolverTypeWrapper<AddressUserSelectModel>;
   Attachment: ResolverTypeWrapper<Attachment>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Connection: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Connection']>;
@@ -250,6 +264,7 @@ export type ResolversTypes = {
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
+  AddressProfile: AddressUserSelectModel;
   Attachment: Attachment;
   Boolean: Scalars['Boolean']['output'];
   Connection: ResolversInterfaceTypes<ResolversParentTypes>['Connection'];
@@ -269,6 +284,15 @@ export type ResolversParentTypes = {
   ThreadsFilter: ThreadsFilter;
   URL: Scalars['URL']['output'];
   User: UserSelectModel;
+};
+
+export type AddressProfileResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AddressProfile'] = ResolversParentTypes['AddressProfile']> = {
+  address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  targetMailbox?: Resolver<ResolversTypes['Mailbox'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type AttachmentResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Attachment'] = ResolversParentTypes['Attachment']> = {
@@ -306,7 +330,7 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
   bodyHTML?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   bodyText?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   cc?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
-  from?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  from?: Resolver<ResolversTypes['AddressProfile'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   recievedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   replyTo?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
@@ -318,7 +342,7 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
 };
 
 export type NodeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Node'] = ResolversParentTypes['Node']> = {
-  __resolveType: TypeResolveFn<'Attachment' | 'Mailbox' | 'Message' | 'Thread' | 'User', ParentType, ContextType>;
+  __resolveType: TypeResolveFn<'AddressProfile' | 'Attachment' | 'Mailbox' | 'Message' | 'Thread' | 'User', ParentType, ContextType>;
 };
 
 export type PageInfoResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PageInfo'] = ResolversParentTypes['PageInfo']> = {
@@ -334,10 +358,11 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
 };
 
 export type ThreadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Thread'] = ResolversParentTypes['Thread']> = {
-  from?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  from?: Resolver<ResolversTypes['AddressProfile'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   lastMessageAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   messages?: Resolver<Array<ResolversTypes['Message']>, ParentType, ContextType>;
+  snippet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   unreadMessagesCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -360,13 +385,16 @@ export interface UrlScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes[
 }
 
 export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
+  avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   mailbox?: Resolver<Maybe<ResolversTypes['Mailbox']>, ParentType, ContextType, RequireFields<UserMailboxArgs, 'type'>>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   username?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type Resolvers<ContextType = Context> = {
+  AddressProfile?: AddressProfileResolvers<ContextType>;
   Attachment?: AttachmentResolvers<ContextType>;
   Connection?: ConnectionResolvers<ContextType>;
   DateTime?: GraphQLScalarType;

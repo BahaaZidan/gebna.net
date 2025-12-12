@@ -6,6 +6,8 @@ type Query {
 type User implements Node {
 	id: ID!
 	username: String!
+	name: String!
+	avatar: String!
 	mailbox(type: MailboxType!): Mailbox
 }
 
@@ -41,16 +43,17 @@ type ThreadEdge implements Edge {
 
 type Thread implements Node {
 	id: ID!
-	from: String!
+	from: AddressProfile!
 	unreadMessagesCount: Int!
 	title: String
+	snippet: String
 	lastMessageAt: DateTime!
 	messages: [Message!]!
 }
 
 type Message implements Node {
 	id: ID!
-	from: String!
+	from: AddressProfile!
 	unread: Boolean!
 	recievedAt: DateTime!
 	subject: String
@@ -61,6 +64,14 @@ type Message implements Node {
 	bodyText: String
 	bodyHTML: String
 	attachments: [Attachment!]!
+}
+
+type AddressProfile implements Node {
+	id: ID!
+	address: String!
+	name: String!
+	avatar: String!
+	targetMailbox: Mailbox!
 }
 
 type Attachment implements Node {

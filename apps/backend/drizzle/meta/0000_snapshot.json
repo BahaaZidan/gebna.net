@@ -1,12 +1,19 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "04903cf5-7e3f-4c89-9fac-2fdee0a9ddca",
+  "id": "72ad0c52-fc0d-431d-968e-f17c682ba9c7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "address_user": {
       "name": "address_user",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
         "address": {
           "name": "address",
           "type": "text",
@@ -23,6 +30,27 @@
         },
         "targetMailboxId": {
           "name": "targetMailboxId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "avatar": {
+          "name": "avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "avatarPlaceholder": {
+          "name": "avatarPlaceholder",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -59,6 +87,121 @@
           "tableTo": "mailbox",
           "columnsFrom": [
             "targetMailboxId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "attachment": {
+      "name": "attachment",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "messageId": {
+          "name": "messageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "storageKey": {
+          "name": "storageKey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sizeInBytes": {
+          "name": "sizeInBytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fileName": {
+          "name": "fileName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "mimeType": {
+          "name": "mimeType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "disposition": {
+          "name": "disposition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contentId": {
+          "name": "contentId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "attachment_messageId_idx": {
+          "name": "attachment_messageId_idx",
+          "columns": [
+            "messageId"
+          ],
+          "isUnique": false
+        },
+        "attachment_userId_idx": {
+          "name": "attachment_userId_idx",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "attachment_messageId_message_id_fk": {
+          "name": "attachment_messageId_message_id_fk",
+          "tableFrom": "attachment",
+          "tableTo": "message",
+          "columnsFrom": [
+            "messageId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "attachment_userId_user_id_fk": {
+          "name": "attachment_userId_user_id_fk",
+          "tableFrom": "attachment",
+          "tableTo": "user",
+          "columnsFrom": [
+            "userId"
           ],
           "columnsTo": [
             "id"
@@ -268,9 +411,23 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "sizeInBytes": {
+          "name": "sizeInBytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {
+        "message_thread_idx": {
+          "name": "message_thread_idx",
+          "columns": [
+            "threadId"
+          ],
+          "isUnique": false
+        },
         "uniq_message_recipientId_messageId": {
           "name": "uniq_message_recipientId_messageId",
           "columns": [
@@ -452,6 +609,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "snippet": {
+          "name": "snippet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "lastMessageAt": {
           "name": "lastMessageAt",
           "type": "integer",
@@ -474,7 +638,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_thread_mailbox": {
+          "name": "idx_thread_mailbox",
+          "columns": [
+            "mailboxId"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "thread_recipientId_user_id_fk": {
           "name": "thread_recipientId_user_id_fk",
@@ -526,6 +698,27 @@
         },
         "passwordHash": {
           "name": "passwordHash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "avatar": {
+          "name": "avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "avatarPlaceholder": {
+          "name": "avatarPlaceholder",
           "type": "text",
           "primaryKey": false,
           "notNull": true,

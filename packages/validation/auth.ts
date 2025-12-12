@@ -6,8 +6,8 @@ export const registerSchema = v.pipe(
 	v.object({
 		username: v.pipe(
 			v.string(),
-			v.nonEmpty("Username is required!"),
 			v.trim(),
+			v.nonEmpty("Username is required!"),
 			v.toLowerCase(),
 			v.regex(
 				localRegex,
@@ -24,6 +24,7 @@ export const registerSchema = v.pipe(
 			v.regex(/^(?!.*(.)\1{2,}).*$/, "Avoid 3+ identical characters in a row.")
 		),
 		passwordConfirm: v.string(),
+		name: v.pipe(v.string(), v.trim(), v.nonEmpty()),
 	}),
 
 	// 1) passwords must match

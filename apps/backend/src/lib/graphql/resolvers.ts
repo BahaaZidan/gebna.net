@@ -28,6 +28,14 @@ export const resolvers: Resolvers = {
 						}));
 					return thread ? { ...thread, __typename: "Thread" } : null;
 				}
+				case "AddressProfile": {
+					const address_user =
+						session &&
+						(await db.query.address_userTable.findFirst({
+							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.userId, session.userId)),
+						}));
+					return address_user ? { ...address_user, __typename: "AddressProfile" } : null;
+				}
 				default:
 					return null;
 			}
@@ -46,6 +54,7 @@ export const resolvers: Resolvers = {
 			});
 			return mailbox;
 		},
+		avatar: (parent) => parent.avatar || parent.avatarPlaceholder,
 	},
 	Mailbox: {
 		id: (parent) => toGlobalId("Mailbox", parent.id),
@@ -94,6 +103,13 @@ export const resolvers: Resolvers = {
 			});
 			return messages;
 		},
+		from: async (parent, _, { db }) => {
+			const record = await db.query.address_userTable.findFirst({
+				where: (t, { and, eq }) =>
+					and(eq(t.userId, parent.recipientId), eq(t.address, parent.from)),
+			});
+			return record!;
+		},
 	},
 	Message: {
 		id: (parent) => toGlobalId("Message", parent.id),
@@ -103,6 +119,23 @@ export const resolvers: Resolvers = {
 				where: (t, { eq }) => eq(t.messageId, parent.id),
 			});
 			return attachments;
+		},
+		from: async (parent, _, { db }) => {
+			const record = await db.query.address_userTable.findFirst({
+				where: (t, { and, eq }) =>
+					and(eq(t.userId, parent.recipientId), eq(t.address, parent.from)),
+			});
+			return record!;
+		},
+	},
+	AddressProfile: {
+		id: (parent) => toGlobalId("AddressProfile", parent.id),
+		avatar: (parent) => parent.avatar || parent.avatarPlaceholder,
+		targetMailbox: async (parent, _, { db }) => {
+			const mailbox = await db.query.mailboxTable.findFirst({
+				where: (t, { eq }) => eq(t.id, parent.targetMailboxId),
+			});
+			return mailbox!;
 		},
 	},
 };
