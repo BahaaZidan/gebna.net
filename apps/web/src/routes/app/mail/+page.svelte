@@ -72,7 +72,7 @@
 		{@const viewer = $importantPageQuery.data.viewer}
 
 		<div class="flex w-full justify-between">
-			<a href={resolve("/app/mail/screener")} class="btn rounded-3xl btn-accent">
+			<a href={resolve("/app/mail/screener")} class="btn btn-accent">
 				<div class="flex">
 					<ThumbsUpIcon class="size-5" />
 					<ThumbsDownIcon class="size-5" />
@@ -80,7 +80,7 @@
 				Screen {viewer.screenerMailbox?.unreadThreadsCount} thread(s) from first-time senders
 			</a>
 
-			<button class="btn rounded-3xl btn-primary">
+			<button class="btn btn-primary">
 				<PlusIcon />
 				Write
 			</button>

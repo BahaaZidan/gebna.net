@@ -29,14 +29,14 @@
 <div class="navbar bg-base-100 px-28 shadow-sm">
 	<div class="navbar-start">
 		{@render prepend?.()}
-		<label class="input rounded-3xl">
+		<label class="input">
 			<SearchIcon />
 			<input type="text" class="grow" placeholder="Search" />
 		</label>
 	</div>
 	<div class="navbar-center">
 		<div class="dropdown">
-			<div tabindex="0" role="button" class="btn gap-0 rounded-3xl font-mono text-xl btn-ghost">
+			<div tabindex="0" role="button" class="btn gap-0 font-mono text-xl btn-ghost">
 				gebna <ChevronDownIcon class="mt-0.5 size-5" />
 			</div>
 			<ul
