@@ -2,3 +2,12 @@
 @plugin "daisyui" {
 	themes: retro;
 }
+
+@plugin "daisyui/theme" {
+	name: "retro";
+	--radius-selector: 1.5srem;
+	--radius-field: 1.5srem;
+	--radius-box: 1.5srem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+}
