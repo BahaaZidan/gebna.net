@@ -38,6 +38,22 @@
 								}
 								title
 								lastMessageAt
+								messages {
+									id
+									bodyHTML
+									recievedAt
+									bodyText
+									to
+									cc
+									replyTo
+									attachments {
+										id
+										fileName
+										mimeType
+										contentId
+										downloadURL
+									}
+								}
 							}
 						}
 					}
@@ -63,7 +79,7 @@
 </Navbar>
 <Container>
 	<div class="flex w-full justify-between">
-		<button class="btn btn-accent">Done</button>
+		<a href={resolve("/app/mail")} class="btn btn-accent">Done</a>
 		<button class="btn btn-circle btn-primary">
 			<KeyIcon />
 		</button>
@@ -75,26 +91,38 @@
 	<div class="text-lg">You get to decide if you want to hear from them.</div>
 	<div class="divider divider-start">Want to get emails from them?</div>
 	{#each screenerMailbox?.unreadThreads.edges as { node } (node.id)}
-		<div class="flex w-full items-center gap-2 border-b p-4">
-			<div class="join">
-				<button class="btn join-item btn-success"><ThumbsUpIcon /> Yes</button>
-				<button class="btn join-item p-2 btn-success"><ChevronDownIcon /></button>
-			</div>
-			<button class="btn btn-warning"><ThumbsDownIcon /> No</button>
-			<div class="ml-4 flex gap-2">
-				<div class="avatar">
-					<div class="w-16 rounded-full">
-						<img src={node.from.avatar} />
+		{@const firstMessage = node.messages[0]}
+		<details class="collapse mb-2 border border-base-300 bg-base-100">
+			<summary class="collapse-title">
+				<div class="flex w-full items-center gap-2">
+					<div class="join">
+						<button class="btn join-item btn-success"><ThumbsUpIcon /> Yes</button>
+						<button class="btn join-item p-2 btn-success"><ChevronDownIcon /></button>
+					</div>
+					<button class="btn btn-warning"><ThumbsDownIcon /> No</button>
+					<div class="ml-4 flex gap-2">
+						<div class="avatar">
+							<div class="size-16 rounded-full">
+								<img src={node.from.avatar} alt="{node.from.name} avatar" />
+							</div>
+						</div>
+						<div class="flex flex-col">
+							<div class="flex gap-2">
+								<div class="font-bold">{node.from.name}</div>
+								<div class="text-accent-content">{node.from.address}</div>
+							</div>
+							<div>{node.title}</div>
+						</div>
 					</div>
 				</div>
-				<div class="flex flex-col">
-					<div class="flex gap-2">
-						<div class="font-bold">{node.from.name}</div>
-						<div class="text-accent-content">{node.from.address}</div>
-					</div>
-					<div>{node.title}</div>
-				</div>
+			</summary>
+			<div class="collapse-content">
+				{#if firstMessage.bodyHTML}
+					{@html firstMessage.bodyHTML}
+				{:else}
+					{firstMessage.bodyText}
+				{/if}
 			</div>
-		</div>
+		</details>
 	{/each}
 </Container>
