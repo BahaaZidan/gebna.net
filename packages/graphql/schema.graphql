@@ -24,8 +24,10 @@ type Mailbox implements Node {
 	id: ID!
 	type: MailboxType!
 	name: String!
-	threads(first: Int, after: String, filter: ThreadsFilter): ThreadsConnection!
 	unreadThreadsCount: Int!
+	threads(first: Int, after: String, filter: ThreadsFilter): ThreadsConnection!
+	assignedAddressProfilesCount: Int!
+	addressProfiles(first: Int, after: String): AddressProfileConnection!
 }
 
 enum MailboxType {
@@ -73,6 +75,16 @@ type Message implements Node {
 	bodyText: String
 	bodyHTML: String
 	attachments: [Attachment!]!
+}
+
+type AddressProfileConnection implements Connection {
+	pageInfo: PageInfo!
+	edges: [AddressProfileEdge!]!
+}
+
+type AddressProfileEdge implements Edge {
+	cursor: String
+	node: AddressProfile!
 }
 
 type AddressProfile implements Node {

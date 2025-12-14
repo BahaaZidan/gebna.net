@@ -27,6 +27,18 @@ export type AddressProfile = Node & {
   targetMailbox: Mailbox;
 };
 
+export type AddressProfileConnection = Connection & {
+  __typename?: 'AddressProfileConnection';
+  edges: Array<AddressProfileEdge>;
+  pageInfo: PageInfo;
+};
+
+export type AddressProfileEdge = Edge & {
+  __typename?: 'AddressProfileEdge';
+  cursor?: Maybe<Scalars['String']['output']>;
+  node: AddressProfile;
+};
+
 export type AssignTargetMailboxInput = {
   addressProfileID: Scalars['ID']['input'];
   targetMailboxType: MailboxType;
@@ -53,11 +65,19 @@ export type Edge = {
 
 export type Mailbox = Node & {
   __typename?: 'Mailbox';
+  addressProfiles: AddressProfileConnection;
+  assignedAddressProfilesCount: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
   threads: ThreadsConnection;
   type: MailboxType;
   unreadThreadsCount: Scalars['Int']['output'];
+};
+
+
+export type MailboxAddressProfilesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 

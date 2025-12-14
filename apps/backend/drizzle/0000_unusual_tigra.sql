@@ -6,6 +6,8 @@ CREATE TABLE `address_user` (
 	`name` text NOT NULL,
 	`avatar` text,
 	`avatarPlaceholder` text NOT NULL,
+	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
+	`updatedAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`targetMailboxId`) REFERENCES `mailbox`(`id`) ON UPDATE no action ON DELETE cascade
 );
