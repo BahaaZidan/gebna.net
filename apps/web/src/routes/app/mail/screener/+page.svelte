@@ -2,7 +2,6 @@
 	import ArrowRightLeftIcon from "@lucide/svelte/icons/arrow-right-left";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
-	import KeyIcon from "@lucide/svelte/icons/key";
 	import NewspaperIcon from "@lucide/svelte/icons/newspaper";
 	import ThumbsDownIcon from "@lucide/svelte/icons/thumbs-down";
 	import ThumbsUpIcon from "@lucide/svelte/icons/thumbs-up";
@@ -15,6 +14,7 @@
 	import { graphql } from "$lib/graphql/generated";
 	import type { MailboxType } from "$lib/graphql/generated/graphql";
 
+	const urqlClient = getContextClient();
 	const ScreenerPageQuery = graphql(`
 		query ScreenerPageQuery {
 			viewer {
@@ -45,7 +45,7 @@
 		}
 	`);
 	const screenerPageQuery = queryStore({
-		client: getContextClient(),
+		client: urqlClient,
 		query: ScreenerPageQuery,
 	});
 	const screenerMailbox = $derived($screenerPageQuery.data?.viewer?.screenerMailbox);
@@ -65,7 +65,7 @@
 	`);
 	const assignTargetMailbox = (addressProfileID: string, targetMailboxType: MailboxType) => () => {
 		mutationStore({
-			client: getContextClient(),
+			client: urqlClient,
 			query: AssignTargetMailboxMutation,
 			variables: { input: { addressProfileID, targetMailboxType } },
 		});
@@ -83,9 +83,6 @@
 <Container>
 	<div class="flex w-full justify-between">
 		<a href={resolve("/app/mail")} class="btn btn-accent">Done</a>
-		<button class="btn btn-circle btn-primary">
-			<KeyIcon />
-		</button>
 	</div>
 	<h1 class="text-5xl font-bold">The Screener</h1>
 	<div class="text-lg">

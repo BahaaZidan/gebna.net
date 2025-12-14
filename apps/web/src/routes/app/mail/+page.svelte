@@ -72,7 +72,13 @@
 		{@const viewer = $importantPageQuery.data.viewer}
 
 		<div class="flex w-full justify-between">
-			<a href={resolve("/app/mail/screener")} class="btn btn-accent">
+			<a
+				href={resolve("/app/mail/screener")}
+				class={[
+					"btn btn-accent",
+					{ invisible: !viewer.screenerMailbox?.assignedAddressProfilesCount },
+				]}
+			>
 				<div class="flex">
 					<ThumbsUpIcon class="size-5" />
 					<ThumbsDownIcon class="size-5" />
