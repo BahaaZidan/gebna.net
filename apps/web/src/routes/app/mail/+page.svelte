@@ -7,6 +7,7 @@
 	import { resolve } from "$app/paths";
 
 	import Container from "$lib/components/Container.svelte";
+	import ThreadListItem from "$lib/components/mail/ThreadListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { graphql } from "$lib/graphql/generated";
 
@@ -25,32 +26,31 @@
 					name
 					unreadThreadsCount
 					unreadThreads: threads(filter: { unread: true }) {
-						...ImportantThreadDetails
+						pageInfo {
+							hasNextPage
+							endCursor
+						}
+						edges {
+							cursor
+							node {
+								id
+								...ThreadListItem
+							}
+						}
 					}
 					readThreads: threads(filter: { unread: false }) {
-						...ImportantThreadDetails
+						pageInfo {
+							hasNextPage
+							endCursor
+						}
+						edges {
+							cursor
+							node {
+								id
+								...ThreadListItem
+							}
+						}
 					}
-				}
-			}
-		}
-
-		fragment ImportantThreadDetails on ThreadsConnection {
-			pageInfo {
-				hasNextPage
-				endCursor
-			}
-			edges {
-				cursor
-				node {
-					id
-					from {
-						id
-						address
-						avatar
-					}
-					title
-					snippet
-					lastMessageAt
 				}
 			}
 		}
@@ -90,21 +90,14 @@
 		</div>
 		<h1 class="text-5xl font-bold">Important</h1>
 		<div class="divider divider-start">New for you</div>
-		{#each viewer.importantMailbox?.unreadThreads.edges as { node } (node.id)}
-			<div class="flex w-full">
-				<div class="avatar">
-					<div class="w-16 rounded-full">
-						<img src={node.from.avatar} alt="{node.from.address} avatar" />
-					</div>
-				</div>
-				<div class="flex flex-col gap-1">
-					<div>{node.title}</div>
-					<div>{node.snippet}</div>
-				</div>
-				<div>{node.lastMessageAt}</div>
-			</div>
-		{/each}
+		<div class="flex w-full flex-col gap-2">
+			{#each viewer.importantMailbox?.unreadThreads.edges as { node } (node.id)}
+				<ThreadListItem thread={node} />
+			{/each}
+		</div>
 		<div class="divider divider-start">Previously seen</div>
-		{#each viewer.importantMailbox?.readThreads.edges as { node } (node.id)}{/each}
+		{#each viewer.importantMailbox?.readThreads.edges as { node } (node.id)}
+			<ThreadListItem thread={node} />
+		{/each}
 	{/if}
 </Container>
