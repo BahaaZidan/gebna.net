@@ -92,6 +92,42 @@ export const resolvers: Resolvers = {
 				.where(and(eq(threadTable.mailboxId, parent.id), gt(threadTable.unreadCount, 0)));
 			return unreadThreadsCount;
 		},
+		assignedAddressProfilesCount: async (parent, _, { db }) => {
+			const [{ assignedAddressProfilesCount }] = await db
+				.select({ assignedAddressProfilesCount: count() })
+				.from(address_userTable)
+				.where(eq(address_userTable.targetMailboxId, parent.id));
+
+			return assignedAddressProfilesCount;
+		},
+		addressProfiles: async (parent, args, { db }) => {
+			const pageSize = args.first || 30;
+			const cursor = args.after;
+			const addressProfilesPlusOne = await db.query.address_userTable.findMany({
+				where: (t, { eq, and, lt }) =>
+					and(
+						eq(t.userId, parent.id),
+						eq(t.targetMailboxId, parent.id),
+						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
+					),
+				orderBy: (t, { desc }) => desc(t.createdAt),
+				limit: pageSize + 1,
+			});
+			const addressProfiles = addressProfilesPlusOne.slice(0, pageSize);
+
+			return {
+				edges: addressProfiles.map((node) => ({
+					node,
+					cursor: toGlobalId("AddressProfile", node.id),
+				})),
+				pageInfo: {
+					hasNextPage: addressProfilesPlusOne.length > addressProfiles.length,
+					endCursor: addressProfiles.length
+						? toGlobalId("AddressProfile", addressProfiles[addressProfiles.length - 1].id)
+						: null,
+				},
+			};
+		},
 	},
 	Thread: {
 		id: (parent) => toGlobalId("Thread", parent.id),
@@ -149,7 +185,7 @@ export const resolvers: Resolvers = {
 			return await db.transaction(async (tx) => {
 				const [addressProfile] = await tx
 					.update(address_userTable)
-					.set({ targetMailboxId: targetMailbox.id })
+					.set({ targetMailboxId: targetMailbox.id, updatedAt: new Date() })
 					.where(
 						and(
 							eq(address_userTable.userId, session.userId),

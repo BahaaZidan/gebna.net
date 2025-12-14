@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
 	customType,
 	index,
@@ -76,6 +77,12 @@ export const address_userTable = sqliteTable(
 		name: text().notNull(),
 		avatar: text(),
 		avatarPlaceholder: text().notNull(),
+		createdAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
+		updatedAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
 	},
 	(self) => [uniqueIndex("address_user_uniq").on(self.address, self.userId)]
 );
