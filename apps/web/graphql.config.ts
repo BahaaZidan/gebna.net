@@ -16,9 +16,6 @@ const config: IGraphQLConfig = {
 			generates: {
 				"./src/lib/graphql/generated/": {
 					preset: "client",
-					presetConfig: {
-						fragmentMasking: false,
-					},
 					config: {
 						enumsAsTypes: true,
 						useTypeImports: true,

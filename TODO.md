@@ -35,9 +35,13 @@
 - [x] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
 - [x] Screener flow
 - [x] Rename AddressProfile to Contact across the system
-- [ ] Important box page
-- [ ] Important thread detail
+- [x] Important box page UI
+- [ ] Important thread detail UI
+- [ ] Read/unread cross-cutting
 - [ ] Better seeding => use real bodyHTML instead of these toy examples
+  - [ ] Real bodyHTML instead of simplistic bodyText only
+  - [ ] Different dates in important box
+  - [ ] Different read/unread statuses in important box
 - [ ] News Box
 - [ ] Transactional Box
 - [ ] Trash Box
