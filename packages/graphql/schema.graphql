@@ -3,6 +3,15 @@ type Query {
 	node(id: ID!): Node
 }
 
+type Mutation {
+	assignTargetMailbox(input: AssignTargetMailboxInput!): AddressProfile
+}
+
+input AssignTargetMailboxInput {
+	addressProfileID: ID!
+	targetMailboxType: MailboxType!
+}
+
 type User implements Node {
 	id: ID!
 	username: String!
