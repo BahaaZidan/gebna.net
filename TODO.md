@@ -33,6 +33,7 @@
   - [x] User.profile_picture
   - [x] User.name
 - [x] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
+- [x] Screener flow
 - [ ] Allow user to change their profile picture
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Downloadable attachments
@@ -71,3 +72,4 @@
 - [ ] Store raw .eml in an R2 bucket
 - [ ] Merge threads together
 - [ ] Labels
+- [ ] Onboarding flow

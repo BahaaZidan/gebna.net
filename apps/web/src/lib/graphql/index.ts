@@ -8,7 +8,19 @@ import { getAccessToken } from "$lib/authentication";
 
 export const urqlClient = new Client({
 	url: new URL("/graphql", PUBLIC_API_URL).toString(),
-	exchanges: [refocusExchange(), cacheExchange(), fetchExchange],
+	exchanges: [
+		refocusExchange(),
+		cacheExchange({
+			updates: {
+				Mutation: {
+					assignTargetMailbox: (_result, _args, cache) => {
+						cache.invalidate("Query", "viewer");
+					},
+				},
+			},
+		}),
+		fetchExchange,
+	],
 	fetchOptions: () => {
 		const token = getAccessToken();
 		return {
