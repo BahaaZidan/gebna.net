@@ -27,6 +27,7 @@ export type AddressProfile = Node & {
   address: Scalars['String']['output'];
   avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  messages: Array<Message>;
   name: Scalars['String']['output'];
   targetMailbox: Mailbox;
 };
@@ -339,6 +340,7 @@ export type AddressProfileResolvers<ContextType = Context, ParentType extends Re
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  messages?: Resolver<Array<ResolversTypes['Message']>, ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   targetMailbox?: Resolver<ResolversTypes['Mailbox'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
