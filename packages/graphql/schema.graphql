@@ -93,6 +93,7 @@ type AddressProfile implements Node {
 	name: String!
 	avatar: String!
 	targetMailbox: Mailbox!
+	messages: [Message!]!
 }
 
 type Attachment implements Node {

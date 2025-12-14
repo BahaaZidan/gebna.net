@@ -106,7 +106,7 @@ export const resolvers: Resolvers = {
 			const addressProfilesPlusOne = await db.query.address_userTable.findMany({
 				where: (t, { eq, and, lt }) =>
 					and(
-						eq(t.userId, parent.id),
+						eq(t.userId, parent.userId),
 						eq(t.targetMailboxId, parent.id),
 						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
 					),
@@ -172,6 +172,12 @@ export const resolvers: Resolvers = {
 				where: (t, { eq }) => eq(t.id, parent.targetMailboxId),
 			});
 			return mailbox!;
+		},
+		messages: async (parent, _, { db }) => {
+			const messages = await db.query.messageTable.findMany({
+				where: (t, { eq }) => eq(t.from, parent.address),
+			});
+			return messages;
 		},
 	},
 	Mutation: {
