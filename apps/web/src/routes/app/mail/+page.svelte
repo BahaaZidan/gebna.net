@@ -17,7 +17,7 @@
 				username
 				screenerMailbox: mailbox(type: screener) {
 					id
-					assignedAddressProfilesCount
+					assignedContactsCount
 				}
 				importantMailbox: mailbox(type: important) {
 					id
@@ -74,16 +74,13 @@
 		<div class="flex w-full justify-between">
 			<a
 				href={resolve("/app/mail/screener")}
-				class={[
-					"btn btn-accent",
-					{ invisible: !viewer.screenerMailbox?.assignedAddressProfilesCount },
-				]}
+				class={["btn btn-accent", { invisible: !viewer.screenerMailbox?.assignedContactsCount }]}
 			>
 				<div class="flex">
 					<ThumbsUpIcon class="size-5" />
 					<ThumbsDownIcon class="size-5" />
 				</div>
-				Screen {viewer.screenerMailbox?.assignedAddressProfilesCount} first-time senders
+				Screen {viewer.screenerMailbox?.assignedContactsCount} first-time senders
 			</a>
 
 			<button class="btn btn-primary">

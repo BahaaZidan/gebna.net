@@ -23,8 +23,8 @@
 					id
 					type
 					name
-					assignedAddressProfilesCount
-					addressProfiles {
+					assignedContactsCount
+					contacts {
 						edges {
 							node {
 								id
@@ -63,11 +63,11 @@
 			}
 		}
 	`);
-	const assignTargetMailbox = (addressProfileID: string, targetMailboxType: MailboxType) => () => {
+	const assignTargetMailbox = (contactID: string, targetMailboxType: MailboxType) => () => {
 		mutationStore({
 			client: urqlClient,
 			query: AssignTargetMailboxMutation,
-			variables: { input: { addressProfileID, targetMailboxType } },
+			variables: { input: { contactID, targetMailboxType } },
 		});
 	};
 </script>
@@ -90,7 +90,7 @@
 	</div>
 	<div class="text-lg">You get to decide if you want to hear from them.</div>
 	<div class="divider divider-start">Want to get emails from them?</div>
-	{#each screenerMailbox?.addressProfiles.edges as { node } (node.id)}
+	{#each screenerMailbox?.contacts.edges as { node } (node.id)}
 		{@const firstMessage = node.messages[0]}
 		<details class="collapse mb-2 border border-base-300 bg-base-100">
 			<summary class="collapse-title">

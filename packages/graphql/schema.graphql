@@ -4,11 +4,11 @@ type Query {
 }
 
 type Mutation {
-	assignTargetMailbox(input: AssignTargetMailboxInput!): AddressProfile
+	assignTargetMailbox(input: AssignTargetMailboxInput!): Contact
 }
 
 input AssignTargetMailboxInput {
-	addressProfileID: ID!
+	contactID: ID!
 	targetMailboxType: MailboxType!
 }
 
@@ -26,8 +26,8 @@ type Mailbox implements Node {
 	name: String!
 	unreadThreadsCount: Int!
 	threads(first: Int, after: String, filter: ThreadsFilter): ThreadsConnection!
-	assignedAddressProfilesCount: Int!
-	addressProfiles(first: Int, after: String): AddressProfileConnection!
+	assignedContactsCount: Int!
+	contacts(first: Int, after: String): ContactConnection!
 }
 
 enum MailboxType {
@@ -54,7 +54,7 @@ type ThreadEdge implements Edge {
 
 type Thread implements Node {
 	id: ID!
-	from: AddressProfile!
+	from: Contact!
 	unreadMessagesCount: Int!
 	title: String
 	snippet: String
@@ -64,7 +64,7 @@ type Thread implements Node {
 
 type Message implements Node {
 	id: ID!
-	from: AddressProfile!
+	from: Contact!
 	unread: Boolean!
 	recievedAt: DateTime!
 	subject: String
@@ -77,17 +77,17 @@ type Message implements Node {
 	attachments: [Attachment!]!
 }
 
-type AddressProfileConnection implements Connection {
+type ContactConnection implements Connection {
 	pageInfo: PageInfo!
-	edges: [AddressProfileEdge!]!
+	edges: [ContactEdge!]!
 }
 
-type AddressProfileEdge implements Edge {
+type ContactEdge implements Edge {
 	cursor: String
-	node: AddressProfile!
+	node: Contact!
 }
 
-type AddressProfile implements Node {
+type Contact implements Node {
 	id: ID!
 	address: String!
 	name: String!

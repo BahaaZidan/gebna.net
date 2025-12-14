@@ -18,30 +18,8 @@ export type Scalars = {
   URL: { input: string; output: string; }
 };
 
-export type AddressProfile = Node & {
-  __typename?: 'AddressProfile';
-  address: Scalars['String']['output'];
-  avatar: Scalars['String']['output'];
-  id: Scalars['ID']['output'];
-  messages: Array<Message>;
-  name: Scalars['String']['output'];
-  targetMailbox: Mailbox;
-};
-
-export type AddressProfileConnection = Connection & {
-  __typename?: 'AddressProfileConnection';
-  edges: Array<AddressProfileEdge>;
-  pageInfo: PageInfo;
-};
-
-export type AddressProfileEdge = Edge & {
-  __typename?: 'AddressProfileEdge';
-  cursor?: Maybe<Scalars['String']['output']>;
-  node: AddressProfile;
-};
-
 export type AssignTargetMailboxInput = {
-  addressProfileID: Scalars['ID']['input'];
+  contactID: Scalars['ID']['input'];
   targetMailboxType: MailboxType;
 };
 
@@ -59,6 +37,28 @@ export type Connection = {
   pageInfo: PageInfo;
 };
 
+export type Contact = Node & {
+  __typename?: 'Contact';
+  address: Scalars['String']['output'];
+  avatar: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  messages: Array<Message>;
+  name: Scalars['String']['output'];
+  targetMailbox: Mailbox;
+};
+
+export type ContactConnection = Connection & {
+  __typename?: 'ContactConnection';
+  edges: Array<ContactEdge>;
+  pageInfo: PageInfo;
+};
+
+export type ContactEdge = Edge & {
+  __typename?: 'ContactEdge';
+  cursor?: Maybe<Scalars['String']['output']>;
+  node: Contact;
+};
+
 export type Edge = {
   cursor?: Maybe<Scalars['String']['output']>;
   node: Node;
@@ -66,8 +66,8 @@ export type Edge = {
 
 export type Mailbox = Node & {
   __typename?: 'Mailbox';
-  addressProfiles: AddressProfileConnection;
-  assignedAddressProfilesCount: Scalars['Int']['output'];
+  assignedContactsCount: Scalars['Int']['output'];
+  contacts: ContactConnection;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
   threads: ThreadsConnection;
@@ -76,7 +76,7 @@ export type Mailbox = Node & {
 };
 
 
-export type MailboxAddressProfilesArgs = {
+export type MailboxContactsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -101,7 +101,7 @@ export type Message = Node & {
   bodyHTML?: Maybe<Scalars['String']['output']>;
   bodyText?: Maybe<Scalars['String']['output']>;
   cc?: Maybe<Array<Scalars['String']['output']>>;
-  from: AddressProfile;
+  from: Contact;
   id: Scalars['ID']['output'];
   recievedAt: Scalars['DateTime']['output'];
   replyTo?: Maybe<Array<Scalars['String']['output']>>;
@@ -113,7 +113,7 @@ export type Message = Node & {
 
 export type Mutation = {
   __typename?: 'Mutation';
-  assignTargetMailbox?: Maybe<AddressProfile>;
+  assignTargetMailbox?: Maybe<Contact>;
 };
 
 
@@ -146,7 +146,7 @@ export type QueryNodeArgs = {
 
 export type Thread = Node & {
   __typename?: 'Thread';
-  from: AddressProfile;
+  from: Contact;
   id: Scalars['ID']['output'];
   lastMessageAt: Scalars['DateTime']['output'];
   messages: Array<Message>;
@@ -193,24 +193,24 @@ export type NavbarQueryQuery = { __typename?: 'Query', viewer?: { __typename?: '
 export type ImportantPageQueryQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ImportantPageQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'User', id: string, username: string, screenerMailbox?: { __typename?: 'Mailbox', id: string, assignedAddressProfilesCount: number } | null, importantMailbox?: { __typename?: 'Mailbox', id: string, type: MailboxType, name: string, unreadThreadsCount: number, unreadThreads: { __typename?: 'ThreadsConnection', pageInfo: { __typename?: 'PageInfo', hasNextPage?: boolean | null, endCursor?: string | null }, edges: Array<{ __typename?: 'ThreadEdge', cursor?: string | null, node: { __typename?: 'Thread', id: string, title?: string | null, snippet?: string | null, lastMessageAt: string, from: { __typename?: 'AddressProfile', id: string, address: string, avatar: string } } }> }, readThreads: { __typename?: 'ThreadsConnection', pageInfo: { __typename?: 'PageInfo', hasNextPage?: boolean | null, endCursor?: string | null }, edges: Array<{ __typename?: 'ThreadEdge', cursor?: string | null, node: { __typename?: 'Thread', id: string, title?: string | null, snippet?: string | null, lastMessageAt: string, from: { __typename?: 'AddressProfile', id: string, address: string, avatar: string } } }> } } | null } | null };
+export type ImportantPageQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'User', id: string, username: string, screenerMailbox?: { __typename?: 'Mailbox', id: string, assignedContactsCount: number } | null, importantMailbox?: { __typename?: 'Mailbox', id: string, type: MailboxType, name: string, unreadThreadsCount: number, unreadThreads: { __typename?: 'ThreadsConnection', pageInfo: { __typename?: 'PageInfo', hasNextPage?: boolean | null, endCursor?: string | null }, edges: Array<{ __typename?: 'ThreadEdge', cursor?: string | null, node: { __typename?: 'Thread', id: string, title?: string | null, snippet?: string | null, lastMessageAt: string, from: { __typename?: 'Contact', id: string, address: string, avatar: string } } }> }, readThreads: { __typename?: 'ThreadsConnection', pageInfo: { __typename?: 'PageInfo', hasNextPage?: boolean | null, endCursor?: string | null }, edges: Array<{ __typename?: 'ThreadEdge', cursor?: string | null, node: { __typename?: 'Thread', id: string, title?: string | null, snippet?: string | null, lastMessageAt: string, from: { __typename?: 'Contact', id: string, address: string, avatar: string } } }> } } | null } | null };
 
-export type ImportantThreadDetailsFragment = { __typename?: 'ThreadsConnection', pageInfo: { __typename?: 'PageInfo', hasNextPage?: boolean | null, endCursor?: string | null }, edges: Array<{ __typename?: 'ThreadEdge', cursor?: string | null, node: { __typename?: 'Thread', id: string, title?: string | null, snippet?: string | null, lastMessageAt: string, from: { __typename?: 'AddressProfile', id: string, address: string, avatar: string } } }> };
+export type ImportantThreadDetailsFragment = { __typename?: 'ThreadsConnection', pageInfo: { __typename?: 'PageInfo', hasNextPage?: boolean | null, endCursor?: string | null }, edges: Array<{ __typename?: 'ThreadEdge', cursor?: string | null, node: { __typename?: 'Thread', id: string, title?: string | null, snippet?: string | null, lastMessageAt: string, from: { __typename?: 'Contact', id: string, address: string, avatar: string } } }> };
 
 export type ScreenerPageQueryQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ScreenerPageQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'User', id: string, screenerMailbox?: { __typename?: 'Mailbox', id: string, type: MailboxType, name: string, assignedAddressProfilesCount: number, addressProfiles: { __typename?: 'AddressProfileConnection', edges: Array<{ __typename?: 'AddressProfileEdge', node: { __typename?: 'AddressProfile', id: string, address: string, name: string, avatar: string, messages: Array<{ __typename?: 'Message', id: string, bodyText?: string | null, bodyHTML?: string | null, subject?: string | null }> } }> } } | null } | null };
+export type ScreenerPageQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'User', id: string, screenerMailbox?: { __typename?: 'Mailbox', id: string, type: MailboxType, name: string, assignedContactsCount: number, contacts: { __typename?: 'ContactConnection', edges: Array<{ __typename?: 'ContactEdge', node: { __typename?: 'Contact', id: string, address: string, name: string, avatar: string, messages: Array<{ __typename?: 'Message', id: string, bodyText?: string | null, bodyHTML?: string | null, subject?: string | null }> } }> } } | null } | null };
 
 export type AssignTargetMailboxMutationMutationVariables = Exact<{
   input: AssignTargetMailboxInput;
 }>;
 
 
-export type AssignTargetMailboxMutationMutation = { __typename?: 'Mutation', assignTargetMailbox?: { __typename?: 'AddressProfile', id: string, name: string, avatar: string, address: string, targetMailbox: { __typename?: 'Mailbox', id: string } } | null };
+export type AssignTargetMailboxMutationMutation = { __typename?: 'Mutation', assignTargetMailbox?: { __typename?: 'Contact', id: string, name: string, avatar: string, address: string, targetMailbox: { __typename?: 'Mailbox', id: string } } | null };
 
 export const ImportantThreadDetailsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ImportantThreadDetails"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ThreadsConnection"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}},{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cursor"}},{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"from"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"snippet"}},{"kind":"Field","name":{"kind":"Name","value":"lastMessageAt"}}]}}]}}]}}]} as unknown as DocumentNode<ImportantThreadDetailsFragment, unknown>;
 export const NavbarQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NavbarQuery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"username"}}]}}]}}]} as unknown as DocumentNode<NavbarQueryQuery, NavbarQueryQueryVariables>;
-export const ImportantPageQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ImportantPageQuery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"username"}},{"kind":"Field","alias":{"kind":"Name","value":"screenerMailbox"},"name":{"kind":"Name","value":"mailbox"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"EnumValue","value":"screener"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assignedAddressProfilesCount"}}]}},{"kind":"Field","alias":{"kind":"Name","value":"importantMailbox"},"name":{"kind":"Name","value":"mailbox"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"EnumValue","value":"important"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"unreadThreadsCount"}},{"kind":"Field","alias":{"kind":"Name","value":"unreadThreads"},"name":{"kind":"Name","value":"threads"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"unread"},"value":{"kind":"BooleanValue","value":true}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ImportantThreadDetails"}}]}},{"kind":"Field","alias":{"kind":"Name","value":"readThreads"},"name":{"kind":"Name","value":"threads"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"unread"},"value":{"kind":"BooleanValue","value":false}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ImportantThreadDetails"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ImportantThreadDetails"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ThreadsConnection"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}},{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cursor"}},{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"from"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"snippet"}},{"kind":"Field","name":{"kind":"Name","value":"lastMessageAt"}}]}}]}}]}}]} as unknown as DocumentNode<ImportantPageQueryQuery, ImportantPageQueryQueryVariables>;
-export const ScreenerPageQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ScreenerPageQuery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","alias":{"kind":"Name","value":"screenerMailbox"},"name":{"kind":"Name","value":"mailbox"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"EnumValue","value":"screener"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"assignedAddressProfilesCount"}},{"kind":"Field","name":{"kind":"Name","value":"addressProfiles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"}},{"kind":"Field","name":{"kind":"Name","value":"messages"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"bodyText"}},{"kind":"Field","name":{"kind":"Name","value":"bodyHTML"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}}]}}]}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<ScreenerPageQueryQuery, ScreenerPageQueryQueryVariables>;
+export const ImportantPageQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ImportantPageQuery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"username"}},{"kind":"Field","alias":{"kind":"Name","value":"screenerMailbox"},"name":{"kind":"Name","value":"mailbox"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"EnumValue","value":"screener"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assignedContactsCount"}}]}},{"kind":"Field","alias":{"kind":"Name","value":"importantMailbox"},"name":{"kind":"Name","value":"mailbox"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"EnumValue","value":"important"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"unreadThreadsCount"}},{"kind":"Field","alias":{"kind":"Name","value":"unreadThreads"},"name":{"kind":"Name","value":"threads"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"unread"},"value":{"kind":"BooleanValue","value":true}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ImportantThreadDetails"}}]}},{"kind":"Field","alias":{"kind":"Name","value":"readThreads"},"name":{"kind":"Name","value":"threads"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"unread"},"value":{"kind":"BooleanValue","value":false}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ImportantThreadDetails"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ImportantThreadDetails"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ThreadsConnection"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}},{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cursor"}},{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"from"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"snippet"}},{"kind":"Field","name":{"kind":"Name","value":"lastMessageAt"}}]}}]}}]}}]} as unknown as DocumentNode<ImportantPageQueryQuery, ImportantPageQueryQueryVariables>;
+export const ScreenerPageQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ScreenerPageQuery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","alias":{"kind":"Name","value":"screenerMailbox"},"name":{"kind":"Name","value":"mailbox"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"EnumValue","value":"screener"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"assignedContactsCount"}},{"kind":"Field","name":{"kind":"Name","value":"contacts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"}},{"kind":"Field","name":{"kind":"Name","value":"messages"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"bodyText"}},{"kind":"Field","name":{"kind":"Name","value":"bodyHTML"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}}]}}]}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<ScreenerPageQueryQuery, ScreenerPageQueryQueryVariables>;
 export const AssignTargetMailboxMutationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignTargetMailboxMutation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignTargetMailboxInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignTargetMailbox"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"targetMailbox"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<AssignTargetMailboxMutationMutation, AssignTargetMailboxMutationMutationVariables>;
