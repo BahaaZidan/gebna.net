@@ -17,9 +17,7 @@
 				username
 				screenerMailbox: mailbox(type: screener) {
 					id
-					type
-					name
-					unreadThreadsCount
+					assignedAddressProfilesCount
 				}
 				importantMailbox: mailbox(type: important) {
 					id
@@ -79,7 +77,7 @@
 					<ThumbsUpIcon class="size-5" />
 					<ThumbsDownIcon class="size-5" />
 				</div>
-				Screen {viewer.screenerMailbox?.unreadThreadsCount} thread(s) from first-time senders
+				Screen {viewer.screenerMailbox?.assignedAddressProfilesCount} first-time senders
 			</a>
 
 			<button class="btn btn-primary">
@@ -93,7 +91,7 @@
 			<div class="flex w-full">
 				<div class="avatar">
 					<div class="w-16 rounded-full">
-						<img src={node.from.avatar} />
+						<img src={node.from.avatar} alt="{node.from.address} avatar" />
 					</div>
 				</div>
 				<div class="flex flex-col gap-1">
