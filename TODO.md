@@ -34,8 +34,15 @@
   - [x] User.name
 - [x] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
 - [x] Screener flow
-- [ ] Allow user to change their profile picture
+- [ ] Rename AddressProfile to Contact across the system
+- [ ] Important box page
+- [ ] Important thread detail
+- [ ] Better seeding => use real bodyHTML instead of these toy examples
+- [ ] News Box
+- [ ] Transactional Box
+- [ ] Trash Box
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
+- [ ] Allow user to change their profile picture
 - [ ] Downloadable attachments
 
 ### v0.5
