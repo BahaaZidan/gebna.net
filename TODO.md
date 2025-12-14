@@ -32,13 +32,10 @@
   - [x] Address.full_name
   - [x] User.profile_picture
   - [x] User.name
-- [ ] Allow user to change their profile picture
-- [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
-- [ ] LLM-generate a test script for inbound including threads
-- [ ] Cron to delete emails that has been in a trash mailbox for more than (?) days
-- [ ] Downloadable attachments
 - [x] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
-- [ ] Tighter security by creating machine id for every session and checking against it pre usage
+- [ ] Allow user to change their profile picture
+- [ ] Delete emails that has been in a trash mailbox for more than (?) days
+- [ ] Downloadable attachments
 
 ### v0.5
 
@@ -46,20 +43,31 @@
 
 ### Beyond v0.5
 
-- [ ] Store raw .eml in an R2 bucket
+- [ ] Read together. (batch read all the unreads in your important mailbox)
 - [ ] Reply later
 - [ ] Focus & reply (a dedicated page to reply to all emails user marked as reply later)
+- [ ] Set aside
 - [ ] Every address gets a dedicated page where a user can see all the email threads sent/recieved between the address and the user. You can also see the files/attachments. Finally, you're able to change where their future emails go.
 - [ ] The user should be able edit the subject of a thread
-- [ ] Merge threads together
 - [ ] Attachments standalone page. Search per filetype or sender across all attachments tied to your account
 - [ ] The ability to ignore specific threads. (i.e. new messages from the thread will be marked as read)
-- [ ] Block pixel tracking
 - [ ] Attachment previews
+
+### Beyond v1
+
+- [ ] Block pixel tracking
+- [ ] Custom domain support
+- [ ] Offline support
+- [ ] Tighter security by creating machine id for every session and checking against it pre usage
 - [ ] Users can forward their old emails to Gebna
 - [ ] Users can forward their Gebna emails to their old emails.
-- [ ] Keyboard shortcuts on desktop
+- [ ] Keyboard shortcuts on desktop. (Superhuman for inspiration)
 - [ ] Users can anottate a thread with "note to self". Things like "don't forget to ask them about X if they don't bring it up!"
+
+### ?
+
+- [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
+- [ ] LLM-generate a test script for inbound including threads
+- [ ] Store raw .eml in an R2 bucket
+- [ ] Merge threads together
 - [ ] Labels
-- [ ] Set aside
-- [ ]
