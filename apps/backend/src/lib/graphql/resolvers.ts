@@ -28,13 +28,13 @@ export const resolvers: Resolvers = {
 						}));
 					return thread ? { ...thread, __typename: "Thread" } : null;
 				}
-				case "AddressProfile": {
+				case "Contact": {
 					const address_user =
 						session &&
 						(await db.query.address_userTable.findFirst({
 							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.userId, session.userId)),
 						}));
-					return address_user ? { ...address_user, __typename: "AddressProfile" } : null;
+					return address_user ? { ...address_user, __typename: "Contact" } : null;
 				}
 				default:
 					return null;
@@ -92,18 +92,18 @@ export const resolvers: Resolvers = {
 				.where(and(eq(threadTable.mailboxId, parent.id), gt(threadTable.unreadCount, 0)));
 			return unreadThreadsCount;
 		},
-		assignedAddressProfilesCount: async (parent, _, { db }) => {
-			const [{ assignedAddressProfilesCount }] = await db
-				.select({ assignedAddressProfilesCount: count() })
+		assignedContactsCount: async (parent, _, { db }) => {
+			const [{ assignedContactsCount }] = await db
+				.select({ assignedContactsCount: count() })
 				.from(address_userTable)
 				.where(eq(address_userTable.targetMailboxId, parent.id));
 
-			return assignedAddressProfilesCount;
+			return assignedContactsCount;
 		},
-		addressProfiles: async (parent, args, { db }) => {
+		contacts: async (parent, args, { db }) => {
 			const pageSize = args.first || 30;
 			const cursor = args.after;
-			const addressProfilesPlusOne = await db.query.address_userTable.findMany({
+			const contactsPlusOne = await db.query.address_userTable.findMany({
 				where: (t, { eq, and, lt }) =>
 					and(
 						eq(t.userId, parent.userId),
@@ -113,17 +113,17 @@ export const resolvers: Resolvers = {
 				orderBy: (t, { desc }) => desc(t.createdAt),
 				limit: pageSize + 1,
 			});
-			const addressProfiles = addressProfilesPlusOne.slice(0, pageSize);
+			const contacts = contactsPlusOne.slice(0, pageSize);
 
 			return {
-				edges: addressProfiles.map((node) => ({
+				edges: contacts.map((node) => ({
 					node,
-					cursor: toGlobalId("AddressProfile", node.id),
+					cursor: toGlobalId("Contact", node.id),
 				})),
 				pageInfo: {
-					hasNextPage: addressProfilesPlusOne.length > addressProfiles.length,
-					endCursor: addressProfiles.length
-						? toGlobalId("AddressProfile", addressProfiles[addressProfiles.length - 1].id)
+					hasNextPage: contactsPlusOne.length > contacts.length,
+					endCursor: contacts.length
+						? toGlobalId("Contact", contacts[contacts.length - 1].id)
 						: null,
 				},
 			};
@@ -164,8 +164,8 @@ export const resolvers: Resolvers = {
 			return record!;
 		},
 	},
-	AddressProfile: {
-		id: (parent) => toGlobalId("AddressProfile", parent.id),
+	Contact: {
+		id: (parent) => toGlobalId("Contact", parent.id),
 		avatar: (parent) => parent.avatar || parent.avatarPlaceholder,
 		targetMailbox: async (parent, _, { db }) => {
 			const mailbox = await db.query.mailboxTable.findFirst({
@@ -189,13 +189,13 @@ export const resolvers: Resolvers = {
 			});
 			if (!targetMailbox) return;
 			return await db.transaction(async (tx) => {
-				const [addressProfile] = await tx
+				const [contact] = await tx
 					.update(address_userTable)
 					.set({ targetMailboxId: targetMailbox.id, updatedAt: new Date() })
 					.where(
 						and(
 							eq(address_userTable.userId, session.userId),
-							eq(address_userTable.id, fromGlobalId(input.addressProfileID).id)
+							eq(address_userTable.id, fromGlobalId(input.contactID).id)
 						)
 					)
 					.returning();
@@ -207,7 +207,7 @@ export const resolvers: Resolvers = {
 					.where(
 						and(
 							eq(messageTable.recipientId, session.userId),
-							eq(messageTable.from, addressProfile.address)
+							eq(messageTable.from, contact.address)
 						)
 					);
 
@@ -215,13 +215,10 @@ export const resolvers: Resolvers = {
 					.update(threadTable)
 					.set({ mailboxId: targetMailbox.id })
 					.where(
-						and(
-							eq(threadTable.recipientId, session.userId),
-							eq(threadTable.from, addressProfile.address)
-						)
+						and(eq(threadTable.recipientId, session.userId), eq(threadTable.from, contact.address))
 					);
 
-				return addressProfile;
+				return contact;
 			});
 		},
 	},

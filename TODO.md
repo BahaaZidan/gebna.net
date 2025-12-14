@@ -34,7 +34,7 @@
   - [x] User.name
 - [x] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
 - [x] Screener flow
-- [ ] Rename AddressProfile to Contact across the system
+- [x] Rename AddressProfile to Contact across the system
 - [ ] Important box page
 - [ ] Important thread detail
 - [ ] Better seeding => use real bodyHTML instead of these toy examples
