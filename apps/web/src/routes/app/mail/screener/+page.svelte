@@ -20,39 +20,19 @@
 					id
 					type
 					name
-					unreadThreadsCount
-					unreadThreads: threads(filter: { unread: true }) {
-						pageInfo {
-							hasNextPage
-							endCursor
-						}
+					assignedAddressProfilesCount
+					addressProfiles {
 						edges {
-							cursor
 							node {
 								id
-								from {
-									id
-									address
-									name
-									avatar
-								}
-								title
-								lastMessageAt
+								address
+								name
+								avatar
 								messages {
 									id
-									bodyHTML
-									recievedAt
 									bodyText
-									to
-									cc
-									replyTo
-									attachments {
-										id
-										fileName
-										mimeType
-										contentId
-										downloadURL
-									}
+									bodyHTML
+									subject
 								}
 							}
 						}
@@ -90,7 +70,7 @@
 	</div>
 	<div class="text-lg">You get to decide if you want to hear from them.</div>
 	<div class="divider divider-start">Want to get emails from them?</div>
-	{#each screenerMailbox?.unreadThreads.edges as { node } (node.id)}
+	{#each screenerMailbox?.addressProfiles.edges as { node } (node.id)}
 		{@const firstMessage = node.messages[0]}
 		<details class="collapse mb-2 border border-base-300 bg-base-100">
 			<summary class="collapse-title">
@@ -100,18 +80,18 @@
 						<button class="btn join-item p-2 btn-success"><ChevronDownIcon /></button>
 					</div>
 					<button class="btn btn-warning"><ThumbsDownIcon /> No</button>
-					<div class="ml-4 flex gap-2">
+					<div class="ml-4 flex items-center gap-2">
 						<div class="avatar">
 							<div class="size-16 rounded-full">
-								<img src={node.from.avatar} alt="{node.from.name} avatar" />
+								<img src={node.avatar} alt="{node.name} avatar" />
 							</div>
 						</div>
 						<div class="flex flex-col">
 							<div class="flex gap-2">
-								<div class="font-bold">{node.from.name}</div>
-								<div class="text-accent-content">{node.from.address}</div>
+								<div class="font-bold">{node.name}</div>
+								<div class="text-accent-content">{node.address}</div>
 							</div>
-							<div>{node.title}</div>
+							<div>{firstMessage.subject}</div>
 						</div>
 					</div>
 				</div>
