@@ -144,6 +144,9 @@ importers:
       '@urql/exchange-graphcache':
         specifier: ^8.1.0
         version: 8.1.0(@urql/core@6.0.1(graphql@16.12.0))(graphql@16.12.0)
+      '@urql/exchange-refocus':
+        specifier: ^2.0.0
+        version: 2.0.0(@urql/core@6.0.1(graphql@16.12.0))
       '@urql/svelte':
         specifier: ^5.0.0
         version: 5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.43.4)
@@ -2247,6 +2250,11 @@ packages:
 
   '@urql/exchange-graphcache@8.1.0':
     resolution: {integrity: sha512-KxdDFcGAWhYOkpCz/NLNHb8SaWSxE2G1iv+jlFty2f/ZlCkD+FjtzwQuieGl7fk1MVR8DG1zLmxGNlwfCNksfQ==}
+    peerDependencies:
+      '@urql/core': ^6.0.0
+
+  '@urql/exchange-refocus@2.0.0':
+    resolution: {integrity: sha512-+sRGXc14cDYUxNpzgCeH1Jef8AurCEwh4UX/QxUZ5aCDFiKsEbHIUp0wbkwo01e0xjiwGv1wKjYO2wG9TjSbMw==}
     peerDependencies:
       '@urql/core': ^6.0.0
 
@@ -6105,6 +6113,11 @@ snapshots:
       wonka: 6.3.5
     transitivePeerDependencies:
       - graphql
+
+  '@urql/exchange-refocus@2.0.0(@urql/core@6.0.1(graphql@16.12.0))':
+    dependencies:
+      '@urql/core': 6.0.1(graphql@16.12.0)
+      wonka: 6.3.5
 
   '@urql/svelte@5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.43.4)':
     dependencies:
