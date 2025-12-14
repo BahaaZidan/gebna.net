@@ -1,16 +1,19 @@
 <script lang="ts">
+	import ArrowRightLeftIcon from "@lucide/svelte/icons/arrow-right-left";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
 	import KeyIcon from "@lucide/svelte/icons/key";
+	import NewspaperIcon from "@lucide/svelte/icons/newspaper";
 	import ThumbsDownIcon from "@lucide/svelte/icons/thumbs-down";
 	import ThumbsUpIcon from "@lucide/svelte/icons/thumbs-up";
-	import { getContextClient, queryStore } from "@urql/svelte";
+	import { getContextClient, mutationStore, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 
 	import Container from "$lib/components/Container.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { graphql } from "$lib/graphql/generated";
+	import type { MailboxType } from "$lib/graphql/generated/graphql";
 
 	const ScreenerPageQuery = graphql(`
 		query ScreenerPageQuery {
@@ -41,12 +44,32 @@
 			}
 		}
 	`);
-
 	const screenerPageQuery = queryStore({
 		client: getContextClient(),
 		query: ScreenerPageQuery,
 	});
 	const screenerMailbox = $derived($screenerPageQuery.data?.viewer?.screenerMailbox);
+
+	const AssignTargetMailboxMutation = graphql(`
+		mutation AssignTargetMailboxMutation($input: AssignTargetMailboxInput!) {
+			assignTargetMailbox(input: $input) {
+				id
+				name
+				avatar
+				address
+				targetMailbox {
+					id
+				}
+			}
+		}
+	`);
+	const assignTargetMailbox = (addressProfileID: string, targetMailboxType: MailboxType) => () => {
+		mutationStore({
+			client: getContextClient(),
+			query: AssignTargetMailboxMutation,
+			variables: { input: { addressProfileID, targetMailboxType } },
+		});
+	};
 </script>
 
 <Navbar>
@@ -76,10 +99,23 @@
 			<summary class="collapse-title">
 				<div class="flex w-full items-center gap-2">
 					<div class="join">
-						<button class="btn join-item btn-success"><ThumbsUpIcon /> Yes</button>
-						<button class="btn join-item p-2 btn-success"><ChevronDownIcon /></button>
+						<button
+							class="btn join-item btn-success"
+							onclick={assignTargetMailbox(node.id, "important")}
+						>
+							<ThumbsUpIcon /> Yes
+						</button>
+						<button
+							class="btn join-item p-2 btn-success"
+							popovertarget="popover-{node.id}"
+							style="anchor-name:--anchor-{node.id}"
+						>
+							<ChevronDownIcon />
+						</button>
 					</div>
-					<button class="btn btn-warning"><ThumbsDownIcon /> No</button>
+					<button class="btn btn-warning" onclick={assignTargetMailbox(node.id, "trash")}>
+						<ThumbsDownIcon /> No
+					</button>
 					<div class="ml-4 flex items-center gap-2">
 						<div class="avatar">
 							<div class="size-16 rounded-full">
@@ -104,5 +140,20 @@
 				{/if}
 			</div>
 		</details>
+		<ul
+			class="menu dropdown w-52 rounded-box bg-success text-success-content shadow-sm"
+			popover
+			id="popover-{node.id}"
+			style="position-anchor:--anchor-{node.id}"
+		>
+			<li>
+				<button onclick={assignTargetMailbox(node.id, "news")}><NewspaperIcon /> News</button>
+			</li>
+			<li>
+				<button onclick={assignTargetMailbox(node.id, "transactional")}>
+					<ArrowRightLeftIcon /> Transactional
+				</button>
+			</li>
+		</ul>
 	{/each}
 </Container>
