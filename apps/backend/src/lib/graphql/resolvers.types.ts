@@ -31,6 +31,11 @@ export type AddressProfile = Node & {
   targetMailbox: Mailbox;
 };
 
+export type AssignTargetMailboxInput = {
+  addressProfileID: Scalars['ID']['input'];
+  targetMailboxType: MailboxType;
+};
+
 export type Attachment = Node & {
   __typename?: 'Attachment';
   contentId?: Maybe<Scalars['String']['output']>;
@@ -87,6 +92,16 @@ export type Message = Node & {
   subject?: Maybe<Scalars['String']['output']>;
   to?: Maybe<Array<Scalars['String']['output']>>;
   unread: Scalars['Boolean']['output'];
+};
+
+export type Mutation = {
+  __typename?: 'Mutation';
+  assignTargetMailbox?: Maybe<AddressProfile>;
+};
+
+
+export type MutationAssignTargetMailboxArgs = {
+  input: AssignTargetMailboxInput;
 };
 
 export type Node = {
@@ -240,6 +255,7 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
   AddressProfile: ResolverTypeWrapper<AddressUserSelectModel>;
+  AssignTargetMailboxInput: AssignTargetMailboxInput;
   Attachment: ResolverTypeWrapper<Attachment>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Connection: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Connection']>;
@@ -250,6 +266,7 @@ export type ResolversTypes = {
   Mailbox: ResolverTypeWrapper<MailboxSelectModel>;
   MailboxType: MailboxType;
   Message: ResolverTypeWrapper<MessageSelectModel>;
+  Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
@@ -265,6 +282,7 @@ export type ResolversTypes = {
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
   AddressProfile: AddressUserSelectModel;
+  AssignTargetMailboxInput: AssignTargetMailboxInput;
   Attachment: Attachment;
   Boolean: Scalars['Boolean']['output'];
   Connection: ResolversInterfaceTypes<ResolversParentTypes>['Connection'];
@@ -274,6 +292,7 @@ export type ResolversParentTypes = {
   Int: Scalars['Int']['output'];
   Mailbox: MailboxSelectModel;
   Message: MessageSelectModel;
+  Mutation: Record<PropertyKey, never>;
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node'];
   PageInfo: PageInfo;
   Query: Record<PropertyKey, never>;
@@ -341,6 +360,10 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+  assignTargetMailbox?: Resolver<Maybe<ResolversTypes['AddressProfile']>, ParentType, ContextType, RequireFields<MutationAssignTargetMailboxArgs, 'input'>>;
+};
+
 export type NodeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Node'] = ResolversParentTypes['Node']> = {
   __resolveType: TypeResolveFn<'AddressProfile' | 'Attachment' | 'Mailbox' | 'Message' | 'Thread' | 'User', ParentType, ContextType>;
 };
@@ -401,6 +424,7 @@ export type Resolvers<ContextType = Context> = {
   Edge?: EdgeResolvers<ContextType>;
   Mailbox?: MailboxResolvers<ContextType>;
   Message?: MessageResolvers<ContextType>;
+  Mutation?: MutationResolvers<ContextType>;
   Node?: NodeResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;

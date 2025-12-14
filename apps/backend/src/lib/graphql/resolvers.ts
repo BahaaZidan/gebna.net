@@ -1,7 +1,7 @@
 import { and, count, eq, gt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
 
-import { threadTable } from "$lib/db/schema";
+import { address_userTable, messageTable, threadTable } from "$lib/db/schema";
 
 import type { Resolvers } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
@@ -136,6 +136,51 @@ export const resolvers: Resolvers = {
 				where: (t, { eq }) => eq(t.id, parent.targetMailboxId),
 			});
 			return mailbox!;
+		},
+	},
+	Mutation: {
+		assignTargetMailbox: async (_, { input }, { session, db }) => {
+			if (!session) return;
+			const targetMailbox = await db.query.mailboxTable.findFirst({
+				where: (t, { eq, and }) =>
+					and(eq(t.userId, session.userId), eq(t.type, input.targetMailboxType)),
+			});
+			if (!targetMailbox) return;
+			return await db.transaction(async (tx) => {
+				const [addressProfile] = await tx
+					.update(address_userTable)
+					.set({ targetMailboxId: targetMailbox.id })
+					.where(
+						and(
+							eq(address_userTable.userId, session.userId),
+							eq(address_userTable.id, fromGlobalId(input.addressProfileID).id)
+						)
+					)
+					.returning();
+
+				// TODO: consider doing this in the background using `executionContext.waitUntil()`.
+				await tx
+					.update(messageTable)
+					.set({ mailboxId: targetMailbox.id })
+					.where(
+						and(
+							eq(messageTable.recipientId, session.userId),
+							eq(messageTable.from, addressProfile.address)
+						)
+					);
+
+				await tx
+					.update(threadTable)
+					.set({ mailboxId: targetMailbox.id })
+					.where(
+						and(
+							eq(threadTable.recipientId, session.userId),
+							eq(threadTable.from, addressProfile.address)
+						)
+					);
+
+				return addressProfile;
+			});
 		},
 	},
 };

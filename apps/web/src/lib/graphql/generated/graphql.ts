@@ -27,6 +27,11 @@ export type AddressProfile = Node & {
   targetMailbox: Mailbox;
 };
 
+export type AssignTargetMailboxInput = {
+  addressProfileID: Scalars['ID']['input'];
+  targetMailboxType: MailboxType;
+};
+
 export type Attachment = Node & {
   __typename?: 'Attachment';
   contentId?: Maybe<Scalars['String']['output']>;
@@ -83,6 +88,16 @@ export type Message = Node & {
   subject?: Maybe<Scalars['String']['output']>;
   to?: Maybe<Array<Scalars['String']['output']>>;
   unread: Scalars['Boolean']['output'];
+};
+
+export type Mutation = {
+  __typename?: 'Mutation';
+  assignTargetMailbox?: Maybe<AddressProfile>;
+};
+
+
+export type MutationAssignTargetMailboxArgs = {
+  input: AssignTargetMailboxInput;
 };
 
 export type Node = {
