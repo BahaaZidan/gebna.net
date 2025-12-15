@@ -89,12 +89,16 @@
 			</button>
 		</div>
 		<h1 class="text-5xl font-bold">Important</h1>
-		<div class="divider divider-start">New for you</div>
-		<div class="flex w-full flex-col gap-2">
-			{#each viewer.importantMailbox?.unseenThreads.edges as { node } (node.id)}
-				<ThreadListItem thread={node} />
-			{/each}
-		</div>
+		{#if viewer.importantMailbox?.unseenThreads.edges.length}
+			<div class="divider divider-start">New for you</div>
+			<div class="flex w-full flex-col gap-2">
+				{#each viewer.importantMailbox?.unseenThreads.edges as { node } (node.id)}
+					<ThreadListItem thread={node} />
+				{/each}
+			</div>
+		{:else}
+			<div class="flex h-64 w-full items-center justify-center">You're all caught up ✨</div>
+		{/if}
 		<div class="divider divider-start">Previously seen</div>
 		{#each viewer.importantMailbox?.seenThreads.edges as { node } (node.id)}
 			<ThreadListItem thread={node} />

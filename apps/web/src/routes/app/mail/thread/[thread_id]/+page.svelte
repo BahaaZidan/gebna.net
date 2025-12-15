@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
-	import { getContextClient, queryStore } from "@urql/svelte";
+	import { getContextClient, mutationStore, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 	import { page } from "$app/state";
@@ -56,9 +56,9 @@
 		}
 	`);
 
-	const urqlContext = getContextClient();
+	const urqlClient = getContextClient();
 	const threadDetailsQuery = queryStore({
-		client: urqlContext,
+		client: urqlClient,
 		query: ThreadDetails,
 		variables: {
 			id: page.params.thread_id!,
@@ -67,6 +67,38 @@
 	const thread = $derived(
 		$threadDetailsQuery.data?.node?.__typename === "Thread" ? $threadDetailsQuery.data.node : null
 	);
+
+	const MarkThreadSeenMutation = graphql(`
+		mutation MarkThreadSeen($id: ID!) {
+			markThreadSeen(id: $id) {
+				id
+				unseenMessagesCount
+				messages {
+					id
+					unseen
+				}
+			}
+		}
+	`);
+
+	const markThreadSeen = () => {
+		mutationStore({
+			client: urqlClient,
+			query: MarkThreadSeenMutation,
+			variables: { id: page.params.thread_id! },
+		});
+	};
+
+	$effect(() => {
+		if (!thread) return;
+		let timeout: NodeJS.Timeout | null;
+		if (thread.unseenMessagesCount > 0) {
+			timeout = setTimeout(() => markThreadSeen(), 2000);
+		}
+		return () => {
+			if (timeout) clearTimeout(timeout);
+		};
+	});
 </script>
 
 <Navbar>

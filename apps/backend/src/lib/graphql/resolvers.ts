@@ -221,5 +221,27 @@ export const resolvers: Resolvers = {
 				return contact;
 			});
 		},
+		markThreadSeen: async (_, args, { session, db }) => {
+			if (!session?.userId) return;
+			return await db.transaction(async (tx) => {
+				const [thread] = await tx
+					.update(threadTable)
+					.set({ unseenCount: 0 })
+					.where(
+						and(
+							eq(threadTable.recipientId, session.userId),
+							eq(threadTable.id, fromGlobalId(args.id).id)
+						)
+					)
+					.returning();
+				if (!thread) return;
+				await tx
+					.update(messageTable)
+					.set({ unseen: false })
+					.where(and(eq(messageTable.threadId, thread.id), eq(messageTable.unseen, true)));
+
+				return thread;
+			});
+		},
 	},
 };

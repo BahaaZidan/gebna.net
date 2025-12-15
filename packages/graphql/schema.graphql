@@ -5,6 +5,7 @@ type Query {
 
 type Mutation {
 	assignTargetMailbox(input: AssignTargetMailboxInput!): Contact
+	markThreadSeen(id: ID!): Thread
 }
 
 input AssignTargetMailboxInput {

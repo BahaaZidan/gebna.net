@@ -118,11 +118,17 @@ export type Message = Node & {
 export type Mutation = {
   __typename?: 'Mutation';
   assignTargetMailbox?: Maybe<Contact>;
+  markThreadSeen?: Maybe<Thread>;
 };
 
 
 export type MutationAssignTargetMailboxArgs = {
   input: AssignTargetMailboxInput;
+};
+
+
+export type MutationMarkThreadSeenArgs = {
+  id: Scalars['ID']['input'];
 };
 
 export type Node = {
@@ -408,6 +414,7 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   assignTargetMailbox?: Resolver<Maybe<ResolversTypes['Contact']>, ParentType, ContextType, RequireFields<MutationAssignTargetMailboxArgs, 'input'>>;
+  markThreadSeen?: Resolver<Maybe<ResolversTypes['Thread']>, ParentType, ContextType, RequireFields<MutationMarkThreadSeenArgs, 'id'>>;
 };
 
 export type NodeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Node'] = ResolversParentTypes['Node']> = {
