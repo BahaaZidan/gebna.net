@@ -18,7 +18,7 @@
 - [x] Rough graphql schema draft
 - [x] Resolvers for the rough schema draft
 - [x] Mailbox.threads
-- [x] Mailbox.unreadThreadsCount
+- [x] Mailbox.unseenThreadsCount
 - [x] Query to view thread(s?) detail
 - [x] Basic UI layout
 - [x] Basic login/signup UI
@@ -37,11 +37,11 @@
 - [x] Rename AddressProfile to Contact across the system
 - [x] Important box page UI
 - [ ] Important thread detail UI
-- [ ] Read/unread cross-cutting
+- [ ] Seen/unseen cross-cutting
 - [ ] Better seeding => use real bodyHTML instead of these toy examples
   - [ ] Real bodyHTML instead of simplistic bodyText only
   - [ ] Different dates in important box
-  - [ ] Different read/unread statuses in important box
+  - [ ] Different seen/unseen statuses in important box
 - [ ] News Box
 - [ ] Transactional Box
 - [ ] Trash Box
@@ -55,7 +55,7 @@
 
 ### Beyond v0.5
 
-- [ ] Read together. (batch read all the unreads in your important mailbox)
+- [ ] Read together. (batch mark all the unseen messages in your important mailbox)
 - [ ] Reply later
 - [ ] Focus & reply (a dedicated page to reply to all emails user marked as reply later)
 - [ ] Set aside

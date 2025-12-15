@@ -26,7 +26,7 @@ type MessageSeed = {
 	bodyText?: string;
 	bodyHTML?: string;
 	subject?: string;
-	unread?: boolean;
+	unseen?: boolean;
 	createdAt: Date;
 	to?: string[];
 	cc?: string[];
@@ -253,14 +253,14 @@ function makeThreads(
 					bodyText:
 						"Sharing the top-line findings from your inbox warmup. CTRs are solid, but SPF is still missing for the new domain. I sketched next steps in the doc below.",
 					createdAt: hoursAgo(12),
-					unread: false,
+					unseen: false,
 					to: [userEmail],
 				},
 				{
 					bodyText:
 						"I can meet tomorrow to finalize the rollout. If you want, I can join your onboarding call with the SDR team.",
 					createdAt: hoursAgo(3),
-					unread: true,
+					unseen: true,
 					to: [userEmail],
 					cc: ["ops@acme-analytics.test"],
 				},
@@ -280,14 +280,14 @@ function makeThreads(
 					bodyHTML:
 						"<p>Love the calmer motion in the latest build. The onboarding story is almost there — I left inline comments with copy tweaks and a short Loom.</p><p>Let me know what you keep vs. cut.</p>",
 					createdAt: hoursAgo(26),
-					unread: false,
+					unseen: false,
 					to: [userEmail],
 				},
 				{
 					bodyText:
 						"Quick nudge: should we swap the hero for a live inbox preview? I can send a stitched mock if helpful.",
 					createdAt: hoursAgo(2),
-					unread: true,
+					unseen: true,
 					to: [userEmail],
 				},
 			],
@@ -301,7 +301,7 @@ function makeThreads(
 					bodyText:
 						"This week we broke down how teams keep cold starts out of spam without killing velocity. Favorite bit: the gating flow used by Cabin's crew. Read time ~4 min.",
 					createdAt: daysAgo(1),
-					unread: true,
+					unseen: true,
 					to: [userEmail],
 				},
 			],
@@ -320,7 +320,7 @@ function makeThreads(
 					bodyText:
 						"Featuring a short story on how scrappy teams vet inbound before responding. We quoted Gebna briefly — let me know if anything looks off.",
 					createdAt: daysAgo(5),
-					unread: false,
+					unseen: false,
 					to: [userEmail],
 				},
 			],
@@ -339,7 +339,7 @@ function makeThreads(
 					bodyText:
 						"We received your payment for the Gebna subscription (Invoice #21983). No action needed. Download the receipt from your billing portal anytime.",
 					createdAt: daysAgo(2),
-					unread: false,
+					unseen: false,
 					to: [userEmail],
 				},
 			],
@@ -358,7 +358,7 @@ function makeThreads(
 					bodyText:
 						"A new payout destination was added for your workspace. Verify it within 24 hours to avoid delays.",
 					createdAt: hoursAgo(8),
-					unread: true,
+					unseen: true,
 					to: [userEmail],
 				},
 			],
@@ -377,7 +377,7 @@ function makeThreads(
 					bodyText:
 						"Hey Bahaa, I run product at Futura Labs. Saw your post on inbox filtering — can I steal 15 minutes to swap notes on routing first-touch emails?",
 					createdAt: hoursAgo(6),
-					unread: true,
+					unseen: true,
 					to: [userEmail],
 				},
 			],
@@ -396,7 +396,7 @@ function makeThreads(
 					bodyText:
 						"We have 4 founders battling noisy inboxes. Happy to intro if you're taking on pilots this quarter.",
 					createdAt: hoursAgo(5),
-					unread: true,
+					unseen: true,
 					to: [userEmail],
 				},
 			],
@@ -425,7 +425,7 @@ function makeThreads(
 				recipientId: userId,
 				threadId,
 				mailboxId: mailbox.id,
-				unread: message.unread !== false,
+				unseen: message.unseen !== false,
 				createdAt: message.createdAt,
 				subject: message.subject ?? seed.subject,
 				to: message.to ?? [userEmail],
@@ -443,7 +443,7 @@ function makeThreads(
 			});
 		}
 
-		const unreadCount = messageRows.filter((m) => m.unread).length;
+		const unseenCount = messageRows.filter((m) => m.unseen).length;
 		const firstMessage = messageRows[0];
 		const lastMessage = messageRows[messageRows.length - 1];
 
@@ -452,7 +452,7 @@ function makeThreads(
 			from: sender.address,
 			recipientId: userId,
 			mailboxId: mailbox.id,
-			unreadCount,
+			unseenCount,
 			title: seed.subject,
 			snippet: firstMessage?.snippet,
 			lastMessageAt: lastMessage?.createdAt ?? new Date(),

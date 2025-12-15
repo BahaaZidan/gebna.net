@@ -24,7 +24,7 @@ type Mailbox implements Node {
 	id: ID!
 	type: MailboxType!
 	name: String!
-	unreadThreadsCount: Int!
+	unseenThreadsCount: Int!
 	threads(first: Int, after: String, filter: ThreadsFilter): ThreadsConnection!
 	assignedContactsCount: Int!
 	contacts(first: Int, after: String): ContactConnection!
@@ -39,7 +39,7 @@ enum MailboxType {
 }
 
 input ThreadsFilter {
-	unread: Boolean!
+	unseen: Boolean!
 }
 
 type ThreadsConnection implements Connection {
@@ -55,7 +55,7 @@ type ThreadEdge implements Edge {
 type Thread implements Node {
 	id: ID!
 	from: Contact!
-	unreadMessagesCount: Int!
+	unseenMessagesCount: Int!
 	title: String
 	snippet: String
 	lastMessageAt: DateTime!
@@ -65,7 +65,7 @@ type Thread implements Node {
 type Message implements Node {
 	id: ID!
 	from: Contact!
-	unread: Boolean!
+	unseen: Boolean!
 	recievedAt: DateTime!
 	subject: String
 	to: [String!]

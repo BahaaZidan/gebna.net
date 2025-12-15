@@ -76,7 +76,7 @@ export type Mailbox = Node & {
   name: Scalars['String']['output'];
   threads: ThreadsConnection;
   type: MailboxType;
-  unreadThreadsCount: Scalars['Int']['output'];
+  unseenThreadsCount: Scalars['Int']['output'];
 };
 
 
@@ -112,7 +112,7 @@ export type Message = Node & {
   snippet?: Maybe<Scalars['String']['output']>;
   subject?: Maybe<Scalars['String']['output']>;
   to?: Maybe<Array<Scalars['String']['output']>>;
-  unread: Scalars['Boolean']['output'];
+  unseen: Scalars['Boolean']['output'];
 };
 
 export type Mutation = {
@@ -156,7 +156,7 @@ export type Thread = Node & {
   messages: Array<Message>;
   snippet?: Maybe<Scalars['String']['output']>;
   title?: Maybe<Scalars['String']['output']>;
-  unreadMessagesCount: Scalars['Int']['output'];
+  unseenMessagesCount: Scalars['Int']['output'];
 };
 
 export type ThreadEdge = Edge & {
@@ -172,7 +172,7 @@ export type ThreadsConnection = Connection & {
 };
 
 export type ThreadsFilter = {
-  unread: Scalars['Boolean']['input'];
+  unseen: Scalars['Boolean']['input'];
 };
 
 export type User = Node & {
@@ -386,7 +386,7 @@ export type MailboxResolvers<ContextType = Context, ParentType extends Resolvers
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   threads?: Resolver<ResolversTypes['ThreadsConnection'], ParentType, ContextType, Partial<MailboxThreadsArgs>>;
   type?: Resolver<ResolversTypes['MailboxType'], ParentType, ContextType>;
-  unreadThreadsCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  unseenThreadsCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -402,7 +402,7 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
   snippet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subject?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   to?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
-  unread?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  unseen?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -433,7 +433,7 @@ export type ThreadResolvers<ContextType = Context, ParentType extends ResolversP
   messages?: Resolver<Array<ResolversTypes['Message']>, ParentType, ContextType>;
   snippet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  unreadMessagesCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  unseenMessagesCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 

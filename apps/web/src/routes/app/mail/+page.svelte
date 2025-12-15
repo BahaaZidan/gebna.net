@@ -24,8 +24,8 @@
 					id
 					type
 					name
-					unreadThreadsCount
-					unreadThreads: threads(filter: { unread: true }) {
+					unseenThreadsCount
+					unseenThreads: threads(filter: { unseen: true }) {
 						pageInfo {
 							hasNextPage
 							endCursor
@@ -38,7 +38,7 @@
 							}
 						}
 					}
-					readThreads: threads(filter: { unread: false }) {
+					seenThreads: threads(filter: { unseen: false }) {
 						pageInfo {
 							hasNextPage
 							endCursor
@@ -91,12 +91,12 @@
 		<h1 class="text-5xl font-bold">Important</h1>
 		<div class="divider divider-start">New for you</div>
 		<div class="flex w-full flex-col gap-2">
-			{#each viewer.importantMailbox?.unreadThreads.edges as { node } (node.id)}
+			{#each viewer.importantMailbox?.unseenThreads.edges as { node } (node.id)}
 				<ThreadListItem thread={node} />
 			{/each}
 		</div>
 		<div class="divider divider-start">Previously seen</div>
-		{#each viewer.importantMailbox?.readThreads.edges as { node } (node.id)}
+		{#each viewer.importantMailbox?.seenThreads.edges as { node } (node.id)}
 			<ThreadListItem thread={node} />
 		{/each}
 	{/if}

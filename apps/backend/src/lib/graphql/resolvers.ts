@@ -67,9 +67,9 @@ export const resolvers: Resolvers = {
 						eq(t.mailboxId, parent.id),
 						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined,
 						args.filter
-							? args.filter.unread
-								? gt(t.unreadCount, 0)
-								: eq(t.unreadCount, 0)
+							? args.filter.unseen
+								? gt(t.unseenCount, 0)
+								: eq(t.unseenCount, 0)
 							: undefined
 					),
 				orderBy: (t, { desc }) => desc(t.lastMessageAt),
@@ -85,12 +85,12 @@ export const resolvers: Resolvers = {
 				},
 			};
 		},
-		unreadThreadsCount: async (parent, _, { db }) => {
-			const [{ unreadThreadsCount }] = await db
-				.select({ unreadThreadsCount: count() })
+		unseenThreadsCount: async (parent, _, { db }) => {
+			const [{ unseenThreadsCount }] = await db
+				.select({ unseenThreadsCount: count() })
 				.from(threadTable)
-				.where(and(eq(threadTable.mailboxId, parent.id), gt(threadTable.unreadCount, 0)));
-			return unreadThreadsCount;
+				.where(and(eq(threadTable.mailboxId, parent.id), gt(threadTable.unseenCount, 0)));
+			return unseenThreadsCount;
 		},
 		assignedContactsCount: async (parent, _, { db }) => {
 			const [{ assignedContactsCount }] = await db
@@ -131,7 +131,7 @@ export const resolvers: Resolvers = {
 	},
 	Thread: {
 		id: (parent) => toGlobalId("Thread", parent.id),
-		unreadMessagesCount: (parent) => parent.unreadCount,
+		unseenMessagesCount: (parent) => parent.unseenCount,
 		messages: async (parent, _, { db }) => {
 			const messages = await db.query.messageTable.findMany({
 				where: (t, { eq }) => eq(t.threadId, parent.id),

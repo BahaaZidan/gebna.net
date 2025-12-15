@@ -127,12 +127,12 @@ async function findOrCreateThread({
 	parsedEmail: Email;
 }) {
 	const replyThread = await getThreadFromMessageId(tx, recipientId, parsedEmail.inReplyTo);
-	if (replyThread) return incrementThreadUnreadCount(tx, replyThread);
+	if (replyThread) return incrementThreadUnseenCount(tx, replyThread);
 
 	const referenceIds = parseReferences(parsedEmail.references);
 	for (const referenceId of referenceIds) {
 		const referenceThread = await getThreadFromMessageId(tx, recipientId, referenceId);
-		if (referenceThread) return incrementThreadUnreadCount(tx, referenceThread);
+		if (referenceThread) return incrementThreadUnseenCount(tx, referenceThread);
 	}
 
 	const [createdThread] = await tx
@@ -180,16 +180,16 @@ async function getThreadFromMessageId(
 	});
 }
 
-async function incrementThreadUnreadCount(
+async function incrementThreadUnseenCount(
 	tx: TransactionInstance,
 	thread: typeof threadTable.$inferSelect
 ) {
 	await tx
 		.update(threadTable)
-		.set({ unreadCount: increment(threadTable.unreadCount), lastMessageAt: new Date() })
+		.set({ unseenCount: increment(threadTable.unseenCount), lastMessageAt: new Date() })
 		.where(eq(threadTable.id, thread.id));
 
-	return { ...thread, unreadCount: thread.unreadCount + 1, lastMessageAt: new Date() };
+	return { ...thread, unseenCount: thread.unseenCount + 1, lastMessageAt: new Date() };
 }
 
 const utf8Encoder = new TextEncoder();
