@@ -36,7 +36,7 @@
 - [x] Screener flow
 - [x] Rename AddressProfile to Contact across the system
 - [x] Important box page UI
-- [ ] Important thread detail UI
+- [x] Important thread detail UI
 - [ ] Seen/unseen cross-cutting
 - [ ] Better seeding => use real bodyHTML instead of these toy examples
   - [ ] Real bodyHTML instead of simplistic bodyText only
