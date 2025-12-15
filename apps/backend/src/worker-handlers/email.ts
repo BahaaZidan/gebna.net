@@ -3,12 +3,11 @@ import PostalMime, { type Attachment, type Email } from "postal-mime";
 import { ulid } from "ulid";
 import { filterXSS } from "xss";
 
+import { getDB, ThreadSelectModel, TransactionInstance } from "$lib/db";
+import { address_userTable, attachmentTable, messageTable, threadTable } from "$lib/db/schema";
+import { increment } from "$lib/db/utils";
+import { extractLocalPart, resolveAvatar } from "$lib/utils/email";
 import { generateImagePlaceholder } from "$lib/utils/users";
-
-import { getDB, TransactionInstance } from "../lib/db";
-import { address_userTable, attachmentTable, messageTable, threadTable } from "../lib/db/schema";
-import { increment } from "../lib/db/utils";
-import { extractLocalPart, resolveAvatar } from "../lib/utils/email";
 
 export async function emailHandler(
 	envelope: ForwardableEmailMessage,
@@ -53,12 +52,19 @@ export async function emailHandler(
 		const targetMailboxId = user_address.targetMailboxId;
 		if (!targetMailboxId) throw new Error("SOMETHING_WENT_WRONG");
 
+		const targetMailbox = await tx.query.mailboxTable.findFirst({
+			where: (t, { eq }) => eq(t.id, targetMailboxId),
+		});
+		if (!targetMailbox) throw new Error("SOMETHING_WENT_WRONG");
+		const unseen = targetMailbox.type === "important" || targetMailbox.type === "screener";
+
 		const thread = await findOrCreateThread({
 			tx,
 			envelope,
 			parsedEmail,
 			recipientId: recipientUser.id,
 			targetMailboxId,
+			unseen,
 		});
 
 		const createdMessageId = ulid();
@@ -81,6 +87,7 @@ export async function emailHandler(
 			bodyText: parsedEmail.text,
 			snippet: parsedEmail.text?.slice(0, 50),
 			sizeInBytes: envelope.rawSize,
+			unseen,
 		});
 
 		if (parsedEmail.attachments.length) {
@@ -117,22 +124,24 @@ async function findOrCreateThread({
 	tx,
 	envelope,
 	targetMailboxId,
+	unseen,
 	recipientId,
 	parsedEmail,
 }: {
 	tx: TransactionInstance;
 	envelope: ForwardableEmailMessage;
 	targetMailboxId: string;
+	unseen: boolean;
 	recipientId: string;
 	parsedEmail: Email;
 }) {
 	const replyThread = await getThreadFromMessageId(tx, recipientId, parsedEmail.inReplyTo);
-	if (replyThread) return incrementThreadUnseenCount(tx, replyThread);
+	if (replyThread) return incrementThreadUnseenCount(tx, replyThread, unseen);
 
 	const referenceIds = parseReferences(parsedEmail.references);
 	for (const referenceId of referenceIds) {
 		const referenceThread = await getThreadFromMessageId(tx, recipientId, referenceId);
-		if (referenceThread) return incrementThreadUnseenCount(tx, referenceThread);
+		if (referenceThread) return incrementThreadUnseenCount(tx, referenceThread, unseen);
 	}
 
 	const [createdThread] = await tx
@@ -146,6 +155,7 @@ async function findOrCreateThread({
 			firstMessageSubject: parsedEmail.subject,
 			firstMessageId: parsedEmail.messageId,
 			snippet: parsedEmail.text?.slice(0, 50),
+			unseenCount: unseen ? 1 : 0,
 		})
 		.returning();
 
@@ -182,14 +192,23 @@ async function getThreadFromMessageId(
 
 async function incrementThreadUnseenCount(
 	tx: TransactionInstance,
-	thread: typeof threadTable.$inferSelect
+	thread: ThreadSelectModel,
+	unseen: boolean
 ) {
+	const lastMessageAt = new Date();
 	await tx
 		.update(threadTable)
-		.set({ unseenCount: increment(threadTable.unseenCount), lastMessageAt: new Date() })
+		.set({
+			...(unseen ? { unseenCount: increment(threadTable.unseenCount) } : {}),
+			lastMessageAt,
+		})
 		.where(eq(threadTable.id, thread.id));
 
-	return { ...thread, unseenCount: thread.unseenCount + 1, lastMessageAt: new Date() };
+	return {
+		...thread,
+		unseenCount: unseen ? thread.unseenCount + 1 : thread.unseenCount,
+		lastMessageAt,
+	};
 }
 
 const utf8Encoder = new TextEncoder();
