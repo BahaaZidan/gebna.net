@@ -101,7 +101,7 @@ export const threadTable = sqliteTable(
 		mailboxId: text()
 			.notNull()
 			.references(() => mailboxTable.id, { onDelete: "cascade" }),
-		unreadCount: integer().notNull().default(1),
+		unseenCount: integer().notNull().default(1),
 		/** based on the subject of the first message or its' snippet */
 		title: text(),
 		/** based on the snippet of the first message */
@@ -135,7 +135,7 @@ export const messageTable = sqliteTable(
 		mailboxId: text()
 			.notNull()
 			.references(() => mailboxTable.id, { onDelete: "cascade" }),
-		unread: integer({ mode: "boolean" }).notNull().default(true),
+		unseen: integer({ mode: "boolean" }).notNull().default(true),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.$default(() => new Date()),
