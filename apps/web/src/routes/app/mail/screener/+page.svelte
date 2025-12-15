@@ -74,7 +74,7 @@
 
 <Navbar>
 	{#snippet prepend()}
-		<a href={resolve("/app/mail")} class="btn btn-accent">
+		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
 			<ChevronLeftIcon />
 			Important
 		</a>
