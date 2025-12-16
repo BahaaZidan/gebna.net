@@ -1,34 +1,36 @@
-CREATE TABLE `address_user` (
-	`id` text PRIMARY KEY NOT NULL,
-	`address` text NOT NULL,
-	`userId` text NOT NULL,
-	`targetMailboxId` text NOT NULL,
-	`name` text NOT NULL,
-	`avatar` text,
-	`avatarPlaceholder` text NOT NULL,
-	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
-	`updatedAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
-	FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`targetMailboxId`) REFERENCES `mailbox`(`id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `address_user_uniq` ON `address_user` (`address`,`userId`);--> statement-breakpoint
 CREATE TABLE `attachment` (
 	`id` text PRIMARY KEY NOT NULL,
+	`threadId` text NOT NULL,
 	`messageId` text NOT NULL,
-	`userId` text NOT NULL,
+	`ownerId` text NOT NULL,
 	`storageKey` text NOT NULL,
 	`sizeInBytes` integer NOT NULL,
 	`fileName` text,
 	`mimeType` text,
 	`disposition` text,
 	`contentId` text,
+	FOREIGN KEY (`threadId`) REFERENCES `thread`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`messageId`) REFERENCES `message`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `attachment_messageId_idx` ON `attachment` (`messageId`);--> statement-breakpoint
-CREATE INDEX `attachment_userId_idx` ON `attachment` (`userId`);--> statement-breakpoint
+CREATE INDEX `attachment_threadId_idx` ON `attachment` (`threadId`);--> statement-breakpoint
+CREATE TABLE `contact` (
+	`id` text PRIMARY KEY NOT NULL,
+	`address` text NOT NULL,
+	`ownerId` text NOT NULL,
+	`targetMailboxId` text NOT NULL,
+	`name` text NOT NULL,
+	`avatar` text,
+	`avatarPlaceholder` text NOT NULL,
+	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
+	`updatedAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
+	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`targetMailboxId`) REFERENCES `mailbox`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `address_user_uniq` ON `contact` (`address`,`ownerId`);--> statement-breakpoint
 CREATE TABLE `mailbox` (
 	`id` text PRIMARY KEY NOT NULL,
 	`userId` text NOT NULL,
@@ -42,11 +44,12 @@ CREATE INDEX `mailbox_user_id_type` ON `mailbox` (`userId`,`type`);--> statement
 CREATE TABLE `message` (
 	`id` text PRIMARY KEY NOT NULL,
 	`from` text NOT NULL,
-	`recipientId` text NOT NULL,
+	`ownerId` text NOT NULL,
 	`threadId` text NOT NULL,
 	`mailboxId` text NOT NULL,
-	`unread` integer DEFAULT true NOT NULL,
-	`createdAt` integer NOT NULL,
+	`direction` text DEFAULT 'inbound' NOT NULL,
+	`unseen` integer DEFAULT true NOT NULL,
+	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`subject` text,
 	`to` text,
 	`cc` text,
@@ -59,13 +62,13 @@ CREATE TABLE `message` (
 	`bodyText` text,
 	`bodyHTML` text,
 	`sizeInBytes` integer NOT NULL,
-	FOREIGN KEY (`recipientId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`threadId`) REFERENCES `thread`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`mailboxId`) REFERENCES `mailbox`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `message_thread_idx` ON `message` (`threadId`);--> statement-breakpoint
-CREATE UNIQUE INDEX `uniq_message_recipientId_messageId` ON `message` (`recipientId`,`messageId`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uniq_message_ownerId_messageId` ON `message` (`ownerId`,`messageId`);--> statement-breakpoint
 CREATE TABLE `session` (
 	`id` text PRIMARY KEY NOT NULL,
 	`userId` text NOT NULL,
@@ -80,16 +83,16 @@ CREATE TABLE `session` (
 --> statement-breakpoint
 CREATE TABLE `thread` (
 	`id` text PRIMARY KEY NOT NULL,
-	`from` text NOT NULL,
-	`recipientId` text NOT NULL,
+	`firstMessageFrom` text NOT NULL,
+	`ownerId` text NOT NULL,
 	`mailboxId` text NOT NULL,
-	`unreadCount` integer DEFAULT 1 NOT NULL,
+	`unseenCount` integer NOT NULL,
 	`title` text,
 	`snippet` text,
-	`lastMessageAt` integer NOT NULL,
+	`lastMessageAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`firstMessageId` text,
 	`firstMessageSubject` text,
-	FOREIGN KEY (`recipientId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`mailboxId`) REFERENCES `mailbox`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

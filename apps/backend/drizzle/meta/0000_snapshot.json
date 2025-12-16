@@ -1,120 +1,9 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0e166e7a-9b2c-4928-a3d1-9d4cc10d8892",
+  "id": "df919854-261d-4755-a0b9-06e29679c683",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "address_user": {
-      "name": "address_user",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "userId": {
-          "name": "userId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "targetMailboxId": {
-          "name": "targetMailboxId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "avatar": {
-          "name": "avatar",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "avatarPlaceholder": {
-          "name": "avatarPlaceholder",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%s','now'))"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%s','now'))"
-        }
-      },
-      "indexes": {
-        "address_user_uniq": {
-          "name": "address_user_uniq",
-          "columns": [
-            "address",
-            "userId"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "address_user_userId_user_id_fk": {
-          "name": "address_user_userId_user_id_fk",
-          "tableFrom": "address_user",
-          "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "address_user_targetMailboxId_mailbox_id_fk": {
-          "name": "address_user_targetMailboxId_mailbox_id_fk",
-          "tableFrom": "address_user",
-          "tableTo": "mailbox",
-          "columnsFrom": [
-            "targetMailboxId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "attachment": {
       "name": "attachment",
       "columns": {
@@ -125,6 +14,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "threadId": {
+          "name": "threadId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "messageId": {
           "name": "messageId",
           "type": "text",
@@ -132,8 +28,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "userId": {
-          "name": "userId",
+        "ownerId": {
+          "name": "ownerId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -190,15 +86,28 @@
           ],
           "isUnique": false
         },
-        "attachment_userId_idx": {
-          "name": "attachment_userId_idx",
+        "attachment_threadId_idx": {
+          "name": "attachment_threadId_idx",
           "columns": [
-            "userId"
+            "threadId"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {
+        "attachment_threadId_thread_id_fk": {
+          "name": "attachment_threadId_thread_id_fk",
+          "tableFrom": "attachment",
+          "tableTo": "thread",
+          "columnsFrom": [
+            "threadId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "attachment_messageId_message_id_fk": {
           "name": "attachment_messageId_message_id_fk",
           "tableFrom": "attachment",
@@ -212,12 +121,123 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "attachment_userId_user_id_fk": {
-          "name": "attachment_userId_user_id_fk",
+        "attachment_ownerId_user_id_fk": {
+          "name": "attachment_ownerId_user_id_fk",
           "tableFrom": "attachment",
           "tableTo": "user",
           "columnsFrom": [
-            "userId"
+            "ownerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "contact": {
+      "name": "contact",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ownerId": {
+          "name": "ownerId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "targetMailboxId": {
+          "name": "targetMailboxId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "avatar": {
+          "name": "avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "avatarPlaceholder": {
+          "name": "avatarPlaceholder",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%s','now'))"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%s','now'))"
+        }
+      },
+      "indexes": {
+        "address_user_uniq": {
+          "name": "address_user_uniq",
+          "columns": [
+            "address",
+            "ownerId"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "contact_ownerId_user_id_fk": {
+          "name": "contact_ownerId_user_id_fk",
+          "tableFrom": "contact",
+          "tableTo": "user",
+          "columnsFrom": [
+            "ownerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "contact_targetMailboxId_mailbox_id_fk": {
+          "name": "contact_targetMailboxId_mailbox_id_fk",
+          "tableFrom": "contact",
+          "tableTo": "mailbox",
+          "columnsFrom": [
+            "targetMailboxId"
           ],
           "columnsTo": [
             "id"
@@ -315,8 +335,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "recipientId": {
-          "name": "recipientId",
+        "ownerId": {
+          "name": "ownerId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -336,8 +356,16 @@
           "notNull": true,
           "autoincrement": false
         },
-        "unread": {
-          "name": "unread",
+        "direction": {
+          "name": "direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'inbound'"
+        },
+        "unseen": {
+          "name": "unseen",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -349,7 +377,8 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(strftime('%s','now'))"
         },
         "subject": {
           "name": "subject",
@@ -444,22 +473,22 @@
           ],
           "isUnique": false
         },
-        "uniq_message_recipientId_messageId": {
-          "name": "uniq_message_recipientId_messageId",
+        "uniq_message_ownerId_messageId": {
+          "name": "uniq_message_ownerId_messageId",
           "columns": [
-            "recipientId",
+            "ownerId",
             "messageId"
           ],
           "isUnique": true
         }
       },
       "foreignKeys": {
-        "message_recipientId_user_id_fk": {
-          "name": "message_recipientId_user_id_fk",
+        "message_ownerId_user_id_fk": {
+          "name": "message_ownerId_user_id_fk",
           "tableFrom": "message",
           "tableTo": "user",
           "columnsFrom": [
-            "recipientId"
+            "ownerId"
           ],
           "columnsTo": [
             "id"
@@ -589,15 +618,15 @@
           "notNull": true,
           "autoincrement": false
         },
-        "from": {
-          "name": "from",
+        "firstMessageFrom": {
+          "name": "firstMessageFrom",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "recipientId": {
-          "name": "recipientId",
+        "ownerId": {
+          "name": "ownerId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -610,13 +639,12 @@
           "notNull": true,
           "autoincrement": false
         },
-        "unreadCount": {
-          "name": "unreadCount",
+        "unseenCount": {
+          "name": "unseenCount",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": 1
+          "autoincrement": false
         },
         "title": {
           "name": "title",
@@ -637,7 +665,8 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(strftime('%s','now'))"
         },
         "firstMessageId": {
           "name": "firstMessageId",
@@ -664,12 +693,12 @@
         }
       },
       "foreignKeys": {
-        "thread_recipientId_user_id_fk": {
-          "name": "thread_recipientId_user_id_fk",
+        "thread_ownerId_user_id_fk": {
+          "name": "thread_ownerId_user_id_fk",
           "tableFrom": "thread",
           "tableTo": "user",
           "columnsFrom": [
-            "recipientId"
+            "ownerId"
           ],
           "columnsTo": [
             "id"
