@@ -1,13 +1,12 @@
 import { Base64 } from "js-base64";
 
-import type { Contact, Mailbox, Message, Thread, User } from "./resolvers.types";
+import type { ResolversInterfaceTypes, ResolversTypes } from "./resolvers.types";
 
-type NodeImplementer =
-	| NonNullable<User["__typename"]>
-	| NonNullable<Mailbox["__typename"]>
-	| NonNullable<Thread["__typename"]>
-	| NonNullable<Message["__typename"]>
-	| NonNullable<Contact["__typename"]>;
+type NodeImplementer = ResolversInterfaceTypes<ResolversTypes>["Node"] extends {
+	__typename?: infer T;
+}
+	? NonNullable<T>
+	: never;
 
 export function toGlobalId(type: NodeImplementer, id: string | number): string {
 	return Base64.encode(`${type}:${id}`);
