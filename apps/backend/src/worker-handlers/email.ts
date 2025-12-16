@@ -3,8 +3,8 @@ import PostalMime, { type Attachment, type Email } from "postal-mime";
 import { ulid } from "ulid";
 import { filterXSS } from "xss";
 
-import { getDB, ThreadSelectModel, TransactionInstance } from "$lib/db";
-import { address_userTable, attachmentTable, messageTable, threadTable } from "$lib/db/schema";
+import { AttachmentInsertModel, getDB, ThreadSelectModel, TransactionInstance } from "$lib/db";
+import { attachmentTable, contactTable, messageTable, threadTable } from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
 import { extractLocalPart, resolveAvatar } from "$lib/utils/email";
 import { generateImagePlaceholder } from "$lib/utils/users";
@@ -27,18 +27,18 @@ export async function emailHandler(
 	const avatarInference = resolveAvatar(db, envelope.from).catch(() => undefined);
 
 	await db.transaction(async (tx) => {
-		const user_address =
-			(await tx.query.address_userTable.findFirst({
+		const contact =
+			(await tx.query.contactTable.findFirst({
 				where: (t, { eq, and }) =>
-					and(eq(t.userId, recipientUser.id), eq(t.address, envelope.from)),
+					and(eq(t.ownerId, recipientUser.id), eq(t.address, envelope.from)),
 			})) ||
 			(
 				await tx
-					.insert(address_userTable)
+					.insert(contactTable)
 					.values({
 						id: ulid(),
 						address: envelope.from,
-						userId: recipientUser.id,
+						ownerId: recipientUser.id,
 						targetMailboxId: (await tx.query.mailboxTable.findFirst({
 							where: (t, { eq, and }) =>
 								and(eq(t.userId, recipientUser.id), eq(t.type, "screener")),
@@ -49,7 +49,7 @@ export async function emailHandler(
 					})
 					.returning()
 			)[0];
-		const targetMailboxId = user_address.targetMailboxId;
+		const targetMailboxId = contact.targetMailboxId;
 		if (!targetMailboxId) throw new Error("SOMETHING_WENT_WRONG");
 
 		const targetMailbox = await tx.query.mailboxTable.findFirst({
@@ -73,7 +73,7 @@ export async function emailHandler(
 			id: createdMessageId,
 			from: envelope.from,
 			mailboxId: targetMailboxId,
-			recipientId: recipientUser.id,
+			ownerId: recipientUser.id,
 			threadId: thread.id,
 			to: parsedEmail.to?.map((a) => a.address).filter(Boolean),
 			cc: parsedEmail.cc?.map((a) => a.address).filter(Boolean),
@@ -103,15 +103,16 @@ export async function emailHandler(
 
 					return {
 						id: createdAttachmentId,
-						userId: recipientUser.id,
+						ownerId: recipientUser.id,
 						messageId: createdMessageId,
+						threadId: thread.id,
 						storageKey,
 						sizeInBytes: body.byteLength,
 						fileName: attachment.filename,
 						mimeType: attachment.mimeType,
 						disposition: attachment.disposition,
 						contentId: attachment.contentId,
-					};
+					} satisfies AttachmentInsertModel;
 				})
 			);
 
@@ -148,9 +149,9 @@ async function findOrCreateThread({
 		.insert(threadTable)
 		.values({
 			id: ulid(),
-			from: envelope.from,
+			firstMessageFrom: envelope.from,
 			mailboxId: targetMailboxId,
-			recipientId,
+			ownerId: recipientId,
 			title: parsedEmail.subject,
 			firstMessageSubject: parsedEmail.subject,
 			firstMessageId: parsedEmail.messageId,
@@ -181,12 +182,12 @@ async function getThreadFromMessageId(
 
 	const message = await tx.query.messageTable.findFirst({
 		columns: { threadId: true },
-		where: (t, { eq, and }) => and(eq(t.recipientId, recipientId), eq(t.messageId, messageId)),
+		where: (t, { eq, and }) => and(eq(t.ownerId, recipientId), eq(t.messageId, messageId)),
 	});
 	if (!message) return null;
 
 	return tx.query.threadTable.findFirst({
-		where: (t, { eq, and }) => and(eq(t.id, message.threadId), eq(t.recipientId, recipientId)),
+		where: (t, { eq, and }) => and(eq(t.id, message.threadId), eq(t.ownerId, recipientId)),
 	});
 }
 

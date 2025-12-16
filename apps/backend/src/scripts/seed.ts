@@ -100,7 +100,7 @@ async function main() {
 		});
 
 		await tx.insert(schema.mailboxTable).values(mailboxes);
-		await tx.insert(schema.address_userTable).values(senderProfiles);
+		await tx.insert(schema.contactTable).values(senderProfiles);
 		await tx.insert(schema.threadTable).values(threads.threads);
 		await tx.insert(schema.messageTable).values(threads.messages);
 	});
@@ -160,7 +160,7 @@ function makeMailboxes(userId: string): MailboxInsert[] {
 
 function makeSenders(
 	mailboxes: Record<MailboxType, MailboxInsert>
-): (typeof schema.address_userTable.$inferInsert)[] {
+): (typeof schema.contactTable.$inferInsert)[] {
 	const senders: SenderProfile[] = [
 		{
 			key: "maya",
@@ -219,7 +219,7 @@ function makeSenders(
 	return senders.map((sender) => ({
 		id: ulid(),
 		address: sender.address,
-		userId: mailboxes[sender.mailbox].userId,
+		ownerId: mailboxes[sender.mailbox].userId,
 		targetMailboxId: mailboxes[sender.mailbox].id,
 		name: sender.name,
 		avatar: sender.avatar,
@@ -228,7 +228,7 @@ function makeSenders(
 }
 
 function makeThreads(
-	senders: (typeof schema.address_userTable.$inferInsert)[],
+	senders: (typeof schema.contactTable.$inferInsert)[],
 	mailboxes: Record<MailboxType, MailboxInsert>,
 	userId: string,
 	userEmail: string
@@ -422,7 +422,7 @@ function makeThreads(
 			messageRows.push({
 				id: ulid(),
 				from: sender.address,
-				recipientId: userId,
+				ownerId: userId,
 				threadId,
 				mailboxId: mailbox.id,
 				unseen: message.unseen !== false,
@@ -449,8 +449,8 @@ function makeThreads(
 
 		threads.push({
 			id: threadId,
-			from: sender.address,
-			recipientId: userId,
+			firstMessageFrom: sender.address,
+			ownerId: userId,
 			mailboxId: mailbox.id,
 			unseenCount,
 			title: seed.subject,

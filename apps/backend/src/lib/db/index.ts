@@ -29,4 +29,5 @@ export type UserSelectModel = typeof schema.userTable.$inferSelect;
 export type MailboxSelectModel = typeof schema.mailboxTable.$inferSelect;
 export type ThreadSelectModel = typeof schema.threadTable.$inferSelect;
 export type MessageSelectModel = typeof schema.messageTable.$inferSelect;
-export type AddressUserSelectModel = typeof schema.address_userTable.$inferSelect;
+export type ContactSelectModel = typeof schema.contactTable.$inferSelect;
+export type AttachmentInsertModel = typeof schema.attachmentTable.$inferInsert;

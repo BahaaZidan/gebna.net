@@ -60,15 +60,12 @@ export const mailboxTable = sqliteTable(
 	]
 );
 
-export const address_userTable = sqliteTable(
-	"address_user",
+export const contactTable = sqliteTable(
+	"contact",
 	{
-		/** Makes life a little easier with profile operations */
 		id: text().primaryKey(),
-		/** The sender. Based on the envelope */
 		address: text().notNull(),
-		/** The reciever. Based on the envelope */
-		userId: text()
+		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
 		targetMailboxId: text()
@@ -84,7 +81,7 @@ export const address_userTable = sqliteTable(
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
 	},
-	(self) => [uniqueIndex("address_user_uniq").on(self.address, self.userId)]
+	(self) => [uniqueIndex("address_user_uniq").on(self.address, self.ownerId)]
 );
 
 export const threadTable = sqliteTable(
@@ -92,23 +89,22 @@ export const threadTable = sqliteTable(
 	{
 		/** thread.id based on Headers.messageId if it exists. Otherwise, we make our own id */
 		id: text().primaryKey(),
-		/** The sender. Based on the first envelope */
-		from: text().notNull(),
-		/** The reciever. Based on the first envelope */
-		recipientId: text()
+		/** Envelope.from of the first message */
+		firstMessageFrom: text().notNull(),
+		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
 		mailboxId: text()
 			.notNull()
 			.references(() => mailboxTable.id, { onDelete: "cascade" }),
-		unseenCount: integer().notNull().default(1),
+		unseenCount: integer().notNull(),
 		/** based on the subject of the first message or its' snippet */
 		title: text(),
 		/** based on the snippet of the first message */
 		snippet: text(),
 		lastMessageAt: integer({ mode: "timestamp" })
 			.notNull()
-			.$default(() => new Date()),
+			.default(sql`(strftime('%s','now'))`),
 		/** Headers.messageId of the first message */
 		firstMessageId: text(),
 		/** Headers.subject of the first message */
@@ -117,15 +113,13 @@ export const threadTable = sqliteTable(
 	(self) => [index("idx_thread_mailbox").on(self.mailboxId)]
 );
 
+type MessageDirection = "inbound" | "outbound";
 export const messageTable = sqliteTable(
 	"message",
 	{
-		/** our own id */
 		id: text().primaryKey(),
-		/** Envelope.from */
 		from: text().notNull(),
-		/** Envelope.to */
-		recipientId: text()
+		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
 		threadId: text()
@@ -135,10 +129,11 @@ export const messageTable = sqliteTable(
 		mailboxId: text()
 			.notNull()
 			.references(() => mailboxTable.id, { onDelete: "cascade" }),
+		direction: text().$type<MessageDirection>().notNull().default("inbound"),
 		unseen: integer({ mode: "boolean" }).notNull().default(true),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
-			.$default(() => new Date()),
+			.default(sql`(strftime('%s','now'))`),
 		/** Headers.subject */
 		subject: text(),
 		/** Headers.to */
@@ -166,7 +161,7 @@ export const messageTable = sqliteTable(
 	},
 	(self) => [
 		index("message_thread_idx").on(self.threadId),
-		uniqueIndex("uniq_message_recipientId_messageId").on(self.recipientId, self.messageId),
+		uniqueIndex("uniq_message_ownerId_messageId").on(self.ownerId, self.messageId),
 	]
 );
 
@@ -174,10 +169,13 @@ export const attachmentTable = sqliteTable(
 	"attachment",
 	{
 		id: text().primaryKey(),
+		threadId: text()
+			.notNull()
+			.references(() => threadTable.id, { onDelete: "cascade" }),
 		messageId: text()
 			.notNull()
 			.references(() => messageTable.id, { onDelete: "cascade" }),
-		userId: text()
+		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
 		storageKey: text().notNull(),
@@ -189,6 +187,6 @@ export const attachmentTable = sqliteTable(
 	},
 	(self) => [
 		index("attachment_messageId_idx").on(self.messageId),
-		index("attachment_userId_idx").on(self.userId),
+		index("attachment_threadId_idx").on(self.threadId),
 	]
 );
