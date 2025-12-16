@@ -1,6 +1,6 @@
 /* eslint-disable */
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
-import type { UserSelectModel, MailboxSelectModel, ThreadSelectModel, MessageSelectModel, AddressUserSelectModel } from '$lib/db';
+import type { UserSelectModel, MailboxSelectModel, ThreadSelectModel, MessageSelectModel, ContactSelectModel } from '$lib/db';
 import type { Context } from '$lib/graphql/context';
 export type Maybe<T> = T | null | undefined;
 export type InputMaybe<T> = T | null | undefined;
@@ -277,7 +277,7 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
   ;
   Node:
     | ( Attachment & { __typename: 'Attachment' } )
-    | ( AddressUserSelectModel & { __typename: 'Contact' } )
+    | ( ContactSelectModel & { __typename: 'Contact' } )
     | ( MailboxSelectModel & { __typename: 'Mailbox' } )
     | ( MessageSelectModel & { __typename: 'Message' } )
     | ( ThreadSelectModel & { __typename: 'Thread' } )
@@ -291,7 +291,7 @@ export type ResolversTypes = {
   Attachment: ResolverTypeWrapper<Attachment>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Connection: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Connection']>;
-  Contact: ResolverTypeWrapper<AddressUserSelectModel>;
+  Contact: ResolverTypeWrapper<ContactSelectModel>;
   ContactConnection: ResolverTypeWrapper<Omit<ContactConnection, 'edges'> & { edges: Array<ResolversTypes['ContactEdge']> }>;
   ContactEdge: ResolverTypeWrapper<Omit<ContactEdge, 'node'> & { node: ResolversTypes['Contact'] }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
@@ -320,7 +320,7 @@ export type ResolversParentTypes = {
   Attachment: Attachment;
   Boolean: Scalars['Boolean']['output'];
   Connection: ResolversInterfaceTypes<ResolversParentTypes>['Connection'];
-  Contact: AddressUserSelectModel;
+  Contact: ContactSelectModel;
   ContactConnection: Omit<ContactConnection, 'edges'> & { edges: Array<ResolversParentTypes['ContactEdge']> };
   ContactEdge: Omit<ContactEdge, 'node'> & { node: ResolversParentTypes['Contact'] };
   DateTime: Scalars['DateTime']['output'];

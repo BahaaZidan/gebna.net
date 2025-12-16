@@ -1,7 +1,7 @@
 import { and, count, eq, gt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
 
-import { address_userTable, messageTable, threadTable } from "$lib/db/schema";
+import { contactTable, messageTable, threadTable } from "$lib/db/schema";
 
 import type { Resolvers } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
@@ -24,15 +24,15 @@ export const resolvers: Resolvers = {
 					const thread =
 						session &&
 						(await db.query.threadTable.findFirst({
-							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.recipientId, session.userId)),
+							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.ownerId, session.userId)),
 						}));
 					return thread ? { ...thread, __typename: "Thread" } : null;
 				}
 				case "Contact": {
 					const address_user =
 						session &&
-						(await db.query.address_userTable.findFirst({
-							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.userId, session.userId)),
+						(await db.query.contactTable.findFirst({
+							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.ownerId, session.userId)),
 						}));
 					return address_user ? { ...address_user, __typename: "Contact" } : null;
 				}
@@ -95,18 +95,18 @@ export const resolvers: Resolvers = {
 		assignedContactsCount: async (parent, _, { db }) => {
 			const [{ assignedContactsCount }] = await db
 				.select({ assignedContactsCount: count() })
-				.from(address_userTable)
-				.where(eq(address_userTable.targetMailboxId, parent.id));
+				.from(contactTable)
+				.where(eq(contactTable.targetMailboxId, parent.id));
 
 			return assignedContactsCount;
 		},
 		contacts: async (parent, args, { db }) => {
 			const pageSize = args.first || 30;
 			const cursor = args.after;
-			const contactsPlusOne = await db.query.address_userTable.findMany({
+			const contactsPlusOne = await db.query.contactTable.findMany({
 				where: (t, { eq, and, lt }) =>
 					and(
-						eq(t.userId, parent.userId),
+						eq(t.ownerId, parent.userId),
 						eq(t.targetMailboxId, parent.id),
 						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
 					),
@@ -140,11 +140,11 @@ export const resolvers: Resolvers = {
 			return messages;
 		},
 		from: async (parent, _, { db }) => {
-			const record = await db.query.address_userTable.findFirst({
+			const contact = await db.query.contactTable.findFirst({
 				where: (t, { and, eq }) =>
-					and(eq(t.userId, parent.recipientId), eq(t.address, parent.from)),
+					and(eq(t.ownerId, parent.ownerId), eq(t.address, parent.firstMessageFrom)),
 			});
-			return record!;
+			return contact!;
 		},
 	},
 	Message: {
@@ -157,9 +157,8 @@ export const resolvers: Resolvers = {
 			return attachments;
 		},
 		from: async (parent, _, { db }) => {
-			const record = await db.query.address_userTable.findFirst({
-				where: (t, { and, eq }) =>
-					and(eq(t.userId, parent.recipientId), eq(t.address, parent.from)),
+			const record = await db.query.contactTable.findFirst({
+				where: (t, { and, eq }) => and(eq(t.ownerId, parent.ownerId), eq(t.address, parent.from)),
 			});
 			return record!;
 		},
@@ -190,12 +189,12 @@ export const resolvers: Resolvers = {
 			if (!targetMailbox) return;
 			return await db.transaction(async (tx) => {
 				const [contact] = await tx
-					.update(address_userTable)
+					.update(contactTable)
 					.set({ targetMailboxId: targetMailbox.id, updatedAt: new Date() })
 					.where(
 						and(
-							eq(address_userTable.userId, session.userId),
-							eq(address_userTable.id, fromGlobalId(input.contactID).id)
+							eq(contactTable.ownerId, session.userId),
+							eq(contactTable.id, fromGlobalId(input.contactID).id)
 						)
 					)
 					.returning();
@@ -205,17 +204,17 @@ export const resolvers: Resolvers = {
 					.update(messageTable)
 					.set({ mailboxId: targetMailbox.id })
 					.where(
-						and(
-							eq(messageTable.recipientId, session.userId),
-							eq(messageTable.from, contact.address)
-						)
+						and(eq(messageTable.ownerId, session.userId), eq(messageTable.from, contact.address))
 					);
 
 				await tx
 					.update(threadTable)
 					.set({ mailboxId: targetMailbox.id })
 					.where(
-						and(eq(threadTable.recipientId, session.userId), eq(threadTable.from, contact.address))
+						and(
+							eq(threadTable.ownerId, session.userId),
+							eq(threadTable.firstMessageFrom, contact.address)
+						)
 					);
 
 				return contact;
@@ -229,7 +228,7 @@ export const resolvers: Resolvers = {
 					.set({ unseenCount: 0 })
 					.where(
 						and(
-							eq(threadTable.recipientId, session.userId),
+							eq(threadTable.ownerId, session.userId),
 							eq(threadTable.id, fromGlobalId(args.id).id)
 						)
 					)
