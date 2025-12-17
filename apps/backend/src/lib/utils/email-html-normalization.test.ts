@@ -4,9 +4,10 @@ import type { Email } from "postal-mime";
 
 import { normalizeAndSanitizeEmailBody } from "./email-html-normalization";
 
-const baseEmail = {
+const baseEmail: Email = {
+	headers: [],
 	attachments: [],
-} as Email;
+};
 
 test("empty email produces minimal document", () => {
 	const result = normalizeAndSanitizeEmailBody({ ...baseEmail, html: "", text: "" });
