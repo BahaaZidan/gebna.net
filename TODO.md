@@ -44,7 +44,7 @@
   - [ ] Different seen/unseen statuses in important box
 - [ ] News Box
 - [x] Transactional Box
-- [ ] Trash Box
+- [x] Trash Box
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Allow user to change their profile picture
 - [ ] Downloadable attachments
