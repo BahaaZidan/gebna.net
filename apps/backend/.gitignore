@@ -33,6 +33,7 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+*.eml
 
 local.db*
 

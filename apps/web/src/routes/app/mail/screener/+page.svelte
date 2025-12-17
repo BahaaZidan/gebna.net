@@ -131,9 +131,13 @@
 			</summary>
 			<div class="collapse-content">
 				{#if firstMessage.bodyHTML}
-					{@html firstMessage.bodyHTML}
-				{:else}
-					{firstMessage.bodyText}
+					<iframe
+						title="iimak"
+						sandbox=""
+						referrerpolicy="no-referrer"
+						srcdoc={firstMessage.bodyHTML}
+						class="w-full"
+					></iframe>
 				{/if}
 			</div>
 		</details>
