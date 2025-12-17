@@ -42,7 +42,7 @@
   - [ ] Real bodyHTML instead of simplistic bodyText only
   - [ ] Different dates in important box
   - [ ] Different seen/unseen statuses in important box
-- [ ] News Box
+- [x] News Box
 - [x] Transactional Box
 - [x] Trash Box
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
