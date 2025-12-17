@@ -1,12 +1,12 @@
 import { eq } from "drizzle-orm";
 import PostalMime, { type Attachment, type Email } from "postal-mime";
 import { ulid } from "ulid";
-import { filterXSS } from "xss";
 
 import { AttachmentInsertModel, getDB, ThreadSelectModel, TransactionInstance } from "$lib/db";
 import { attachmentTable, contactTable, messageTable, threadTable } from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
 import { extractLocalPart, resolveAvatar } from "$lib/utils/email";
+import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "$lib/utils/users";
 
 export async function emailHandler(
@@ -25,6 +25,8 @@ export async function emailHandler(
 	if (!parsedEmail.from?.name) return envelope.setReject("FROM NOT SET!");
 
 	const avatarInference = resolveAvatar(db, envelope.from).catch(() => undefined);
+	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail);
+	const snippet = normalizedBody.text.trim() ? normalizedBody.text.slice(0, 50) : null;
 
 	await db.transaction(async (tx) => {
 		const contact =
@@ -83,9 +85,9 @@ export async function emailHandler(
 			replyTo: parsedEmail.replyTo?.map((a) => a.address).filter(Boolean),
 			references: parsedEmail.references,
 			inReplyTo: parsedEmail.inReplyTo,
-			bodyHTML: parsedEmail.html ? filterXSS(parsedEmail.html) : null,
-			bodyText: parsedEmail.text,
-			snippet: parsedEmail.text?.slice(0, 50),
+			bodyHTML: normalizedBody.htmlDocument,
+			bodyText: normalizedBody.text || null,
+			snippet,
 			sizeInBytes: envelope.rawSize,
 			unseen,
 		});

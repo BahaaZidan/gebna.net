@@ -88,9 +88,13 @@
 							</div>
 							<div class="mt-3">
 								{#if message.bodyHTML}
-									{@html message.bodyHTML}
-								{:else}
-									{message.bodyText}
+									<iframe
+										title="email"
+										sandbox=""
+										referrerpolicy="no-referrer"
+										srcdoc={message.bodyHTML}
+										class="w-full"
+									></iframe>
 								{/if}
 							</div>
 						</div>
