@@ -13,6 +13,7 @@
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { graphql } from "$lib/graphql/generated";
 	import type { MailboxType } from "$lib/graphql/generated/graphql";
+	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 
 	const urqlClient = getContextClient();
 	const ScreenerPageQuery = graphql(`
@@ -133,10 +134,11 @@
 				{#if firstMessage.bodyHTML}
 					<iframe
 						title="iimak"
-						sandbox=""
+						sandbox="allow-same-origin"
 						referrerpolicy="no-referrer"
 						srcdoc={firstMessage.bodyHTML}
 						class="w-full"
+						use:autoIframeHeight
 					></iframe>
 				{/if}
 			</div>

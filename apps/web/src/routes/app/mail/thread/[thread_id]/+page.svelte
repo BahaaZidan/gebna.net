@@ -10,6 +10,7 @@
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/date";
 	import { graphql } from "$lib/graphql/generated";
+	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 
 	const ThreadDetails = graphql(`
 		query ThreadDetails($id: ID!) {
@@ -128,10 +129,11 @@
 						{#if message.bodyHTML}
 							<iframe
 								title="email"
-								sandbox=""
+								sandbox="allow-same-origin"
 								referrerpolicy="no-referrer"
 								srcdoc={message.bodyHTML}
 								class="w-full"
+								use:autoIframeHeight
 							></iframe>
 						{/if}
 					</div>

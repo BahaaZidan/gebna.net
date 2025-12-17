@@ -11,6 +11,7 @@ import { ulid } from "ulid";
 import { TransactionInstance } from "../lib/db";
 import * as schema from "../lib/db/schema";
 import { increment } from "../lib/db/utils";
+import { buildCidResolver } from "../lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "../lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "../lib/utils/users";
 
@@ -209,7 +210,11 @@ async function loadSeedEmails() {
 
 		const fromName = parsedEmail.from?.name?.trim() || fromAddress || "Unknown Sender";
 		const createdAt = coerceDate(parsedEmail.date);
-		const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail);
+		const cidResolver = buildCidResolver(parsedEmail.attachments);
+		const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
+			cidResolver,
+			allowDataImages: Boolean(cidResolver),
+		});
 		const bodyHTML = normalizedBody.htmlDocument;
 		const bodyText = normalizedBody.text || null;
 		const snippet = makeSnippet(bodyText, bodyHTML);

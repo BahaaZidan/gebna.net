@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
-import PostalMime, { type Attachment, type Email } from "postal-mime";
+import PostalMime, { type Email } from "postal-mime";
 import { ulid } from "ulid";
 
 import { AttachmentInsertModel, getDB, ThreadSelectModel, TransactionInstance } from "$lib/db";
 import { attachmentTable, contactTable, messageTable, threadTable } from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
+import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { extractLocalPart, resolveAvatar } from "$lib/utils/email";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "$lib/utils/users";
@@ -25,7 +26,11 @@ export async function emailHandler(
 	if (!parsedEmail.from?.name) return envelope.setReject("FROM NOT SET!");
 
 	const avatarInference = resolveAvatar(db, envelope.from).catch(() => undefined);
-	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail);
+	const cidResolver = buildCidResolver(parsedEmail.attachments);
+	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
+		cidResolver,
+		allowDataImages: Boolean(cidResolver),
+	});
 	const snippet = normalizedBody.text.trim() ? normalizedBody.text.slice(0, 50) : null;
 
 	await db.transaction(async (tx) => {
@@ -98,7 +103,7 @@ export async function emailHandler(
 					const createdAttachmentId = ulid();
 					const storageKey = `u/${recipientUser.id}/m/${createdMessageId}/a/${createdAttachmentId}`;
 
-					const body = getAttachmentBody(attachment);
+					const body = getAttachmentBytes(attachment);
 					await bindings.R2_EMAILS.put(storageKey, body, {
 						httpMetadata: { contentType: attachment.mimeType },
 					});
@@ -212,20 +217,4 @@ async function incrementThreadUnseenCount(
 		unseenCount: unseen ? thread.unseenCount + 1 : thread.unseenCount,
 		lastMessageAt,
 	};
-}
-
-const utf8Encoder = new TextEncoder();
-function getAttachmentBody(attachment: Attachment) {
-	const content = attachment.content;
-	if (typeof content === "string") {
-		if (attachment.encoding === "base64") {
-			const binary = atob(content);
-			const bytes = new Uint8Array(binary.length);
-			for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-			return bytes;
-		}
-		return utf8Encoder.encode(content);
-	}
-	if (content instanceof ArrayBuffer) return content;
-	return new Uint8Array();
 }
