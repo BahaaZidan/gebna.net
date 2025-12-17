@@ -29,6 +29,7 @@ export async function emailHandler(
 	const cidResolver = buildCidResolver(parsedEmail.attachments);
 	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
 		cidResolver,
+		blockRemoteImagesByDefault: false,
 		allowDataImages: Boolean(cidResolver),
 	});
 	const snippet = normalizedBody.text.trim() ? normalizedBody.text.slice(0, 50) : null;

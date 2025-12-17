@@ -213,6 +213,7 @@ async function loadSeedEmails() {
 		const cidResolver = buildCidResolver(parsedEmail.attachments);
 		const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
 			cidResolver,
+			blockRemoteImagesByDefault: false,
 			allowDataImages: Boolean(cidResolver),
 		});
 		const bodyHTML = normalizedBody.htmlDocument;
