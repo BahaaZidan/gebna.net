@@ -43,7 +43,7 @@
   - [ ] Different dates in important box
   - [ ] Different seen/unseen statuses in important box
 - [ ] News Box
-- [ ] Transactional Box
+- [x] Transactional Box
 - [ ] Trash Box
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Allow user to change their profile picture
