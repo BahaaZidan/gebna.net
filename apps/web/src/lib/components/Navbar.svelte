@@ -60,14 +60,20 @@
 		</label>
 	</div>
 	<div class="navbar-center">
-		<div class="dropdown dropdown-center">
-			<div tabindex="0" role="button" class="btn gap-0 font-mono text-xl btn-ghost">
-				gebna <ChevronDownIcon class="mt-0.5 size-5" />
-			</div>
-			<div
-				tabindex="-1"
-				class="dropdown-content z-1 flex w-md flex-col gap-4 rounded-3xl bg-base-100 p-6"
-			>
+		<button
+			class="btn font-mono text-xl btn-ghost"
+			popovertarget="navbar-center-popover"
+			style="anchor-name:--navbar-center-anchor"
+		>
+			gebna <ChevronDownIcon class="mt-0.5 size-5" />
+		</button>
+		<div
+			popover
+			id="navbar-center-popover"
+			style="position-anchor:--navbar-center-anchor"
+			class="dropdown dropdown-center"
+		>
+			<div class="flex w-md flex-col gap-4 rounded-3xl bg-base-100 p-6">
 				<label class="input w-full">
 					<SearchIcon />
 					<input type="text" class="grow" placeholder="Search" />
