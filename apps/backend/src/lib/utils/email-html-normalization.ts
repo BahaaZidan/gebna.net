@@ -1,5 +1,9 @@
-import { parseAttr, parseTag } from "xss";
 import type { Email } from "postal-mime";
+import * as xss from "xss";
+
+const xssExports =
+	// @ts-expect-error That’s the ESM/CJS interop quirk — parseTag lives on the CJS default export. I wired a module-level xssExports shim so runtime gets parseTag/parseAttr correctly.
+	("default" in xss ? (xss as { default: typeof xss }).default : xss) as typeof xss;
 
 export type NormalizeEmailOptions = {
 	maxHtmlBytes?: number;
@@ -33,7 +37,9 @@ export type NormalizedEmailBody = {
 	};
 };
 
-type NormalizedOptions = Required<Omit<NormalizeEmailOptions, "cidResolver" | "remoteImagePlaceholder">> &
+type NormalizedOptions = Required<
+	Omit<NormalizeEmailOptions, "cidResolver" | "remoteImagePlaceholder">
+> &
 	Pick<NormalizeEmailOptions, "cidResolver" | "remoteImagePlaceholder">;
 
 const DEFAULT_OPTIONS: NormalizedOptions = {
@@ -135,10 +141,11 @@ export function normalizeAndSanitizeEmailBody(
 		flags.htmlTruncated = truncated.truncated;
 		if (flags.htmlTruncated) warnings.push("html_truncated");
 
-		const { bodyHtml, headStyles, flags: sanitizeFlags } = sanitizeHtmlBody(
-			truncated.value,
-			resolvedOptions
-		);
+		const {
+			bodyHtml,
+			headStyles,
+			flags: sanitizeFlags,
+		} = sanitizeHtmlBody(truncated.value, resolvedOptions);
 		Object.assign(flags, sanitizeFlags);
 		if (flags.wasMalformedHtml) warnings.push("malformed_html");
 
@@ -210,7 +217,7 @@ function sanitizeHtmlBody(html: string, options: NormalizedOptions) {
 	const ignoreStack: string[] = [];
 	let styleCaptureDepth = 0;
 
-	const output = parseTag(
+	const output = xssExports.parseTag(
 		html,
 		(_sourcePos, _pos, tagName, tagHtml, isClosing) => {
 			const normalizedTag = tagName.toLowerCase();
@@ -333,7 +340,7 @@ function sanitizeAttributesForTag(
 	>
 ) {
 	const attrs: Array<{ name: string; value: string }> = [];
-	parseAttr(attrHtml, (name, value) => {
+	xssExports.parseAttr(attrHtml, (name, value) => {
 		attrs.push({ name, value });
 		return "";
 	});
@@ -523,7 +530,7 @@ function isDangerousScheme(value: string) {
 function escapeAttribute(value: string) {
 	return value
 		.replaceAll("&", "&amp;")
-		.replaceAll("\"", "&quot;")
+		.replaceAll('"', "&quot;")
 		.replaceAll("<", "&lt;")
 		.replaceAll(">", "&gt;");
 }
@@ -544,7 +551,7 @@ function escapeText(value: string) {
 		.replaceAll("&", "&amp;")
 		.replaceAll("<", "&lt;")
 		.replaceAll(">", "&gt;")
-		.replaceAll("\"", "&quot;")
+		.replaceAll('"', "&quot;")
 		.replaceAll("'", "&#39;");
 }
 
@@ -561,9 +568,7 @@ function buildHtmlDocument(bodyHtml: string, headStyles: string[]) {
 		"img { max-width: 100%; height: auto; }",
 		"table { max-width: 100%; }",
 	].join("\n");
-	const headStyleBlocks = headStyles
-		.map((style) => `<style>${style}</style>`)
-		.join("");
+	const headStyleBlocks = headStyles.map((style) => `<style>${style}</style>`).join("");
 
 	return [
 		"<!doctype html>",
