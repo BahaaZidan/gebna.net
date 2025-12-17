@@ -55,8 +55,8 @@
 		{#if $navbarQuery.data?.viewer?.username}
 			{@const viewer = $navbarQuery.data.viewer}
 			<div class="dropdown dropdown-end">
-				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
-					<div class="size-10 rounded-full">
+				<div tabindex="0" role="button" class="avatar hover:cursor-pointer">
+					<div class="size-12 rounded-full">
 						<img alt="User avatar" src={viewer.avatar} />
 					</div>
 				</div>
