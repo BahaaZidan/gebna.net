@@ -16,6 +16,8 @@
 			viewer {
 				id
 				username
+				name
+				avatar
 			}
 		}
 	`);
@@ -51,13 +53,11 @@
 	</div>
 	<div class="navbar-end">
 		{#if $navbarQuery.data?.viewer?.username}
+			{@const viewer = $navbarQuery.data.viewer}
 			<div class="dropdown dropdown-end">
 				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
-					<div class="w-10 rounded-full">
-						<img
-							alt="Tailwind CSS Navbar component"
-							src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-						/>
+					<div class="size-10 rounded-full">
+						<img alt="User avatar" src={viewer.avatar} />
 					</div>
 				</div>
 				<ul
