@@ -18,7 +18,6 @@
 					id
 					type
 					name
-					unseenThreadsCount
 					threads {
 						pageInfo {
 							hasNextPage
