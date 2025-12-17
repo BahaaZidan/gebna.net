@@ -86,6 +86,7 @@ export const resolvers: Resolvers = {
 			};
 		},
 		unseenThreadsCount: async (parent, _, { db }) => {
+			if (parent.type !== "important") return 0;
 			const [{ unseenThreadsCount }] = await db
 				.select({ unseenThreadsCount: count() })
 				.from(threadTable)
