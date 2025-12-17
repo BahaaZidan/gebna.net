@@ -48,6 +48,7 @@
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Allow user to change their profile picture
 - [ ] Downloadable attachments
+- [ ] Basic Full Text Search
 
 ### v0.5
 
