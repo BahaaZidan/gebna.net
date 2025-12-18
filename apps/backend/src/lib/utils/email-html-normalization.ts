@@ -216,6 +216,9 @@ function sanitizeHtmlBody(html: string, options: NormalizedOptions) {
 	let sawBody = false;
 	const ignoreStack: string[] = [];
 	let styleCaptureDepth = 0;
+	const resetStyleCapture = () => {
+		if (styleCaptureDepth > 0) styleCaptureDepth = 0;
+	};
 
 	const output = xssExports.parseTag(
 		html,
@@ -236,12 +239,14 @@ function sanitizeHtmlBody(html: string, options: NormalizedOptions) {
 
 			if (normalizedTag === "head") {
 				inHead = !isClosing;
+				if (isClosing) resetStyleCapture();
 				return "";
 			}
 
 			if (normalizedTag === "body") {
 				sawBody = true;
 				inBody = !isClosing;
+				if (!isClosing) resetStyleCapture();
 				return "";
 			}
 
@@ -303,8 +308,11 @@ function sanitizeHtmlBody(html: string, options: NormalizedOptions) {
 		(text) => {
 			if (ignoreStack.length > 0) return "";
 			if (styleCaptureDepth > 0) {
-				headStyles.push(text);
-				return "";
+				if (!inHead) resetStyleCapture();
+				else {
+					headStyles.push(text);
+					return "";
+				}
 			}
 			const outputEnabled = inBody || (!sawBody && !inHead);
 			return outputEnabled ? text : "";
