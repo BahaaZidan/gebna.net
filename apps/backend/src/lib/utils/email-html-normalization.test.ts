@@ -75,3 +75,11 @@ test("cid urls are rewritten when resolver is provided", () => {
 	assert.equal(result.flags.rewroteCidUrls, true);
 	assert.ok(result.htmlDocument.includes("https://example.com/abc.png"));
 });
+
+test("unclosed head styles do not swallow body text", () => {
+	const result = normalizeAndSanitizeEmailBody({
+		...baseEmail,
+		html: "<html><head><!--[if mso]><style>body{color:red;}<![endif]--></head><body><p>Hello</p></body></html>",
+	});
+	assert.ok(result.htmlDocument.includes("<p>Hello</p>"));
+});
