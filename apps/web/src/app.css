@@ -1,10 +1,10 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-	themes: retro;
+	themes: dark;
 }
 
 @plugin "daisyui/theme" {
-	name: "retro";
+	name: "dark";
 	--radius-selector: 1.5rem;
 	--radius-field: 1.5rem;
 	--radius-box: 1.5rem;
