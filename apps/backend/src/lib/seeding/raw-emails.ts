@@ -1,11 +1,11 @@
 import { and, eq, inArray } from "drizzle-orm";
-import PostalMime from "postal-mime";
+import PostalMime, { type Attachment } from "postal-mime";
 import { ulid } from "ulid";
 
 import { getDB, type TransactionInstance } from "$lib/db";
 import * as schema from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
-import { buildCidResolver } from "$lib/utils/email-attachments";
+import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "$lib/utils/users";
 
@@ -25,6 +25,7 @@ type SeedEmail = {
 	cc?: string[];
 	bcc?: string[];
 	replyTo?: string[];
+	attachments: Attachment[];
 };
 
 export type SeedRawEmailOptions = {
@@ -123,8 +124,9 @@ export async function seedRawEmails(
 				inReplyTo: seed.inReplyTo,
 			});
 
+			const messageId = ulid();
 			await tx.insert(schema.messageTable).values({
-				id: ulid(),
+				id: messageId,
 				from: seed.fromAddress,
 				ownerId: recipient.id,
 				threadId: thread.id,
@@ -144,6 +146,35 @@ export async function seedRawEmails(
 				bodyHTML: seed.bodyHTML,
 				sizeInBytes: seed.raw.byteLength,
 			});
+
+			if (seed.attachments.length) {
+				const attachmentsToInsert = await Promise.all(
+					seed.attachments.map(async (attachment) => {
+						const attachmentId = ulid();
+						const storageKey = `u/${recipient.id}/m/${messageId}/a/${attachmentId}`;
+						const body = getAttachmentBytes(attachment);
+
+						await env.R2_EMAILS.put(storageKey, body, {
+							httpMetadata: { contentType: attachment.mimeType },
+						});
+
+						return {
+							id: attachmentId,
+							ownerId: recipient.id,
+							messageId,
+							threadId: thread.id,
+							storageKey,
+							sizeInBytes: body.byteLength,
+							fileName: attachment.filename,
+							mimeType: attachment.mimeType,
+							disposition: attachment.disposition,
+							contentId: attachment.contentId,
+						} satisfies typeof schema.attachmentTable.$inferInsert;
+					})
+				);
+
+				await tx.insert(schema.attachmentTable).values(attachmentsToInsert);
+			}
 
 			return true;
 		});
@@ -258,6 +289,7 @@ async function loadSeedEmails() {
 			cc: parsedEmail.cc?.map((a) => a.address).filter(Boolean),
 			bcc: parsedEmail.bcc?.map((a) => a.address).filter(Boolean),
 			replyTo: parsedEmail.replyTo?.map((a) => a.address).filter(Boolean),
+			attachments: parsedEmail.attachments ?? [],
 		});
 	}
 
