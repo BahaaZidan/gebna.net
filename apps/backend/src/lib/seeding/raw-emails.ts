@@ -1,27 +1,13 @@
-import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { createClient } from "@libsql/client";
 import { and, eq, inArray } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/libsql";
 import PostalMime from "postal-mime";
 import { ulid } from "ulid";
 
-import { TransactionInstance } from "../lib/db";
-import * as schema from "../lib/db/schema";
-import { increment } from "../lib/db/utils";
-import { buildCidResolver } from "../lib/utils/email-attachments";
-import { normalizeAndSanitizeEmailBody } from "../lib/utils/email-html-normalization";
-import { generateImagePlaceholder } from "../lib/utils/users";
-
-type ThreadSelectModel = typeof schema.threadTable.$inferSelect;
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rawEmailsDir = path.resolve(__dirname, "data/raw-emails");
-const recipientEmail = "demo@gebna.net";
-const recipientUsername = "demo";
-const shouldReset = process.argv.includes("--reset") || process.env.SEED_RAW_RESET === "true";
+import { getDB, type TransactionInstance } from "$lib/db";
+import * as schema from "$lib/db/schema";
+import { increment } from "$lib/db/utils";
+import { buildCidResolver } from "$lib/utils/email-attachments";
+import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
+import { generateImagePlaceholder } from "$lib/utils/users";
 
 type SeedEmail = {
 	fileName: string;
@@ -41,13 +27,43 @@ type SeedEmail = {
 	replyTo?: string[];
 };
 
-async function main() {
-	const tursoUrl = requireEnv("TURSO_DATABASE_URL");
-	const tursoAuthToken = process.env.TURSO_AUTH_TOKEN;
+export type SeedRawEmailOptions = {
+	reset?: boolean;
+	recipientUsername?: string;
+	recipientEmail?: string;
+};
 
-	const client = createClient({ url: tursoUrl, authToken: tursoAuthToken });
-	const db = drizzle(client, { schema });
+export type SeedRawEmailResult = {
+	status: "ok";
+	resetPerformed: boolean;
+	recipientUsername: string;
+	recipientEmail: string;
+	counts: {
+		filesProcessed: number;
+		filesSkipped: number;
+		messagesInserted: number;
+		messagesSkipped: number;
+		threadsDeleted?: number;
+		contactsDeleted?: number;
+		deletedMessages?: number;
+	};
+};
 
+const rawEmailModules = import.meta.glob("./data/raw-emails/*.eml", {
+	as: "raw",
+	eager: true,
+});
+
+const encoder = new TextEncoder();
+
+export async function seedRawEmails(
+	env: CloudflareBindings,
+	options: SeedRawEmailOptions = {}
+): Promise<SeedRawEmailResult> {
+	const recipientUsername = options.recipientUsername ?? "demo";
+	const recipientEmail = options.recipientEmail ?? `${recipientUsername}@gebna.net`;
+
+	const db = getDB(env);
 	const recipient = await db.query.userTable.findFirst({
 		where: (t, { eq }) => eq(t.username, recipientUsername),
 	});
@@ -68,13 +84,10 @@ async function main() {
 
 	let inserted = 0;
 	let skipped = 0;
+	let resetResult: Awaited<ReturnType<typeof deleteSeededRecords>> | undefined;
 
-	if (shouldReset) {
-		const deleted = await deleteSeededRecords(db, recipient.id, seedEmails);
-		console.log("Raw email reset complete.");
-		console.log(`Messages deleted: ${deleted.messages}`);
-		console.log(`Threads deleted: ${deleted.threads}`);
-		console.log(`Contacts deleted: ${deleted.contacts}`);
+	if (options.reset) {
+		resetResult = await deleteSeededRecords(db, recipient.id, seedEmails);
 	}
 
 	for (const seed of seedEmails) {
@@ -142,17 +155,21 @@ async function main() {
 		}
 	}
 
-	console.log("Raw email seed complete.");
-	console.log(`Files processed: ${files.length}`);
-	console.log(`Files skipped: ${skippedFiles}`);
-	console.log(`Messages inserted: ${inserted}`);
-	console.log(`Messages skipped: ${skipped}`);
-}
-
-function requireEnv(key: string) {
-	const value = process.env[key];
-	if (!value) throw new Error(`Missing required env var: ${key}`);
-	return value;
+	return {
+		status: "ok",
+		resetPerformed: Boolean(options.reset),
+		recipientUsername,
+		recipientEmail,
+		counts: {
+			filesProcessed: files.length,
+			filesSkipped: skippedFiles,
+			messagesInserted: inserted,
+			messagesSkipped: skipped,
+			threadsDeleted: resetResult?.threads,
+			contactsDeleted: resetResult?.contacts,
+			deletedMessages: resetResult?.messages,
+		},
+	};
 }
 
 async function findOrCreateContact(
@@ -190,20 +207,24 @@ async function findOrCreateContact(
 }
 
 async function loadSeedEmails() {
-	const files = (await readdir(rawEmailsDir))
-		.filter((file) => file.toLowerCase().endsWith(".eml"))
+	const files = Object.keys(rawEmailModules)
+		.map((file) => file.split("/").pop() ?? file)
 		.sort((a, b) => a.localeCompare(b));
 	const seedEmails: SeedEmail[] = [];
 	let skippedFiles = 0;
 
 	for (const fileName of files) {
-		const filePath = path.join(rawEmailsDir, fileName);
-		const raw = await readFile(filePath);
+		const match = Object.entries(rawEmailModules).find(([path]) => path.endsWith(fileName));
+		if (!match) continue;
+
+		const [, rawText] = match;
+		if (typeof rawText !== "string") continue;
+
+		const raw = encoder.encode(rawText);
 		const parsedEmail = await PostalMime.parse(raw);
 
 		const fromAddress = parsedEmail.from?.address?.trim();
 		if (!fromAddress) {
-			console.warn(`Skipping "${fileName}" because it has no From address.`);
 			skippedFiles += 1;
 			continue;
 		}
@@ -219,7 +240,7 @@ async function loadSeedEmails() {
 		const bodyHTML = normalizedBody.htmlDocument;
 		const bodyText = normalizedBody.text || null;
 		const snippet = makeSnippet(bodyText, bodyHTML);
-		const messageId = normalizeMessageId(parsedEmail.messageId) ?? makeSeedMessageId(raw);
+		const messageId = normalizeMessageId(parsedEmail.messageId) ?? (await makeSeedMessageId(raw));
 
 		seedEmails.push({
 			fileName,
@@ -244,7 +265,7 @@ async function loadSeedEmails() {
 }
 
 async function deleteSeededRecords(
-	db: ReturnType<typeof drizzle>,
+	db: ReturnType<typeof getDB>,
 	ownerId: string,
 	seedEmails: SeedEmail[]
 ) {
@@ -374,7 +395,7 @@ async function findOrCreateThread(
 		references?: string | null;
 		inReplyTo?: string | null;
 	}
-): Promise<ThreadSelectModel> {
+) {
 	const replyThread = await getThreadFromMessageId(tx, recipientId, inReplyTo);
 	if (replyThread) return incrementThreadUnseenCount(tx, replyThread, unseen, createdAt);
 
@@ -433,7 +454,7 @@ async function getThreadFromMessageId(
 
 async function incrementThreadUnseenCount(
 	tx: TransactionInstance,
-	thread: ThreadSelectModel,
+	thread: typeof schema.threadTable.$inferSelect,
 	unseen: boolean,
 	lastMessageAt: Date
 ) {
@@ -465,8 +486,15 @@ function normalizeMessageId(value?: string | null) {
 	return trimmed ? trimmed : undefined;
 }
 
-function makeSeedMessageId(raw: Uint8Array) {
-	const hash = createHash("sha1").update(raw).digest("hex");
+async function makeSeedMessageId(raw: Uint8Array) {
+	const hashBuffer = await crypto.subtle.digest(
+		"SHA-1",
+		raw.byteOffset === 0 && raw.byteLength === raw.buffer.byteLength
+			? (raw.buffer as ArrayBuffer)
+			: (raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer)
+	);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 	return `<seed-${hash}@seed.gebna.net>`;
 }
 
@@ -491,8 +519,3 @@ function coerceDate(value: unknown) {
 	}
 	return new Date();
 }
-
-main().catch((error) => {
-	console.error(error);
-	process.exitCode = 1;
-});
