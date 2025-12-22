@@ -28,4 +28,17 @@ TURSO_AUTH_TOKEN=...
 pnpm --filter backend db:seed
 ```
 
-You can override defaults with `SEED_USERNAME`, `SEED_PASSWORD`, `SEED_NAME`, or reset an existing demo user with `SEED_RESET=true` or `--reset`.
+Seeding now happens via HTTP endpoints guarded by `SEEDING_ENDPOINTS_ENABLED`:
+
+1. Start the dev worker so the endpoints are reachable on `http://localhost:8787`.
+2. Set `SEEDING_ENDPOINTS_ENABLED="true"` in `.dev.vars`.
+3. Seed the demo user:
+   ```txt
+   pnpm --filter backend db:seed
+   ```
+   Add `-- reset` to reset existing demo data: `pnpm --filter backend db:seed -- reset`.
+4. Seed the raw emails:
+   ```txt
+   pnpm --filter backend db:seed:raw
+   ```
+   Reset seeded raw emails with: `pnpm --filter backend db:seed:raw -- reset`.

@@ -17,8 +17,8 @@
 		"db:migrate:local": "dotenv -e .env.local -- drizzle-kit migrate",
 		"db:migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"db:seed": "dotenv -e .env.local -- tsx src/scripts/seed.ts",
-		"db:seed:raw": "dotenv -e .env.local -- tsx src/scripts/seed-raw-emails.ts",
+		"db:seed": "node ./scripts/run-seed.mjs /seed/demo",
+		"db:seed:raw": "node ./scripts/run-seed.mjs /seed/raw-emails",
 		"graphql:generate": "graphql-codegen --config ./graphql.config.ts"
 	},
 	"dependencies": {

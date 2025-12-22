@@ -1,15 +1,14 @@
-import { webcrypto } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { createClient } from "@libsql/client";
 import { argon2id, setWASMModules } from "argon2-wasm-edge";
+// @ts-expect-error - wasm imports are handled by the bundler for workers
+import argon2WASM from "argon2-wasm-edge/wasm/argon2.wasm";
+// @ts-expect-error - wasm imports are handled by the bundler for workers
+import blake2bWASM from "argon2-wasm-edge/wasm/blake2b.wasm";
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 
-import * as schema from "../lib/db/schema";
-import { generateImagePlaceholder } from "../lib/utils/users";
+import { getDB } from "$lib/db";
+import * as schema from "$lib/db/schema";
+import { generateImagePlaceholder } from "$lib/utils/users";
 
 type MailboxType = (typeof schema.mailboxTable.$inferInsert)["type"];
 type MailboxInsert = typeof schema.mailboxTable.$inferInsert;
@@ -40,40 +39,66 @@ type ThreadSeed = {
 	messages: MessageSeed[];
 };
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export type SeedDemoOptions = {
+	reset?: boolean;
+	username?: string;
+	password?: string;
+	name?: string;
+};
+
+export type SeedDemoResult = {
+	status: "created" | "exists" | "reset-and-created";
+	resetPerformed: boolean;
+	user: {
+		id: string;
+		username: string;
+		password: string;
+		name: string;
+		email: string;
+	};
+	counts: {
+		threads: number;
+		messages: number;
+		contacts: number;
+		mailboxes: number;
+	};
+};
+
 const argonParams = {
 	memorySize: 19456,
 	iterations: 3,
 	parallelism: 1,
 	hashLength: 32,
+	outputType: "encoded" as const,
 };
-const defaultUsername = process.env.SEED_USERNAME ?? "demo";
-const defaultPassword = process.env.SEED_PASSWORD ?? "DemoPassword!23";
-const defaultName = process.env.SEED_NAME ?? "Gebna Demo";
-const shouldReset = process.argv.includes("--reset") || process.env.SEED_RESET === "true";
 
-if (!globalThis.crypto)
-	(globalThis as typeof globalThis & { crypto: Crypto }).crypto = webcrypto as Crypto;
+const argonReady = setWASMModules({ argon2WASM, blake2bWASM });
 
-async function main() {
-	const tursoUrl = requireEnv("TURSO_DATABASE_URL");
-	const tursoAuthToken = process.env.TURSO_AUTH_TOKEN;
+export async function seedDemo(
+	env: CloudflareBindings,
+	options: SeedDemoOptions = {}
+): Promise<SeedDemoResult> {
+	const username = options.username ?? "demo";
+	const password = options.password ?? "DemoPassword!23";
+	const name = options.name ?? "Gebna Demo";
+	const email = `${username}@gebna.net`;
 
-	const client = createClient({ url: tursoUrl, authToken: tursoAuthToken });
-	const db = drizzle(client, { schema });
+	const db = getDB(env);
 
-	if (shouldReset) {
-		await db.delete(schema.userTable).where(eq(schema.userTable.username, defaultUsername));
+	if (options.reset) {
+		await db.delete(schema.userTable).where(eq(schema.userTable.username, username));
 	}
 
 	const existing = await db.query.userTable.findFirst({
-		where: (t, { eq }) => eq(t.username, defaultUsername),
+		where: (t, { eq }) => eq(t.username, username),
 	});
 	if (existing) {
-		console.log(
-			`User "${defaultUsername}" already exists. Pass --reset or SEED_RESET=true to recreate the demo data.`
-		);
-		return;
+		return {
+			status: "exists",
+			resetPerformed: Boolean(options.reset),
+			user: { id: existing.id, username, password, name, email },
+			counts: { threads: 0, messages: 0, contacts: 0, mailboxes: 0 },
+		};
 	}
 
 	const userId = ulid();
@@ -82,20 +107,19 @@ async function main() {
 		MailboxType,
 		MailboxInsert
 	>;
-	const userEmail = `${defaultUsername}@gebna.net`;
 
 	const senderProfiles = makeSenders(mailboxByType);
-	const threads = makeThreads(senderProfiles, mailboxByType, userId, userEmail);
+	const threads = makeThreads(senderProfiles, mailboxByType, userId, email);
 
-	const passwordHash = await hashPassword(defaultPassword);
-	const userAvatarPlaceholder = generateImagePlaceholder(defaultName);
+	const passwordHash = await hashPassword(password);
+	const userAvatarPlaceholder = generateImagePlaceholder(name);
 
 	await db.transaction(async (tx) => {
 		await tx.insert(schema.userTable).values({
 			id: userId,
-			username: defaultUsername,
+			username,
 			passwordHash,
-			name: defaultName,
+			name,
 			avatarPlaceholder: userAvatarPlaceholder,
 		});
 
@@ -105,46 +129,28 @@ async function main() {
 		await tx.insert(schema.messageTable).values(threads.messages);
 	});
 
-	console.log("Seed complete");
-	console.log(`User: ${defaultUsername}`);
-	console.log(`Password: ${defaultPassword}`);
-	console.log(`Threads created: ${threads.threads.length}`);
-	console.log(`Messages created: ${threads.messages.length}`);
-}
-
-function requireEnv(key: string) {
-	const value = process.env[key];
-	if (!value) throw new Error(`Missing required env var: ${key}`);
-	return value;
-}
-
-let argonReady: Promise<void> | null = null;
-async function ensureArgonReady() {
-	if (!argonReady) {
-		argonReady = (async () => {
-			const [argonBytes, blakeBytes] = await Promise.all([
-				readFile(path.resolve(__dirname, "../../node_modules/argon2-wasm-edge/wasm/argon2.wasm")),
-				readFile(path.resolve(__dirname, "../../node_modules/argon2-wasm-edge/wasm/blake2b.wasm")),
-			]);
-			await setWASMModules({
-				argon2WASM: await WebAssembly.compile(argonBytes),
-				blake2bWASM: await WebAssembly.compile(blakeBytes),
-			});
-		})();
-	}
-	return argonReady;
+	return {
+		status: options.reset ? "reset-and-created" : "created",
+		resetPerformed: Boolean(options.reset),
+		user: { id: userId, username, password, name, email },
+		counts: {
+			threads: threads.threads.length,
+			messages: threads.messages.length,
+			contacts: senderProfiles.length,
+			mailboxes: mailboxes.length,
+		},
+	};
 }
 
 async function hashPassword(password: string) {
-	await ensureArgonReady();
+	await argonReady;
 	const salt = new Uint8Array(16);
-	webcrypto.getRandomValues(salt);
+	crypto.getRandomValues(salt);
 
 	return argon2id({
 		...argonParams,
 		password,
 		salt,
-		outputType: "encoded",
 	});
 }
 
@@ -431,7 +437,7 @@ function makeThreads(
 				to: message.to ?? [userEmail],
 				cc: message.cc,
 				replyTo: message.replyTo,
-				inReplyTo: index === 0 ? undefined : (previous?.messageId ?? undefined),
+				inReplyTo: index === 0 ? undefined : previous?.messageId ?? undefined,
 				messageId,
 				references: previous?.messageId ? previous.messageId : undefined,
 				snippet:
@@ -468,10 +474,5 @@ function makeThreads(
 
 function estimateSize(message: MessageSeed, subject: string) {
 	const body = message.bodyText ?? message.bodyHTML ?? "";
-	return Math.max(700, Buffer.byteLength(subject + body, "utf8") + 400);
+	return Math.max(700, new TextEncoder().encode(subject + body).byteLength + 400);
 }
-
-main().catch((error) => {
-	console.error(error);
-	process.exitCode = 1;
-});
