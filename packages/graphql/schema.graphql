@@ -102,7 +102,7 @@ type Attachment implements Node {
 	fileName: String
 	mimeType: String
 	contentId: String
-	downloadURL: URL
+	url: String
 }
 
 interface Connection {

@@ -8,7 +8,11 @@ import { YogaServerContext } from "./types";
 export async function context(event: YogaInitialContext & YogaServerContext) {
 	const db = getDB(event.env);
 	if (event.env.FORCED_USER_ID)
-		return { ...event, db, session: { userId: event.env.FORCED_USER_ID, sessionId: "" } };
+		return {
+			...event,
+			db,
+			session: { userId: event.env.FORCED_USER_ID, sessionId: "" },
+		};
 
 	const getBearer = () => {
 		const header =

@@ -1,6 +1,6 @@
 /* eslint-disable */
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
-import type { UserSelectModel, MailboxSelectModel, ThreadSelectModel, MessageSelectModel, ContactSelectModel } from '$lib/db';
+import type { UserSelectModel, MailboxSelectModel, ThreadSelectModel, MessageSelectModel, ContactSelectModel, AttachmentSelectModel } from '$lib/db';
 import type { Context } from '$lib/graphql/context';
 export type Maybe<T> = T | null | undefined;
 export type InputMaybe<T> = T | null | undefined;
@@ -30,10 +30,10 @@ export type AssignTargetMailboxInput = {
 export type Attachment = Node & {
   __typename?: 'Attachment';
   contentId?: Maybe<Scalars['String']['output']>;
-  downloadURL?: Maybe<Scalars['URL']['output']>;
   fileName?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   mimeType?: Maybe<Scalars['String']['output']>;
+  url?: Maybe<Scalars['String']['output']>;
 };
 
 export type Connection = {
@@ -276,7 +276,7 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
     | ( Omit<ThreadEdge, 'node'> & { node: _RefType['Thread'] } & { __typename: 'ThreadEdge' } )
   ;
   Node:
-    | ( Attachment & { __typename: 'Attachment' } )
+    | ( AttachmentSelectModel & { __typename: 'Attachment' } )
     | ( ContactSelectModel & { __typename: 'Contact' } )
     | ( MailboxSelectModel & { __typename: 'Mailbox' } )
     | ( MessageSelectModel & { __typename: 'Message' } )
@@ -288,7 +288,7 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
   AssignTargetMailboxInput: AssignTargetMailboxInput;
-  Attachment: ResolverTypeWrapper<Attachment>;
+  Attachment: ResolverTypeWrapper<AttachmentSelectModel>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Connection: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Connection']>;
   Contact: ResolverTypeWrapper<ContactSelectModel>;
@@ -317,7 +317,7 @@ export type ResolversTypes = {
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
   AssignTargetMailboxInput: AssignTargetMailboxInput;
-  Attachment: Attachment;
+  Attachment: AttachmentSelectModel;
   Boolean: Scalars['Boolean']['output'];
   Connection: ResolversInterfaceTypes<ResolversParentTypes>['Connection'];
   Contact: ContactSelectModel;
@@ -344,10 +344,10 @@ export type ResolversParentTypes = {
 
 export type AttachmentResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Attachment'] = ResolversParentTypes['Attachment']> = {
   contentId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  downloadURL?: Resolver<Maybe<ResolversTypes['URL']>, ParentType, ContextType>;
   fileName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   mimeType?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
