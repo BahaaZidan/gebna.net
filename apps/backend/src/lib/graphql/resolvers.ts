@@ -1,3 +1,4 @@
+import { AwsClient } from "aws4fetch";
 import { and, count, eq, gt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
 
@@ -7,8 +8,6 @@ import type { Resolvers } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
 
 export const resolvers: Resolvers = {
-	DateTime: DateTimeResolver,
-	URL: URLResolver,
 	Query: {
 		viewer: async (_parent, _args, { session, db }) => {
 			if (!session) return null;
@@ -41,11 +40,77 @@ export const resolvers: Resolvers = {
 			}
 		},
 	},
+	Mutation: {
+		assignTargetMailbox: async (_, { input }, { session, db }) => {
+			if (!session) return;
+			const targetMailbox = await db.query.mailboxTable.findFirst({
+				where: (t, { eq, and }) =>
+					and(eq(t.userId, session.userId), eq(t.type, input.targetMailboxType)),
+			});
+			if (!targetMailbox) return;
+			return await db.transaction(async (tx) => {
+				const [contact] = await tx
+					.update(contactTable)
+					.set({ targetMailboxId: targetMailbox.id, updatedAt: new Date() })
+					.where(
+						and(
+							eq(contactTable.ownerId, session.userId),
+							eq(contactTable.id, fromGlobalId(input.contactID).id)
+						)
+					)
+					.returning();
+
+				// TODO: consider doing this in the background using `executionContext.waitUntil()`.
+				await tx
+					.update(messageTable)
+					.set({ mailboxId: targetMailbox.id })
+					.where(
+						and(eq(messageTable.ownerId, session.userId), eq(messageTable.from, contact.address))
+					);
+
+				await tx
+					.update(threadTable)
+					.set({ mailboxId: targetMailbox.id })
+					.where(
+						and(
+							eq(threadTable.ownerId, session.userId),
+							eq(threadTable.firstMessageFrom, contact.address)
+						)
+					);
+
+				return contact;
+			});
+		},
+		markThreadSeen: async (_, args, { session, db }) => {
+			if (!session?.userId) return;
+			return await db.transaction(async (tx) => {
+				const [thread] = await tx
+					.update(threadTable)
+					.set({ unseenCount: 0 })
+					.where(
+						and(
+							eq(threadTable.ownerId, session.userId),
+							eq(threadTable.id, fromGlobalId(args.id).id)
+						)
+					)
+					.returning();
+				if (!thread) return;
+				await tx
+					.update(messageTable)
+					.set({ unseen: false })
+					.where(and(eq(messageTable.threadId, thread.id), eq(messageTable.unseen, true)));
+
+				return thread;
+			});
+		},
+	},
 	Node: {
 		__resolveType(parent) {
 			return parent.__typename;
 		},
 	},
+	DateTime: DateTimeResolver,
+	URL: URLResolver,
 	User: {
 		id: (parent) => toGlobalId("User", parent.id),
 		mailbox: async (parent, args, { db }) => {
@@ -180,68 +245,29 @@ export const resolvers: Resolvers = {
 			return messages;
 		},
 	},
-	Mutation: {
-		assignTargetMailbox: async (_, { input }, { session, db }) => {
-			if (!session) return;
-			const targetMailbox = await db.query.mailboxTable.findFirst({
-				where: (t, { eq, and }) =>
-					and(eq(t.userId, session.userId), eq(t.type, input.targetMailboxType)),
+	Attachment: {
+		id: (parent) => toGlobalId("Attachment", parent.id),
+		url: async (parent, _, { env }) => {
+			const R2_URL = `https://${env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+			const client = new AwsClient({
+				service: "s3",
+				region: "auto",
+				accessKeyId: env.CF_R2_ACCESS_KEY_ID,
+				secretAccessKey: env.CF_R2_SECRET_ACCESS_KEY,
 			});
-			if (!targetMailbox) return;
-			return await db.transaction(async (tx) => {
-				const [contact] = await tx
-					.update(contactTable)
-					.set({ targetMailboxId: targetMailbox.id, updatedAt: new Date() })
-					.where(
-						and(
-							eq(contactTable.ownerId, session.userId),
-							eq(contactTable.id, fromGlobalId(input.contactID).id)
-						)
-					)
-					.returning();
 
-				// TODO: consider doing this in the background using `executionContext.waitUntil()`.
-				await tx
-					.update(messageTable)
-					.set({ mailboxId: targetMailbox.id })
-					.where(
-						and(eq(messageTable.ownerId, session.userId), eq(messageTable.from, contact.address))
-					);
+			const url = (
+				await client.sign(
+					new Request(
+						`${R2_URL}/${env.R2_BUCKET_NAME}/${parent.storageKey}?X-Amz-Expires=${3600 * 6}`
+					),
+					{
+						aws: { signQuery: true },
+					}
+				)
+			).url.toString();
 
-				await tx
-					.update(threadTable)
-					.set({ mailboxId: targetMailbox.id })
-					.where(
-						and(
-							eq(threadTable.ownerId, session.userId),
-							eq(threadTable.firstMessageFrom, contact.address)
-						)
-					);
-
-				return contact;
-			});
-		},
-		markThreadSeen: async (_, args, { session, db }) => {
-			if (!session?.userId) return;
-			return await db.transaction(async (tx) => {
-				const [thread] = await tx
-					.update(threadTable)
-					.set({ unseenCount: 0 })
-					.where(
-						and(
-							eq(threadTable.ownerId, session.userId),
-							eq(threadTable.id, fromGlobalId(args.id).id)
-						)
-					)
-					.returning();
-				if (!thread) return;
-				await tx
-					.update(messageTable)
-					.set({ unseen: false })
-					.where(and(eq(messageTable.threadId, thread.id), eq(messageTable.unseen, true)));
-
-				return thread;
-			});
+			return url;
 		},
 	},
 };

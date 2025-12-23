@@ -5,12 +5,12 @@
 	import { resolve } from "$app/paths";
 	import { page } from "$app/state";
 
+	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 	import Container from "$lib/components/Container.svelte";
 	import Avatar from "$lib/components/mail/Avatar.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/date";
 	import { graphql } from "$lib/graphql/generated";
-	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 
 	const ThreadDetails = graphql(`
 		query ThreadDetails($id: ID!) {
@@ -49,7 +49,7 @@
 							fileName
 							mimeType
 							contentId
-							downloadURL
+							url
 						}
 					}
 				}

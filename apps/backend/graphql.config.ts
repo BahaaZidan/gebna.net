@@ -34,6 +34,7 @@ const config: IGraphQLConfig = {
 							Thread: "$lib/db#ThreadSelectModel",
 							Message: "$lib/db#MessageSelectModel",
 							Contact: "$lib/db#ContactSelectModel",
+							Attachment: "$lib/db#AttachmentSelectModel",
 						},
 						resolversNonOptionalTypename: true,
 					} satisfies TypeScriptPluginConfig & TypeScriptResolversPluginConfig,

@@ -38,16 +38,14 @@
 - [x] Important box page UI
 - [x] Important thread detail UI
 - [x] Seen/unseen cross-cutting
-- [ ] Better seeding => use real bodyHTML instead of these toy examples
-  - [ ] Real bodyHTML instead of simplistic bodyText only
-  - [ ] Different dates in important box
-  - [ ] Different seen/unseen statuses in important box
+- [x] Better seeding => use real bodyHTML instead of these toy examples
 - [x] News Box
 - [x] Transactional Box
 - [x] Trash Box
+- [x] Downloadable attachments
+- [ ] Attachments UI
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Allow user to change their profile picture
-- [ ] Downloadable attachments
 - [ ] Basic Full Text Search
 
 ### v0.5
