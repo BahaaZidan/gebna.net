@@ -149,7 +149,8 @@ export function normalizeAndSanitizeEmailBody(
 		Object.assign(flags, sanitizeFlags);
 		if (flags.wasMalformedHtml) warnings.push("malformed_html");
 
-		const textResult = truncateToBytes(rawText, resolvedOptions.maxTextBytes);
+		const textSource = hadText ? rawText : htmlToPlainText(bodyHtml);
+		const textResult = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
 		flags.textTruncated = textResult.truncated;
 		if (flags.textTruncated) warnings.push("text_truncated");
 
@@ -552,6 +553,33 @@ function textToHtml(text: string) {
 	const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 	const lines = normalized.split("\n").map(escapeText);
 	return lines.join("<br>");
+}
+
+function htmlToPlainText(html: string) {
+	const withBreaks = html
+		.replace(/<(br|hr)\s*\/?>/gi, "\n")
+		.replace(/<(\/)?(p|div|section|article|header|footer|h[1-6]|tr|td|th|blockquote)[^>]*>/gi, "\n")
+		.replace(/<li[^>]*>/gi, "\n- ");
+
+	const withoutTags = withBreaks.replace(/<[^>]+>/g, " ");
+	const decoded = decodeBasicEntities(withoutTags);
+
+	return decoded
+		.replace(/\u00a0/g, " ")
+		.replace(/\s*\n\s*/g, "\n")
+		.replace(/[ \t]{2,}/g, " ")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+}
+
+function decodeBasicEntities(value: string) {
+	return value
+		.replace(/&nbsp;/gi, " ")
+		.replace(/&amp;/gi, "&")
+		.replace(/&lt;/gi, "<")
+		.replace(/&gt;/gi, ">")
+		.replace(/&quot;/gi, '"')
+		.replace(/&#39;/gi, "'");
 }
 
 function escapeText(value: string) {
