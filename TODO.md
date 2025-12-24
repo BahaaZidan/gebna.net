@@ -43,7 +43,7 @@
 - [x] Transactional Box
 - [x] Trash Box
 - [x] Downloadable attachments
-- [ ] Attachments UI
+- [x] Attachments UI
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Allow user to change their profile picture
 - [ ] Basic Full Text Search
