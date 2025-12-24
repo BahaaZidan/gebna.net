@@ -29,6 +29,7 @@
 		"graphql-config": "^5.1.5",
 		"svelte": "^5.41.0",
 		"svelte-check": "^4.3.3",
+		"svelte2tsx": "^0.7.46",
 		"sveltekit-superforms": "^2.28.1",
 		"tailwindcss": "^4.1.14",
 		"typescript": "^5.9.3",
