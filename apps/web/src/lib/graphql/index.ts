@@ -20,6 +20,11 @@ export const urqlClient = new Client({
 			updates: {
 				Mutation: {
 					assignTargetMailbox: (_result, _args, cache) => {
+						const viewerKey = cache.resolve("Query", "viewer");
+
+						if (typeof viewerKey === "string") {
+							cache.invalidate(viewerKey);
+						}
 						cache.invalidate("Query", "viewer");
 					},
 					markThreadSeen: (
