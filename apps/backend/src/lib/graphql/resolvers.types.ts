@@ -115,6 +115,12 @@ export type Message = Node & {
   unseen: Scalars['Boolean']['output'];
 };
 
+export type MessageSearchResult = {
+  __typename?: 'MessageSearchResult';
+  messageId: Scalars['ID']['output'];
+  threadId: Scalars['ID']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   assignTargetMailbox?: Maybe<Contact>;
@@ -146,12 +152,21 @@ export type PageInfo = {
 export type Query = {
   __typename?: 'Query';
   node?: Maybe<Node>;
+  searchMessages: Array<MessageSearchResult>;
   viewer?: Maybe<User>;
 };
 
 
 export type QueryNodeArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type QuerySearchMessagesArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  mailboxId?: InputMaybe<Scalars['ID']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  query: Scalars['String']['input'];
 };
 
 export type Thread = Node & {
@@ -301,6 +316,7 @@ export type ResolversTypes = {
   Mailbox: ResolverTypeWrapper<MailboxSelectModel>;
   MailboxType: MailboxType;
   Message: ResolverTypeWrapper<MessageSelectModel>;
+  MessageSearchResult: ResolverTypeWrapper<MessageSearchResult>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
@@ -329,6 +345,7 @@ export type ResolversParentTypes = {
   Int: Scalars['Int']['output'];
   Mailbox: MailboxSelectModel;
   Message: MessageSelectModel;
+  MessageSearchResult: MessageSearchResult;
   Mutation: Record<PropertyKey, never>;
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node'];
   PageInfo: PageInfo;
@@ -412,6 +429,11 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type MessageSearchResultResolvers<ContextType = Context, ParentType extends ResolversParentTypes['MessageSearchResult'] = ResolversParentTypes['MessageSearchResult']> = {
+  messageId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  threadId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+};
+
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   assignTargetMailbox?: Resolver<Maybe<ResolversTypes['Contact']>, ParentType, ContextType, RequireFields<MutationAssignTargetMailboxArgs, 'input'>>;
   markThreadSeen?: Resolver<Maybe<ResolversTypes['Thread']>, ParentType, ContextType, RequireFields<MutationMarkThreadSeenArgs, 'id'>>;
@@ -430,6 +452,7 @@ export type PageInfoResolvers<ContextType = Context, ParentType extends Resolver
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   node?: Resolver<Maybe<ResolversTypes['Node']>, ParentType, ContextType, RequireFields<QueryNodeArgs, 'id'>>;
+  searchMessages?: Resolver<Array<ResolversTypes['MessageSearchResult']>, ParentType, ContextType, RequireFields<QuerySearchMessagesArgs, 'query'>>;
   viewer?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
 };
 
@@ -479,6 +502,7 @@ export type Resolvers<ContextType = Context> = {
   Edge?: EdgeResolvers<ContextType>;
   Mailbox?: MailboxResolvers<ContextType>;
   Message?: MessageResolvers<ContextType>;
+  MessageSearchResult?: MessageSearchResultResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Node?: NodeResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;

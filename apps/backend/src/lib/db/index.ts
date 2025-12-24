@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 
 import * as schema from "./schema";
+export { searchMessages, type MessageSearchResult } from "./search";
 
 export { schema };
 
