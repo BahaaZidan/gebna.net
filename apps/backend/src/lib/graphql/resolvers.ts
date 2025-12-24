@@ -2,8 +2,8 @@ import { AwsClient } from "aws4fetch";
 import { and, count, eq, gt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
 
-import { contactTable, messageTable, threadTable } from "$lib/db/schema";
 import { searchMessages as searchMessagesDb } from "$lib/db";
+import { contactTable, messageTable, threadTable } from "$lib/db/schema";
 
 import type { Resolvers } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
@@ -44,7 +44,7 @@ export const resolvers: Resolvers = {
 			if (!session) return [];
 			const mailboxId = args.mailboxId ? fromGlobalId(args.mailboxId).id : null;
 
-			const results = await searchMessagesDb(db, {
+			const search_results = await searchMessagesDb(db, {
 				ownerId: session.userId,
 				query: args.query,
 				mailboxId,
@@ -52,10 +52,17 @@ export const resolvers: Resolvers = {
 				offset: args.offset ?? 0,
 			});
 
-			return results.map((result) => ({
-				threadId: toGlobalId("Thread", result.threadId),
-				messageId: toGlobalId("Message", result.messageId),
-			}));
+			if (!search_results.length) return [];
+
+			const messages = await db.query.messageTable.findMany({
+				where: (t, { inArray }) =>
+					inArray(
+						t.id,
+						search_results.map((m) => m.messageId)
+					),
+			});
+
+			return messages;
 		},
 	},
 	Mutation: {
