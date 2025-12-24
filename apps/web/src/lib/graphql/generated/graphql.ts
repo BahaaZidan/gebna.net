@@ -111,12 +111,6 @@ export type Message = Node & {
   unseen: Scalars['Boolean']['output'];
 };
 
-export type MessageSearchResult = {
-  __typename?: 'MessageSearchResult';
-  messageId: Scalars['ID']['output'];
-  threadId: Scalars['ID']['output'];
-};
-
 export type Mutation = {
   __typename?: 'Mutation';
   assignTargetMailbox?: Maybe<Contact>;
@@ -148,7 +142,7 @@ export type PageInfo = {
 export type Query = {
   __typename?: 'Query';
   node?: Maybe<Node>;
-  searchMessages: Array<MessageSearchResult>;
+  searchMessages: Array<Message>;
   viewer?: Maybe<User>;
 };
 
