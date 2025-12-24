@@ -92,7 +92,7 @@ export async function emailHandler(
 			references: parsedEmail.references,
 			inReplyTo: parsedEmail.inReplyTo,
 			bodyHTML: normalizedBody.htmlDocument,
-			bodyText: normalizedBody.text || null,
+			bodyText: normalizedBody.text,
 			snippet,
 			sizeInBytes: envelope.rawSize,
 			unseen,
