@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
+	import FileIcon from "@lucide/svelte/icons/file";
 	import { getContextClient, mutationStore, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
@@ -116,16 +117,13 @@
 		{#each thread.messages as message (message.id)}
 			<div class="flex w-full gap-2 p-4">
 				<Avatar src={message.from.avatar} alt={message.from.name} />
-				<div class="flex w-full flex-col">
+				<div class="flex w-full flex-col gap-3">
 					<div class="flex items-center gap-1">
 						<div class="font-semibold">{message.from.name}</div>
 						<div class="text-sm">{message.from.address}</div>
 						<div class="ml-auto">{formatInboxDate(message.recievedAt)}</div>
 					</div>
-					<div class="text-sm">
-						to <span class="font-semibold">{message.to}</span>
-					</div>
-					<div class="mt-3">
+					<div>
 						{#if message.bodyHTML}
 							<iframe
 								title="email"
@@ -137,6 +135,20 @@
 							></iframe>
 						{/if}
 					</div>
+					{#if message.attachments.length}
+						<div class="flex flex-wrap gap-3">
+							{#each message.attachments as attachment (attachment.id)}
+								<a
+									href={attachment.url}
+									class="flex w-44 flex-col items-center justify-center gap-1 bg-base-100 p-4"
+								>
+									<FileIcon />
+									<div class="line-clamp-1">{attachment.fileName}</div>
+									<div>{attachment.mimeType}</div>
+								</a>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</div>
 		{/each}
