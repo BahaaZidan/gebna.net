@@ -240,6 +240,7 @@ export const resolvers: Resolvers = {
 	},
 	Message: {
 		id: (parent) => toGlobalId("Message", parent.id),
+		threadId: (parent) => toGlobalId("Thread", parent.threadId),
 		recievedAt: (parent) => parent.createdAt,
 		attachments: async (parent, _, { db }) => {
 			const attachments = await db.query.attachmentTable.findMany({

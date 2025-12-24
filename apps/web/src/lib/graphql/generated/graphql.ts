@@ -107,6 +107,7 @@ export type Message = Node & {
   replyTo?: Maybe<Array<Scalars['String']['output']>>;
   snippet?: Maybe<Scalars['String']['output']>;
   subject?: Maybe<Scalars['String']['output']>;
+  threadId: Scalars['ID']['output'];
   to?: Maybe<Array<Scalars['String']['output']>>;
   unseen: Scalars['Boolean']['output'];
 };

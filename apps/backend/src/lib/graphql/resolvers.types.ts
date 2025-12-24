@@ -111,6 +111,7 @@ export type Message = Node & {
   replyTo?: Maybe<Array<Scalars['String']['output']>>;
   snippet?: Maybe<Scalars['String']['output']>;
   subject?: Maybe<Scalars['String']['output']>;
+  threadId: Scalars['ID']['output'];
   to?: Maybe<Array<Scalars['String']['output']>>;
   unseen: Scalars['Boolean']['output'];
 };
@@ -416,6 +417,7 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
   replyTo?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   snippet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subject?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  threadId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   to?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   unseen?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
