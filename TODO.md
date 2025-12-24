@@ -44,9 +44,9 @@
 - [x] Trash Box
 - [x] Downloadable attachments
 - [x] Attachments UI
+- [x] Basic Full Text Search
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Allow user to change their profile picture
-- [ ] Basic Full Text Search
 
 ### v0.5
 
@@ -83,3 +83,4 @@
 - [ ] Merge threads together
 - [ ] Labels
 - [ ] Onboarding flow
+- [ ] Make sure bodyText/plainBody extraction is adequite. I've seen a few records with empty bodyText even though bodyHTML is defined.

@@ -3,6 +3,7 @@ import { and, count, eq, gt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
 
 import { contactTable, messageTable, threadTable } from "$lib/db/schema";
+import { searchMessages as searchMessagesDb } from "$lib/db";
 
 import type { Resolvers } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
@@ -38,6 +39,23 @@ export const resolvers: Resolvers = {
 				default:
 					return null;
 			}
+		},
+		searchMessages: async (_parent, args, { session, db }) => {
+			if (!session) return [];
+			const mailboxId = args.mailboxId ? fromGlobalId(args.mailboxId).id : null;
+
+			const results = await searchMessagesDb(db, {
+				ownerId: session.userId,
+				query: args.query,
+				mailboxId,
+				limit: args.limit ?? 20,
+				offset: args.offset ?? 0,
+			});
+
+			return results.map((result) => ({
+				threadId: toGlobalId("Thread", result.threadId),
+				messageId: toGlobalId("Message", result.messageId),
+			}));
 		},
 	},
 	Mutation: {

@@ -8,6 +8,13 @@
       "when": 1765918016771,
       "tag": "0000_rapid_jane_foster",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1766982400000,
+      "tag": "0001_message_fts",
+      "breakpoints": true
     }
   ]
 }

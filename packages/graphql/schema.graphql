@@ -1,6 +1,7 @@
 type Query {
 	viewer: User
 	node(id: ID!): Node
+	searchMessages(query: String!, mailboxId: ID, limit: Int, offset: Int): [MessageSearchResult!]!
 }
 
 type Mutation {
@@ -76,6 +77,11 @@ type Message implements Node {
 	bodyText: String
 	bodyHTML: String
 	attachments: [Attachment!]!
+}
+
+type MessageSearchResult {
+	threadId: ID!
+	messageId: ID!
 }
 
 type ContactConnection implements Connection {
