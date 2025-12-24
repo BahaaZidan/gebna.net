@@ -66,6 +66,7 @@ type Thread implements Node {
 
 type Message implements Node {
 	id: ID!
+	threadId: ID!
 	from: Contact!
 	unseen: Boolean!
 	recievedAt: DateTime!
