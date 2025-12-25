@@ -19,6 +19,7 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   DateTime: { input: Date; output: Date; }
+  File: { input: any; output: any; }
   URL: { input: URL; output: URL; }
 };
 
@@ -66,6 +67,11 @@ export type ContactEdge = Edge & {
 export type Edge = {
   cursor?: Maybe<Scalars['String']['output']>;
   node: Node;
+};
+
+export type EditUserInput = {
+  avatar?: InputMaybe<Scalars['File']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type Mailbox = Node & {
@@ -119,12 +125,18 @@ export type Message = Node & {
 export type Mutation = {
   __typename?: 'Mutation';
   assignTargetMailbox?: Maybe<Contact>;
+  editUser?: Maybe<User>;
   markThreadSeen?: Maybe<Thread>;
 };
 
 
 export type MutationAssignTargetMailboxArgs = {
   input: AssignTargetMailboxInput;
+};
+
+
+export type MutationEditUserArgs = {
+  input: EditUserInput;
 };
 
 
@@ -315,6 +327,8 @@ export type ResolversTypes = {
   ContactEdge: ResolverTypeWrapper<Omit<ContactEdge, 'node'> & { node: ResolversTypes['Contact'] }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   Edge: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Edge']>;
+  EditUserInput: EditUserInput;
+  File: ResolverTypeWrapper<Scalars['File']['output']>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   Mailbox: ResolverTypeWrapper<MailboxSelectModel>;
@@ -346,6 +360,8 @@ export type ResolversParentTypes = {
   ContactEdge: Omit<ContactEdge, 'node'> & { node: ResolversParentTypes['Contact'] };
   DateTime: Scalars['DateTime']['output'];
   Edge: ResolversInterfaceTypes<ResolversParentTypes>['Edge'];
+  EditUserInput: EditUserInput;
+  File: Scalars['File']['output'];
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
   Mailbox: MailboxSelectModel;
@@ -408,6 +424,10 @@ export type EdgeResolvers<ContextType = Context, ParentType extends ResolversPar
   __resolveType: TypeResolveFn<'ContactEdge' | 'ThreadEdge', ParentType, ContextType>;
 };
 
+export interface FileScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['File'], any> {
+  name: 'File';
+}
+
 export type MailboxResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mailbox'] = ResolversParentTypes['Mailbox']> = {
   assignedContactsCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   contacts?: Resolver<ResolversTypes['ContactConnection'], ParentType, ContextType, Partial<MailboxContactsArgs>>;
@@ -438,6 +458,7 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   assignTargetMailbox?: Resolver<Maybe<ResolversTypes['Contact']>, ParentType, ContextType, RequireFields<MutationAssignTargetMailboxArgs, 'input'>>;
+  editUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType, RequireFields<MutationEditUserArgs, 'input'>>;
   markThreadSeen?: Resolver<Maybe<ResolversTypes['Thread']>, ParentType, ContextType, RequireFields<MutationMarkThreadSeenArgs, 'id'>>;
 };
 
@@ -506,6 +527,7 @@ export type Resolvers<ContextType = Context> = {
   ContactEdge?: ContactEdgeResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   Edge?: EdgeResolvers<ContextType>;
+  File?: GraphQLScalarType;
   Mailbox?: MailboxResolvers<ContextType>;
   Message?: MessageResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;

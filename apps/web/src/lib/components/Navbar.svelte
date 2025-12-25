@@ -7,7 +7,7 @@
 	import PinIcon from "@lucide/svelte/icons/pin";
 	import ReceiptTextIcon from "@lucide/svelte/icons/receipt-text";
 	import ReplyAllIcon from "@lucide/svelte/icons/reply-all";
-	import SearchIcon from "@lucide/svelte/icons/search";
+	import SettingsIcon from "@lucide/svelte/icons/settings";
 	import StarIcon from "@lucide/svelte/icons/star";
 	import TrashIcon from "@lucide/svelte/icons/trash-2";
 	import { queryStore } from "@urql/svelte";
@@ -98,6 +98,7 @@
 					tabindex="-1"
 					class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
 				>
+					<li><a href={resolve("/app/settings")}><SettingsIcon /> Settings</a></li>
 					<li>
 						<button
 							onclick={() => {

@@ -1,9 +1,11 @@
+import { v } from "@gebna/validation";
+import { editUserSchema } from "@gebna/validation/identity";
 import { AwsClient } from "aws4fetch";
 import { and, count, eq, gt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
 
 import { searchMessages as searchMessagesDb } from "$lib/db";
-import { contactTable, messageTable, threadTable } from "$lib/db/schema";
+import { contactTable, messageTable, threadTable, userTable } from "$lib/db/schema";
 
 import type { Resolvers } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
@@ -127,6 +129,24 @@ export const resolvers: Resolvers = {
 
 				return thread;
 			});
+		},
+		editUser: async (_, args, { session, db, env }) => {
+			if (!session) return;
+			const input = v.parse(editUserSchema, args.input);
+			const avatarPath = `u/${session.userId}/avatar`;
+			const r2object = input.avatar ? await env.R2_AVATARS.put(avatarPath, input.avatar) : null;
+
+			const [user] = await db
+				.update(userTable)
+				.set({
+					...(r2object
+						? { avatar: new URL(avatarPath, "https://cdn-0.gebna.net/").toString() }
+						: {}),
+					...(input.name ? { name: input.name } : {}),
+				})
+				.returning();
+
+			return user;
 		},
 	},
 	Node: {

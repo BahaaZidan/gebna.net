@@ -22,6 +22,11 @@
 			"binding": "R2_EMAILS",
 			"bucket_name": "gebna-emails",
 		},
+		{
+			"binding": "R2_AVATARS",
+			"bucket_name": "gebna-avatars",
+			"remote": true,
+		},
 	],
 	"triggers": {
 		"crons": ["0 * * * *"],

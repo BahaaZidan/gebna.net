@@ -7,7 +7,9 @@ const libAlias = new URL("./src/lib", import.meta.url).pathname;
 
 export default defineConfig({
 	plugins: [
-		cloudflare(),
+		cloudflare({
+			remoteBindings: true,
+		}),
 		watchAndRun([
 			{
 				name: "graphql:generate",
