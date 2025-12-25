@@ -437,7 +437,7 @@ function makeThreads(
 				to: message.to ?? [userEmail],
 				cc: message.cc,
 				replyTo: message.replyTo,
-				inReplyTo: index === 0 ? undefined : previous?.messageId ?? undefined,
+				inReplyTo: index === 0 ? undefined : (previous?.messageId ?? undefined),
 				messageId,
 				references: previous?.messageId ? previous.messageId : undefined,
 				snippet:
@@ -458,6 +458,7 @@ function makeThreads(
 			firstMessageFrom: sender.address,
 			ownerId: userId,
 			mailboxId: mailbox.id,
+			mailboxType: mailbox.type,
 			unseenCount,
 			title: seed.subject,
 			snippet: firstMessage?.snippet,

@@ -23,6 +23,9 @@
 			"bucket_name": "gebna-emails",
 		},
 	],
+	"triggers": {
+		"crons": ["0 * * * *"],
+	},
 	"vars": {
 		"BASE_API_URL": "https://api.gebna.net",
 		"R2_BUCKET_NAME": "gebna-emails",

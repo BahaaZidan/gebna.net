@@ -95,7 +95,7 @@ export const resolvers: Resolvers = {
 
 				await tx
 					.update(threadTable)
-					.set({ mailboxId: targetMailbox.id })
+					.set({ mailboxId: targetMailbox.id, trashAt: new Date() })
 					.where(
 						and(
 							eq(threadTable.ownerId, session.userId),

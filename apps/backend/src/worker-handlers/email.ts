@@ -2,11 +2,17 @@ import { eq } from "drizzle-orm";
 import PostalMime, { type Email } from "postal-mime";
 import { ulid } from "ulid";
 
-import { AttachmentInsertModel, getDB, ThreadSelectModel, TransactionInstance } from "$lib/db";
+import {
+	AttachmentInsertModel,
+	getDB,
+	MailboxSelectModel,
+	ThreadSelectModel,
+	TransactionInstance,
+} from "$lib/db";
 import { attachmentTable, contactTable, messageTable, threadTable } from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
-import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { extractLocalPart, resolveAvatar } from "$lib/utils/email";
+import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "$lib/utils/users";
 
@@ -71,7 +77,7 @@ export async function emailHandler(
 			envelope,
 			parsedEmail,
 			recipientId: recipientUser.id,
-			targetMailboxId,
+			targetMailbox,
 			unseen,
 		});
 
@@ -132,14 +138,14 @@ export async function emailHandler(
 async function findOrCreateThread({
 	tx,
 	envelope,
-	targetMailboxId,
+	targetMailbox,
 	unseen,
 	recipientId,
 	parsedEmail,
 }: {
 	tx: TransactionInstance;
 	envelope: ForwardableEmailMessage;
-	targetMailboxId: string;
+	targetMailbox: MailboxSelectModel;
 	unseen: boolean;
 	recipientId: string;
 	parsedEmail: Email;
@@ -158,13 +164,15 @@ async function findOrCreateThread({
 		.values({
 			id: ulid(),
 			firstMessageFrom: envelope.from,
-			mailboxId: targetMailboxId,
+			mailboxId: targetMailbox.id,
+			mailboxType: targetMailbox.type,
 			ownerId: recipientId,
 			title: parsedEmail.subject,
 			firstMessageSubject: parsedEmail.subject,
 			firstMessageId: parsedEmail.messageId,
 			snippet: parsedEmail.text?.slice(0, 50),
 			unseenCount: unseen ? 1 : 0,
+			trashAt: targetMailbox.type === "trash" ? new Date() : null,
 		})
 		.returning();
 
