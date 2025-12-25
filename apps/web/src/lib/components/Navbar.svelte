@@ -20,6 +20,8 @@
 	import { urqlClient } from "$lib/graphql";
 	import { graphql } from "$lib/graphql/generated";
 
+	import Search from "./Search.svelte";
+
 	let { prepend }: { prepend?: Snippet } = $props();
 
 	const NavbarQuery = graphql(`
@@ -54,10 +56,7 @@
 <div class="navbar bg-base-100 px-28 shadow-sm">
 	<div class="navbar-start">
 		{@render prepend?.()}
-		<label class="input">
-			<SearchIcon />
-			<input type="text" class="grow" placeholder="Search" />
-		</label>
+		<Search />
 	</div>
 	<div class="navbar-center">
 		<button
@@ -74,10 +73,6 @@
 			class="dropdown dropdown-center"
 		>
 			<div class="flex w-md flex-col gap-4 rounded-3xl bg-base-100 p-6">
-				<label class="input w-full">
-					<SearchIcon />
-					<input type="text" class="grow" placeholder="Search" />
-				</label>
 				<div class="flex flex-wrap justify-center gap-2">
 					{@render navItem("Important", "/app/mail", StarIcon)}
 					{@render navItem("News", "/app/mail/news", BookOpenIcon)}

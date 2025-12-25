@@ -40,19 +40,19 @@ export const resolvers: Resolvers = {
 					return null;
 			}
 		},
-		searchMessages: async (_parent, args, { session, db }) => {
-			if (!session) return [];
-			const mailboxId = args.mailboxId ? fromGlobalId(args.mailboxId).id : null;
+		search: async (_parent, { input }, { session, db }) => {
+			if (!session) return null;
+			const mailboxId = input.mailboxId ? fromGlobalId(input.mailboxId).id : null;
 
 			const search_results = await searchMessagesDb(db, {
 				ownerId: session.userId,
-				query: args.query,
+				query: input.query,
 				mailboxId,
-				limit: args.limit ?? 20,
-				offset: args.offset ?? 0,
+				limit: input.limit ?? 20,
+				offset: input.offset ?? 0,
 			});
 
-			if (!search_results.length) return [];
+			if (!search_results.length) return null;
 
 			const messages = await db.query.messageTable.findMany({
 				where: (t, { inArray }) =>
@@ -62,7 +62,7 @@ export const resolvers: Resolvers = {
 					),
 			});
 
-			return messages;
+			return { messages };
 		},
 	},
 	Mutation: {

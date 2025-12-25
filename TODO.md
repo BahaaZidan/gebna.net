@@ -45,6 +45,7 @@
 - [x] Downloadable attachments
 - [x] Attachments UI
 - [x] Basic Full Text Search
+- [x] FTS UI
 - [ ] Delete emails that has been in a trash mailbox for more than (?) days
 - [ ] Allow user to change their profile picture
 
