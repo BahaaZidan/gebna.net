@@ -47,14 +47,10 @@
 - [x] Basic Full Text Search
 - [x] FTS UI
 - [x] Delete emails that has been in a trash mailbox for more than (?) days
-- [ ] Allow user to change their profile picture
+- [x] Allow user to change their profile picture
 - [ ] Attachment blobs garbage collection
 
 ### v0.5
-
-- [ ] Database indexing based on the queries web ui is using
-
-### Beyond v0.5
 
 - [ ] Read together. (batch mark all the unseen messages in your important mailbox)
 - [ ] Reply later
@@ -65,6 +61,10 @@
 - [ ] Attachments standalone page. Search per filetype or sender across all attachments tied to your account
 - [ ] The ability to ignore specific threads. (i.e. new messages from the thread will be marked as read)
 - [ ] Attachment previews
+
+### Beyond v0.5
+
+- [ ] Database indexing based on the queries web ui is using
 
 ### Beyond v1
 
