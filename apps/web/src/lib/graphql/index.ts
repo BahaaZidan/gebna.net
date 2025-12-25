@@ -11,6 +11,14 @@ import {
 	type MarkThreadSeenMutationVariables,
 } from "$lib/graphql/generated/graphql";
 
+export function buildURQLFetchOptions(signal?: AbortSignal | null | undefined): RequestInit {
+	const token = getAccessToken();
+	return {
+		headers: { authorization: token ? `Bearer ${token}` : "" },
+		signal,
+	};
+}
+
 export const urqlClient = new Client({
 	url: new URL("/graphql", PUBLIC_API_URL).toString(),
 	exchanges: [
@@ -74,9 +82,6 @@ export const urqlClient = new Client({
 		fetchExchange,
 	],
 	fetchOptions: () => {
-		const token = getAccessToken();
-		return {
-			headers: { authorization: token ? `Bearer ${token}` : "" },
-		};
+		return buildURQLFetchOptions();
 	},
 });

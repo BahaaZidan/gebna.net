@@ -147,7 +147,7 @@ export type PageInfo = {
 export type Query = {
   __typename?: 'Query';
   node?: Maybe<Node>;
-  searchMessages: Array<Message>;
+  search?: Maybe<SearchResult>;
   viewer?: Maybe<User>;
 };
 
@@ -157,11 +157,20 @@ export type QueryNodeArgs = {
 };
 
 
-export type QuerySearchMessagesArgs = {
+export type QuerySearchArgs = {
+  input: SearchInput;
+};
+
+export type SearchInput = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   mailboxId?: InputMaybe<Scalars['ID']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   query: Scalars['String']['input'];
+};
+
+export type SearchResult = {
+  __typename?: 'SearchResult';
+  messages: Array<Message>;
 };
 
 export type Thread = Node & {
@@ -315,6 +324,8 @@ export type ResolversTypes = {
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
+  SearchInput: SearchInput;
+  SearchResult: ResolverTypeWrapper<Omit<SearchResult, 'messages'> & { messages: Array<ResolversTypes['Message']> }>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Thread: ResolverTypeWrapper<ThreadSelectModel>;
   ThreadEdge: ResolverTypeWrapper<Omit<ThreadEdge, 'node'> & { node: ResolversTypes['Thread'] }>;
@@ -343,6 +354,8 @@ export type ResolversParentTypes = {
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node'];
   PageInfo: PageInfo;
   Query: Record<PropertyKey, never>;
+  SearchInput: SearchInput;
+  SearchResult: Omit<SearchResult, 'messages'> & { messages: Array<ResolversParentTypes['Message']> };
   String: Scalars['String']['output'];
   Thread: ThreadSelectModel;
   ThreadEdge: Omit<ThreadEdge, 'node'> & { node: ResolversParentTypes['Thread'] };
@@ -441,8 +454,12 @@ export type PageInfoResolvers<ContextType = Context, ParentType extends Resolver
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   node?: Resolver<Maybe<ResolversTypes['Node']>, ParentType, ContextType, RequireFields<QueryNodeArgs, 'id'>>;
-  searchMessages?: Resolver<Array<ResolversTypes['Message']>, ParentType, ContextType, RequireFields<QuerySearchMessagesArgs, 'query'>>;
+  search?: Resolver<Maybe<ResolversTypes['SearchResult']>, ParentType, ContextType, RequireFields<QuerySearchArgs, 'input'>>;
   viewer?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
+};
+
+export type SearchResultResolvers<ContextType = Context, ParentType extends ResolversParentTypes['SearchResult'] = ResolversParentTypes['SearchResult']> = {
+  messages?: Resolver<Array<ResolversTypes['Message']>, ParentType, ContextType>;
 };
 
 export type ThreadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Thread'] = ResolversParentTypes['Thread']> = {
@@ -495,6 +512,7 @@ export type Resolvers<ContextType = Context> = {
   Node?: NodeResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
+  SearchResult?: SearchResultResolvers<ContextType>;
   Thread?: ThreadResolvers<ContextType>;
   ThreadEdge?: ThreadEdgeResolvers<ContextType>;
   ThreadsConnection?: ThreadsConnectionResolvers<ContextType>;
