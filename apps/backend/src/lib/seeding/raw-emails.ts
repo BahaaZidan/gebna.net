@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import PostalMime, { type Attachment } from "postal-mime";
 import { ulid } from "ulid";
 
-import { getDB, type TransactionInstance } from "$lib/db";
+import { getDB, MailboxSelectModel, type TransactionInstance } from "$lib/db";
 import * as schema from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
 import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
@@ -114,7 +114,7 @@ export async function seedRawEmails(
 			const thread = await findOrCreateThread(tx, {
 				recipientId: recipient.id,
 				fromAddress: seed.fromAddress,
-				targetMailboxId: targetMailbox.id,
+				targetMailbox,
 				unseen,
 				messageId: seed.messageId,
 				createdAt: seed.createdAt,
@@ -407,7 +407,7 @@ async function findOrCreateThread(
 	{
 		recipientId,
 		fromAddress,
-		targetMailboxId,
+		targetMailbox,
 		unseen,
 		messageId,
 		createdAt,
@@ -418,7 +418,7 @@ async function findOrCreateThread(
 	}: {
 		recipientId: string;
 		fromAddress: string;
-		targetMailboxId: string;
+		targetMailbox: MailboxSelectModel;
 		unseen: boolean;
 		messageId: string;
 		createdAt: Date;
@@ -442,7 +442,8 @@ async function findOrCreateThread(
 		.values({
 			id: ulid(),
 			firstMessageFrom: fromAddress,
-			mailboxId: targetMailboxId,
+			mailboxId: targetMailbox.id,
+			mailboxType: targetMailbox.type,
 			ownerId: recipientId,
 			title: subject ?? snippet,
 			firstMessageSubject: subject ?? undefined,

@@ -46,7 +46,8 @@
 - [x] Attachments UI
 - [x] Basic Full Text Search
 - [x] FTS UI
-- [ ] Delete emails that has been in a trash mailbox for more than (?) days
+- [x] Delete emails that has been in a trash mailbox for more than (?) days
+- [ ] Attachment blobs garbage collection
 - [ ] Allow user to change their profile picture
 
 ### v0.5

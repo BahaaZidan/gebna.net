@@ -97,6 +97,7 @@ export const threadTable = sqliteTable(
 		mailboxId: text()
 			.notNull()
 			.references(() => mailboxTable.id, { onDelete: "cascade" }),
+		mailboxType: text().$type<MailboxType>().notNull(),
 		unseenCount: integer().notNull(),
 		/** based on the subject of the first message or its' snippet */
 		title: text(),
@@ -109,6 +110,7 @@ export const threadTable = sqliteTable(
 		firstMessageId: text(),
 		/** Headers.subject of the first message */
 		firstMessageSubject: text(),
+		trashAt: integer({ mode: "timestamp" }),
 	},
 	(self) => [index("idx_thread_mailbox").on(self.mailboxId)]
 );
