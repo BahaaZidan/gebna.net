@@ -25,6 +25,8 @@ type Documents = {
     "\n\t\tmutation MarkThreadSeen($id: ID!) {\n\t\t\tmarkThreadSeen(id: $id) {\n\t\t\t\tid\n\t\t\t\tunseenMessagesCount\n\t\t\t\tmessages {\n\t\t\t\t\tid\n\t\t\t\t\tunseen\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.MarkThreadSeenDocument,
     "\n\t\tquery TransactionalPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\ttransactionalMailbox: mailbox(type: transactional) {\n\t\t\t\t\tid\n\t\t\t\t\ttype\n\t\t\t\t\tname\n\t\t\t\t\tthreads {\n\t\t\t\t\t\tpageInfo {\n\t\t\t\t\t\t\thasNextPage\n\t\t\t\t\t\t\tendCursor\n\t\t\t\t\t\t}\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tcursor\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t...ThreadListItem\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.TransactionalPageQueryDocument,
     "\n\t\tquery TrashPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\ttrashMailbox: mailbox(type: trash) {\n\t\t\t\t\tid\n\t\t\t\t\ttype\n\t\t\t\t\tname\n\t\t\t\t\tthreads {\n\t\t\t\t\t\tpageInfo {\n\t\t\t\t\t\t\thasNextPage\n\t\t\t\t\t\t\tendCursor\n\t\t\t\t\t\t}\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tcursor\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t...ThreadListItem\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.TrashPageQueryDocument,
+    "\n\t\tquery UserSettingsPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t": typeof types.UserSettingsPageQueryDocument,
+    "\n\t\tmutation EditUserMutation($input: EditUserInput!) {\n\t\t\teditUser(input: $input) {\n\t\t\t\tid\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t": typeof types.EditUserMutationDocument,
 };
 const documents: Documents = {
     "\n\t\tquery NavbarQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t": types.NavbarQueryDocument,
@@ -38,6 +40,8 @@ const documents: Documents = {
     "\n\t\tmutation MarkThreadSeen($id: ID!) {\n\t\t\tmarkThreadSeen(id: $id) {\n\t\t\t\tid\n\t\t\t\tunseenMessagesCount\n\t\t\t\tmessages {\n\t\t\t\t\tid\n\t\t\t\t\tunseen\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.MarkThreadSeenDocument,
     "\n\t\tquery TransactionalPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\ttransactionalMailbox: mailbox(type: transactional) {\n\t\t\t\t\tid\n\t\t\t\t\ttype\n\t\t\t\t\tname\n\t\t\t\t\tthreads {\n\t\t\t\t\t\tpageInfo {\n\t\t\t\t\t\t\thasNextPage\n\t\t\t\t\t\t\tendCursor\n\t\t\t\t\t\t}\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tcursor\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t...ThreadListItem\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.TransactionalPageQueryDocument,
     "\n\t\tquery TrashPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\ttrashMailbox: mailbox(type: trash) {\n\t\t\t\t\tid\n\t\t\t\t\ttype\n\t\t\t\t\tname\n\t\t\t\t\tthreads {\n\t\t\t\t\t\tpageInfo {\n\t\t\t\t\t\t\thasNextPage\n\t\t\t\t\t\t\tendCursor\n\t\t\t\t\t\t}\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tcursor\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t...ThreadListItem\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.TrashPageQueryDocument,
+    "\n\t\tquery UserSettingsPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t": types.UserSettingsPageQueryDocument,
+    "\n\t\tmutation EditUserMutation($input: EditUserInput!) {\n\t\t\teditUser(input: $input) {\n\t\t\t\tid\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t": types.EditUserMutationDocument,
 };
 
 /**
@@ -98,6 +102,14 @@ export function graphql(source: "\n\t\tquery TransactionalPageQuery {\n\t\t\tvie
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n\t\tquery TrashPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\ttrashMailbox: mailbox(type: trash) {\n\t\t\t\t\tid\n\t\t\t\t\ttype\n\t\t\t\t\tname\n\t\t\t\t\tthreads {\n\t\t\t\t\t\tpageInfo {\n\t\t\t\t\t\t\thasNextPage\n\t\t\t\t\t\t\tendCursor\n\t\t\t\t\t\t}\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tcursor\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t...ThreadListItem\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t"): (typeof documents)["\n\t\tquery TrashPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\ttrashMailbox: mailbox(type: trash) {\n\t\t\t\t\tid\n\t\t\t\t\ttype\n\t\t\t\t\tname\n\t\t\t\t\tthreads {\n\t\t\t\t\t\tpageInfo {\n\t\t\t\t\t\t\thasNextPage\n\t\t\t\t\t\t\tendCursor\n\t\t\t\t\t\t}\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tcursor\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t...ThreadListItem\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\tquery UserSettingsPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t"): (typeof documents)["\n\t\tquery UserSettingsPageQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\tusername\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\tmutation EditUserMutation($input: EditUserInput!) {\n\t\t\teditUser(input: $input) {\n\t\t\t\tid\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t"): (typeof documents)["\n\t\tmutation EditUserMutation($input: EditUserInput!) {\n\t\t\teditUser(input: $input) {\n\t\t\t\tid\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t}\n\t\t}\n\t"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

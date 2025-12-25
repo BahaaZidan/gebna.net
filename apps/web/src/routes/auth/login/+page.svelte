@@ -17,7 +17,6 @@
 		resetForm: false,
 		validators: valibot(loginSchema),
 		async onUpdate({ form }) {
-			console.log(form.data);
 			if (form.valid) {
 				const result = await fetch(new URL("/auth/login", PUBLIC_API_URL), {
 					method: "POST",

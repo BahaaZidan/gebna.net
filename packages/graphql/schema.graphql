@@ -7,6 +7,7 @@ type Query {
 type Mutation {
 	assignTargetMailbox(input: AssignTargetMailboxInput!): Contact
 	markThreadSeen(id: ID!): Thread
+	editUser(input: EditUserInput!): User
 }
 
 input SearchInput {
@@ -23,6 +24,11 @@ type SearchResult {
 input AssignTargetMailboxInput {
 	contactID: ID!
 	targetMailboxType: MailboxType!
+}
+
+input EditUserInput {
+	name: String
+	avatar: File
 }
 
 type User implements Node {
@@ -141,3 +147,4 @@ interface Node {
 
 scalar DateTime
 scalar URL
+scalar File
