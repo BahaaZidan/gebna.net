@@ -173,13 +173,13 @@ export const attachmentTable = sqliteTable(
 		id: text().primaryKey(),
 		threadId: text()
 			.notNull()
-			.references(() => threadTable.id, { onDelete: "cascade" }),
+			.references(() => threadTable.id, { onDelete: "set null" }),
 		messageId: text()
 			.notNull()
-			.references(() => messageTable.id, { onDelete: "cascade" }),
+			.references(() => messageTable.id, { onDelete: "set null" }),
 		ownerId: text()
 			.notNull()
-			.references(() => userTable.id, { onDelete: "cascade" }),
+			.references(() => userTable.id, { onDelete: "set null" }),
 		storageKey: text().notNull(),
 		sizeInBytes: integer().notNull(),
 		fileName: text(),
@@ -190,5 +190,6 @@ export const attachmentTable = sqliteTable(
 	(self) => [
 		index("attachment_messageId_idx").on(self.messageId),
 		index("attachment_threadId_idx").on(self.threadId),
+		uniqueIndex("attachment_storageKey_uniq").on(self.storageKey),
 	]
 );

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `attachment_storageKey_uniq` ON `attachment` (`storageKey`);

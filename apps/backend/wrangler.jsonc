@@ -30,7 +30,10 @@
 		},
 	],
 	"triggers": {
-		"crons": ["0 * * * *"],
+		"crons": [
+			"0 * * * *", // trash GC (hourly)
+			"30 */6 * * *", // attachments GC (every 6 hours, offset by 30 minutes)
+		],
 	},
 	"vars": {
 		"BASE_API_URL": "https://api.gebna.net",
