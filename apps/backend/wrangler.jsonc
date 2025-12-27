@@ -21,6 +21,7 @@
 		{
 			"binding": "R2_EMAILS",
 			"bucket_name": "gebna-emails",
+			"remote": true,
 		},
 		{
 			"binding": "R2_AVATARS",
