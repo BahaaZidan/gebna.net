@@ -130,21 +130,18 @@
 								sandbox="allow-same-origin"
 								referrerpolicy="no-referrer"
 								srcdoc={message.bodyHTML}
-								class="w-full"
+								class="w-full rounded-xl"
 								use:autoIframeHeight
 							></iframe>
 						{/if}
 					</div>
 					{#if message.attachments.length}
-						<div class="flex flex-wrap gap-3">
+						<div class="flex flex-col gap-1">
+							<h4 class="font-bold">Attachments</h4>
 							{#each message.attachments as attachment (attachment.id)}
-								<a
-									href={attachment.url}
-									class="flex w-44 flex-col items-center justify-center gap-1 bg-base-100 p-4"
-								>
-									<FileIcon />
-									<div class="line-clamp-1">{attachment.fileName}</div>
-									<div>{attachment.mimeType}</div>
+								<a href={attachment.url} class="badge badge-neutral">
+									<FileIcon class="size-5" />
+									<span class="line-clamp-1">{attachment.fileName}</span>
 								</a>
 							{/each}
 						</div>
