@@ -23,6 +23,9 @@ export default defineConfig({
 			},
 		]) as Plugin[],
 	],
+	server: {
+		port: 5173,
+	},
 	resolve: {
 		alias: {
 			"@whatwg-node/fetch": "@whatwg-node/fetch/dist/esm-ponyfill.js",
