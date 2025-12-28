@@ -32,6 +32,8 @@ export type SeedRawEmailOptions = {
 	reset?: boolean;
 	recipientUsername?: string;
 	recipientEmail?: string;
+	limit?: number;
+	offset?: number;
 };
 
 export type SeedRawEmailResult = {
@@ -47,6 +49,7 @@ export type SeedRawEmailResult = {
 		threadsDeleted?: number;
 		contactsDeleted?: number;
 		deletedMessages?: number;
+		totalFiles: number;
 	};
 };
 
@@ -63,6 +66,8 @@ export async function seedRawEmails(
 ): Promise<SeedRawEmailResult> {
 	const recipientUsername = options.recipientUsername ?? "demo";
 	const recipientEmail = options.recipientEmail ?? `${recipientUsername}@gebna.net`;
+	const limit = options.limit && options.limit > 0 ? options.limit : undefined;
+	const offset = options.offset && options.offset > 0 ? options.offset : 0;
 
 	const db = getDB(env);
 	const recipient = await db.query.userTable.findFirst({
@@ -81,17 +86,31 @@ export async function seedRawEmails(
 		throw new Error(`Missing screener mailbox for user "${recipientUsername}".`);
 	}
 
-	const { seedEmails, skippedFiles, files } = await loadSeedEmails();
+	const resetSeedEmails = options.reset ? (await loadSeedEmails()).seedEmails : undefined;
+	const { seedEmails, skippedFiles, totalFiles } = await loadSeedEmails({ limit, offset });
 
 	let inserted = 0;
 	let skipped = 0;
 	let resetResult: Awaited<ReturnType<typeof deleteSeededRecords>> | undefined;
 
 	if (options.reset) {
-		resetResult = await deleteSeededRecords(db, recipient.id, seedEmails);
+		resetResult = await deleteSeededRecords(
+			db,
+			recipient.id,
+			resetSeedEmails ?? seedEmails
+		);
 	}
 
-	for (const seed of seedEmails) {
+	const seedsToProcess = seedEmails;
+
+	for (const seed of seedsToProcess) {
+		const attachmentsForUpload: {
+			id: string;
+			storageKey: string;
+			body: Uint8Array;
+			mimeType?: string;
+		}[] = [];
+
 		const shouldInsert = await db.transaction(async (tx) => {
 			const existing = await tx.query.messageTable.findFirst({
 				columns: { id: true },
@@ -124,6 +143,22 @@ export async function seedRawEmails(
 				inReplyTo: seed.inReplyTo,
 			});
 
+			const participantAddresses = new Set<string>([
+				seed.fromAddress,
+				recipientEmail,
+				...(seed.cc ?? []),
+				...(seed.bcc ?? []),
+				...(seed.replyTo ?? []),
+			]);
+			const participants = Array.from(participantAddresses).map(
+				(address) =>
+					({
+						ownerId: recipient.id,
+						threadId: thread.id,
+						address,
+					}) satisfies typeof schema.threadParticipantTable.$inferInsert
+			);
+
 			const messageId = ulid();
 			await tx.insert(schema.messageTable).values({
 				id: messageId,
@@ -147,38 +182,64 @@ export async function seedRawEmails(
 				sizeInBytes: seed.raw.byteLength,
 			});
 
+			if (participants.length) {
+				await tx
+					.insert(schema.threadParticipantTable)
+					.values(participants)
+					.onConflictDoNothing();
+			}
+
 			if (seed.attachments.length) {
-				const attachmentsToInsert = await Promise.all(
-					seed.attachments.map(async (attachment) => {
-						const attachmentId = ulid();
-						const storageKey = `u/${recipient.id}/m/${messageId}/a/${attachmentId}`;
-						const body = getAttachmentBytes(attachment);
+				const attachmentsToInsert = seed.attachments.map((attachment) => {
+					const attachmentId = ulid();
+					const storageKey = `u/${recipient.id}/m/${messageId}/a/${attachmentId}`;
+					const body = getAttachmentBytes(attachment);
 
-						await env.R2_EMAILS.put(storageKey, body, {
-							httpMetadata: { contentType: attachment.mimeType },
-						});
+					attachmentsForUpload.push({
+						id: attachmentId,
+						storageKey,
+						body,
+						mimeType: attachment.mimeType,
+					});
 
-						return {
-							id: attachmentId,
-							ownerId: recipient.id,
-							messageId,
-							messageFrom: seed.fromAddress,
-							threadId: thread.id,
-							storageKey,
-							sizeInBytes: body.byteLength,
-							fileName: attachment.filename,
-							mimeType: attachment.mimeType,
-							disposition: attachment.disposition,
-							contentId: attachment.contentId,
-						} satisfies typeof schema.attachmentTable.$inferInsert;
-					})
-				);
+					return {
+						id: attachmentId,
+						ownerId: recipient.id,
+						messageId,
+						messageFrom: seed.fromAddress,
+						threadId: thread.id,
+						storageKey,
+						sizeInBytes: body.byteLength,
+						fileName: attachment.filename,
+						mimeType: attachment.mimeType,
+						disposition: attachment.disposition,
+						contentId: attachment.contentId,
+					} satisfies typeof schema.attachmentTable.$inferInsert;
+				});
 
 				await tx.insert(schema.attachmentTable).values(attachmentsToInsert);
 			}
 
 			return true;
 		});
+
+		if (shouldInsert && attachmentsForUpload.length) {
+			try {
+				await Promise.all(
+					attachmentsForUpload.map((attachment) =>
+						env.R2_EMAILS.put(attachment.storageKey, attachment.body, {
+							httpMetadata: { contentType: attachment.mimeType },
+						})
+					)
+				);
+			} catch (error) {
+				const attachmentIds = attachmentsForUpload.map((attachment) => attachment.id);
+				await db
+					.delete(schema.attachmentTable)
+					.where(inArray(schema.attachmentTable.id, attachmentIds));
+				throw error;
+			}
+		}
 
 		if (shouldInsert) {
 			inserted += 1;
@@ -193,8 +254,9 @@ export async function seedRawEmails(
 		recipientUsername,
 		recipientEmail,
 		counts: {
-			filesProcessed: files.length,
+			filesProcessed: seedsToProcess.length,
 			filesSkipped: skippedFiles,
+			totalFiles,
 			messagesInserted: inserted,
 			messagesSkipped: skipped,
 			threadsDeleted: resetResult?.threads,
@@ -238,14 +300,18 @@ async function findOrCreateContact(
 	return contact;
 }
 
-async function loadSeedEmails() {
+async function loadSeedEmails(options: { limit?: number; offset?: number } = {}) {
 	const files = Object.keys(rawEmailModules)
 		.map((file) => file.split("/").pop() ?? file)
 		.sort((a, b) => a.localeCompare(b));
+	const totalFiles = files.length;
+	const start = Math.max(options.offset ?? 0, 0);
+	const end = options.limit && options.limit > 0 ? start + options.limit : totalFiles;
+	const filesToParse = files.slice(start, end);
 	const seedEmails: SeedEmail[] = [];
 	let skippedFiles = 0;
 
-	for (const fileName of files) {
+	for (const fileName of filesToParse) {
 		const match = Object.entries(rawEmailModules).find(([path]) => path.endsWith(fileName));
 		if (!match) continue;
 
@@ -294,7 +360,7 @@ async function loadSeedEmails() {
 		});
 	}
 
-	return { seedEmails, skippedFiles, files };
+	return { seedEmails, skippedFiles, files: filesToParse, totalFiles };
 }
 
 async function deleteSeededRecords(

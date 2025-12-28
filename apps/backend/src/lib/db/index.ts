@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 
 import * as schema from "./schema";
+
 export { searchMessages, type MessageSearchResult } from "./search";
 
 export { schema };
@@ -33,3 +34,4 @@ export type MessageSelectModel = typeof schema.messageTable.$inferSelect;
 export type ContactSelectModel = typeof schema.contactTable.$inferSelect;
 export type AttachmentSelectModel = typeof schema.attachmentTable.$inferSelect;
 export type AttachmentInsertModel = typeof schema.attachmentTable.$inferInsert;
+export type ThreadParticipantInsertModel = typeof schema.threadParticipantTable.$inferInsert;

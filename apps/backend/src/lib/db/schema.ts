@@ -64,7 +64,7 @@ export const contactTable = sqliteTable(
 	"contact",
 	{
 		id: text().primaryKey(),
-		address: text().notNull(),
+		address: citext().notNull(),
 		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
@@ -90,7 +90,7 @@ export const threadTable = sqliteTable(
 		/** thread.id based on Headers.messageId if it exists. Otherwise, we make our own id */
 		id: text().primaryKey(),
 		/** Envelope.from of the first message */
-		firstMessageFrom: text().notNull(),
+		firstMessageFrom: citext().notNull(),
 		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
@@ -120,7 +120,7 @@ export const messageTable = sqliteTable(
 	"message",
 	{
 		id: text().primaryKey(),
-		from: text().notNull(),
+		from: citext().notNull(),
 		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
@@ -171,26 +171,41 @@ export const attachmentTable = sqliteTable(
 	"attachment",
 	{
 		id: text().primaryKey(),
-		ownerId: text()
-			.notNull()
-			.references(() => userTable.id, { onDelete: "set null" }),
-		threadId: text()
-			.notNull()
-			.references(() => threadTable.id, { onDelete: "set null" }),
-		messageId: text()
-			.notNull()
-			.references(() => messageTable.id, { onDelete: "set null" }),
-		messageFrom: text(),
+		ownerId: text().references(() => userTable.id, { onDelete: "set null" }),
+		threadId: text().references(() => threadTable.id, { onDelete: "set null" }),
+		messageId: text().references(() => messageTable.id, { onDelete: "set null" }),
+		messageFrom: citext().notNull(),
 		storageKey: text().notNull(),
 		sizeInBytes: integer().notNull(),
 		fileName: text(),
 		mimeType: text(),
 		disposition: text().$type<"attachment" | "inline">(),
 		contentId: text(),
+		createdAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
 	},
 	(self) => [
 		index("attachment_messageId_idx").on(self.messageId),
 		index("attachment_threadId_idx").on(self.threadId),
 		uniqueIndex("attachment_storageKey_uniq").on(self.storageKey),
+	]
+);
+
+export const threadParticipantTable = sqliteTable(
+	"thread_participant",
+	{
+		ownerId: text()
+			.notNull()
+			.references(() => userTable.id, { onDelete: "cascade" }),
+		threadId: text()
+			.notNull()
+			.references(() => threadTable.id, { onDelete: "cascade" }),
+		address: citext().notNull(),
+	},
+	(self) => [
+		uniqueIndex("uniq_thread_participant").on(self.ownerId, self.threadId, self.address),
+		index("idx_thread_participant_owner_address").on(self.ownerId, self.address, self.threadId),
+		index("idx_thread_participant_thread").on(self.ownerId, self.threadId),
 	]
 );

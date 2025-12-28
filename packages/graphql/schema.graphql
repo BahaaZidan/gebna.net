@@ -46,7 +46,7 @@ type Mailbox implements Node {
 	unseenThreadsCount: Int!
 	threads(first: Int, after: String, filter: ThreadsFilter): ThreadsConnection!
 	assignedContactsCount: Int!
-	contacts(first: Int, after: String): ContactConnection!
+	contacts(first: Int, after: String): ContactsConnection!
 }
 
 enum MailboxType {
@@ -97,7 +97,7 @@ type Message implements Node {
 	attachments: [Attachment!]!
 }
 
-type ContactConnection implements Connection {
+type ContactsConnection implements Connection {
 	pageInfo: PageInfo!
 	edges: [ContactEdge!]!
 }
@@ -114,6 +114,18 @@ type Contact implements Node {
 	avatar: String!
 	targetMailbox: Mailbox!
 	messages: [Message!]!
+	threads(first: Int, after: String): ThreadsConnection!
+	attachments(first: Int, after: String): AttachmentsConnection!
+}
+
+type AttachmentsConnection implements Connection {
+	pageInfo: PageInfo!
+	edges: [AttachmentEdge!]!
+}
+
+type AttachmentEdge implements Edge {
+	cursor: String
+	node: Attachment!
 }
 
 type Attachment implements Node {

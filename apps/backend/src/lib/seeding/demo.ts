@@ -29,6 +29,7 @@ type MessageSeed = {
 	createdAt: Date;
 	to?: string[];
 	cc?: string[];
+	bcc?: string[];
 	replyTo?: string[];
 };
 
@@ -127,6 +128,9 @@ export async function seedDemo(
 		await tx.insert(schema.contactTable).values(senderProfiles);
 		await tx.insert(schema.threadTable).values(threads.threads);
 		await tx.insert(schema.messageTable).values(threads.messages);
+		if (threads.participants.length) {
+			await tx.insert(schema.threadParticipantTable).values(threads.participants);
+		}
 	});
 
 	return {
@@ -411,23 +415,38 @@ function makeThreads(
 
 	const threads: (typeof schema.threadTable.$inferInsert)[] = [];
 	const messages: (typeof schema.messageTable.$inferInsert)[] = [];
+	const participants: (typeof schema.threadParticipantTable.$inferInsert)[] = [];
 
 	for (const seed of seeds) {
 		const sender = senderMap.get(seed.sender.address);
 		const mailbox = mailboxes[seed.mailbox];
 		if (!sender) throw new Error(`Missing sender profile for ${seed.sender.address}`);
 		if (!mailbox) throw new Error(`Missing mailbox for type ${seed.mailbox}`);
+		const senderAddress = sender.address;
+		if (!senderAddress) throw new Error(`Missing sender address for ${seed.sender.name}`);
 
 		const threadId = ulid();
 		const messageRows: (typeof schema.messageTable.$inferInsert)[] = [];
+		const threadParticipantAddresses = new Set<string>();
+		threadParticipantAddresses.add(senderAddress);
+		threadParticipantAddresses.add(userEmail);
+		const addParticipants = (addresses?: string[]) => {
+			for (const address of addresses ?? []) {
+				if (address) threadParticipantAddresses.add(address);
+			}
+		};
 
 		for (const [index, message] of seed.messages.entries()) {
 			const messageId = `<${ulid().toLowerCase()}@seed.gebna.net>`;
 			const previous = messageRows[messageRows.length - 1];
+			addParticipants(message.to ?? [userEmail]);
+			addParticipants(message.cc);
+			addParticipants(message.bcc);
+			addParticipants(message.replyTo);
 
 			messageRows.push({
 				id: ulid(),
-				from: sender.address,
+				from: senderAddress,
 				ownerId: userId,
 				threadId,
 				mailboxId: mailbox.id,
@@ -436,6 +455,7 @@ function makeThreads(
 				subject: message.subject ?? seed.subject,
 				to: message.to ?? [userEmail],
 				cc: message.cc,
+				bcc: message.bcc,
 				replyTo: message.replyTo,
 				inReplyTo: index === 0 ? undefined : (previous?.messageId ?? undefined),
 				messageId,
@@ -455,7 +475,7 @@ function makeThreads(
 
 		threads.push({
 			id: threadId,
-			firstMessageFrom: sender.address,
+			firstMessageFrom: senderAddress,
 			ownerId: userId,
 			mailboxId: mailbox.id,
 			mailboxType: mailbox.type,
@@ -468,9 +488,16 @@ function makeThreads(
 		});
 
 		messages.push(...messageRows);
+		participants.push(
+			...Array.from(threadParticipantAddresses).map((address) => ({
+				ownerId: userId,
+				threadId,
+				address,
+			}))
+		);
 	}
 
-	return { threads, messages };
+	return { threads, messages, participants };
 }
 
 function estimateSize(message: MessageSeed, subject: string) {

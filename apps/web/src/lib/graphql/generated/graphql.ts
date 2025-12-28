@@ -33,6 +33,18 @@ export type Attachment = Node & {
   url?: Maybe<Scalars['String']['output']>;
 };
 
+export type AttachmentEdge = Edge & {
+  __typename?: 'AttachmentEdge';
+  cursor?: Maybe<Scalars['String']['output']>;
+  node: Attachment;
+};
+
+export type AttachmentsConnection = Connection & {
+  __typename?: 'AttachmentsConnection';
+  edges: Array<AttachmentEdge>;
+  pageInfo: PageInfo;
+};
+
 export type Connection = {
   edges: Array<Edge>;
   pageInfo: PageInfo;
@@ -41,23 +53,37 @@ export type Connection = {
 export type Contact = Node & {
   __typename?: 'Contact';
   address: Scalars['String']['output'];
+  attachments: AttachmentsConnection;
   avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   messages: Array<Message>;
   name: Scalars['String']['output'];
   targetMailbox: Mailbox;
+  threads: ThreadsConnection;
 };
 
-export type ContactConnection = Connection & {
-  __typename?: 'ContactConnection';
-  edges: Array<ContactEdge>;
-  pageInfo: PageInfo;
+
+export type ContactAttachmentsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type ContactThreadsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type ContactEdge = Edge & {
   __typename?: 'ContactEdge';
   cursor?: Maybe<Scalars['String']['output']>;
   node: Contact;
+};
+
+export type ContactsConnection = Connection & {
+  __typename?: 'ContactsConnection';
+  edges: Array<ContactEdge>;
+  pageInfo: PageInfo;
 };
 
 export type Edge = {
@@ -73,7 +99,7 @@ export type EditUserInput = {
 export type Mailbox = Node & {
   __typename?: 'Mailbox';
   assignedContactsCount: Scalars['Int']['output'];
-  contacts: ContactConnection;
+  contacts: ContactsConnection;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
   threads: ThreadsConnection;
@@ -255,7 +281,7 @@ export type NewsPageQueryQuery = { __typename?: 'Query', viewer?: { __typename?:
 export type ScreenerPageQueryQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ScreenerPageQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'User', id: string, screenerMailbox?: { __typename?: 'Mailbox', id: string, type: MailboxType, name: string, assignedContactsCount: number, contacts: { __typename?: 'ContactConnection', edges: Array<{ __typename?: 'ContactEdge', node: { __typename?: 'Contact', id: string, address: string, name: string, avatar: string, messages: Array<{ __typename?: 'Message', id: string, bodyText?: string | null, bodyHTML?: string | null, subject?: string | null }> } }> } } | null } | null };
+export type ScreenerPageQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'User', id: string, screenerMailbox?: { __typename?: 'Mailbox', id: string, type: MailboxType, name: string, assignedContactsCount: number, contacts: { __typename?: 'ContactsConnection', edges: Array<{ __typename?: 'ContactEdge', node: { __typename?: 'Contact', id: string, address: string, name: string, avatar: string, messages: Array<{ __typename?: 'Message', id: string, bodyText?: string | null, bodyHTML?: string | null, subject?: string | null }> } }> } } | null } | null };
 
 export type AssignTargetMailboxMutationMutationVariables = Exact<{
   input: AssignTargetMailboxInput;

@@ -37,6 +37,18 @@ export type Attachment = Node & {
   url?: Maybe<Scalars['String']['output']>;
 };
 
+export type AttachmentEdge = Edge & {
+  __typename?: 'AttachmentEdge';
+  cursor?: Maybe<Scalars['String']['output']>;
+  node: Attachment;
+};
+
+export type AttachmentsConnection = Connection & {
+  __typename?: 'AttachmentsConnection';
+  edges: Array<AttachmentEdge>;
+  pageInfo: PageInfo;
+};
+
 export type Connection = {
   edges: Array<Edge>;
   pageInfo: PageInfo;
@@ -45,23 +57,37 @@ export type Connection = {
 export type Contact = Node & {
   __typename?: 'Contact';
   address: Scalars['String']['output'];
+  attachments: AttachmentsConnection;
   avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   messages: Array<Message>;
   name: Scalars['String']['output'];
   targetMailbox: Mailbox;
+  threads: ThreadsConnection;
 };
 
-export type ContactConnection = Connection & {
-  __typename?: 'ContactConnection';
-  edges: Array<ContactEdge>;
-  pageInfo: PageInfo;
+
+export type ContactAttachmentsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type ContactThreadsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type ContactEdge = Edge & {
   __typename?: 'ContactEdge';
   cursor?: Maybe<Scalars['String']['output']>;
   node: Contact;
+};
+
+export type ContactsConnection = Connection & {
+  __typename?: 'ContactsConnection';
+  edges: Array<ContactEdge>;
+  pageInfo: PageInfo;
 };
 
 export type Edge = {
@@ -77,7 +103,7 @@ export type EditUserInput = {
 export type Mailbox = Node & {
   __typename?: 'Mailbox';
   assignedContactsCount: Scalars['Int']['output'];
-  contacts: ContactConnection;
+  contacts: ContactsConnection;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
   threads: ThreadsConnection;
@@ -299,10 +325,12 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 /** Mapping of interface types */
 export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = {
   Connection:
-    | ( Omit<ContactConnection, 'edges'> & { edges: Array<_RefType['ContactEdge']> } & { __typename: 'ContactConnection' } )
+    | ( Omit<AttachmentsConnection, 'edges'> & { edges: Array<_RefType['AttachmentEdge']> } & { __typename: 'AttachmentsConnection' } )
+    | ( Omit<ContactsConnection, 'edges'> & { edges: Array<_RefType['ContactEdge']> } & { __typename: 'ContactsConnection' } )
     | ( Omit<ThreadsConnection, 'edges'> & { edges: Array<_RefType['ThreadEdge']> } & { __typename: 'ThreadsConnection' } )
   ;
   Edge:
+    | ( Omit<AttachmentEdge, 'node'> & { node: _RefType['Attachment'] } & { __typename: 'AttachmentEdge' } )
     | ( Omit<ContactEdge, 'node'> & { node: _RefType['Contact'] } & { __typename: 'ContactEdge' } )
     | ( Omit<ThreadEdge, 'node'> & { node: _RefType['Thread'] } & { __typename: 'ThreadEdge' } )
   ;
@@ -320,11 +348,13 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
 export type ResolversTypes = {
   AssignTargetMailboxInput: AssignTargetMailboxInput;
   Attachment: ResolverTypeWrapper<AttachmentSelectModel>;
+  AttachmentEdge: ResolverTypeWrapper<Omit<AttachmentEdge, 'node'> & { node: ResolversTypes['Attachment'] }>;
+  AttachmentsConnection: ResolverTypeWrapper<Omit<AttachmentsConnection, 'edges'> & { edges: Array<ResolversTypes['AttachmentEdge']> }>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Connection: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Connection']>;
   Contact: ResolverTypeWrapper<ContactSelectModel>;
-  ContactConnection: ResolverTypeWrapper<Omit<ContactConnection, 'edges'> & { edges: Array<ResolversTypes['ContactEdge']> }>;
   ContactEdge: ResolverTypeWrapper<Omit<ContactEdge, 'node'> & { node: ResolversTypes['Contact'] }>;
+  ContactsConnection: ResolverTypeWrapper<Omit<ContactsConnection, 'edges'> & { edges: Array<ResolversTypes['ContactEdge']> }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   Edge: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Edge']>;
   EditUserInput: EditUserInput;
@@ -353,11 +383,13 @@ export type ResolversTypes = {
 export type ResolversParentTypes = {
   AssignTargetMailboxInput: AssignTargetMailboxInput;
   Attachment: AttachmentSelectModel;
+  AttachmentEdge: Omit<AttachmentEdge, 'node'> & { node: ResolversParentTypes['Attachment'] };
+  AttachmentsConnection: Omit<AttachmentsConnection, 'edges'> & { edges: Array<ResolversParentTypes['AttachmentEdge']> };
   Boolean: Scalars['Boolean']['output'];
   Connection: ResolversInterfaceTypes<ResolversParentTypes>['Connection'];
   Contact: ContactSelectModel;
-  ContactConnection: Omit<ContactConnection, 'edges'> & { edges: Array<ResolversParentTypes['ContactEdge']> };
   ContactEdge: Omit<ContactEdge, 'node'> & { node: ResolversParentTypes['Contact'] };
+  ContactsConnection: Omit<ContactsConnection, 'edges'> & { edges: Array<ResolversParentTypes['ContactEdge']> };
   DateTime: Scalars['DateTime']['output'];
   Edge: ResolversInterfaceTypes<ResolversParentTypes>['Edge'];
   EditUserInput: EditUserInput;
@@ -390,23 +422,31 @@ export type AttachmentResolvers<ContextType = Context, ParentType extends Resolv
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type AttachmentEdgeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AttachmentEdge'] = ResolversParentTypes['AttachmentEdge']> = {
+  cursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  node?: Resolver<ResolversTypes['Attachment'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type AttachmentsConnectionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AttachmentsConnection'] = ResolversParentTypes['AttachmentsConnection']> = {
+  edges?: Resolver<Array<ResolversTypes['AttachmentEdge']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type ConnectionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Connection'] = ResolversParentTypes['Connection']> = {
-  __resolveType: TypeResolveFn<'ContactConnection' | 'ThreadsConnection', ParentType, ContextType>;
+  __resolveType: TypeResolveFn<'AttachmentsConnection' | 'ContactsConnection' | 'ThreadsConnection', ParentType, ContextType>;
 };
 
 export type ContactResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Contact'] = ResolversParentTypes['Contact']> = {
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  attachments?: Resolver<ResolversTypes['AttachmentsConnection'], ParentType, ContextType, Partial<ContactAttachmentsArgs>>;
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   messages?: Resolver<Array<ResolversTypes['Message']>, ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   targetMailbox?: Resolver<ResolversTypes['Mailbox'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
-export type ContactConnectionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ContactConnection'] = ResolversParentTypes['ContactConnection']> = {
-  edges?: Resolver<Array<ResolversTypes['ContactEdge']>, ParentType, ContextType>;
-  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+  threads?: Resolver<ResolversTypes['ThreadsConnection'], ParentType, ContextType, Partial<ContactThreadsArgs>>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -416,12 +456,18 @@ export type ContactEdgeResolvers<ContextType = Context, ParentType extends Resol
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type ContactsConnectionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ContactsConnection'] = ResolversParentTypes['ContactsConnection']> = {
+  edges?: Resolver<Array<ResolversTypes['ContactEdge']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
   name: 'DateTime';
 }
 
 export type EdgeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Edge'] = ResolversParentTypes['Edge']> = {
-  __resolveType: TypeResolveFn<'ContactEdge' | 'ThreadEdge', ParentType, ContextType>;
+  __resolveType: TypeResolveFn<'AttachmentEdge' | 'ContactEdge' | 'ThreadEdge', ParentType, ContextType>;
 };
 
 export interface FileScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['File'], any> {
@@ -430,7 +476,7 @@ export interface FileScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
 
 export type MailboxResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mailbox'] = ResolversParentTypes['Mailbox']> = {
   assignedContactsCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  contacts?: Resolver<ResolversTypes['ContactConnection'], ParentType, ContextType, Partial<MailboxContactsArgs>>;
+  contacts?: Resolver<ResolversTypes['ContactsConnection'], ParentType, ContextType, Partial<MailboxContactsArgs>>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   threads?: Resolver<ResolversTypes['ThreadsConnection'], ParentType, ContextType, Partial<MailboxThreadsArgs>>;
@@ -521,10 +567,12 @@ export type UserResolvers<ContextType = Context, ParentType extends ResolversPar
 
 export type Resolvers<ContextType = Context> = {
   Attachment?: AttachmentResolvers<ContextType>;
+  AttachmentEdge?: AttachmentEdgeResolvers<ContextType>;
+  AttachmentsConnection?: AttachmentsConnectionResolvers<ContextType>;
   Connection?: ConnectionResolvers<ContextType>;
   Contact?: ContactResolvers<ContextType>;
-  ContactConnection?: ContactConnectionResolvers<ContextType>;
   ContactEdge?: ContactEdgeResolvers<ContextType>;
+  ContactsConnection?: ContactsConnectionResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   Edge?: EdgeResolvers<ContextType>;
   File?: GraphQLScalarType;
