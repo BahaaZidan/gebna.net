@@ -31,6 +31,8 @@ seedingApp.post("/raw-emails", async (c) => {
 		recipientUsername:
 			typeof body.recipientUsername === "string" ? body.recipientUsername : undefined,
 		recipientEmail: typeof body.recipientEmail === "string" ? body.recipientEmail : undefined,
+		limit: typeof body.limit === "number" ? body.limit : undefined,
+		offset: typeof body.offset === "number" ? body.offset : undefined,
 	});
 
 	return c.json({ ok: true, result });

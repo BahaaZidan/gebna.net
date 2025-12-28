@@ -64,7 +64,12 @@
 
 ### Beyond v0.5
 
+- [ ] Dataloaders everywhere
 - [ ] Database indexing based on the queries web ui is using
+
+### v0.6
+
+- [ ] Outbound
 
 ### Beyond v1
 

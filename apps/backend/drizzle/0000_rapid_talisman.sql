@@ -1,15 +1,16 @@
 CREATE TABLE `attachment` (
 	`id` text PRIMARY KEY NOT NULL,
-	`ownerId` text NOT NULL,
-	`threadId` text NOT NULL,
-	`messageId` text NOT NULL,
-	`messageFrom` text,
+	`ownerId` text,
+	`threadId` text,
+	`messageId` text,
+	`messageFrom` text COLLATE NOCASE NOT NULL,
 	`storageKey` text NOT NULL,
 	`sizeInBytes` integer NOT NULL,
 	`fileName` text,
 	`mimeType` text,
 	`disposition` text,
 	`contentId` text,
+	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
 	FOREIGN KEY (`threadId`) REFERENCES `thread`(`id`) ON UPDATE no action ON DELETE set null,
 	FOREIGN KEY (`messageId`) REFERENCES `message`(`id`) ON UPDATE no action ON DELETE set null
@@ -20,7 +21,7 @@ CREATE INDEX `attachment_threadId_idx` ON `attachment` (`threadId`);--> statemen
 CREATE UNIQUE INDEX `attachment_storageKey_uniq` ON `attachment` (`storageKey`);--> statement-breakpoint
 CREATE TABLE `contact` (
 	`id` text PRIMARY KEY NOT NULL,
-	`address` text NOT NULL,
+	`address` text COLLATE NOCASE NOT NULL,
 	`ownerId` text NOT NULL,
 	`targetMailboxId` text NOT NULL,
 	`name` text NOT NULL,
@@ -45,7 +46,7 @@ CREATE INDEX `mailbox_user_id` ON `mailbox` (`userId`);--> statement-breakpoint
 CREATE INDEX `mailbox_user_id_type` ON `mailbox` (`userId`,`type`);--> statement-breakpoint
 CREATE TABLE `message` (
 	`id` text PRIMARY KEY NOT NULL,
-	`from` text NOT NULL,
+	`from` text COLLATE NOCASE NOT NULL,
 	`ownerId` text NOT NULL,
 	`threadId` text NOT NULL,
 	`mailboxId` text NOT NULL,
@@ -83,9 +84,20 @@ CREATE TABLE `session` (
 	FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE TABLE `thread_participant` (
+	`ownerId` text NOT NULL,
+	`threadId` text NOT NULL,
+	`address` text COLLATE NOCASE NOT NULL,
+	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`threadId`) REFERENCES `thread`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `uniq_thread_participant` ON `thread_participant` (`ownerId`,`threadId`,`address`);--> statement-breakpoint
+CREATE INDEX `idx_thread_participant_owner_address` ON `thread_participant` (`ownerId`,`address`,`threadId`);--> statement-breakpoint
+CREATE INDEX `idx_thread_participant_thread` ON `thread_participant` (`ownerId`,`threadId`);--> statement-breakpoint
 CREATE TABLE `thread` (
 	`id` text PRIMARY KEY NOT NULL,
-	`firstMessageFrom` text NOT NULL,
+	`firstMessageFrom` text COLLATE NOCASE NOT NULL,
 	`ownerId` text NOT NULL,
 	`mailboxId` text NOT NULL,
 	`mailboxType` text NOT NULL,

@@ -6,10 +6,17 @@ import {
 	AttachmentInsertModel,
 	getDB,
 	MailboxSelectModel,
+	ThreadParticipantInsertModel,
 	ThreadSelectModel,
 	TransactionInstance,
 } from "$lib/db";
-import { attachmentTable, contactTable, messageTable, threadTable } from "$lib/db/schema";
+import {
+	attachmentTable,
+	contactTable,
+	messageTable,
+	threadParticipantTable,
+	threadTable,
+} from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
 import { extractLocalPart, resolveAvatar } from "$lib/utils/email";
 import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
@@ -81,20 +88,24 @@ export async function emailHandler(
 			unseen,
 		});
 
-		const createdMessageId = ulid();
+		const to = parsedEmail.to?.map((a) => a.address).filter(Boolean) || [];
+		const cc = parsedEmail.cc?.map((a) => a.address).filter(Boolean) || [];
+		const bcc = parsedEmail.bcc?.map((a) => a.address).filter(Boolean) || [];
+		const replyTo = parsedEmail.replyTo?.map((a) => a.address).filter(Boolean) || [];
 
+		const createdMessageId = ulid();
 		await tx.insert(messageTable).values({
 			id: createdMessageId,
 			from: envelope.from,
 			mailboxId: targetMailboxId,
 			ownerId: recipientUser.id,
 			threadId: thread.id,
-			to: parsedEmail.to?.map((a) => a.address).filter(Boolean),
-			cc: parsedEmail.cc?.map((a) => a.address).filter(Boolean),
-			bcc: parsedEmail.bcc?.map((a) => a.address).filter(Boolean),
+			to,
+			cc,
+			bcc,
+			replyTo,
 			subject: parsedEmail.subject,
 			messageId: parsedEmail.messageId,
-			replyTo: parsedEmail.replyTo?.map((a) => a.address).filter(Boolean),
 			references: parsedEmail.references,
 			inReplyTo: parsedEmail.inReplyTo,
 			bodyHTML: normalizedBody.htmlDocument,
@@ -103,6 +114,27 @@ export async function emailHandler(
 			sizeInBytes: envelope.rawSize,
 			unseen,
 		});
+
+		const participantAddresses = new Set<string>([
+			envelope.from,
+			...to,
+			...cc,
+			...bcc,
+			...replyTo,
+		]);
+
+		tx.insert(threadParticipantTable)
+			.values(
+				Array.from(participantAddresses).map(
+					(address) =>
+						({
+							address,
+							ownerId: recipientUser.id,
+							threadId: thread.id,
+						}) satisfies ThreadParticipantInsertModel
+				)
+			)
+			.onConflictDoNothing();
 
 		if (parsedEmail.attachments.length) {
 			const attachmentsToInsert = await Promise.all(

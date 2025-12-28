@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "851d675e-0770-4033-8b01-6329fa8ae065",
+  "id": "5149d6b0-117f-4531-9713-a7bf82f7e132",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "attachment": {
@@ -18,28 +18,28 @@
           "name": "ownerId",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "threadId": {
           "name": "threadId",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "messageId": {
           "name": "messageId",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "messageFrom": {
           "name": "messageFrom",
-          "type": "text",
+          "type": "text COLLATE NOCASE",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "storageKey": {
@@ -83,6 +83,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%s','now'))"
         }
       },
       "indexes": {
@@ -165,7 +173,7 @@
         },
         "address": {
           "name": "address",
-          "type": "text",
+          "type": "text COLLATE NOCASE",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -344,7 +352,7 @@
         },
         "from": {
           "name": "from",
-          "type": "text",
+          "type": "text COLLATE NOCASE",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -622,6 +630,91 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "thread_participant": {
+      "name": "thread_participant",
+      "columns": {
+        "ownerId": {
+          "name": "ownerId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "threadId": {
+          "name": "threadId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text COLLATE NOCASE",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uniq_thread_participant": {
+          "name": "uniq_thread_participant",
+          "columns": [
+            "ownerId",
+            "threadId",
+            "address"
+          ],
+          "isUnique": true
+        },
+        "idx_thread_participant_owner_address": {
+          "name": "idx_thread_participant_owner_address",
+          "columns": [
+            "ownerId",
+            "address",
+            "threadId"
+          ],
+          "isUnique": false
+        },
+        "idx_thread_participant_thread": {
+          "name": "idx_thread_participant_thread",
+          "columns": [
+            "ownerId",
+            "threadId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "thread_participant_ownerId_user_id_fk": {
+          "name": "thread_participant_ownerId_user_id_fk",
+          "tableFrom": "thread_participant",
+          "tableTo": "user",
+          "columnsFrom": [
+            "ownerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "thread_participant_threadId_thread_id_fk": {
+          "name": "thread_participant_threadId_thread_id_fk",
+          "tableFrom": "thread_participant",
+          "tableTo": "thread",
+          "columnsFrom": [
+            "threadId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "thread": {
       "name": "thread",
       "columns": {
@@ -634,7 +727,7 @@
         },
         "firstMessageFrom": {
           "name": "firstMessageFrom",
-          "type": "text",
+          "type": "text COLLATE NOCASE",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false

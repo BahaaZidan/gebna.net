@@ -1,11 +1,17 @@
 import { v } from "@gebna/validation";
 import { editUserSchema } from "@gebna/validation/identity";
 import { AwsClient } from "aws4fetch";
-import { and, count, eq, gt } from "drizzle-orm";
+import { and, count, desc, eq, gt, lt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
 
 import { searchMessages as searchMessagesDb } from "$lib/db";
-import { contactTable, messageTable, threadTable, userTable } from "$lib/db/schema";
+import {
+	contactTable,
+	messageTable,
+	threadParticipantTable,
+	threadTable,
+	userTable,
+} from "$lib/db/schema";
 
 import type { Resolvers } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
@@ -284,11 +290,73 @@ export const resolvers: Resolvers = {
 			});
 			return mailbox!;
 		},
-		messages: async (parent, _, { db }) => {
+		messages: async (parent, _, { db, session }) => {
+			if (!session) return [];
 			const messages = await db.query.messageTable.findMany({
-				where: (t, { eq }) => eq(t.from, parent.address),
+				where: (t, { eq, and }) => and(eq(t.ownerId, session.userId), eq(t.from, parent.address)),
 			});
 			return messages;
+		},
+		threads: async (parent, args, { db }) => {
+			const pageSize = args.first || 30;
+			const cursor = args.after;
+
+			const threadsPlusOne = await db
+				.select({ thread: threadTable })
+				.from(threadTable)
+				.innerJoin(
+					threadParticipantTable,
+					and(
+						eq(threadParticipantTable.ownerId, threadTable.ownerId),
+						eq(threadParticipantTable.threadId, threadTable.id),
+						eq(threadParticipantTable.address, parent.address)
+					)
+				)
+				.where(
+					and(
+						eq(threadTable.ownerId, parent.ownerId),
+						// TODO: pagination cursor is based on `id` while ordering is by `lastMessageAt`.
+						// This can theoretically cause skips/duplicates if the two diverge.
+						// Revisit with a composite cursor if this becomes an issue.
+						cursor ? lt(threadTable.id, fromGlobalId(cursor).id) : undefined
+					)
+				)
+				.orderBy(desc(threadTable.lastMessageAt))
+				.limit(pageSize + 1);
+
+			const threads = threadsPlusOne.slice(0, pageSize).map((r) => r.thread);
+
+			return {
+				edges: threads.map((node) => ({ node, cursor: toGlobalId("Thread", node.id) })),
+				pageInfo: {
+					hasNextPage: threadsPlusOne.length > threads.length,
+					endCursor: threads.length ? toGlobalId("Thread", threads[threads.length - 1].id) : null,
+				},
+			};
+		},
+		attachments: async (parent, args, { db }) => {
+			const pageSize = args.first || 30;
+			const cursor = args.after;
+			const attachmentsPlusOne = await db.query.attachmentTable.findMany({
+				where: (t, { eq, and, lt }) =>
+					and(
+						eq(t.messageFrom, parent.address),
+						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
+					),
+				orderBy: (t, { desc }) => desc(t.createdAt),
+				limit: pageSize + 1,
+			});
+			const attachments = attachmentsPlusOne.slice(0, pageSize);
+
+			return {
+				edges: attachments.map((node) => ({ node, cursor: toGlobalId("Attachment", node.id) })),
+				pageInfo: {
+					hasNextPage: attachmentsPlusOne.length > attachments.length,
+					endCursor: attachments.length
+						? toGlobalId("Attachment", attachments[attachments.length - 1].id)
+						: null,
+				},
+			};
 		},
 	},
 	Attachment: {
