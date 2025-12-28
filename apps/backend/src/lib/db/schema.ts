@@ -171,15 +171,16 @@ export const attachmentTable = sqliteTable(
 	"attachment",
 	{
 		id: text().primaryKey(),
+		ownerId: text()
+			.notNull()
+			.references(() => userTable.id, { onDelete: "set null" }),
 		threadId: text()
 			.notNull()
 			.references(() => threadTable.id, { onDelete: "set null" }),
 		messageId: text()
 			.notNull()
 			.references(() => messageTable.id, { onDelete: "set null" }),
-		ownerId: text()
-			.notNull()
-			.references(() => userTable.id, { onDelete: "set null" }),
+		messageFrom: text(),
 		storageKey: text().notNull(),
 		sizeInBytes: integer().notNull(),
 		fileName: text(),

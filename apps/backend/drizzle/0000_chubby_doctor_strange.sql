@@ -1,21 +1,23 @@
 CREATE TABLE `attachment` (
 	`id` text PRIMARY KEY NOT NULL,
+	`ownerId` text NOT NULL,
 	`threadId` text NOT NULL,
 	`messageId` text NOT NULL,
-	`ownerId` text NOT NULL,
+	`messageFrom` text,
 	`storageKey` text NOT NULL,
 	`sizeInBytes` integer NOT NULL,
 	`fileName` text,
 	`mimeType` text,
 	`disposition` text,
 	`contentId` text,
-	FOREIGN KEY (`threadId`) REFERENCES `thread`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`messageId`) REFERENCES `message`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`threadId`) REFERENCES `thread`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`messageId`) REFERENCES `message`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
 CREATE INDEX `attachment_messageId_idx` ON `attachment` (`messageId`);--> statement-breakpoint
 CREATE INDEX `attachment_threadId_idx` ON `attachment` (`threadId`);--> statement-breakpoint
+CREATE UNIQUE INDEX `attachment_storageKey_uniq` ON `attachment` (`storageKey`);--> statement-breakpoint
 CREATE TABLE `contact` (
 	`id` text PRIMARY KEY NOT NULL,
 	`address` text NOT NULL,
@@ -86,12 +88,14 @@ CREATE TABLE `thread` (
 	`firstMessageFrom` text NOT NULL,
 	`ownerId` text NOT NULL,
 	`mailboxId` text NOT NULL,
+	`mailboxType` text NOT NULL,
 	`unseenCount` integer NOT NULL,
 	`title` text,
 	`snippet` text,
 	`lastMessageAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`firstMessageId` text,
 	`firstMessageSubject` text,
+	`trashAt` integer,
 	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`mailboxId`) REFERENCES `mailbox`(`id`) ON UPDATE no action ON DELETE cascade
 );
@@ -106,4 +110,34 @@ CREATE TABLE `user` (
 	`avatarPlaceholder` text NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `user_username_unique` ON `user` (`username`);
+CREATE UNIQUE INDEX `user_username_unique` ON `user` (`username`);--> statement-breakpoint
+CREATE VIRTUAL TABLE message_fts USING fts5(
+  messageId UNINDEXED,
+  ownerId   UNINDEXED,
+  mailboxId UNINDEXED,
+  threadId  UNINDEXED,
+  createdAt UNINDEXED,
+  subject,
+  bodyText,
+  tokenize = 'unicode61'
+);
+--> statement-breakpoint
+CREATE TRIGGER message_fts_ai AFTER INSERT ON message BEGIN
+  INSERT INTO message_fts(messageId, ownerId, mailboxId, threadId, createdAt, subject, bodyText)
+  VALUES (new.id, new.ownerId, new.mailboxId, new.threadId, new.createdAt, coalesce(new.subject,''), coalesce(new.bodyText,''));
+END;
+--> statement-breakpoint
+CREATE TRIGGER message_fts_ad AFTER DELETE ON message BEGIN
+  DELETE FROM message_fts WHERE messageId = old.id;
+END;
+--> statement-breakpoint
+CREATE TRIGGER message_fts_au AFTER UPDATE OF subject, bodyText, ownerId, mailboxId, threadId, createdAt ON message BEGIN
+  UPDATE message_fts
+  SET ownerId   = new.ownerId,
+      mailboxId = new.mailboxId,
+      threadId  = new.threadId,
+      createdAt = new.createdAt,
+      subject   = coalesce(new.subject,''),
+      bodyText  = coalesce(new.bodyText,'')
+  WHERE messageId = new.id;
+END;

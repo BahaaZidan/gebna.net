@@ -162,6 +162,7 @@ export async function seedRawEmails(
 							id: attachmentId,
 							ownerId: recipient.id,
 							messageId,
+							messageFrom: seed.fromAddress,
 							threadId: thread.id,
 							storageKey,
 							sizeInBytes: body.byteLength,

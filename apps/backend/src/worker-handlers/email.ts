@@ -118,8 +118,9 @@ export async function emailHandler(
 					return {
 						id: createdAttachmentId,
 						ownerId: recipientUser.id,
-						messageId: createdMessageId,
 						threadId: thread.id,
+						messageId: createdMessageId,
+						messageFrom: envelope.from,
 						storageKey,
 						sizeInBytes: body.byteLength,
 						fileName: attachment.filename,
