@@ -21,6 +21,7 @@ node_modules/
 .env.local
 .env.prod
 .dev.vars
+.prod.vars
 
 # logs
 logs/
@@ -36,6 +37,3 @@ lerna-debug.log*
 *.eml
 
 local.db*
-
-blablabla
-blabla

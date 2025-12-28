@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "df919854-261d-4755-a0b9-06e29679c683",
+  "id": "851d675e-0770-4033-8b01-6329fa8ae065",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "attachment": {
@@ -11,6 +11,13 @@
           "name": "id",
           "type": "text",
           "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ownerId": {
+          "name": "ownerId",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -28,11 +35,11 @@
           "notNull": true,
           "autoincrement": false
         },
-        "ownerId": {
-          "name": "ownerId",
+        "messageFrom": {
+          "name": "messageFrom",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "storageKey": {
@@ -92,9 +99,29 @@
             "threadId"
           ],
           "isUnique": false
+        },
+        "attachment_storageKey_uniq": {
+          "name": "attachment_storageKey_uniq",
+          "columns": [
+            "storageKey"
+          ],
+          "isUnique": true
         }
       },
       "foreignKeys": {
+        "attachment_ownerId_user_id_fk": {
+          "name": "attachment_ownerId_user_id_fk",
+          "tableFrom": "attachment",
+          "tableTo": "user",
+          "columnsFrom": [
+            "ownerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "attachment_threadId_thread_id_fk": {
           "name": "attachment_threadId_thread_id_fk",
           "tableFrom": "attachment",
@@ -105,7 +132,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "attachment_messageId_message_id_fk": {
@@ -118,20 +145,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "attachment_ownerId_user_id_fk": {
-          "name": "attachment_ownerId_user_id_fk",
-          "tableFrom": "attachment",
-          "tableTo": "user",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -639,6 +653,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "mailboxType": {
+          "name": "mailboxType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "unseenCount": {
           "name": "unseenCount",
           "type": "integer",
@@ -678,6 +699,13 @@
         "firstMessageSubject": {
           "name": "firstMessageSubject",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "trashAt": {
+          "name": "trashAt",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
