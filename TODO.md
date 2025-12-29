@@ -53,7 +53,7 @@
 ### v0.5
 
 - [x] Every address gets a dedicated page where a user can see all the email threads sent/recieved between the address and the user. You can also see the files/attachments. Finally, you're able to change where their future emails go.
-- [ ] The user should be able edit the title of a thread
+- [x] The user should be able edit the title of a thread
 - [ ] Attachments standalone page. Search per filetype or sender across all attachments tied to your account
 - [ ] Attachment previews
 - [ ] Read together. (batch mark all the unseen messages in your important mailbox)
@@ -91,3 +91,4 @@
 - [ ] Labels
 - [ ] Onboarding flow
 - [ ] Make sure bodyText/plainBody extraction is adequite. I've seen a few records with empty bodyText even though bodyHTML is defined.
+- [ ] Use a scalar to automatically unwrap input IDs on the schema level so that you don't have to litter resolver code with `fromGlobalId(args.id).id`
