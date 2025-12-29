@@ -15,6 +15,9 @@
 
 	const ThreadDetails = graphql(`
 		query ThreadDetails($id: ID!) {
+			viewer {
+				...NavbarFragment
+			}
 			node(id: $id) {
 				__typename
 				... on Thread {
@@ -103,7 +106,7 @@
 	});
 </script>
 
-<Navbar>
+<Navbar viewer={$threadDetailsQuery.data?.viewer}>
 	{#snippet prepend()}
 		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
 			<ChevronLeftIcon />

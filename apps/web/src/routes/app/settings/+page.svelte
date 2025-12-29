@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { editUserSchema } from "@gebna/validation/identity";
-	import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
 	import { getContextClient, mutationStore, queryStore } from "@urql/svelte";
 	import { defaults, fileProxy, superForm } from "sveltekit-superforms";
 	import { valibot } from "sveltekit-superforms/adapters";
@@ -15,6 +14,7 @@
 	const UserSettingsPageQuery = graphql(`
 		query UserSettingsPageQuery {
 			viewer {
+				...NavbarFragment
 				id
 				username
 				name
@@ -59,11 +59,11 @@
 			}
 		},
 	});
-	let { message, constraints, form } = superform;
+	let { constraints, form } = superform;
 	const file = fileProxy(form, "avatar");
 </script>
 
-<Navbar />
+<Navbar {viewer} />
 <Container>
 	<div class="divider">Profile Settings</div>
 	<form

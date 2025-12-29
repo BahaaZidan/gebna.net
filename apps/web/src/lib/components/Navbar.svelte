@@ -10,35 +10,28 @@
 	import SettingsIcon from "@lucide/svelte/icons/settings";
 	import StarIcon from "@lucide/svelte/icons/star";
 	import TrashIcon from "@lucide/svelte/icons/trash-2";
-	import { queryStore } from "@urql/svelte";
 	import type { Component, Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
 	import type { Pathname } from "$app/types";
 
 	import { deleteAccessToken } from "$lib/authentication";
-	import { urqlClient } from "$lib/graphql";
-	import { graphql } from "$lib/graphql/generated";
+	import { graphql, useFragment, type FragmentType } from "$lib/graphql/generated";
 
 	import Search from "./Search.svelte";
 
-	let { prepend }: { prepend?: Snippet } = $props();
-
-	const NavbarQuery = graphql(`
-		query NavbarQuery {
-			viewer {
-				id
-				username
-				name
-				avatar
-			}
+	const NavbarFragment = graphql(`
+		fragment NavbarFragment on User {
+			id
+			username
+			name
+			avatar
 		}
 	`);
 
-	const navbarQuery = queryStore({
-		client: urqlClient,
-		query: NavbarQuery,
-	});
+	let props: { viewer?: FragmentType<typeof NavbarFragment> | null; prepend?: Snippet } = $props();
+
+	const viewer = $derived(useFragment(NavbarFragment, props.viewer));
 
 	const resolvePath = resolve as (route: Pathname) => string;
 </script>
@@ -55,7 +48,7 @@
 
 <div class="navbar bg-base-100 px-28 shadow-sm">
 	<div class="navbar-start">
-		{@render prepend?.()}
+		{@render props.prepend?.()}
 		<Search />
 	</div>
 	<div class="navbar-center">
@@ -86,8 +79,7 @@
 		</div>
 	</div>
 	<div class="navbar-end">
-		{#if $navbarQuery.data?.viewer?.username}
-			{@const viewer = $navbarQuery.data.viewer}
+		{#if viewer}
 			<div class="dropdown dropdown-center">
 				<div tabindex="0" role="button" class="avatar hover:cursor-pointer">
 					<div class="size-12 rounded-full">
