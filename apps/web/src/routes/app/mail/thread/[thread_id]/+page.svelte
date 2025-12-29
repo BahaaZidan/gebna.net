@@ -85,12 +85,28 @@
 			}
 		}
 	`);
-
 	const markThreadSeen = () => {
 		mutationStore({
 			client: urqlClient,
 			query: MarkThreadSeenMutation,
 			variables: { id: page.params.thread_id! },
+		});
+	};
+
+	const EditThreadMutation = graphql(`
+		mutation EditThreadMutation($input: EditThreadInput!) {
+			editThread(input: $input) {
+				id
+				title
+			}
+		}
+	`);
+	const editThreadTitle = (title?: string | null) => {
+		if (!title) return;
+		mutationStore({
+			client: urqlClient,
+			query: EditThreadMutation,
+			variables: { input: { id: page.params.thread_id!, title } },
 		});
 	};
 
@@ -116,7 +132,16 @@
 </Navbar>
 <Container>
 	{#if thread}
-		<h1 class="mb-2 text-5xl font-bold">{thread.title}</h1>
+		<button
+			class="mb-2 text-4xl font-semibold hover:cursor-pointer"
+			onclick={() => {
+				if (!thread.title) return;
+				let newTitle = prompt("Edit Thread", thread.title);
+				editThreadTitle(newTitle);
+			}}
+		>
+			{thread.title}
+		</button>
 		{#each thread.messages as message (message.id)}
 			<div class="flex w-full gap-2 p-4">
 				<Avatar src={message.from.avatar} alt={message.from.name} />
@@ -147,7 +172,7 @@
 						<div class="flex flex-col gap-1">
 							<h4 class="font-bold">Attachments</h4>
 							{#each message.attachments as attachment (attachment.id)}
-								<a href={attachment.url} class="badge badge-neutral">
+								<a href={attachment.url} class="badge p-3.5 badge-neutral">
 									<FileIcon class="size-5" />
 									<span class="line-clamp-1">{attachment.fileName}</span>
 								</a>
