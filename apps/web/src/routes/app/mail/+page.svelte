@@ -14,6 +14,7 @@
 	const ImportantPageQuery = graphql(`
 		query ImportantPageQuery {
 			viewer {
+				...NavbarFragment
 				id
 				username
 				screenerMailbox: mailbox(type: screener) {
@@ -62,7 +63,7 @@
 	});
 </script>
 
-<Navbar />
+<Navbar viewer={$importantPageQuery.data?.viewer} />
 <Container>
 	{#if $importantPageQuery.fetching}
 		<p>Loading...</p>

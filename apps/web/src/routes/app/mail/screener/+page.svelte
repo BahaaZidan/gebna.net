@@ -9,16 +9,17 @@
 
 	import { resolve } from "$app/paths";
 
+	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 	import Container from "$lib/components/Container.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { graphql } from "$lib/graphql/generated";
 	import type { MailboxType } from "$lib/graphql/generated/graphql";
-	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 
 	const urqlClient = getContextClient();
 	const ScreenerPageQuery = graphql(`
 		query ScreenerPageQuery {
 			viewer {
+				...NavbarFragment
 				id
 				screenerMailbox: mailbox(type: screener) {
 					id
@@ -73,7 +74,7 @@
 	};
 </script>
 
-<Navbar>
+<Navbar viewer={$screenerPageQuery.data?.viewer}>
 	{#snippet prepend()}
 		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
 			<ChevronLeftIcon />

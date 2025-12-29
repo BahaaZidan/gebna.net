@@ -12,8 +12,8 @@
 	const TransactionalPageQuery = graphql(`
 		query TransactionalPageQuery {
 			viewer {
+				...NavbarFragment
 				id
-				username
 				transactionalMailbox: mailbox(type: transactional) {
 					id
 					type
@@ -43,7 +43,7 @@
 	const transactionalMailbox = $derived($transactionalPageQuery.data?.viewer?.transactionalMailbox);
 </script>
 
-<Navbar>
+<Navbar viewer={$transactionalPageQuery.data?.viewer}>
 	{#snippet prepend()}
 		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
 			<ChevronLeftIcon />

@@ -12,8 +12,8 @@
 	const TrashPageQuery = graphql(`
 		query TrashPageQuery {
 			viewer {
+				...NavbarFragment
 				id
-				username
 				trashMailbox: mailbox(type: trash) {
 					id
 					type
@@ -43,7 +43,7 @@
 	const trashMailbox = $derived($trashPageQuery.data?.viewer?.trashMailbox);
 </script>
 
-<Navbar>
+<Navbar viewer={$trashPageQuery.data?.viewer}>
 	{#snippet prepend()}
 		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
 			<ChevronLeftIcon />

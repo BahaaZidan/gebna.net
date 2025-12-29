@@ -4,18 +4,18 @@
 
 	import { resolve } from "$app/paths";
 
+	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 	import Container from "$lib/components/Container.svelte";
 	import Avatar from "$lib/components/mail/Avatar.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/date";
 	import { graphql } from "$lib/graphql/generated";
-	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 
 	const NewsPageQuery = graphql(`
 		query NewsPageQuery {
 			viewer {
+				...NavbarFragment
 				id
-				username
 				newsMailbox: mailbox(type: news) {
 					id
 					type
@@ -58,7 +58,7 @@
 	const newsMailbox = $derived($newsPageQuery.data?.viewer?.newsMailbox);
 </script>
 
-<Navbar>
+<Navbar viewer={$newsPageQuery.data?.viewer}>
 	{#snippet prepend()}
 		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
 			<ChevronLeftIcon />
