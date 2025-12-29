@@ -22,6 +22,7 @@ const config: IGraphQLConfig = {
 						scalars: {
 							DateTime: "string",
 							URL: "string",
+							EmailAddress: "string",
 						},
 					},
 				},
