@@ -5,7 +5,7 @@
 	import NewspaperIcon from "@lucide/svelte/icons/newspaper";
 	import ThumbsDownIcon from "@lucide/svelte/icons/thumbs-down";
 	import ThumbsUpIcon from "@lucide/svelte/icons/thumbs-up";
-	import { getContextClient, mutationStore, queryStore } from "@urql/svelte";
+	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 
@@ -13,7 +13,7 @@
 	import Container from "$lib/components/Container.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { graphql } from "$lib/graphql/generated";
-	import type { MailboxType } from "$lib/graphql/generated/graphql";
+	import { assignTargetMailbox } from "$lib/graphql/mutations";
 
 	const urqlClient = getContextClient();
 	const ScreenerPageQuery = graphql(`
@@ -51,27 +51,6 @@
 		query: ScreenerPageQuery,
 	});
 	const screenerMailbox = $derived($screenerPageQuery.data?.viewer?.screenerMailbox);
-
-	const AssignTargetMailboxMutation = graphql(`
-		mutation AssignTargetMailboxMutation($input: AssignTargetMailboxInput!) {
-			assignTargetMailbox(input: $input) {
-				id
-				name
-				avatar
-				address
-				targetMailbox {
-					id
-				}
-			}
-		}
-	`);
-	const assignTargetMailbox = (contactID: string, targetMailboxType: MailboxType) => () => {
-		mutationStore({
-			client: urqlClient,
-			query: AssignTargetMailboxMutation,
-			variables: { input: { contactID, targetMailboxType } },
-		});
-	};
 </script>
 
 <Navbar viewer={$screenerPageQuery.data?.viewer}>
@@ -100,7 +79,7 @@
 					<div class="join">
 						<button
 							class="btn join-item btn-success"
-							onclick={assignTargetMailbox(node.id, "important")}
+							onclick={assignTargetMailbox(urqlClient, node.id, "important")}
 						>
 							<ThumbsUpIcon /> Yes
 						</button>
@@ -112,7 +91,10 @@
 							<ChevronDownIcon />
 						</button>
 					</div>
-					<button class="btn btn-warning" onclick={assignTargetMailbox(node.id, "trash")}>
+					<button
+						class="btn btn-warning"
+						onclick={assignTargetMailbox(urqlClient, node.id, "trash")}
+					>
 						<ThumbsDownIcon /> No
 					</button>
 					<div class="ml-4 flex items-center gap-2">
@@ -151,10 +133,12 @@
 			style="position-anchor:--anchor-{node.id}"
 		>
 			<li>
-				<button onclick={assignTargetMailbox(node.id, "news")}><NewspaperIcon /> News</button>
+				<button onclick={assignTargetMailbox(urqlClient, node.id, "news")}>
+					<NewspaperIcon /> News
+				</button>
 			</li>
 			<li>
-				<button onclick={assignTargetMailbox(node.id, "transactional")}>
+				<button onclick={assignTargetMailbox(urqlClient, node.id, "transactional")}>
 					<ArrowRightLeftIcon /> Transactional
 				</button>
 			</li>
