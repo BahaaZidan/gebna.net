@@ -43,6 +43,7 @@ type User implements Node {
 	name: String!
 	avatar: String!
 	mailbox(type: MailboxType!): Mailbox
+	attachments(first: Int, after: String, filter: AttachmentsFilter): AttachmentsConnection!
 }
 
 type Mailbox implements Node {
@@ -124,6 +125,22 @@ type Contact implements Node {
 	attachments(first: Int, after: String): AttachmentsConnection!
 }
 
+enum AttachmentType {
+	Image
+	PDF
+	CalendarInvite
+	Document
+	Spreadsheet
+	Presentation
+	Media
+	ZIP
+}
+
+input AttachmentsFilter {
+	attachmentType: AttachmentType
+	contactAddress: EmailAddress
+}
+
 type AttachmentsConnection implements Connection {
 	pageInfo: PageInfo!
 	edges: [AttachmentEdge!]!
@@ -140,6 +157,8 @@ type Attachment implements Node {
 	mimeType: String
 	contentId: String
 	url: String
+	sizeInBytes: Int
+	createdAt: DateTime
 }
 
 interface Connection {
@@ -166,3 +185,4 @@ interface Node {
 scalar DateTime
 scalar URL
 scalar File
+scalar EmailAddress

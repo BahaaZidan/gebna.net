@@ -2,9 +2,10 @@ import { v } from "@gebna/validation";
 import { editUserSchema } from "@gebna/validation/identity";
 import { editThreadSchema } from "@gebna/validation/mail";
 import { AwsClient } from "aws4fetch";
-import { and, count, desc, eq, gt, lt } from "drizzle-orm";
-import { DateTimeResolver, URLResolver } from "graphql-scalars";
+import { and, count, desc, eq, gt, inArray, lt } from "drizzle-orm";
+import { DateTimeResolver, EmailAddressResolver, URLResolver } from "graphql-scalars";
 
+import { MIME_TYPES_BY_ATTACHMENT_TYPE } from "$lib/constant";
 import { searchMessages as searchMessagesDb } from "$lib/db";
 import {
 	contactTable,
@@ -178,6 +179,7 @@ export const resolvers: Resolvers = {
 	},
 	DateTime: DateTimeResolver,
 	URL: URLResolver,
+	EmailAddress: EmailAddressResolver,
 	User: {
 		id: (parent) => toGlobalId("User", parent.id),
 		mailbox: async (parent, args, { db }) => {
@@ -187,6 +189,34 @@ export const resolvers: Resolvers = {
 			return mailbox;
 		},
 		avatar: (parent) => parent.avatar || parent.avatarPlaceholder,
+		attachments: async (parent, args, { db }) => {
+			const pageSize = args.first || 30;
+			const cursor = args.after;
+			const attachmentsPlusOne = await db.query.attachmentTable.findMany({
+				where: (t, { eq, and, lt }) =>
+					and(
+						eq(t.ownerId, parent.id),
+						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined,
+						args.filter?.contactAddress ? eq(t.messageFrom, args.filter.contactAddress) : undefined,
+						args.filter?.attachmentType
+							? inArray(t.mimeType, MIME_TYPES_BY_ATTACHMENT_TYPE[args.filter.attachmentType])
+							: undefined
+					),
+				orderBy: (t, { desc }) => desc(t.id),
+				limit: pageSize + 1,
+			});
+			const attachments = attachmentsPlusOne.slice(0, pageSize);
+
+			return {
+				edges: attachments.map((node) => ({ node, cursor: toGlobalId("Attachment", node.id) })),
+				pageInfo: {
+					hasNextPage: attachmentsPlusOne.length > attachments.length,
+					endCursor: attachments.length
+						? toGlobalId("Attachment", attachments[attachments.length - 1].id)
+						: null,
+				},
+			};
+		},
 	},
 	Mailbox: {
 		id: (parent) => toGlobalId("Mailbox", parent.id),

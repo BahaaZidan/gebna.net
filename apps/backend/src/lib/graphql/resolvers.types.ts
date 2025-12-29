@@ -19,6 +19,7 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   DateTime: { input: Date; output: Date; }
+  EmailAddress: { input: string; output: string; }
   File: { input: any; output: any; }
   URL: { input: URL; output: URL; }
 };
@@ -31,9 +32,11 @@ export type AssignTargetMailboxInput = {
 export type Attachment = Node & {
   __typename?: 'Attachment';
   contentId?: Maybe<Scalars['String']['output']>;
+  createdAt?: Maybe<Scalars['DateTime']['output']>;
   fileName?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   mimeType?: Maybe<Scalars['String']['output']>;
+  sizeInBytes?: Maybe<Scalars['Int']['output']>;
   url?: Maybe<Scalars['String']['output']>;
 };
 
@@ -43,10 +46,25 @@ export type AttachmentEdge = Edge & {
   node: Attachment;
 };
 
+export type AttachmentType =
+  | 'CalendarInvite'
+  | 'Document'
+  | 'Image'
+  | 'Media'
+  | 'PDF'
+  | 'Presentation'
+  | 'Spreadsheet'
+  | 'ZIP';
+
 export type AttachmentsConnection = Connection & {
   __typename?: 'AttachmentsConnection';
   edges: Array<AttachmentEdge>;
   pageInfo: PageInfo;
+};
+
+export type AttachmentsFilter = {
+  attachmentType?: InputMaybe<AttachmentType>;
+  contactAddress?: InputMaybe<Scalars['EmailAddress']['input']>;
 };
 
 export type Connection = {
@@ -251,11 +269,19 @@ export type ThreadsFilter = {
 
 export type User = Node & {
   __typename?: 'User';
+  attachments: AttachmentsConnection;
   avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   mailbox?: Maybe<Mailbox>;
   name: Scalars['String']['output'];
   username: Scalars['String']['output'];
+};
+
+
+export type UserAttachmentsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AttachmentsFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -360,7 +386,9 @@ export type ResolversTypes = {
   AssignTargetMailboxInput: AssignTargetMailboxInput;
   Attachment: ResolverTypeWrapper<AttachmentSelectModel>;
   AttachmentEdge: ResolverTypeWrapper<Omit<AttachmentEdge, 'node'> & { node: ResolversTypes['Attachment'] }>;
+  AttachmentType: AttachmentType;
   AttachmentsConnection: ResolverTypeWrapper<Omit<AttachmentsConnection, 'edges'> & { edges: Array<ResolversTypes['AttachmentEdge']> }>;
+  AttachmentsFilter: AttachmentsFilter;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Connection: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Connection']>;
   Contact: ResolverTypeWrapper<ContactSelectModel>;
@@ -370,6 +398,7 @@ export type ResolversTypes = {
   Edge: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Edge']>;
   EditThreadInput: EditThreadInput;
   EditUserInput: EditUserInput;
+  EmailAddress: ResolverTypeWrapper<Scalars['EmailAddress']['output']>;
   File: ResolverTypeWrapper<Scalars['File']['output']>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
@@ -397,6 +426,7 @@ export type ResolversParentTypes = {
   Attachment: AttachmentSelectModel;
   AttachmentEdge: Omit<AttachmentEdge, 'node'> & { node: ResolversParentTypes['Attachment'] };
   AttachmentsConnection: Omit<AttachmentsConnection, 'edges'> & { edges: Array<ResolversParentTypes['AttachmentEdge']> };
+  AttachmentsFilter: AttachmentsFilter;
   Boolean: Scalars['Boolean']['output'];
   Connection: ResolversInterfaceTypes<ResolversParentTypes>['Connection'];
   Contact: ContactSelectModel;
@@ -406,6 +436,7 @@ export type ResolversParentTypes = {
   Edge: ResolversInterfaceTypes<ResolversParentTypes>['Edge'];
   EditThreadInput: EditThreadInput;
   EditUserInput: EditUserInput;
+  EmailAddress: Scalars['EmailAddress']['output'];
   File: Scalars['File']['output'];
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
@@ -428,9 +459,11 @@ export type ResolversParentTypes = {
 
 export type AttachmentResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Attachment'] = ResolversParentTypes['Attachment']> = {
   contentId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  createdAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
   fileName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   mimeType?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  sizeInBytes?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
@@ -482,6 +515,10 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
 export type EdgeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Edge'] = ResolversParentTypes['Edge']> = {
   __resolveType: TypeResolveFn<'AttachmentEdge' | 'ContactEdge' | 'ThreadEdge', ParentType, ContextType>;
 };
+
+export interface EmailAddressScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['EmailAddress'], any> {
+  name: 'EmailAddress';
+}
 
 export interface FileScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['File'], any> {
   name: 'File';
@@ -571,6 +608,7 @@ export interface UrlScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes[
 }
 
 export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
+  attachments?: Resolver<ResolversTypes['AttachmentsConnection'], ParentType, ContextType, Partial<UserAttachmentsArgs>>;
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   mailbox?: Resolver<Maybe<ResolversTypes['Mailbox']>, ParentType, ContextType, RequireFields<UserMailboxArgs, 'type'>>;
@@ -589,6 +627,7 @@ export type Resolvers<ContextType = Context> = {
   ContactsConnection?: ContactsConnectionResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   Edge?: EdgeResolvers<ContextType>;
+  EmailAddress?: GraphQLScalarType;
   File?: GraphQLScalarType;
   Mailbox?: MailboxResolvers<ContextType>;
   Message?: MessageResolvers<ContextType>;

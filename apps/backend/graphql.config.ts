@@ -27,6 +27,7 @@ const config: IGraphQLConfig = {
 							ID: "string",
 							DateTime: "Date",
 							URL: "URL",
+							EmailAddress: "string",
 						},
 						mappers: {
 							User: "$lib/db#UserSelectModel",

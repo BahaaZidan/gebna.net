@@ -15,6 +15,7 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   DateTime: { input: string; output: string; }
+  EmailAddress: { input: string; output: string; }
   File: { input: any; output: any; }
   URL: { input: string; output: string; }
 };
@@ -27,9 +28,11 @@ export type AssignTargetMailboxInput = {
 export type Attachment = Node & {
   __typename?: 'Attachment';
   contentId?: Maybe<Scalars['String']['output']>;
+  createdAt?: Maybe<Scalars['DateTime']['output']>;
   fileName?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   mimeType?: Maybe<Scalars['String']['output']>;
+  sizeInBytes?: Maybe<Scalars['Int']['output']>;
   url?: Maybe<Scalars['String']['output']>;
 };
 
@@ -39,10 +42,25 @@ export type AttachmentEdge = Edge & {
   node: Attachment;
 };
 
+export type AttachmentType =
+  | 'CalendarInvite'
+  | 'Document'
+  | 'Image'
+  | 'Media'
+  | 'PDF'
+  | 'Presentation'
+  | 'Spreadsheet'
+  | 'ZIP';
+
 export type AttachmentsConnection = Connection & {
   __typename?: 'AttachmentsConnection';
   edges: Array<AttachmentEdge>;
   pageInfo: PageInfo;
+};
+
+export type AttachmentsFilter = {
+  attachmentType?: InputMaybe<AttachmentType>;
+  contactAddress?: InputMaybe<Scalars['EmailAddress']['input']>;
 };
 
 export type Connection = {
@@ -247,11 +265,19 @@ export type ThreadsFilter = {
 
 export type User = Node & {
   __typename?: 'User';
+  attachments: AttachmentsConnection;
   avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   mailbox?: Maybe<Mailbox>;
   name: Scalars['String']['output'];
   username: Scalars['String']['output'];
+};
+
+
+export type UserAttachmentsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AttachmentsFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
