@@ -158,13 +158,14 @@ export const resolvers: Resolvers = {
 		editThread: async (_, args, { session, db }) => {
 			if (!session) return;
 			const input = v.parse(editThreadSchema, args.input);
+
 			const t = threadTable;
 			const [thread] = await db
 				.update(t)
 				.set({
 					title: input.title,
 				})
-				.where(and(eq(t.ownerId, session.userId), eq(t.id, args.input.id)))
+				.where(and(eq(t.ownerId, session.userId), eq(t.id, fromGlobalId(args.input.id).id)))
 				.returning();
 
 			return thread;
