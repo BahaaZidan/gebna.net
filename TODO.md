@@ -52,15 +52,15 @@
 
 ### v0.5
 
-- [ ] Every address gets a dedicated page where a user can see all the email threads sent/recieved between the address and the user. You can also see the files/attachments. Finally, you're able to change where their future emails go.
-- [ ] The user should be able edit the subject of a thread
+- [x] Every address gets a dedicated page where a user can see all the email threads sent/recieved between the address and the user. You can also see the files/attachments. Finally, you're able to change where their future emails go.
+- [ ] The user should be able edit the title of a thread
 - [ ] Attachments standalone page. Search per filetype or sender across all attachments tied to your account
-- [ ] The ability to ignore specific threads. (i.e. new messages from the thread will be marked as read)
 - [ ] Attachment previews
 - [ ] Read together. (batch mark all the unseen messages in your important mailbox)
 - [ ] Reply later
 - [ ] Focus & reply (a dedicated page to reply to all emails user marked as reply later)
 - [ ] Set aside
+- [ ] The ability to ignore specific threads. (i.e. new messages from the thread will be marked as read)
 
 ### Beyond v0.5
 
