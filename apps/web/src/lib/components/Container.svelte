@@ -5,7 +5,7 @@
 </script>
 
 <div
-	class="mx-auto my-10 flex w-full max-w-6xl flex-col items-center rounded-2xl bg-base-200 p-5 shadow-lg"
+	class="mx-auto my-10 flex w-full max-w-6xl flex-col items-center gap-1 rounded-2xl bg-base-200 p-5 shadow-lg"
 >
 	{@render children()}
 </div>

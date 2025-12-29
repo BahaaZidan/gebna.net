@@ -122,7 +122,12 @@
 				<Avatar src={message.from.avatar} alt={message.from.name} />
 				<div class="flex w-full flex-col gap-3">
 					<div class="flex items-center gap-1">
-						<div class="font-semibold">{message.from.name}</div>
+						<a
+							href={resolve("/app/mail/contacts/[contact_id]", { contact_id: message.from.id })}
+							class="font-semibold"
+						>
+							{message.from.name}
+						</a>
 						<div class="text-sm">{message.from.address}</div>
 						<div class="ml-auto">{formatInboxDate(message.recievedAt)}</div>
 					</div>
