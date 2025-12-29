@@ -8,6 +8,7 @@ type Mutation {
 	assignTargetMailbox(input: AssignTargetMailboxInput!): Contact
 	markThreadSeen(id: ID!): Thread
 	editUser(input: EditUserInput!): User
+	editThread(input: EditThreadInput!): Thread
 }
 
 input SearchInput {
@@ -29,6 +30,11 @@ input AssignTargetMailboxInput {
 input EditUserInput {
 	name: String
 	avatar: File
+}
+
+input EditThreadInput {
+	id: ID!
+	title: String!
 }
 
 type User implements Node {

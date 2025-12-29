@@ -91,6 +91,11 @@ export type Edge = {
   node: Node;
 };
 
+export type EditThreadInput = {
+  id: Scalars['ID']['input'];
+  title: Scalars['String']['input'];
+};
+
 export type EditUserInput = {
   avatar?: InputMaybe<Scalars['File']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
@@ -147,6 +152,7 @@ export type Message = Node & {
 export type Mutation = {
   __typename?: 'Mutation';
   assignTargetMailbox?: Maybe<Contact>;
+  editThread?: Maybe<Thread>;
   editUser?: Maybe<User>;
   markThreadSeen?: Maybe<Thread>;
 };
@@ -154,6 +160,11 @@ export type Mutation = {
 
 export type MutationAssignTargetMailboxArgs = {
   input: AssignTargetMailboxInput;
+};
+
+
+export type MutationEditThreadArgs = {
+  input: EditThreadInput;
 };
 
 

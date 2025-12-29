@@ -95,6 +95,11 @@ export type Edge = {
   node: Node;
 };
 
+export type EditThreadInput = {
+  id: Scalars['ID']['input'];
+  title: Scalars['String']['input'];
+};
+
 export type EditUserInput = {
   avatar?: InputMaybe<Scalars['File']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
@@ -151,6 +156,7 @@ export type Message = Node & {
 export type Mutation = {
   __typename?: 'Mutation';
   assignTargetMailbox?: Maybe<Contact>;
+  editThread?: Maybe<Thread>;
   editUser?: Maybe<User>;
   markThreadSeen?: Maybe<Thread>;
 };
@@ -158,6 +164,11 @@ export type Mutation = {
 
 export type MutationAssignTargetMailboxArgs = {
   input: AssignTargetMailboxInput;
+};
+
+
+export type MutationEditThreadArgs = {
+  input: EditThreadInput;
 };
 
 
@@ -357,6 +368,7 @@ export type ResolversTypes = {
   ContactsConnection: ResolverTypeWrapper<Omit<ContactsConnection, 'edges'> & { edges: Array<ResolversTypes['ContactEdge']> }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   Edge: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Edge']>;
+  EditThreadInput: EditThreadInput;
   EditUserInput: EditUserInput;
   File: ResolverTypeWrapper<Scalars['File']['output']>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
@@ -392,6 +404,7 @@ export type ResolversParentTypes = {
   ContactsConnection: Omit<ContactsConnection, 'edges'> & { edges: Array<ResolversParentTypes['ContactEdge']> };
   DateTime: Scalars['DateTime']['output'];
   Edge: ResolversInterfaceTypes<ResolversParentTypes>['Edge'];
+  EditThreadInput: EditThreadInput;
   EditUserInput: EditUserInput;
   File: Scalars['File']['output'];
   ID: Scalars['ID']['output'];
@@ -504,6 +517,7 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   assignTargetMailbox?: Resolver<Maybe<ResolversTypes['Contact']>, ParentType, ContextType, RequireFields<MutationAssignTargetMailboxArgs, 'input'>>;
+  editThread?: Resolver<Maybe<ResolversTypes['Thread']>, ParentType, ContextType, RequireFields<MutationEditThreadArgs, 'input'>>;
   editUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType, RequireFields<MutationEditUserArgs, 'input'>>;
   markThreadSeen?: Resolver<Maybe<ResolversTypes['Thread']>, ParentType, ContextType, RequireFields<MutationMarkThreadSeenArgs, 'id'>>;
 };

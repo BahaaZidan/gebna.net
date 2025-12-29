@@ -1,5 +1,6 @@
 import { v } from "@gebna/validation";
 import { editUserSchema } from "@gebna/validation/identity";
+import { editThreadSchema } from "@gebna/validation/mail";
 import { AwsClient } from "aws4fetch";
 import { and, count, desc, eq, gt, lt } from "drizzle-orm";
 import { DateTimeResolver, URLResolver } from "graphql-scalars";
@@ -153,6 +154,20 @@ export const resolvers: Resolvers = {
 				.returning();
 
 			return user;
+		},
+		editThread: async (_, args, { session, db }) => {
+			if (!session) return;
+			const input = v.parse(editThreadSchema, args.input);
+			const t = threadTable;
+			const [thread] = await db
+				.update(t)
+				.set({
+					title: input.title,
+				})
+				.where(and(eq(t.ownerId, session.userId), eq(t.id, args.input.id)))
+				.returning();
+
+			return thread;
 		},
 	},
 	Node: {
