@@ -178,7 +178,7 @@ export const attachmentTable = sqliteTable(
 		storageKey: text().notNull(),
 		sizeInBytes: integer().notNull(),
 		fileName: text(),
-		mimeType: text(),
+		mimeType: text().notNull(),
 		disposition: text().$type<"attachment" | "inline">(),
 		contentId: text(),
 		createdAt: integer({ mode: "timestamp" })
