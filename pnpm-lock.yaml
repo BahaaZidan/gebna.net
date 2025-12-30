@@ -153,6 +153,9 @@ importers:
       '@urql/exchange-refocus':
         specifier: ^2.0.0
         version: 2.0.0(@urql/core@6.0.1(graphql@16.12.0))
+      '@urql/exchange-retry':
+        specifier: ^2.0.0
+        version: 2.0.0(@urql/core@6.0.1(graphql@16.12.0))
       '@urql/svelte':
         specifier: ^5.0.0
         version: 5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.43.4)
@@ -2275,6 +2278,11 @@ packages:
 
   '@urql/exchange-refocus@2.0.0':
     resolution: {integrity: sha512-+sRGXc14cDYUxNpzgCeH1Jef8AurCEwh4UX/QxUZ5aCDFiKsEbHIUp0wbkwo01e0xjiwGv1wKjYO2wG9TjSbMw==}
+    peerDependencies:
+      '@urql/core': ^6.0.0
+
+  '@urql/exchange-retry@2.0.0':
+    resolution: {integrity: sha512-VdSMCiOptd6Ah6g5Bo+MzrNMAGzgRMC775W86strLRQN7lvvNlhx1LwU0gzb2h/z0atcJFAmDJEbMyvupkT+7A==}
     peerDependencies:
       '@urql/core': ^6.0.0
 
@@ -6193,6 +6201,11 @@ snapshots:
       - graphql
 
   '@urql/exchange-refocus@2.0.0(@urql/core@6.0.1(graphql@16.12.0))':
+    dependencies:
+      '@urql/core': 6.0.1(graphql@16.12.0)
+      wonka: 6.3.5
+
+  '@urql/exchange-retry@2.0.0(@urql/core@6.0.1(graphql@16.12.0))':
     dependencies:
       '@urql/core': 6.0.1(graphql@16.12.0)
       wonka: 6.3.5
