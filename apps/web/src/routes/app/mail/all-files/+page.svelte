@@ -1,10 +1,13 @@
 <script lang="ts">
+	import AsteriskIcon from "@lucide/svelte/icons/asterisk";
 	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import Container from "$lib/components/Container.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/date";
 	import { graphql } from "$lib/graphql/generated";
+	import type { AttachmentType } from "$lib/graphql/generated/graphql";
+	import { ATTACHMENT_TYPES } from "$lib/mail";
 
 	const AllFilesPageQuery = graphql(`
 		query AllFilesPageQuery($first: Int = 10, $after: String, $filter: AttachmentsFilter = {}) {
@@ -31,10 +34,18 @@
 			}
 		}
 	`);
-	const allFilesPageQuery = queryStore({
-		client: getContextClient(),
-		query: AllFilesPageQuery,
-	});
+	let attachmentType: AttachmentType | null = $state(null);
+	let allFilesPageQuery = $derived(
+		queryStore({
+			client: getContextClient(),
+			query: AllFilesPageQuery,
+			variables: {
+				filter: {
+					attachmentType,
+				},
+			},
+		})
+	);
 	const attachments = $derived(
 		$allFilesPageQuery.data?.viewer?.attachments.edges.map((e) => e.node)
 	);
@@ -44,8 +55,15 @@
 <Container>
 	<h1 class="divider text-5xl font-semibold">All Files</h1>
 	<h3 class="flex items-baseline gap-1">
-		<button class="btn p-0 text-lg btn-link">All files</button>
+		<select class="select" bind:value={attachmentType}>
+			<option value={null}><AsteriskIcon /> All Files</option>
+			{#each ATTACHMENT_TYPES as at (at.type)}
+				<option value={at.type}><at.icon /> {at.name}</option>
+			{/each}
+		</select>
+
 		<span class="text-lg">sent by</span>
+
 		<button class="btn p-0 text-lg btn-link">everyone</button>
 	</h3>
 	<div class="mt-3 flex w-full flex-wrap gap-4">
