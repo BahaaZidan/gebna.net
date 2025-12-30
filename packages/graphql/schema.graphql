@@ -154,11 +154,11 @@ type AttachmentEdge implements Edge {
 type Attachment implements Node {
 	id: ID!
 	fileName: String
-	mimeType: String
+	mimeType: String!
 	contentId: String
-	url: String
-	sizeInBytes: Int
-	createdAt: DateTime
+	url: String!
+	sizeInBytes: Int!
+	createdAt: DateTime!
 }
 
 interface Connection {

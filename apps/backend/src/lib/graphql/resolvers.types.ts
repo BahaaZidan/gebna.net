@@ -32,12 +32,12 @@ export type AssignTargetMailboxInput = {
 export type Attachment = Node & {
   __typename?: 'Attachment';
   contentId?: Maybe<Scalars['String']['output']>;
-  createdAt?: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
   fileName?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
-  mimeType?: Maybe<Scalars['String']['output']>;
-  sizeInBytes?: Maybe<Scalars['Int']['output']>;
-  url?: Maybe<Scalars['String']['output']>;
+  mimeType: Scalars['String']['output'];
+  sizeInBytes: Scalars['Int']['output'];
+  url: Scalars['String']['output'];
 };
 
 export type AttachmentEdge = Edge & {
@@ -459,12 +459,12 @@ export type ResolversParentTypes = {
 
 export type AttachmentResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Attachment'] = ResolversParentTypes['Attachment']> = {
   contentId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  createdAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   fileName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  mimeType?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  sizeInBytes?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  mimeType?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  sizeInBytes?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
