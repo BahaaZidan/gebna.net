@@ -1,5 +1,6 @@
 import { cacheExchange } from "@urql/exchange-graphcache";
 import { refocusExchange } from "@urql/exchange-refocus";
+import { retryExchange } from "@urql/exchange-retry";
 import { Client, fetchExchange } from "@urql/svelte";
 
 import { PUBLIC_API_URL } from "$env/static/public";
@@ -79,6 +80,7 @@ export const urqlClient = new Client({
 				},
 			},
 		}),
+		retryExchange(),
 		fetchExchange,
 	],
 	fetchOptions: () => {
