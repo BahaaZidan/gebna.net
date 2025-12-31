@@ -1,5 +1,6 @@
 <script lang="ts">
 	import AsteriskIcon from "@lucide/svelte/icons/asterisk";
+	import UsersRoundIcon from "@lucide/svelte/icons/users-round";
 	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import Container from "$lib/components/Container.svelte";
@@ -10,11 +11,17 @@
 	import { ATTACHMENT_TYPES } from "$lib/mail";
 
 	const AllFilesPageQuery = graphql(`
-		query AllFilesPageQuery($first: Int = 10, $after: String, $filter: AttachmentsFilter = {}) {
+		query AllFilesPageQuery(
+			$firstAttachments: Int = 10
+			$afterAttachment: String
+			$filterAttachments: AttachmentsFilter = {}
+			$firstContacts: Int = 10
+			$afterContact: String
+		) {
 			viewer {
 				...NavbarFragment
 				id
-				attachments(first: $first, after: $after, filter: $filter) {
+				attachments(first: $firstAttachments, after: $afterAttachment, filter: $filterAttachments) {
 					pageInfo {
 						endCursor
 						hasNextPage
@@ -31,17 +38,34 @@
 						}
 					}
 				}
+				contacts(first: $firstContacts, after: $afterContact) {
+					pageInfo {
+						endCursor
+						hasNextPage
+					}
+					edges {
+						cursor
+						node {
+							id
+							name
+							address
+							avatar
+						}
+					}
+				}
 			}
 		}
 	`);
 	let attachmentType: AttachmentType | null = $state(null);
+	let contactAddress: string | null = $state(null);
 	let allFilesPageQuery = $derived(
 		queryStore({
 			client: getContextClient(),
 			query: AllFilesPageQuery,
 			variables: {
-				filter: {
+				filterAttachments: {
 					attachmentType,
+					contactAddress,
 				},
 			},
 		})
@@ -49,6 +73,7 @@
 	const attachments = $derived(
 		$allFilesPageQuery.data?.viewer?.attachments.edges.map((e) => e.node)
 	);
+	const contacts = $derived($allFilesPageQuery.data?.viewer?.contacts.edges.map((e) => e.node));
 </script>
 
 <Navbar viewer={$allFilesPageQuery.data?.viewer} />
@@ -64,7 +89,12 @@
 
 		<span class="text-lg">sent by</span>
 
-		<button class="btn p-0 text-lg btn-link">everyone</button>
+		<select class="select" bind:value={contactAddress}>
+			<option value={null}><UsersRoundIcon /> everyone</option>
+			{#each contacts as c (c.id)}
+				<option value={c.address}>{c.name}</option>
+			{/each}
+		</select>
 	</h3>
 	<div class="mt-3 flex w-full flex-wrap gap-4">
 		{#each attachments as attachment (attachment.id)}
