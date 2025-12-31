@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5149d6b0-117f-4531-9713-a7bf82f7e132",
+  "id": "fb22249b-fc36-4136-8dee-b825bdc41caf",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "attachment": {
@@ -67,7 +67,7 @@
           "name": "mimeType",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "disposition": {
@@ -187,6 +187,13 @@
         },
         "targetMailboxId": {
           "name": "targetMailboxId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "targetMailboxType": {
+          "name": "targetMailboxType",
           "type": "text",
           "primaryKey": false,
           "notNull": true,

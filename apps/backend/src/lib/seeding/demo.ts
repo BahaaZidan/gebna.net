@@ -231,6 +231,7 @@ function makeSenders(
 		address: sender.address,
 		ownerId: mailboxes[sender.mailbox].userId,
 		targetMailboxId: mailboxes[sender.mailbox].id,
+		targetMailboxType: sender.mailbox,
 		name: sender.name,
 		avatar: sender.avatar,
 		avatarPlaceholder: generateImagePlaceholder(sender.name),

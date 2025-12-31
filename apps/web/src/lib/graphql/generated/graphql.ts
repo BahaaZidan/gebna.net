@@ -267,6 +267,7 @@ export type User = Node & {
   __typename?: 'User';
   attachments: AttachmentsConnection;
   avatar: Scalars['String']['output'];
+  contacts: ContactsConnection;
   id: Scalars['ID']['output'];
   mailbox?: Maybe<Mailbox>;
   name: Scalars['String']['output'];
@@ -277,6 +278,12 @@ export type User = Node & {
 export type UserAttachmentsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<AttachmentsFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type UserContactsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
 

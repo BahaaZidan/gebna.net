@@ -94,11 +94,7 @@ export async function seedRawEmails(
 	let resetResult: Awaited<ReturnType<typeof deleteSeededRecords>> | undefined;
 
 	if (options.reset) {
-		resetResult = await deleteSeededRecords(
-			db,
-			recipient.id,
-			resetSeedEmails ?? seedEmails
-		);
+		resetResult = await deleteSeededRecords(db, recipient.id, resetSeedEmails ?? seedEmails);
 	}
 
 	const seedsToProcess = seedEmails;
@@ -124,6 +120,7 @@ export async function seedRawEmails(
 				fromAddress: seed.fromAddress,
 				fromName: seed.fromName,
 				targetMailboxId: screenerMailbox.id,
+				targetMailboxType: screenerMailbox.type,
 			});
 			const targetMailbox =
 				mailboxById.get(contact.targetMailboxId) ?? mailboxById.get(screenerMailbox.id);
@@ -183,10 +180,7 @@ export async function seedRawEmails(
 			});
 
 			if (participants.length) {
-				await tx
-					.insert(schema.threadParticipantTable)
-					.values(participants)
-					.onConflictDoNothing();
+				await tx.insert(schema.threadParticipantTable).values(participants).onConflictDoNothing();
 			}
 
 			if (seed.attachments.length) {
@@ -273,11 +267,13 @@ async function findOrCreateContact(
 		fromAddress,
 		fromName,
 		targetMailboxId,
+		targetMailboxType,
 	}: {
 		ownerId: string;
 		fromAddress: string;
 		fromName: string;
 		targetMailboxId: string;
+		targetMailboxType: MailboxSelectModel["type"];
 	}
 ) {
 	const existing = await tx.query.contactTable.findFirst({
@@ -292,6 +288,7 @@ async function findOrCreateContact(
 			address: fromAddress,
 			ownerId,
 			targetMailboxId,
+			targetMailboxType,
 			name: fromName,
 			avatarPlaceholder: generateImagePlaceholder(fromName),
 		})

@@ -64,6 +64,7 @@ export async function emailHandler(
 							where: (t, { eq, and }) =>
 								and(eq(t.userId, recipientUser.id), eq(t.type, "screener")),
 						}))!.id,
+						targetMailboxType: "screener",
 						name: parsedEmail.from!.name,
 						avatarPlaceholder: generateImagePlaceholder(parsedEmail.from!.name),
 						avatar: await avatarInference,
@@ -115,13 +116,7 @@ export async function emailHandler(
 			unseen,
 		});
 
-		const participantAddresses = new Set<string>([
-			envelope.from,
-			...to,
-			...cc,
-			...bcc,
-			...replyTo,
-		]);
+		const participantAddresses = new Set<string>([envelope.from, ...to, ...cc, ...bcc, ...replyTo]);
 
 		tx.insert(threadParticipantTable)
 			.values(

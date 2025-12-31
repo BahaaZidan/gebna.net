@@ -271,6 +271,7 @@ export type User = Node & {
   __typename?: 'User';
   attachments: AttachmentsConnection;
   avatar: Scalars['String']['output'];
+  contacts: ContactsConnection;
   id: Scalars['ID']['output'];
   mailbox?: Maybe<Mailbox>;
   name: Scalars['String']['output'];
@@ -281,6 +282,12 @@ export type User = Node & {
 export type UserAttachmentsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<AttachmentsFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type UserContactsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -610,6 +617,7 @@ export interface UrlScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes[
 export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
   attachments?: Resolver<ResolversTypes['AttachmentsConnection'], ParentType, ContextType, Partial<UserAttachmentsArgs>>;
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  contacts?: Resolver<ResolversTypes['ContactsConnection'], ParentType, ContextType, Partial<UserContactsArgs>>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   mailbox?: Resolver<Maybe<ResolversTypes['Mailbox']>, ParentType, ContextType, RequireFields<UserMailboxArgs, 'type'>>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;

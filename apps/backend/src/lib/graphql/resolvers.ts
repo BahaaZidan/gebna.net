@@ -86,7 +86,11 @@ export const resolvers: Resolvers = {
 			return await db.transaction(async (tx) => {
 				const [contact] = await tx
 					.update(contactTable)
-					.set({ targetMailboxId: targetMailbox.id, updatedAt: new Date() })
+					.set({
+						targetMailboxId: targetMailbox.id,
+						targetMailboxType: targetMailbox.type,
+						updatedAt: new Date(),
+					})
 					.where(
 						and(
 							eq(contactTable.ownerId, session.userId),
@@ -213,6 +217,34 @@ export const resolvers: Resolvers = {
 					hasNextPage: attachmentsPlusOne.length > attachments.length,
 					endCursor: attachments.length
 						? toGlobalId("Attachment", attachments[attachments.length - 1].id)
+						: null,
+				},
+			};
+		},
+		contacts: async (parent, args, { db }) => {
+			const pageSize = args.first || 30;
+			const cursor = args.after;
+			const contactsPlusOne = await db.query.contactTable.findMany({
+				where: (t, { eq, and, lt }) =>
+					and(
+						eq(t.ownerId, parent.id),
+						eq(t.targetMailboxType, "important"),
+						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
+					),
+				orderBy: (t, { desc }) => desc(t.createdAt),
+				limit: pageSize + 1,
+			});
+			const contacts = contactsPlusOne.slice(0, pageSize);
+
+			return {
+				edges: contacts.map((node) => ({
+					node,
+					cursor: toGlobalId("Contact", node.id),
+				})),
+				pageInfo: {
+					hasNextPage: contactsPlusOne.length > contacts.length,
+					endCursor: contacts.length
+						? toGlobalId("Contact", contacts[contacts.length - 1].id)
 						: null,
 				},
 			};
