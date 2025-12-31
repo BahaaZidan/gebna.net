@@ -71,6 +71,7 @@ export const contactTable = sqliteTable(
 		targetMailboxId: text()
 			.notNull()
 			.references(() => mailboxTable.id, { onDelete: "cascade" }),
+		targetMailboxType: text().$type<MailboxType>().notNull(),
 		name: text().notNull(),
 		avatar: text(),
 		avatarPlaceholder: text().notNull(),

@@ -44,6 +44,7 @@ type User implements Node {
 	avatar: String!
 	mailbox(type: MailboxType!): Mailbox
 	attachments(first: Int, after: String, filter: AttachmentsFilter): AttachmentsConnection!
+	contacts(first: Int, after: String): ContactsConnection!
 }
 
 type Mailbox implements Node {
