@@ -9,6 +9,7 @@ import { MIME_TYPES_BY_ATTACHMENT_TYPE } from "$lib/constant";
 import { searchMessages as searchMessagesDb } from "$lib/db";
 import {
 	contactTable,
+	attachmentTable,
 	messageTable,
 	threadParticipantTable,
 	threadTable,
@@ -196,20 +197,33 @@ export const resolvers: Resolvers = {
 		attachments: async (parent, args, { db }) => {
 			const pageSize = args.first || 30;
 			const cursor = args.after;
-			const attachmentsPlusOne = await db.query.attachmentTable.findMany({
-				where: (t, { eq, and, lt }) =>
+			const attachmentsPlusOne = await db
+				.select({ attachment: attachmentTable })
+				.from(attachmentTable)
+				.innerJoin(
+					contactTable,
 					and(
-						eq(t.ownerId, parent.id),
-						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined,
-						args.filter?.contactAddress ? eq(t.messageFrom, args.filter.contactAddress) : undefined,
+						eq(contactTable.ownerId, attachmentTable.ownerId),
+						eq(contactTable.address, attachmentTable.messageFrom),
+						eq(contactTable.targetMailboxType, "important")
+					)
+				)
+				.where(
+					and(
+						eq(attachmentTable.ownerId, parent.id),
+						cursor ? lt(attachmentTable.id, fromGlobalId(cursor).id) : undefined,
+						args.filter?.contactAddress ? eq(attachmentTable.messageFrom, args.filter.contactAddress) : undefined,
 						args.filter?.attachmentType
-							? inArray(t.mimeType, MIME_TYPES_BY_ATTACHMENT_TYPE[args.filter.attachmentType])
+							? inArray(
+									attachmentTable.mimeType,
+									MIME_TYPES_BY_ATTACHMENT_TYPE[args.filter.attachmentType]
+							  )
 							: undefined
-					),
-				orderBy: (t, { desc }) => desc(t.id),
-				limit: pageSize + 1,
-			});
-			const attachments = attachmentsPlusOne.slice(0, pageSize);
+					)
+				)
+				.orderBy(desc(attachmentTable.id))
+				.limit(pageSize + 1);
+			const attachments = attachmentsPlusOne.slice(0, pageSize).map((row) => row.attachment);
 
 			return {
 				edges: attachments.map((node) => ({ node, cursor: toGlobalId("Attachment", node.id) })),
