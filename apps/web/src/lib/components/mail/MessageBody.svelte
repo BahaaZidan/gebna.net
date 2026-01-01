@@ -19,7 +19,7 @@
 		sandbox="allow-same-origin"
 		referrerpolicy="no-referrer"
 		srcdoc={message.bodyHTML}
-		class="w-full rounded-xl"
+		class="w-full rounded-xl bg-base-content"
 		use:autoIframeHeight
 	></iframe>
 {/if}
