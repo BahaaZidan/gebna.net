@@ -245,6 +245,7 @@ export type Thread = Node & {
   from: Contact;
   id: Scalars['ID']['output'];
   lastMessageAt: Scalars['DateTime']['output'];
+  mailbox: Mailbox;
   messages: Array<Message>;
   snippet?: Maybe<Scalars['String']['output']>;
   title?: Maybe<Scalars['String']['output']>;
@@ -591,6 +592,7 @@ export type ThreadResolvers<ContextType = Context, ParentType extends ResolversP
   from?: Resolver<ResolversTypes['Contact'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   lastMessageAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  mailbox?: Resolver<ResolversTypes['Mailbox'], ParentType, ContextType>;
   messages?: Resolver<Array<ResolversTypes['Message']>, ParentType, ContextType>;
   snippet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
