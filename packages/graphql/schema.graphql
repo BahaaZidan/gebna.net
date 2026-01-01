@@ -122,7 +122,7 @@ type Contact implements Node {
 	name: String!
 	avatar: String!
 	targetMailbox: Mailbox!
-	messages: [Message!]!
+	firstMessage: Message
 	threads(first: Int, after: String): ThreadsConnection!
 	attachments(first: Int, after: String): AttachmentsConnection!
 }
