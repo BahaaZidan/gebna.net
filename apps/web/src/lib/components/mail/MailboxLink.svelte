@@ -1,25 +1,22 @@
 <script lang="ts">
 	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
 
-	import { resolve } from "$app/paths";
 	import type { Pathname } from "$app/types";
 
 	import { graphql, useFragment, type FragmentType } from "$lib/graphql/generated";
 	import type { MailboxType } from "$lib/graphql/generated/graphql";
 
-	const ThreadMailboxLink = graphql(`
-		fragment ThreadMailboxLink on Thread {
+	const MailboxLink = graphql(`
+		fragment MailboxLink on Mailbox {
 			id
-			mailbox {
-				id
-				type
-				name
-			}
+			type
+			name
 		}
 	`);
 
-	let props: { thread?: FragmentType<typeof ThreadMailboxLink> | null } = $props();
-	const mailbox = $derived(useFragment(ThreadMailboxLink, props.thread)?.mailbox);
+	let props: { mailbox?: FragmentType<typeof MailboxLink> | null } = $props();
+	const mailbox = $derived(useFragment(MailboxLink, props.mailbox));
+
 	const mailboxTypeToPath: Record<MailboxType, Pathname> = {
 		important: "/app/mail",
 		news: "/app/mail/news",

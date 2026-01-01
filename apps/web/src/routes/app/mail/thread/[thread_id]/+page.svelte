@@ -8,7 +8,7 @@
 	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 	import Container from "$lib/components/Container.svelte";
 	import Avatar from "$lib/components/mail/Avatar.svelte";
-	import ThreadMailboxLink from "$lib/components/mail/ThreadMailboxLink.svelte";
+	import MailboxLink from "$lib/components/mail/MailboxLink.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/date";
 	import { graphql } from "$lib/graphql/generated";
@@ -21,7 +21,6 @@
 			node(id: $id) {
 				__typename
 				... on Thread {
-					...ThreadMailboxLink
 					id
 					from {
 						id
@@ -56,6 +55,10 @@
 							contentId
 							url
 						}
+					}
+					mailbox {
+						id
+						...MailboxLink
 					}
 				}
 			}
@@ -125,7 +128,7 @@
 
 <Navbar viewer={$threadDetailsQuery.data?.viewer}>
 	{#snippet prepend()}
-		<ThreadMailboxLink {thread} />
+		<MailboxLink mailbox={thread?.mailbox} />
 	{/snippet}
 </Navbar>
 <Container>
