@@ -77,8 +77,8 @@ export type Contact = Node & {
   address: Scalars['String']['output'];
   attachments: AttachmentsConnection;
   avatar: Scalars['String']['output'];
+  firstMessage?: Maybe<Message>;
   id: Scalars['ID']['output'];
-  messages: Array<Message>;
   name: Scalars['String']['output'];
   targetMailbox: Mailbox;
   threads: ThreadsConnection;
@@ -496,8 +496,8 @@ export type ContactResolvers<ContextType = Context, ParentType extends Resolvers
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   attachments?: Resolver<ResolversTypes['AttachmentsConnection'], ParentType, ContextType, Partial<ContactAttachmentsArgs>>;
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  firstMessage?: Resolver<Maybe<ResolversTypes['Message']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  messages?: Resolver<Array<ResolversTypes['Message']>, ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   targetMailbox?: Resolver<ResolversTypes['Mailbox'], ParentType, ContextType>;
   threads?: Resolver<ResolversTypes['ThreadsConnection'], ParentType, ContextType, Partial<ContactThreadsArgs>>;

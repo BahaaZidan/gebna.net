@@ -82,6 +82,7 @@
 - [ ] Users can forward their Gebna emails to their old emails.
 - [ ] Keyboard shortcuts on desktop. (Superhuman for inspiration)
 - [ ] Users can anottate a thread with "note to self". Things like "don't forget to ask them about X if they don't bring it up!"
+- [ ] use svelte boundaries to show a graceful error message in case of an exception
 
 ### ?
 

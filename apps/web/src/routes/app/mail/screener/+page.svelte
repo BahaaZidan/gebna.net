@@ -33,7 +33,7 @@
 								address
 								name
 								avatar
-								messages {
+								firstMessage {
 									id
 									bodyText
 									bodyHTML
@@ -72,31 +72,10 @@
 	<div class="text-lg">You get to decide if you want to hear from them.</div>
 	<div class="divider divider-start">Want to get emails from them?</div>
 	{#each screenerMailbox?.contacts.edges as { node } (node.id)}
-		{@const firstMessage = node.messages[0]}
+		{@const firstMessage = node.firstMessage!}
 		<details class="collapse mb-2 border border-base-300 bg-base-100">
 			<summary class="collapse-title">
-				<div class="flex w-full items-center gap-2">
-					<div class="join">
-						<button
-							class="btn join-item btn-success"
-							onclick={assignTargetMailbox(urqlClient, node.id, "important")}
-						>
-							<ThumbsUpIcon /> Yes
-						</button>
-						<button
-							class="btn join-item p-2 btn-success"
-							popovertarget="popover-{node.id}"
-							style="anchor-name:--anchor-{node.id}"
-						>
-							<ChevronDownIcon />
-						</button>
-					</div>
-					<button
-						class="btn btn-warning"
-						onclick={assignTargetMailbox(urqlClient, node.id, "trash")}
-					>
-						<ThumbsDownIcon /> No
-					</button>
+				<div class="flex w-full items-center justify-between gap-2">
 					<div class="ml-4 flex items-center gap-2">
 						<div class="avatar">
 							<div class="size-16 rounded-full">
@@ -105,11 +84,34 @@
 						</div>
 						<div class="flex flex-col">
 							<div class="flex gap-2">
-								<div class="font-bold">{node.name}</div>
-								<div class="text-accent-content">{node.address}</div>
+								<div class="font-bold whitespace-nowrap">{node.name}</div>
+								<div class="line-clamp-1 wrap-anywhere text-accent-content">{node.address}</div>
 							</div>
 							<div>{firstMessage.subject}</div>
 						</div>
+					</div>
+					<div class="flex gap-2">
+						<div class="join">
+							<button
+								class="btn join-item btn-success"
+								onclick={assignTargetMailbox(urqlClient, node.id, "important")}
+							>
+								<ThumbsUpIcon /> Yes
+							</button>
+							<button
+								class="btn join-item p-2 btn-success"
+								popovertarget="popover-{node.id}"
+								style="anchor-name:--anchor-{node.id}"
+							>
+								<ChevronDownIcon />
+							</button>
+						</div>
+						<button
+							class="btn btn-warning"
+							onclick={assignTargetMailbox(urqlClient, node.id, "trash")}
+						>
+							<ThumbsDownIcon /> No
+						</button>
 					</div>
 				</div>
 			</summary>

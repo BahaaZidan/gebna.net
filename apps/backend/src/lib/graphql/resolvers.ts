@@ -390,12 +390,12 @@ export const resolvers: Resolvers = {
 			});
 			return mailbox!;
 		},
-		messages: async (parent, _, { db, session }) => {
-			if (!session) return [];
-			const messages = await db.query.messageTable.findMany({
+		firstMessage: async (parent, _, { db, session }) => {
+			if (!session) return null;
+			const message = await db.query.messageTable.findFirst({
 				where: (t, { eq, and }) => and(eq(t.ownerId, session.userId), eq(t.from, parent.address)),
 			});
-			return messages;
+			return message;
 		},
 		threads: async (parent, args, { db }) => {
 			const pageSize = args.first || 30;
