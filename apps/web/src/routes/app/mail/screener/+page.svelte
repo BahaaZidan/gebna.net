@@ -9,8 +9,8 @@
 
 	import { resolve } from "$app/paths";
 
-	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 	import Container from "$lib/components/Container.svelte";
+	import MessageBody from "$lib/components/mail/MessageBody.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { graphql } from "$lib/graphql/generated";
 	import { assignTargetMailbox } from "$lib/graphql/mutations";
@@ -34,6 +34,7 @@
 								name
 								avatar
 								firstMessage {
+									...MessageBody
 									id
 									bodyText
 									bodyHTML
@@ -116,16 +117,7 @@
 				</div>
 			</summary>
 			<div class="collapse-content">
-				{#if firstMessage.bodyHTML}
-					<iframe
-						title="iimak"
-						sandbox="allow-same-origin"
-						referrerpolicy="no-referrer"
-						srcdoc={firstMessage.bodyHTML}
-						class="w-full"
-						use:autoIframeHeight
-					></iframe>
-				{/if}
+				<MessageBody message={firstMessage} />
 			</div>
 		</details>
 		<ul

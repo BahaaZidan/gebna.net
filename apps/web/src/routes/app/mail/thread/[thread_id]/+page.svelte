@@ -5,10 +5,10 @@
 	import { resolve } from "$app/paths";
 	import { page } from "$app/state";
 
-	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 	import Container from "$lib/components/Container.svelte";
 	import Avatar from "$lib/components/mail/Avatar.svelte";
 	import MailboxLink from "$lib/components/mail/MailboxLink.svelte";
+	import MessageBody from "$lib/components/mail/MessageBody.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/date";
 	import { graphql } from "$lib/graphql/generated";
@@ -32,6 +32,7 @@
 					title
 					lastMessageAt
 					messages {
+						...MessageBody
 						id
 						bodyHTML
 						recievedAt
@@ -158,16 +159,7 @@
 						<div class="ml-auto">{formatInboxDate(message.recievedAt)}</div>
 					</div>
 					<div>
-						{#if message.bodyHTML}
-							<iframe
-								title="email"
-								sandbox="allow-same-origin"
-								referrerpolicy="no-referrer"
-								srcdoc={message.bodyHTML}
-								class="w-full rounded-xl"
-								use:autoIframeHeight
-							></iframe>
-						{/if}
+						<MessageBody {message} />
 					</div>
 					{#if message.attachments.length}
 						<div class="flex flex-col gap-1">
