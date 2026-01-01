@@ -8,8 +8,8 @@ import { DateTimeResolver, EmailAddressResolver, URLResolver } from "graphql-sca
 import { MIME_TYPES_BY_ATTACHMENT_TYPE } from "$lib/constant";
 import { searchMessages as searchMessagesDb } from "$lib/db";
 import {
-	contactTable,
 	attachmentTable,
+	contactTable,
 	messageTable,
 	threadParticipantTable,
 	threadTable,
@@ -212,12 +212,14 @@ export const resolvers: Resolvers = {
 					and(
 						eq(attachmentTable.ownerId, parent.id),
 						cursor ? lt(attachmentTable.id, fromGlobalId(cursor).id) : undefined,
-						args.filter?.contactAddress ? eq(attachmentTable.messageFrom, args.filter.contactAddress) : undefined,
+						args.filter?.contactAddress
+							? eq(attachmentTable.messageFrom, args.filter.contactAddress)
+							: undefined,
 						args.filter?.attachmentType
 							? inArray(
 									attachmentTable.mimeType,
 									MIME_TYPES_BY_ATTACHMENT_TYPE[args.filter.attachmentType]
-							  )
+								)
 							: undefined
 					)
 				)
@@ -354,6 +356,12 @@ export const resolvers: Resolvers = {
 					and(eq(t.ownerId, parent.ownerId), eq(t.address, parent.firstMessageFrom)),
 			});
 			return contact!;
+		},
+		mailbox: async (parent, _, { db }) => {
+			const mailbox = await db.query.mailboxTable.findFirst({
+				where: (t, { eq }) => eq(t.id, parent.mailboxId),
+			});
+			return mailbox!;
 		},
 	},
 	Message: {

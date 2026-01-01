@@ -87,6 +87,7 @@ type Thread implements Node {
 	snippet: String
 	lastMessageAt: DateTime!
 	messages: [Message!]!
+	mailbox: Mailbox!
 }
 
 type Message implements Node {

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
 	import FileIcon from "@lucide/svelte/icons/file";
 	import { getContextClient, mutationStore, queryStore } from "@urql/svelte";
 
@@ -9,6 +8,7 @@
 	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 	import Container from "$lib/components/Container.svelte";
 	import Avatar from "$lib/components/mail/Avatar.svelte";
+	import ThreadMailboxLink from "$lib/components/mail/ThreadMailboxLink.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/date";
 	import { graphql } from "$lib/graphql/generated";
@@ -21,6 +21,7 @@
 			node(id: $id) {
 				__typename
 				... on Thread {
+					...ThreadMailboxLink
 					id
 					from {
 						id
@@ -124,10 +125,7 @@
 
 <Navbar viewer={$threadDetailsQuery.data?.viewer}>
 	{#snippet prepend()}
-		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
-			<ChevronLeftIcon />
-			Important
-		</a>
+		<ThreadMailboxLink {thread} />
 	{/snippet}
 </Navbar>
 <Container>
