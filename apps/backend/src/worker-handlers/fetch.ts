@@ -17,7 +17,7 @@ app.use("/graphql", async (c) => {
 		body: c.req.raw.body,
 	});
 
-	return graphqlRequestHandler.fetch(request, {
+	return graphqlRequestHandler.handleRequest(request, {
 		env: c.env,
 		executionCtx: c.executionCtx,
 	});

@@ -483,5 +483,27 @@ export const resolvers: Resolvers = {
 
 			return url;
 		},
+		thumbnail: async (parent, _, { env }) => {
+			const R2_URL = `https://${env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+			const client = new AwsClient({
+				service: "s3",
+				region: "auto",
+				accessKeyId: env.CF_R2_ACCESS_KEY_ID,
+				secretAccessKey: env.CF_R2_SECRET_ACCESS_KEY,
+			});
+
+			const url = (
+				await client.sign(
+					new Request(
+						`${R2_URL}/${env.R2_BUCKET_NAME}/${parent.storageKey}/thumbnail?X-Amz-Expires=${3600 * 6}`
+					),
+					{
+						aws: { signQuery: true },
+					}
+				)
+			).url.toString();
+
+			return url;
+		},
 	},
 };

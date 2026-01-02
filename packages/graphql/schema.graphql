@@ -161,6 +161,7 @@ type Attachment implements Node {
 	url: String!
 	sizeInBytes: Int!
 	createdAt: DateTime!
+	thumbnail: String
 }
 
 interface Connection {
