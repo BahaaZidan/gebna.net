@@ -4,6 +4,7 @@ import { promises as fs } from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 
@@ -21,6 +22,12 @@ const MAX_BODY_BYTES = 30 * 1024 * 1024; // 30MB safeguard (adjust if needed)
 const THUMB_MAX_W = 512;
 const THUMB_MAX_H = 512;
 const WEBP_QUALITY = 80;
+
+const log = (...args: unknown[]) => {
+	// Keep logging lightweight; Cloudflare truncates noisy logs.
+	// eslint-disable-next-line no-console
+	console.log("[thumb]", ...args);
+};
 
 const OFFICE_EXTS = new Set([
 	"doc",
@@ -194,7 +201,7 @@ async function materializePreviewPng(params: {
 			await runCommand(
 				"pdftoppm",
 				["-f", "1", "-l", "1", "-singlefile", "-png", params.inputPath, prefix],
-				{ cwd: params.workDir, timeoutMs: 20_000 }
+				{ cwd: params.workDir, timeoutMs: 40_000 }
 			);
 			const produced = `${prefix}.png`;
 			await fs.access(produced);
@@ -206,12 +213,16 @@ async function materializePreviewPng(params: {
 		if (params.kind === "office") {
 			// LibreOffice converts to PDF, then we rasterize page 1 using poppler.
 			const outDir = params.workDir;
+			const loProfileDir = path.join(params.workDir, "lo-profile");
+			await ensureDir(loProfileDir);
+			const userInstallation = `-env:UserInstallation=${pathToFileURL(loProfileDir).toString()}`;
 
 			// Keep the original extension for LO to guess format.
 			// LO writes output with same basename, .pdf extension.
 			await runCommand(
 				"soffice",
 				[
+					userInstallation,
 					"--headless",
 					"--nologo",
 					"--nofirststartwizard",
@@ -223,21 +234,29 @@ async function materializePreviewPng(params: {
 					outDir,
 					params.inputPath,
 				],
-				{ cwd: params.workDir, timeoutMs: 45_000 }
+				{ cwd: params.workDir, timeoutMs: 60_000 }
 			);
 
 			const base = path.basename(params.inputPath);
 			const baseNoExt = base.replace(/\.[^.]+$/, "");
-			const producedPdf = path.join(outDir, `${baseNoExt}.pdf`);
+			let producedPdf = path.join(outDir, `${baseNoExt}.pdf`);
 
-			await fs.access(producedPdf);
+			try {
+				await fs.access(producedPdf);
+			} catch {
+				// Some versions emit uppercase/lowercase variants or altered names; pick first pdf.
+				const files = await fs.readdir(outDir);
+				const fallback = files.find((f) => f.toLowerCase().endsWith(".pdf"));
+				if (!fallback) throw new Error("PDF not produced");
+				producedPdf = path.join(outDir, fallback);
+			}
 
 			// Now rasterize first page
 			const prefix = path.join(params.workDir, "preview");
 			await runCommand(
 				"pdftoppm",
 				["-f", "1", "-l", "1", "-singlefile", "-png", producedPdf, prefix],
-				{ cwd: params.workDir, timeoutMs: 25_000 }
+				{ cwd: params.workDir, timeoutMs: 60_000 }
 			);
 
 			const producedPng = `${prefix}.png`;
@@ -266,7 +285,7 @@ async function materializePreviewPng(params: {
 					"image2",
 					outPng,
 				],
-				{ cwd: params.workDir, timeoutMs: 30_000 }
+				{ cwd: params.workDir, timeoutMs: 60_000 }
 			);
 
 			await fs.access(outPng);
@@ -341,13 +360,16 @@ const server = http.createServer(async (req, res) => {
 		const ext = getExtFromFilename(filename);
 
 		const body = await readBody(req);
+		const size = body.byteLength;
 
 		// Try sniffing if caller didn’t provide usable metadata.
 		const sniff = await fileTypeFromBuffer(body).catch(() => null);
 		const detectedMime = sniff?.mime ?? null;
 
 		const kind = detectKind({ contentType, providedMime, ext, detectedMime });
+		log("request", { kind, size, contentType, providedMime, ext, detectedMime });
 		if (kind == null) {
+			log("skip: unsupported type", { contentType, providedMime, ext, detectedMime });
 			jsonNull(res, 200);
 			return;
 		}
@@ -356,9 +378,11 @@ const server = http.createServer(async (req, res) => {
 		if (kind === "image") {
 			const webp = await imageToWebp(body);
 			if (!webp) {
+				log("image->webp failed");
 				jsonNull(res, 200);
 				return;
 			}
+			log("image->webp ok", { bytes: webp.byteLength });
 			res.statusCode = 200;
 			res.setHeader("content-type", "image/webp");
 			res.setHeader("content-length", String(webp.byteLength));
@@ -383,16 +407,19 @@ const server = http.createServer(async (req, res) => {
 			});
 
 			if (!previewPng) {
+				log("preview generation failed", { kind });
 				jsonNull(res, 200);
 				return;
 			}
 
 			const webp = await filePathToWebp(previewPng);
 			if (!webp) {
+				log("webp encode failed", { kind });
 				jsonNull(res, 200);
 				return;
 			}
 
+			log("preview->webp ok", { bytes: webp.byteLength, kind });
 			res.statusCode = 200;
 			res.setHeader("content-type", "image/webp");
 			res.setHeader("content-length", String(webp.byteLength));
@@ -403,7 +430,8 @@ const server = http.createServer(async (req, res) => {
 			// eslint-disable-next-line no-empty
 			await fs.rm(workDir, { recursive: true, force: true }).catch(() => {});
 		}
-	} catch {
+	} catch (e) {
+		log("unhandled error", e);
 		// Any failure => null (per your requirement)
 		jsonNull(res, 200);
 	}
