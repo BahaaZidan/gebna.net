@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "gebna-backend",
-	"compatibility_date": "2025-08-03",
+	"compatibility_date": "2026-01-01",
 	"main": "./src/index.ts",
 	"routes": [
 		{
@@ -39,4 +39,25 @@
 		"BASE_API_URL": "https://api.gebna.net",
 		"R2_BUCKET_NAME": "gebna-emails",
 	},
+	"containers": [
+		{
+			"class_name": "BackgroundContainer",
+			"image": "./background-container/DockerFile",
+			"max_instances": 2,
+		},
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "BackgroundContainer",
+				"name": "BACKGROUND_CONTAINER",
+			},
+		],
+	},
+	"migrations": [
+		{
+			"new_sqlite_classes": ["BackgroundContainer"],
+			"tag": "v1",
+		},
+	],
 }
