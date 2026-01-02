@@ -14,12 +14,14 @@
 </script>
 
 {#if message?.bodyHTML}
-	<iframe
-		title="email"
-		sandbox="allow-same-origin"
-		referrerpolicy="no-referrer"
-		srcdoc={message.bodyHTML}
-		class="w-full rounded-xl bg-base-content"
-		use:autoIframeHeight
-	></iframe>
+	<div class="w-full rounded-2xl bg-base-content p-4">
+		<iframe
+			title="email"
+			sandbox="allow-same-origin"
+			referrerpolicy="no-referrer"
+			srcdoc={message.bodyHTML}
+			class="w-full"
+			use:autoIframeHeight
+		></iframe>
+	</div>
 {/if}
