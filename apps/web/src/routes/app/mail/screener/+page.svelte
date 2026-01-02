@@ -79,7 +79,7 @@
 				<div class="flex w-full items-center justify-between gap-2">
 					<div class="ml-4 flex items-center gap-2">
 						<div class="avatar">
-							<div class="size-16 rounded-full">
+							<div class="size-14 rounded-full">
 								<img src={node.avatar} alt="{node.name} avatar" />
 							</div>
 						</div>
