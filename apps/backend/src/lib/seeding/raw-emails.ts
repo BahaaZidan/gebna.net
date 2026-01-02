@@ -1,4 +1,3 @@
-import { getRandom } from "@cloudflare/containers";
 import { and, eq, inArray } from "drizzle-orm";
 import PostalMime, { type Attachment } from "postal-mime";
 import { ulid } from "ulid";
@@ -6,6 +5,7 @@ import { ulid } from "ulid";
 import { getDB, MailboxSelectModel, type TransactionInstance } from "$lib/db";
 import * as schema from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
+import type { ThumbnailQueueMessage } from "$lib/thumbnails/queue";
 import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "$lib/utils/users";
@@ -222,48 +222,25 @@ export async function seedRawEmails(
 
 		if (shouldInsert && attachmentsForUpload.length) {
 			try {
-				const container = await getRandom(env.BACKGROUND_CONTAINER, 1);
-
 				await Promise.all(
 					attachmentsForUpload.map(async (attachment) => {
 						await env.R2_EMAILS.put(attachment.storageKey, attachment.body, {
 							httpMetadata: { contentType: attachment.mimeType },
 						});
-
-						const headers: Record<string, string> = {
-							"x-background-secret": env.BACKGROUND_SECRET,
-							"content-type": attachment.mimeType ?? "application/octet-stream",
-						};
-						if (attachment.filename) headers["x-filename"] = attachment.filename;
-						if (attachment.mimeType) headers["x-mime-type"] = attachment.mimeType;
-
-						const fetchBody: ArrayBuffer =
-							attachment.body.buffer instanceof ArrayBuffer
-								? attachment.body.buffer.slice(
-										attachment.body.byteOffset,
-										attachment.body.byteOffset + attachment.body.byteLength
-									)
-								: (() => {
-										const copy = new Uint8Array(attachment.body.byteLength);
-										copy.set(attachment.body);
-										return copy.buffer;
-									})();
-
-						const response = await container.fetch("https://container/thumbnail", {
-							method: "POST",
-							body: fetchBody,
-							headers,
-						});
-
-						if (response.ok && response.headers.get("content-type") === "image/webp") {
-							const thumbnail = new Uint8Array(await response.arrayBuffer());
-							if (thumbnail.byteLength) {
-								await env.R2_EMAILS.put(`${attachment.storageKey}/thumbnail`, thumbnail, {
-									httpMetadata: { contentType: "image/webp" },
-								});
-							}
-						}
 					})
+				);
+
+				const messages: ThumbnailQueueMessage[] = attachmentsForUpload.map((attachment) => ({
+					storageKey: attachment.storageKey,
+					mimeType: attachment.mimeType,
+					filename: attachment.filename ?? null,
+				}));
+
+				await env.THUMBNAIL_QUEUE.sendBatch(
+					messages.map((message) => ({
+						body: message,
+						contentType: "json",
+					}))
 				);
 			} catch (error) {
 				const attachmentIds = attachmentsForUpload.map((attachment) => attachment.id);
