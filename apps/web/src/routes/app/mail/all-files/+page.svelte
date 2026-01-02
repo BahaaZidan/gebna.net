@@ -35,6 +35,7 @@
 							mimeType
 							sizeInBytes
 							createdAt
+							thumbnail
 						}
 					}
 				}
@@ -98,10 +99,14 @@
 	</h3>
 	<div class="mt-3 flex w-full flex-wrap gap-4">
 		{#each attachments as attachment (attachment.id)}
-			<div class="flex w-72 flex-col items-center gap-2 rounded-3xl bg-base-100 p-3">
+			<a
+				href={attachment.url}
+				class="flex w-72 flex-col items-center gap-2 rounded-3xl bg-base-100 p-3"
+			>
+				<img src={attachment.thumbnail} alt="{attachment.fileName} thumbnail" class="w-32" />
 				<p class="text-center font-semibold">{attachment.fileName || "No name"}</p>
 				<p>{attachment.sizeInBytes} | {formatInboxDate(attachment.createdAt)}</p>
-			</div>
+			</a>
 		{/each}
 	</div>
 </Container>

@@ -37,6 +37,7 @@ export type Attachment = Node & {
   id: Scalars['ID']['output'];
   mimeType: Scalars['String']['output'];
   sizeInBytes: Scalars['Int']['output'];
+  thumbnail?: Maybe<Scalars['String']['output']>;
   url: Scalars['String']['output'];
 };
 
@@ -472,6 +473,7 @@ export type AttachmentResolvers<ContextType = Context, ParentType extends Resolv
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   mimeType?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   sizeInBytes?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  thumbnail?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
