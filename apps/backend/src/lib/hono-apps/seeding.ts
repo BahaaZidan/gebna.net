@@ -38,6 +38,11 @@ seedingApp.post("/raw-emails", async (c) => {
 	return c.json({ ok: true, result });
 });
 
+seedingApp.post("/r2/nuke", async (c) => {
+	const deleted = await deleteAllObjects(c.env.R2_EMAILS);
+	return c.json({ ok: true, deleted });
+});
+
 seedingApp.onError((err, c) => {
 	console.error("Seeding endpoint error", err);
 	return c.json({ ok: false, error: err.message ?? "Unknown error" }, 500);
@@ -61,4 +66,22 @@ function asBoolean(value: unknown) {
 	if (typeof value === "boolean") return value;
 	if (typeof value === "string") return value.toLowerCase() === "true";
 	return false;
+}
+
+async function deleteAllObjects(bucket: R2Bucket): Promise<number> {
+	let cursor: string | undefined;
+	let totalDeleted = 0;
+
+	// Walk the bucket and delete in batches of up to 1000 keys.
+	do {
+		const list = await bucket.list({ cursor, limit: 1000 });
+		const keys = list.objects.map((obj) => obj.key);
+		if (keys.length) {
+			await bucket.delete(keys);
+			totalDeleted += keys.length;
+		}
+		cursor = list.truncated ? list.cursor : undefined;
+	} while (cursor);
+
+	return totalDeleted;
 }
