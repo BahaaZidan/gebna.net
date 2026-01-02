@@ -201,7 +201,7 @@ async function materializePreviewPng(params: {
 			await runCommand(
 				"pdftoppm",
 				["-f", "1", "-l", "1", "-singlefile", "-png", params.inputPath, prefix],
-				{ cwd: params.workDir, timeoutMs: 40_000 }
+				{ cwd: params.workDir, timeoutMs: 45_000 }
 			);
 			const produced = `${prefix}.png`;
 			await fs.access(produced);
@@ -234,7 +234,7 @@ async function materializePreviewPng(params: {
 					outDir,
 					params.inputPath,
 				],
-				{ cwd: params.workDir, timeoutMs: 60_000 }
+				{ cwd: params.workDir, timeoutMs: 120_000 }
 			);
 
 			const base = path.basename(params.inputPath);
