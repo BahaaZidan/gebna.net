@@ -54,6 +54,19 @@
 			},
 		],
 	},
+	"queues": {
+		"producers": [
+			{
+				"queue": "gebna-attachment-thumbnails",
+				"binding": "THUMBNAIL_QUEUE",
+			},
+		],
+		"consumers": [
+			{
+				"queue": "gebna-attachment-thumbnails",
+			},
+		],
+	},
 	"migrations": [
 		{
 			"new_sqlite_classes": ["BackgroundContainer"],

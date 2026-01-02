@@ -1,8 +1,10 @@
 import { Container } from "@cloudflare/containers";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
+import type { ThumbnailQueueMessage } from "$lib/thumbnails/queue";
 import { emailHandler } from "./worker-handlers/email";
 import { fetchHandler } from "./worker-handlers/fetch";
+import { queueHandler } from "./worker-handlers/queue";
 import { scheduledHandler } from "./worker-handlers/scheduled";
 
 export class BackgroundContainer extends Container<CloudflareBindings> {
@@ -22,5 +24,8 @@ export default class extends WorkerEntrypoint<CloudflareBindings> {
 	}
 	scheduled(controller: ScheduledController) {
 		return scheduledHandler(controller, this.env);
+	}
+	queue(batch: MessageBatch<ThumbnailQueueMessage>) {
+		return queueHandler(batch, this.env, this.ctx);
 	}
 }
