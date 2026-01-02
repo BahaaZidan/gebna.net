@@ -22,6 +22,7 @@
 		"graphql:generate": "graphql-codegen --config ./graphql.config.ts"
 	},
 	"dependencies": {
+		"@cloudflare/containers": "^0.0.31",
 		"@gebna/validation": "workspace:*",
 		"@libsql/client": "^0.15.15",
 		"@oslojs/crypto": "^1.0.1",
@@ -40,7 +41,7 @@
 		"xss": "^1.0.15"
 	},
 	"devDependencies": {
-		"@cloudflare/vite-plugin": "^1.2.3",
+		"@cloudflare/vite-plugin": "^1.17.1",
 		"@eslint/js": "^9.39.1",
 		"@gebna/types": "workspace:*",
 		"@graphql-codegen/add": "^6.0.0",
@@ -59,6 +60,6 @@
 		"vite": "^6.3.5",
 		"vite-plugin-watch-and-run": "^1.7.5",
 		"vite-ssr-components": "^0.5.1",
-		"wrangler": "^4.17.0"
+		"wrangler": "^4.54.0"
 	}
 }

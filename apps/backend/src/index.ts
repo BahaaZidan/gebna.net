@@ -1,8 +1,17 @@
+import { Container } from "@cloudflare/containers";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 import { emailHandler } from "./worker-handlers/email";
 import { fetchHandler } from "./worker-handlers/fetch";
 import { scheduledHandler } from "./worker-handlers/scheduled";
+
+export class BackgroundContainer extends Container<CloudflareBindings> {
+	defaultPort = 8787;
+	sleepAfter = "10m";
+	envVars = {
+		BACKGROUND_SECRET: this.env.BACKGROUND_SECRET,
+	};
+}
 
 export default class extends WorkerEntrypoint<CloudflareBindings> {
 	fetch(req: Request) {
