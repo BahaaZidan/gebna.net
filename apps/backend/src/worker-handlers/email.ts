@@ -21,6 +21,7 @@ import { increment } from "$lib/db/utils";
 import { extractLocalPart, resolveAvatar } from "$lib/utils/email";
 import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
+import type { ThumbnailQueueMessage } from "$lib/thumbnails/queue";
 import { generateImagePlaceholder } from "$lib/utils/users";
 
 export async function emailHandler(
@@ -159,6 +160,19 @@ export async function emailHandler(
 			);
 
 			await tx.insert(attachmentTable).values(attachmentsToInsert);
+
+			const thumbnailMessages: ThumbnailQueueMessage[] = attachmentsToInsert.map((attachment) => ({
+				storageKey: attachment.storageKey,
+				mimeType: attachment.mimeType,
+				filename: attachment.fileName ?? null,
+			}));
+
+			await bindings.THUMBNAIL_QUEUE.sendBatch(
+				thumbnailMessages.map((message) => ({
+					body: message,
+					contentType: "json",
+				}))
+			);
 		}
 	});
 }
