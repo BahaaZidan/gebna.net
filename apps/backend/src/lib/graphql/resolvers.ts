@@ -447,6 +447,7 @@ export const resolvers: Resolvers = {
 					and(
 						eq(t.messageFrom, parent.address),
 						eq(t.ownerId, parent.ownerId),
+						not(isNull(t.threadId)),
 						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
 					),
 				orderBy: (t, { desc }) => desc(t.createdAt),

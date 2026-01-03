@@ -7,6 +7,7 @@
 	import { page } from "$app/state";
 
 	import Container from "$lib/components/Container.svelte";
+	import AttachmentListItem from "$lib/components/mail/AttachmentListItem.svelte";
 	import ThreadListItem from "$lib/components/mail/ThreadListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { graphql } from "$lib/graphql/generated";
@@ -39,9 +40,7 @@
 							cursor
 							node {
 								id
-								fileName
-								mimeType
-								url
+								...AttachmentListItem
 							}
 						}
 					}
@@ -121,12 +120,9 @@
 		</div>
 		{#if contact.attachments.edges.length}
 			<div class="divider divider-start">Files</div>
-			<div class="flex w-full flex-col gap-2">
+			<div class="flex w-full flex-wrap justify-center gap-2">
 				{#each contact.attachments.edges as { node } (node.id)}
-					<a href={node.url} class="badge badge-neutral">
-						<FileIcon class="size-5" />
-						<span class="line-clamp-1">{node.fileName}</span>
-					</a>
+					<AttachmentListItem attachment={node} />
 				{/each}
 			</div>
 		{/if}
