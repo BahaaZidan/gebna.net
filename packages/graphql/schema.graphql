@@ -136,6 +136,7 @@ enum AttachmentType {
 	Presentation
 	Media
 	ZIP
+	Other
 }
 
 input AttachmentsFilter {
@@ -162,6 +163,7 @@ type Attachment implements Node {
 	sizeInBytes: Int!
 	createdAt: DateTime!
 	thumbnail: String
+	type: AttachmentType!
 }
 
 interface Connection {

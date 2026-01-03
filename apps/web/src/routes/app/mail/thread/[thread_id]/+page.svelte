@@ -1,11 +1,11 @@
 <script lang="ts">
-	import FileIcon from "@lucide/svelte/icons/file";
 	import { getContextClient, mutationStore, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 	import { page } from "$app/state";
 
 	import Container from "$lib/components/Container.svelte";
+	import AttachmentListItem from "$lib/components/mail/AttachmentListItem.svelte";
 	import Avatar from "$lib/components/mail/Avatar.svelte";
 	import MailboxLink from "$lib/components/mail/MailboxLink.svelte";
 	import MessageBody from "$lib/components/mail/MessageBody.svelte";
@@ -51,10 +51,7 @@
 						replyTo
 						attachments {
 							id
-							fileName
-							mimeType
-							contentId
-							url
+							...AttachmentListItem
 						}
 					}
 					mailbox {
@@ -162,13 +159,10 @@
 						<MessageBody {message} />
 					</div>
 					{#if message.attachments.length}
-						<div class="flex flex-col gap-1">
-							<h4 class="font-bold">Attachments</h4>
+						<h4 class="font-bold">Attachments</h4>
+						<div class="flex flex-wrap gap-3">
 							{#each message.attachments as attachment (attachment.id)}
-								<a href={attachment.url} class="badge p-3.5 badge-neutral">
-									<FileIcon class="size-5" />
-									<span class="line-clamp-1">{attachment.fileName}</span>
-								</a>
+								<AttachmentListItem {attachment} />
 							{/each}
 						</div>
 					{/if}

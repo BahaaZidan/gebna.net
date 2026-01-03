@@ -48,4 +48,16 @@ export const MIME_TYPES_BY_ATTACHMENT_TYPE: Record<AttachmentType, string[]> = {
 		"application/x-tar",
 		"application/gzip",
 	],
+	Other: [],
 };
+
+export const ATTACHMENT_TYPE_BY_MIME = (() => {
+	const map = new Map<string, AttachmentType>();
+	for (const type of Object.keys(MIME_TYPES_BY_ATTACHMENT_TYPE) as AttachmentType[]) {
+		for (const mimeType of MIME_TYPES_BY_ATTACHMENT_TYPE[type]) {
+			map.set(mimeType.toLowerCase(), type);
+		}
+	}
+	return map;
+})();
+export const DEFAULT_ATTACHMENT_TYPE: AttachmentType = "Other";

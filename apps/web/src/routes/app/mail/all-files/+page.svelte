@@ -4,8 +4,8 @@
 	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import Container from "$lib/components/Container.svelte";
+	import AttachmentListItem from "$lib/components/mail/AttachmentListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { formatInboxDate } from "$lib/date";
 	import { graphql } from "$lib/graphql/generated";
 	import type { AttachmentType } from "$lib/graphql/generated/graphql";
 	import { ATTACHMENT_TYPES } from "$lib/mail";
@@ -29,13 +29,8 @@
 					edges {
 						cursor
 						node {
+							...AttachmentListItem
 							id
-							fileName
-							url
-							mimeType
-							sizeInBytes
-							createdAt
-							thumbnail
 						}
 					}
 				}
@@ -97,16 +92,9 @@
 			{/each}
 		</select>
 	</h3>
-	<div class="mt-3 flex w-full flex-wrap gap-4">
+	<div class="mt-3 flex w-full flex-wrap justify-center gap-4">
 		{#each attachments as attachment (attachment.id)}
-			<a
-				href={attachment.url}
-				class="flex w-72 flex-col items-center gap-2 rounded-3xl bg-base-100 p-3"
-			>
-				<img src={attachment.thumbnail} alt="{attachment.fileName} thumbnail" class="w-32" />
-				<p class="text-center font-semibold">{attachment.fileName || "No name"}</p>
-				<p>{attachment.sizeInBytes} | {formatInboxDate(attachment.createdAt)}</p>
-			</a>
+			<AttachmentListItem {attachment} />
 		{/each}
 	</div>
 </Container>

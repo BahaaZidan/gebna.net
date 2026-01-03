@@ -2,10 +2,14 @@ import { v } from "@gebna/validation";
 import { editUserSchema } from "@gebna/validation/identity";
 import { editThreadSchema } from "@gebna/validation/mail";
 import { AwsClient } from "aws4fetch";
-import { and, count, desc, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull, lt, not } from "drizzle-orm";
 import { DateTimeResolver, EmailAddressResolver, URLResolver } from "graphql-scalars";
 
-import { MIME_TYPES_BY_ATTACHMENT_TYPE } from "$lib/constant";
+import {
+	ATTACHMENT_TYPE_BY_MIME,
+	DEFAULT_ATTACHMENT_TYPE,
+	MIME_TYPES_BY_ATTACHMENT_TYPE,
+} from "$lib/constant";
 import { searchMessages as searchMessagesDb } from "$lib/db";
 import {
 	attachmentTable,
@@ -211,6 +215,7 @@ export const resolvers: Resolvers = {
 				.where(
 					and(
 						eq(attachmentTable.ownerId, parent.id),
+						not(isNull(attachmentTable.threadId)),
 						cursor ? lt(attachmentTable.id, fromGlobalId(cursor).id) : undefined,
 						args.filter?.contactAddress
 							? eq(attachmentTable.messageFrom, args.filter.contactAddress)
@@ -441,6 +446,7 @@ export const resolvers: Resolvers = {
 				where: (t, { eq, and, lt }) =>
 					and(
 						eq(t.messageFrom, parent.address),
+						eq(t.ownerId, parent.ownerId),
 						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
 					),
 				orderBy: (t, { desc }) => desc(t.createdAt),
@@ -461,6 +467,8 @@ export const resolvers: Resolvers = {
 	},
 	Attachment: {
 		id: (parent) => toGlobalId("Attachment", parent.id),
+		type: (parent) =>
+			ATTACHMENT_TYPE_BY_MIME.get(parent.mimeType.toLowerCase()) ?? DEFAULT_ATTACHMENT_TYPE,
 		url: async (parent, _, { env }) => {
 			const R2_URL = `https://${env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 			const client = new AwsClient({
@@ -492,15 +500,15 @@ export const resolvers: Resolvers = {
 				secretAccessKey: env.CF_R2_SECRET_ACCESS_KEY,
 			});
 
+			const thumbnailPath = `${R2_URL}/${env.R2_BUCKET_NAME}/${parent.storageKey}/thumbnail`;
+			const headResponse = await client.fetch(thumbnailPath, { method: "HEAD" });
+			if (headResponse.status === 404) return null;
+			if (!headResponse.ok) throw new Error(`Failed to check thumbnail: ${headResponse.status}`);
+
 			const url = (
-				await client.sign(
-					new Request(
-						`${R2_URL}/${env.R2_BUCKET_NAME}/${parent.storageKey}/thumbnail?X-Amz-Expires=${3600 * 6}`
-					),
-					{
-						aws: { signQuery: true },
-					}
-				)
+				await client.sign(new Request(`${thumbnailPath}?X-Amz-Expires=${3600 * 6}`), {
+					aws: { signQuery: true },
+				})
 			).url.toString();
 
 			return url;
