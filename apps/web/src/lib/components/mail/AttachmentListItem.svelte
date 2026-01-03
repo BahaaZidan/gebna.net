@@ -21,7 +21,6 @@
 	} = $props();
 	let attachment = $derived(useFragment(AttachmentListItem, props.attachment));
 	let Icon = $derived(attachment && ATTACHMENT_TYPE_TO_ICONS[attachment.type].icon);
-
 	let size = $derived(props.size || "md");
 </script>
 
