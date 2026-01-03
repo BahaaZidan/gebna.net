@@ -75,7 +75,7 @@
 <Navbar viewer={$allFilesPageQuery.data?.viewer} />
 <Container>
 	<h1 class="divider text-5xl font-semibold">All Files</h1>
-	<h3 class="flex items-baseline gap-1">
+	<h3 class="mt-2 flex items-baseline gap-1">
 		<select class="select" bind:value={attachmentType}>
 			<option value={null}><AsteriskIcon /> All Files</option>
 			{#each ATTACHMENT_TYPES as at (at.type)}
@@ -83,7 +83,7 @@
 			{/each}
 		</select>
 
-		<span class="text-lg">sent by</span>
+		<span class="w-40 text-lg">sent by</span>
 
 		<select class="select" bind:value={contactAddress}>
 			<option value={null}><UsersRoundIcon /> everyone</option>
