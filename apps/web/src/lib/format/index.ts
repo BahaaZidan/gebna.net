@@ -13,3 +13,16 @@ export function formatInboxDate(date: Date | string): string {
 
 	return format(d, "MMM d, yyyy"); // "Jun 12, 2023"
 }
+
+export function formatSizeInBytes(sizeInBytes: number): string {
+	const kb = 1024;
+	const mb = kb * 1024;
+
+	if (sizeInBytes >= mb) {
+		const sizeInMb = sizeInBytes / mb;
+		return `${Math.round(sizeInMb * 100) / 100} MB`;
+	}
+
+	const sizeInKb = sizeInBytes / kb;
+	return `${Math.round(sizeInKb * 100) / 100} KB`;
+}

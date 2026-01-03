@@ -8,7 +8,7 @@
 	import Avatar from "$lib/components/mail/Avatar.svelte";
 	import MessageBody from "$lib/components/mail/MessageBody.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { formatInboxDate } from "$lib/date";
+	import { formatInboxDate } from "$lib/format";
 	import { graphql } from "$lib/graphql/generated";
 
 	const NewsPageQuery = graphql(`
