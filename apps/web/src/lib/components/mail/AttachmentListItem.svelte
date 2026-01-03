@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatInboxDate } from "$lib/date";
+	import { formatInboxDate, formatSizeInBytes } from "$lib/format";
 	import { graphql, useFragment, type FragmentType } from "$lib/graphql/generated";
 	import { ATTACHMENT_TYPE_TO_ICONS } from "$lib/mail";
 
@@ -47,8 +47,8 @@
 		<p class={["text-center font-semibold wrap-anywhere", size === "sm" ? "text-sm" : ""]}>
 			{attachment.fileName || "No name"}
 		</p>
-		<p class={["mt-auto", size === "sm" ? "text-sm" : ""]}>
-			{attachment.sizeInBytes} | {formatInboxDate(attachment.createdAt)}
+		<p class={["mt-auto text-gray-400", size === "sm" ? "text-xs" : "text-sm"]}>
+			{formatSizeInBytes(attachment.sizeInBytes)} - {formatInboxDate(attachment.createdAt)}
 		</p>
 	</a>
 {/if}

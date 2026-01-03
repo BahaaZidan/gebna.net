@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from "$app/paths";
 
-	import { formatInboxDate } from "$lib/date";
+	import { formatInboxDate } from "$lib/format";
 	import { graphql, useFragment, type FragmentType } from "$lib/graphql/generated";
 
 	import Avatar from "./Avatar.svelte";
