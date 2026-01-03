@@ -42,3 +42,11 @@ Seeding now happens via HTTP endpoints guarded by `SEEDING_ENDPOINTS_ENABLED`:
    pnpm --filter backend db:seed:raw
    ```
    Reset seeded raw emails with: `pnpm --filter backend db:seed:raw -- reset`.
+
+### Testing the cron jobs
+
+```bash
+curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=30+*/6+*+*+*"
+```
+
+_If you get r2 header errors, restart the dev server_
