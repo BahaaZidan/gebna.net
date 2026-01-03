@@ -162,7 +162,7 @@
 						<h4 class="font-bold">Attachments</h4>
 						<div class="flex flex-wrap gap-3">
 							{#each message.attachments as attachment (attachment.id)}
-								<AttachmentListItem {attachment} />
+								<AttachmentListItem {attachment} size="sm" />
 							{/each}
 						</div>
 					{/if}
