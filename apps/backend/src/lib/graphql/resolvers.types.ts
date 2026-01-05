@@ -278,6 +278,7 @@ export type User = Node & {
   contacts: ContactsConnection;
   id: Scalars['ID']['output'];
   mailbox?: Maybe<Mailbox>;
+  mailboxes: Array<Mailbox>;
   name: Scalars['String']['output'];
   username: Scalars['String']['output'];
 };
@@ -627,6 +628,7 @@ export type UserResolvers<ContextType = Context, ParentType extends ResolversPar
   contacts?: Resolver<ResolversTypes['ContactsConnection'], ParentType, ContextType, Partial<UserContactsArgs>>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   mailbox?: Resolver<Maybe<ResolversTypes['Mailbox']>, ParentType, ContextType, RequireFields<UserMailboxArgs, 'type'>>;
+  mailboxes?: Resolver<Array<ResolversTypes['Mailbox']>, ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   username?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;

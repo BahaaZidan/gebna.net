@@ -191,6 +191,12 @@ export const resolvers: Resolvers = {
 	EmailAddress: EmailAddressResolver,
 	User: {
 		id: (parent) => toGlobalId("User", parent.id),
+		mailboxes: async (parent, _, { db }) => {
+			const mailboxes = await db.query.mailboxTable.findMany({
+				where: (t, { eq }) => eq(t.userId, parent.id),
+			});
+			return mailboxes;
+		},
 		mailbox: async (parent, args, { db }) => {
 			const mailbox = await db.query.mailboxTable.findFirst({
 				where: (t, { eq, and }) => and(eq(t.userId, parent.id), eq(t.type, args.type)),
