@@ -43,6 +43,7 @@ type User implements Node {
 	name: String!
 	avatar: String!
 	mailbox(type: MailboxType!): Mailbox
+	mailboxes: [Mailbox!]!
 	attachments(first: Int, after: String, filter: AttachmentsFilter): AttachmentsConnection!
 	contacts(first: Int, after: String): ContactsConnection!
 }

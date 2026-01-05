@@ -274,6 +274,7 @@ export type User = Node & {
   contacts: ContactsConnection;
   id: Scalars['ID']['output'];
   mailbox?: Maybe<Mailbox>;
+  mailboxes: Array<Mailbox>;
   name: Scalars['String']['output'];
   username: Scalars['String']['output'];
 };
