@@ -1,9 +1,9 @@
 projects:
   default:
     schema:
-      - ./schema.graphql
+      - ../../packages/graphql/schema.graphql
       - ./.houdini/graphql/schema.graphql
     documents:
-      - '**/*.gql'
-      - '**/*.svelte'
+      - "**/*.gql"
+      - "**/*.svelte"
       - ./.houdini/graphql/documents.gql
