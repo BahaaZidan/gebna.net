@@ -1,0 +1,206 @@
+input AssignTargetMailboxInput {
+  contactID: ID!
+  targetMailboxType: MailboxType!
+}
+
+type Attachment implements Node {
+  contentId: String
+  createdAt: DateTime!
+  fileName: String
+  id: ID!
+  mimeType: String!
+  sizeInBytes: Int!
+  thumbnail: String
+  type: AttachmentType!
+  url: String!
+}
+
+type AttachmentEdge implements Edge {
+  cursor: String
+  node: Attachment!
+}
+
+enum AttachmentType {
+  CalendarInvite
+  Document
+  Image
+  Media
+  Other
+  PDF
+  Presentation
+  Spreadsheet
+  ZIP
+}
+
+type AttachmentsConnection implements Connection {
+  edges: [AttachmentEdge!]!
+  pageInfo: PageInfo!
+}
+
+input AttachmentsFilter {
+  attachmentType: AttachmentType
+  contactAddress: EmailAddress
+}
+
+interface Connection {
+  edges: [Edge!]!
+  pageInfo: PageInfo!
+}
+
+type Contact implements Node {
+  address: String!
+  attachments(after: String, first: Int): AttachmentsConnection!
+  avatar: String!
+  firstMessage: Message
+  id: ID!
+  name: String!
+  targetMailbox: Mailbox!
+  threads(after: String, first: Int): ThreadsConnection!
+}
+
+type ContactEdge implements Edge {
+  cursor: String
+  node: Contact!
+}
+
+type ContactsConnection implements Connection {
+  edges: [ContactEdge!]!
+  pageInfo: PageInfo!
+}
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
+"""
+scalar DateTime
+
+interface Edge {
+  cursor: String
+  node: Node!
+}
+
+input EditThreadInput {
+  id: ID!
+  title: String!
+}
+
+input EditUserInput {
+  avatar: File
+  name: String
+}
+
+"""
+A field whose value conforms to the standard internet email address format as specified in HTML Spec: https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address.
+"""
+scalar EmailAddress
+
+scalar File
+
+type Mailbox implements Node {
+  assignedContactsCount: Int!
+  contacts(after: String, first: Int): ContactsConnection!
+  id: ID!
+  name: String!
+  threads(after: String, filter: ThreadsFilter, first: Int): ThreadsConnection!
+  type: MailboxType!
+  unseenThreadsCount: Int!
+}
+
+enum MailboxType {
+  important
+  news
+  screener
+  transactional
+  trash
+}
+
+type Message implements Node {
+  attachments: [Attachment!]!
+  bodyHTML: String
+  bodyText: String
+  cc: [String!]
+  from: Contact!
+  id: ID!
+  recievedAt: DateTime!
+  replyTo: [String!]
+  snippet: String
+  subject: String
+  threadId: ID!
+  to: [String!]
+  unseen: Boolean!
+}
+
+type Mutation {
+  assignTargetMailbox(input: AssignTargetMailboxInput!): Contact
+  editThread(input: EditThreadInput!): Thread
+  editUser(input: EditUserInput!): User
+  markThreadSeen(id: ID!): Thread
+}
+
+interface Node {
+  id: ID!
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean
+  hasPreviousPage: Boolean
+  startCursor: String
+}
+
+type Query {
+  node(id: ID!): Node
+  search(input: SearchInput!): SearchResult
+  viewer: User
+}
+
+input SearchInput {
+  limit: Int
+  mailboxId: ID
+  offset: Int
+  query: String!
+}
+
+type SearchResult {
+  messages: [Message!]!
+}
+
+type Thread implements Node {
+  from: Contact!
+  id: ID!
+  lastMessageAt: DateTime!
+  mailbox: Mailbox!
+  messages: [Message!]!
+  snippet: String
+  title: String
+  unseenMessagesCount: Int!
+}
+
+type ThreadEdge implements Edge {
+  cursor: String
+  node: Thread!
+}
+
+type ThreadsConnection implements Connection {
+  edges: [ThreadEdge!]!
+  pageInfo: PageInfo!
+}
+
+input ThreadsFilter {
+  unseen: Boolean!
+}
+
+"""
+A field whose value conforms to the standard URL format as specified in RFC3986: https://www.ietf.org/rfc/rfc3986.txt.
+"""
+scalar URL
+
+type User implements Node {
+  attachments(after: String, filter: AttachmentsFilter, first: Int): AttachmentsConnection!
+  avatar: String!
+  contacts(after: String, first: Int): ContactsConnection!
+  id: ID!
+  mailbox(type: MailboxType!): Mailbox
+  mailboxes: [Mailbox!]!
+  name: String!
+  username: String!
+}
