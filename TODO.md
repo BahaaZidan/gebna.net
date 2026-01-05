@@ -56,12 +56,13 @@
 - [x] The user should be able edit the title of a thread
 - [x] Attachments standalone page. Search per filetype or sender across all attachments tied to your account
 - [x] Attachment thumbnail
-- [ ] Attachment previews
+- [ ] UI ONLY: The ability to select one or more threads in /app/mail and have a action menu popup. The menu option should change based on one or bulk
+- [ ] Mark as seen / Mark as unseen in /app/mail
 - [ ] Read together. (batch mark all the unseen messages in your important mailbox)
 - [ ] Reply later
 - [ ] Focus & reply (a dedicated page to reply to all emails user marked as reply later)
 - [ ] Set aside
-- [ ] The ability to ignore specific threads. (i.e. new messages from the thread will be marked as read)
+- [ ] The ability to ignore specific threads. (i.e. new messages from the thread will be marked as seen)
 
 ### Beyond v0.5
 
@@ -83,6 +84,7 @@
 - [ ] Keyboard shortcuts on desktop. (Superhuman for inspiration)
 - [ ] Users can anottate a thread with "note to self". Things like "don't forget to ask them about X if they don't bring it up!"
 - [ ] use svelte boundaries to show a graceful error message in case of an exception
+- [ ] Attachment previews
 
 ### ?
 
@@ -94,3 +96,4 @@
 - [ ] Onboarding flow
 - [ ] Make sure bodyText/plainBody extraction is adequite. I've seen a few records with empty bodyText even though bodyHTML is defined.
 - [ ] Use a scalar to automatically unwrap input IDs on the schema level so that you don't have to litter resolver code with `fromGlobalId(args.id).id`
+- [ ] The ability to select a substring from the email body and save it for later reference. (in Hey it's called Clips. I don't think it's useful enough in Hey. I think it would be really cool to have that as a continuity feature with gebna notes.)
