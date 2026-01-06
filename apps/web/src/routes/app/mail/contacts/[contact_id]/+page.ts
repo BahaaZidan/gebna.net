@@ -8,7 +8,6 @@ export const _houdini_load = graphql(`
 			...NavbarFragment
 		}
 		node(id: $id) {
-			__typename
 			... on Contact {
 				id
 				name
