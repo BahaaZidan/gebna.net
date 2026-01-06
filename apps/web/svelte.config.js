@@ -13,6 +13,9 @@ const config = {
 			$houdini: ".houdini/",
 		},
 	},
+	compilerOptions: {
+		runes: true,
+	},
 };
 
 export default config;
