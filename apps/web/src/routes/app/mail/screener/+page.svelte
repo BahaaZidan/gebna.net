@@ -11,7 +11,7 @@
 	import Container from "$lib/components/Container.svelte";
 	import MessageBody from "$lib/components/mail/MessageBody.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { AssignTargetMailboxMutation } from "$lib/graphql/mutations";
+	import { assignTargetMailbox } from "$lib/graphql/mutations";
 
 	import type { PageData } from "./$houdini";
 
@@ -62,9 +62,7 @@
 							<button
 								class="btn join-item btn-success"
 								onclick={() => {
-									AssignTargetMailboxMutation.mutate({
-										input: { contactID: node.id, targetMailboxType: "important" },
-									});
+									assignTargetMailbox({ contactID: node.id, targetMailboxType: "important" });
 								}}
 							>
 								<ThumbsUpIcon /> Yes
@@ -80,9 +78,7 @@
 						<button
 							class="btn btn-warning"
 							onclick={() => {
-								AssignTargetMailboxMutation.mutate({
-									input: { contactID: node.id, targetMailboxType: "trash" },
-								});
+								assignTargetMailbox({ contactID: node.id, targetMailboxType: "trash" });
 							}}
 						>
 							<ThumbsDownIcon /> No
@@ -103,9 +99,7 @@
 			<li>
 				<button
 					onclick={() => {
-						AssignTargetMailboxMutation.mutate({
-							input: { contactID: node.id, targetMailboxType: "news" },
-						});
+						assignTargetMailbox({ contactID: node.id, targetMailboxType: "news" });
 					}}
 				>
 					<NewspaperIcon /> News
@@ -114,9 +108,7 @@
 			<li>
 				<button
 					onclick={() => {
-						AssignTargetMailboxMutation.mutate({
-							input: { contactID: node.id, targetMailboxType: "transactional" },
-						});
+						assignTargetMailbox({ contactID: node.id, targetMailboxType: "transactional" });
 					}}
 				>
 					<ArrowRightLeftIcon /> Transactional

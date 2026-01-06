@@ -10,7 +10,7 @@ export const _houdini_load = graphql(`
 				type
 				name
 				assignedContactsCount
-				contacts {
+				contacts(first: 20) @paginate(name: "Screener_Mailbox_Contacts") {
 					edges {
 						node {
 							id

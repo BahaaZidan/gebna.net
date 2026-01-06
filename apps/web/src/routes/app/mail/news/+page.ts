@@ -9,7 +9,7 @@ export const _houdini_load = graphql(`
 				id
 				type
 				name
-				threads(first: 5) {
+				threads(first: 5) @paginate(name: "News_Mailbox_Threads") {
 					pageInfo {
 						hasNextPage
 						endCursor

@@ -7,6 +7,9 @@ const config = {
 	plugins: {
 		"houdini-svelte": {},
 	},
+	features: {
+		imperativeCache: true,
+	},
 };
 
 export default config;
