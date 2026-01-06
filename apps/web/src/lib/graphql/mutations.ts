@@ -9,6 +9,8 @@ export const AssignTargetMailboxMutation = graphql(`
 			address
 			targetMailbox {
 				id
+				name
+				type
 			}
 		}
 	}
