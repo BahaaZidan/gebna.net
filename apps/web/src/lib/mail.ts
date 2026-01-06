@@ -13,11 +13,11 @@ import TrashIcon from "@lucide/svelte/icons/trash-2";
 import VideoIcon from "@lucide/svelte/icons/video";
 import type { Component } from "svelte";
 
-import type { AttachmentType, MailboxType } from "./graphql/generated/graphql";
+import type { AttachmentType$options, MailboxType$options } from "$houdini";
 
 export const TARGET_MAILBOXES: Array<{
 	name: string;
-	type: MailboxType;
+	type: MailboxType$options;
 	icon: Component<IconProps, {}, "">;
 }> = [
 	{
@@ -43,10 +43,10 @@ export const TARGET_MAILBOXES: Array<{
 ];
 
 export const ATTACHMENT_TYPE_TO_ICONS: Record<
-	AttachmentType,
+	AttachmentType$options,
 	{
 		name: string;
-		type: AttachmentType;
+		type: AttachmentType$options;
 		icon: Component<IconProps, {}, "">;
 	}
 > = {
@@ -99,6 +99,6 @@ export const ATTACHMENT_TYPE_TO_ICONS: Record<
 
 export const ATTACHMENT_TYPES: Array<{
 	name: string;
-	type: AttachmentType;
+	type: AttachmentType$options;
 	icon: Component<IconProps, {}, "">;
 }> = Object.values(ATTACHMENT_TYPE_TO_ICONS);

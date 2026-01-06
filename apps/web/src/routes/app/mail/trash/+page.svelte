@@ -1,45 +1,17 @@
 <script lang="ts">
 	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
-	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 
 	import Container from "$lib/components/Container.svelte";
 	import ThreadListItem from "$lib/components/mail/ThreadListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { graphql } from "$lib/graphql/generated";
 
-	const TrashPageQuery = graphql(`
-		query TrashPageQuery {
-			viewer {
-				...NavbarFragment
-				id
-				trashMailbox: mailbox(type: trash) {
-					id
-					type
-					name
-					threads {
-						pageInfo {
-							hasNextPage
-							endCursor
-						}
-						edges {
-							cursor
-							node {
-								id
-								...ThreadListItem
-							}
-						}
-					}
-				}
-			}
-		}
-	`);
+	import type { PageData } from "./$houdini";
 
-	const trashPageQuery = queryStore({
-		client: getContextClient(),
-		query: TrashPageQuery,
-	});
+	let props: { data: PageData } = $props();
+
+	const trashPageQuery = $derived(props.data.TrashPageQuery);
 	const trashMailbox = $derived($trashPageQuery.data?.viewer?.trashMailbox);
 </script>
 

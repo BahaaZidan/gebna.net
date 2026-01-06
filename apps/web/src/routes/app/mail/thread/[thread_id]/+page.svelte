@@ -1,8 +1,6 @@
 <script lang="ts">
-	import { getContextClient, mutationStore, queryStore } from "@urql/svelte";
-
 	import { resolve } from "$app/paths";
-	import { page } from "$app/state";
+	import { graphql } from "$houdini";
 
 	import Container from "$lib/components/Container.svelte";
 	import AttachmentListItem from "$lib/components/mail/AttachmentListItem.svelte";
@@ -11,66 +9,12 @@
 	import MessageBody from "$lib/components/mail/MessageBody.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/format";
-	import { graphql } from "$lib/graphql/generated";
 
-	const ThreadDetails = graphql(`
-		query ThreadDetails($id: ID!) {
-			viewer {
-				...NavbarFragment
-			}
-			node(id: $id) {
-				__typename
-				... on Thread {
-					id
-					from {
-						id
-						address
-						name
-						avatar
-					}
-					unseenMessagesCount
-					title
-					lastMessageAt
-					messages {
-						...MessageBody
-						id
-						bodyHTML
-						recievedAt
-						from {
-							id
-							address
-							name
-							avatar
-						}
-						unseen
-						snippet
-						bodyText
-						subject
-						to
-						cc
-						replyTo
-						attachments {
-							id
-							...AttachmentListItem
-						}
-					}
-					mailbox {
-						id
-						...MailboxLink
-					}
-				}
-			}
-		}
-	`);
+	import type { PageData } from "./$houdini";
 
-	const urqlClient = getContextClient();
-	const threadDetailsQuery = queryStore({
-		client: urqlClient,
-		query: ThreadDetails,
-		variables: {
-			id: page.params.thread_id!,
-		},
-	});
+	let props: { data: PageData } = $props();
+
+	const threadDetailsQuery = $derived(props.data.ThreadDetails);
 	const thread = $derived(
 		$threadDetailsQuery.data?.node?.__typename === "Thread" ? $threadDetailsQuery.data.node : null
 	);
@@ -87,13 +31,6 @@
 			}
 		}
 	`);
-	const markThreadSeen = () => {
-		mutationStore({
-			client: urqlClient,
-			query: MarkThreadSeenMutation,
-			variables: { id: page.params.thread_id! },
-		});
-	};
 
 	const EditThreadMutation = graphql(`
 		mutation EditThreadMutation($input: EditThreadInput!) {
@@ -103,20 +40,16 @@
 			}
 		}
 	`);
-	const editThreadTitle = (title?: string | null) => {
-		if (!title) return;
-		mutationStore({
-			client: urqlClient,
-			query: EditThreadMutation,
-			variables: { input: { id: page.params.thread_id!, title } },
-		});
-	};
 
 	$effect(() => {
 		if (!thread) return;
 		let timeout: NodeJS.Timeout | null;
 		if (thread.unseenMessagesCount > 0) {
-			timeout = setTimeout(() => markThreadSeen(), 2000);
+			timeout = setTimeout(() => {
+				MarkThreadSeenMutation.mutate({
+					id: thread.id,
+				});
+			}, 2000);
 		}
 		return () => {
 			if (timeout) clearTimeout(timeout);
@@ -133,10 +66,16 @@
 	{#if thread}
 		<button
 			class="mb-2 text-4xl font-semibold hover:cursor-pointer"
-			onclick={() => {
+			onclick={async () => {
 				if (!thread.title) return;
 				let newTitle = prompt("Edit Thread", thread.title);
-				editThreadTitle(newTitle);
+				if (!newTitle || newTitle === thread.title) return;
+				await EditThreadMutation.mutate({
+					input: {
+						id: thread.id,
+						title: newTitle,
+					},
+				});
 			}}
 		>
 			{thread.title}

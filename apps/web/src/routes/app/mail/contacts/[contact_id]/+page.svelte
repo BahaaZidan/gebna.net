@@ -1,74 +1,19 @@
 <script lang="ts">
 	import BellOffIcon from "@lucide/svelte/icons/bell-off";
-	import FileIcon from "@lucide/svelte/icons/file";
 	import TagIcon from "@lucide/svelte/icons/tag";
-	import { getContextClient, queryStore } from "@urql/svelte";
-
-	import { page } from "$app/state";
 
 	import Container from "$lib/components/Container.svelte";
 	import AttachmentListItem from "$lib/components/mail/AttachmentListItem.svelte";
 	import ThreadListItem from "$lib/components/mail/ThreadListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { graphql } from "$lib/graphql/generated";
-	import { assignTargetMailbox } from "$lib/graphql/mutations";
+	import { AssignTargetMailboxMutation } from "$lib/graphql/mutations";
 	import { TARGET_MAILBOXES } from "$lib/mail";
 
-	const ContactDetailsPageQuery = graphql(`
-		query ContactDetailsPageQuery($id: ID!, $attachmentsAfter: String, $threadsAfter: String) {
-			viewer {
-				...NavbarFragment
-			}
-			node(id: $id) {
-				__typename
-				... on Contact {
-					id
-					name
-					address
-					avatar
-					targetMailbox {
-						id
-						name
-						type
-					}
-					attachments(first: 10, after: $attachmentsAfter) {
-						pageInfo {
-							endCursor
-							hasNextPage
-						}
-						edges {
-							cursor
-							node {
-								id
-								...AttachmentListItem
-							}
-						}
-					}
-					threads(first: 10, after: $threadsAfter) {
-						pageInfo {
-							endCursor
-							hasNextPage
-						}
-						edges {
-							cursor
-							node {
-								...ThreadListItem
-								id
-							}
-						}
-					}
-				}
-			}
-		}
-	`);
-	const urqlClient = getContextClient();
-	const contactDetailsPageQuery = queryStore({
-		client: urqlClient,
-		query: ContactDetailsPageQuery,
-		variables: {
-			id: page.params.contact_id!,
-		},
-	});
+	import type { PageData } from "./$houdini";
+
+	let props: { data: PageData } = $props();
+
+	const contactDetailsPageQuery = $derived(props.data.ContactDetailsPageQuery);
 	const contact = $derived(
 		$contactDetailsPageQuery.data?.node?.__typename === "Contact"
 			? $contactDetailsPageQuery.data?.node
@@ -109,7 +54,13 @@
 			>
 				{#each TARGET_MAILBOXES.filter((b) => b.type !== contact.targetMailbox.type) as targetMailbox (targetMailbox.name)}
 					<li>
-						<button onclick={assignTargetMailbox(urqlClient, contact.id, targetMailbox.type)}>
+						<button
+							onclick={() => {
+								AssignTargetMailboxMutation.mutate({
+									input: { contactID: contact.id, targetMailboxType: targetMailbox.type },
+								});
+							}}
+						>
 							<targetMailbox.icon />
 							{targetMailbox.name}
 						</button>

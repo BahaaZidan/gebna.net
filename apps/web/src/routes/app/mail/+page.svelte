@@ -2,73 +2,25 @@
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import ThumbsDownIcon from "@lucide/svelte/icons/thumbs-down";
 	import ThumbsUpIcon from "@lucide/svelte/icons/thumbs-up";
-	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 
 	import Container from "$lib/components/Container.svelte";
 	import ThreadListItem from "$lib/components/mail/ThreadListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { graphql } from "$lib/graphql/generated";
 
-	const ImportantPageQuery = graphql(`
-		query ImportantPageQuery {
-			viewer {
-				...NavbarFragment
-				id
-				username
-				screenerMailbox: mailbox(type: screener) {
-					id
-					assignedContactsCount
-				}
-				importantMailbox: mailbox(type: important) {
-					id
-					type
-					name
-					unseenThreadsCount
-					unseenThreads: threads(filter: { unseen: true }) {
-						pageInfo {
-							hasNextPage
-							endCursor
-						}
-						edges {
-							cursor
-							node {
-								id
-								...ThreadListItem
-							}
-						}
-					}
-					seenThreads: threads(filter: { unseen: false }) {
-						pageInfo {
-							hasNextPage
-							endCursor
-						}
-						edges {
-							cursor
-							node {
-								id
-								...ThreadListItem
-							}
-						}
-					}
-				}
-			}
-		}
-	`);
+	import type { PageData } from "./$houdini";
 
-	const importantPageQuery = queryStore({
-		client: getContextClient(),
-		query: ImportantPageQuery,
-	});
+	let props: { data: PageData } = $props();
+	let importantPageQuery = $derived(props.data.ImportantPageQuery);
 </script>
 
 <Navbar viewer={$importantPageQuery.data?.viewer} />
 <Container>
 	{#if $importantPageQuery.fetching}
 		<p>Loading...</p>
-	{:else if $importantPageQuery.error}
-		<p>Oh no... {$importantPageQuery.error.message}</p>
+	{:else if $importantPageQuery.errors?.length}
+		<p>Oh no... {$importantPageQuery.errors.map((e) => e.message).join(", ")}</p>
 	{:else if $importantPageQuery.data?.viewer?.username}
 		{@const viewer = $importantPageQuery.data.viewer}
 

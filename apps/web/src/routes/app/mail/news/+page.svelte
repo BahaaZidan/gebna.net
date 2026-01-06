@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
-	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 
@@ -9,53 +8,11 @@
 	import MessageBody from "$lib/components/mail/MessageBody.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 	import { formatInboxDate } from "$lib/format";
-	import { graphql } from "$lib/graphql/generated";
 
-	const NewsPageQuery = graphql(`
-		query NewsPageQuery {
-			viewer {
-				...NavbarFragment
-				id
-				newsMailbox: mailbox(type: news) {
-					id
-					type
-					name
-					threads(first: 5) {
-						pageInfo {
-							hasNextPage
-							endCursor
-						}
-						edges {
-							cursor
-							node {
-								id
-								title
-								messages {
-									...MessageBody
-									id
-									from {
-										id
-										name
-										avatar
-										address
-									}
-									recievedAt
-									bodyHTML
-									bodyText
-									to
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	`);
+	import type { PageData } from "./$houdini";
 
-	const newsPageQuery = queryStore({
-		client: getContextClient(),
-		query: NewsPageQuery,
-	});
+	let props: { data: PageData } = $props();
+	const newsPageQuery = $derived(props.data.NewsPageQuery);
 	const newsMailbox = $derived($newsPageQuery.data?.viewer?.newsMailbox);
 </script>
 
