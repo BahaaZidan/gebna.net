@@ -13,6 +13,7 @@
 
 	let props: { data: PageData } = $props();
 	let importantPageQuery = $derived(props.data.ImportantPageQuery);
+	let importantSeenThreadsQuery = $derived(props.data.ImportantSeenThreadsQuery);
 </script>
 
 <Navbar viewer={$importantPageQuery.data?.viewer} />
@@ -23,6 +24,7 @@
 		<p>Oh no... {$importantPageQuery.errors.map((e) => e.message).join(", ")}</p>
 	{:else if $importantPageQuery.data?.viewer?.username}
 		{@const viewer = $importantPageQuery.data.viewer}
+		{@const seenThreads = $importantSeenThreadsQuery.data?.viewer?.importantMailbox?.seenThreads}
 
 		<div class="flex w-full justify-between">
 			<a
@@ -53,7 +55,7 @@
 			<div class="flex h-64 w-full items-center justify-center">You're all caught up ✨</div>
 		{/if}
 		<div class="divider divider-start">Previously seen</div>
-		{#each viewer.importantMailbox?.seenThreads.edges as { node } (node.id)}
+		{#each seenThreads?.edges as { node } (node.id)}
 			<ThreadListItem thread={node} />
 		{/each}
 	{/if}
