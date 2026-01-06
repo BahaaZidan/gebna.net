@@ -16,8 +16,8 @@
 	import type { PageData } from "./$houdini";
 
 	let props: { data: PageData } = $props();
-	const screenerPageQuery = $derived(props.data.ScreenerPageQuery);
-	const screenerMailbox = $derived($screenerPageQuery.data?.viewer?.screenerMailbox);
+	let screenerPageQuery = $derived(props.data.ScreenerPageQuery);
+	let screenerMailbox = $derived($screenerPageQuery.data?.viewer?.screenerMailbox);
 </script>
 
 <Navbar viewer={$screenerPageQuery.data?.viewer}>

@@ -8,7 +8,7 @@
 
 	import { makeFetch } from "$lib/auth";
 
-	const SearchQuery = graphql(`
+	let SearchQuery = graphql(`
 		query SearchQuery($input: SearchInput!) {
 			search(input: $input) {
 				messages {
@@ -28,7 +28,7 @@
 
 	let queryVal = $state("");
 
-	const searchResource = resource(
+	let searchResource = resource(
 		() => queryVal,
 		async (query, prevQuery, { signal }) => {
 			if (!query || query === "/" || query === prevQuery || query.length < 4) return;

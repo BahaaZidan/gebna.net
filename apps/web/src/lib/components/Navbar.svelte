@@ -22,7 +22,7 @@
 
 	let props: { viewer?: NavbarFragment | null; prepend?: Snippet } = $props();
 
-	const viewer = $derived(
+	let viewer = $derived(
 		fragment(
 			props.viewer,
 			graphql(`
@@ -36,7 +36,7 @@
 		)
 	);
 
-	const resolvePath = resolve as (route: Pathname) => string;
+	let resolvePath = resolve as (route: Pathname) => string;
 </script>
 
 {#snippet navItem(label: string, route: Pathname, Icon: Component<IconProps, {}, "">)}

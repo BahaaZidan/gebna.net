@@ -11,8 +11,8 @@
 
 	let props: { data: PageData } = $props();
 
-	const transactionalPageQuery = $derived(props.data.TransactionalPageQuery);
-	const transactionalMailbox = $derived($transactionalPageQuery.data?.viewer?.transactionalMailbox);
+	let transactionalPageQuery = $derived(props.data.TransactionalPageQuery);
+	let transactionalMailbox = $derived($transactionalPageQuery.data?.viewer?.transactionalMailbox);
 </script>
 
 <Navbar viewer={$transactionalPageQuery.data?.viewer}>

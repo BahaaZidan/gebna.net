@@ -4,7 +4,7 @@
 	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
 
 	let props: { message?: MessageBody | null } = $props();
-	const message = $derived(
+	let message = $derived(
 		fragment(
 			props.message,
 			graphql(`
