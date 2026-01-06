@@ -1,9 +1,6 @@
-import { Client, mutationStore } from "@urql/svelte";
+import { graphql } from "$houdini";
 
-import { graphql } from "./generated";
-import type { MailboxType } from "./generated/graphql";
-
-const AssignTargetMailboxMutation = graphql(`
+export const AssignTargetMailboxMutation = graphql(`
 	mutation AssignTargetMailboxMutation($input: AssignTargetMailboxInput!) {
 		assignTargetMailbox(input: $input) {
 			id
@@ -16,12 +13,3 @@ const AssignTargetMailboxMutation = graphql(`
 		}
 	}
 `);
-
-export const assignTargetMailbox =
-	(urqlClient: Client, contactID: string, targetMailboxType: MailboxType) => () => {
-		mutationStore({
-			client: urqlClient,
-			query: AssignTargetMailboxMutation,
-			variables: { input: { contactID, targetMailboxType } },
-		});
-	};

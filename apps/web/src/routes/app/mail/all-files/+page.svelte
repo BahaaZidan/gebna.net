@@ -1,71 +1,22 @@
 <script lang="ts">
 	import AsteriskIcon from "@lucide/svelte/icons/asterisk";
 	import UsersRoundIcon from "@lucide/svelte/icons/users-round";
-	import { getContextClient, queryStore } from "@urql/svelte";
+
+	import type { AttachmentType$options } from "$houdini";
 
 	import Container from "$lib/components/Container.svelte";
 	import AttachmentListItem from "$lib/components/mail/AttachmentListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { graphql } from "$lib/graphql/generated";
-	import type { AttachmentType } from "$lib/graphql/generated/graphql";
 	import { ATTACHMENT_TYPES } from "$lib/mail";
 
-	const AllFilesPageQuery = graphql(`
-		query AllFilesPageQuery(
-			$firstAttachments: Int = 10
-			$afterAttachment: String
-			$filterAttachments: AttachmentsFilter = {}
-			$firstContacts: Int = 10
-			$afterContact: String
-		) {
-			viewer {
-				...NavbarFragment
-				id
-				attachments(first: $firstAttachments, after: $afterAttachment, filter: $filterAttachments) {
-					pageInfo {
-						endCursor
-						hasNextPage
-					}
-					edges {
-						cursor
-						node {
-							...AttachmentListItem
-							id
-						}
-					}
-				}
-				contacts(first: $firstContacts, after: $afterContact) {
-					pageInfo {
-						endCursor
-						hasNextPage
-					}
-					edges {
-						cursor
-						node {
-							id
-							name
-							address
-							avatar
-						}
-					}
-				}
-			}
-		}
-	`);
-	let attachmentType: AttachmentType | null = $state(null);
+	import type { PageData } from "./$houdini";
+
+	let props: { data: PageData } = $props();
+	let allFilesPageQuery = $derived(props.data.AllFilesPageQuery);
+
+	let attachmentType: AttachmentType$options | null = $state(null);
 	let contactAddress: string | null = $state(null);
-	let allFilesPageQuery = $derived(
-		queryStore({
-			client: getContextClient(),
-			query: AllFilesPageQuery,
-			variables: {
-				filterAttachments: {
-					attachmentType,
-					contactAddress,
-				},
-			},
-		})
-	);
+
 	const attachments = $derived(
 		$allFilesPageQuery.data?.viewer?.attachments.edges.map((e) => e.node)
 	);

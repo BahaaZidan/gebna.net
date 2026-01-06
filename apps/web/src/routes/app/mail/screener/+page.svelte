@@ -5,52 +5,18 @@
 	import NewspaperIcon from "@lucide/svelte/icons/newspaper";
 	import ThumbsDownIcon from "@lucide/svelte/icons/thumbs-down";
 	import ThumbsUpIcon from "@lucide/svelte/icons/thumbs-up";
-	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 
 	import Container from "$lib/components/Container.svelte";
 	import MessageBody from "$lib/components/mail/MessageBody.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { graphql } from "$lib/graphql/generated";
-	import { assignTargetMailbox } from "$lib/graphql/mutations";
+	import { AssignTargetMailboxMutation } from "$lib/graphql/mutations";
 
-	const urqlClient = getContextClient();
-	const ScreenerPageQuery = graphql(`
-		query ScreenerPageQuery {
-			viewer {
-				...NavbarFragment
-				id
-				screenerMailbox: mailbox(type: screener) {
-					id
-					type
-					name
-					assignedContactsCount
-					contacts {
-						edges {
-							node {
-								id
-								address
-								name
-								avatar
-								firstMessage {
-									...MessageBody
-									id
-									bodyText
-									bodyHTML
-									subject
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	`);
-	const screenerPageQuery = queryStore({
-		client: urqlClient,
-		query: ScreenerPageQuery,
-	});
+	import type { PageData } from "./$houdini";
+
+	let props: { data: PageData } = $props();
+	const screenerPageQuery = $derived(props.data.ScreenerPageQuery);
 	const screenerMailbox = $derived($screenerPageQuery.data?.viewer?.screenerMailbox);
 </script>
 
@@ -95,7 +61,11 @@
 						<div class="join">
 							<button
 								class="btn join-item btn-success"
-								onclick={assignTargetMailbox(urqlClient, node.id, "important")}
+								onclick={() => {
+									AssignTargetMailboxMutation.mutate({
+										input: { contactID: node.id, targetMailboxType: "important" },
+									});
+								}}
 							>
 								<ThumbsUpIcon /> Yes
 							</button>
@@ -109,7 +79,11 @@
 						</div>
 						<button
 							class="btn btn-warning"
-							onclick={assignTargetMailbox(urqlClient, node.id, "trash")}
+							onclick={() => {
+								AssignTargetMailboxMutation.mutate({
+									input: { contactID: node.id, targetMailboxType: "trash" },
+								});
+							}}
 						>
 							<ThumbsDownIcon /> No
 						</button>
@@ -127,12 +101,24 @@
 			style="position-anchor:--anchor-{node.id}"
 		>
 			<li>
-				<button onclick={assignTargetMailbox(urqlClient, node.id, "news")}>
+				<button
+					onclick={() => {
+						AssignTargetMailboxMutation.mutate({
+							input: { contactID: node.id, targetMailboxType: "news" },
+						});
+					}}
+				>
 					<NewspaperIcon /> News
 				</button>
 			</li>
 			<li>
-				<button onclick={assignTargetMailbox(urqlClient, node.id, "transactional")}>
+				<button
+					onclick={() => {
+						AssignTargetMailboxMutation.mutate({
+							input: { contactID: node.id, targetMailboxType: "transactional" },
+						});
+					}}
+				>
 					<ArrowRightLeftIcon /> Transactional
 				</button>
 			</li>

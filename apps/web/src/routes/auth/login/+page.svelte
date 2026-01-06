@@ -9,7 +9,7 @@
 	import { resolve } from "$app/paths";
 	import { PUBLIC_API_URL } from "$env/static/public";
 
-	import { setAccessToken } from "$lib/authentication";
+	import { SessionToken } from "$lib/auth";
 	import TextInput from "$lib/components/forms/TextInput.svelte";
 
 	const superform = superForm(defaults(valibot(loginSchema)), {
@@ -28,7 +28,7 @@
 				const response = await result.json();
 				if (isSessionCreatedErrorResponse(response)) return (form.message = response.error);
 				if (!isSessionCreatedSuccessResponse(response)) return;
-				setAccessToken(response.accessToken);
+				SessionToken.value = response.accessToken;
 				await goto(resolve("/app/mail/"));
 				location.reload();
 			}
