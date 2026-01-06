@@ -5,7 +5,7 @@
 	import { fragment, graphql, type MailboxLink, type MailboxType$options } from "$houdini";
 
 	let props: { mailbox?: MailboxLink | null } = $props();
-	const mailbox = $derived(
+	let mailbox = $derived(
 		fragment(
 			props.mailbox,
 			graphql(`
@@ -18,7 +18,7 @@
 		)
 	);
 
-	const mailboxTypeToPath: Record<MailboxType$options, Pathname> = {
+	let mailboxTypeToPath: Record<MailboxType$options, Pathname> = {
 		important: "/app/mail",
 		news: "/app/mail/news",
 		screener: "/app/mail/screener",

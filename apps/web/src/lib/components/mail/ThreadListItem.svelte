@@ -8,7 +8,7 @@
 
 	let props: { thread: ThreadListItem } = $props();
 
-	const thread = $derived(
+	let thread = $derived(
 		fragment(
 			props.thread,
 			graphql(`

@@ -12,10 +12,10 @@
 	import type { PageData } from "./$houdini";
 
 	let props: { data: PageData } = $props();
-	const userSettingsPageQuery = $derived(props.data.UserSettingsPageQuery);
-	const viewer = $derived($userSettingsPageQuery.data?.viewer);
+	let userSettingsPageQuery = $derived(props.data.UserSettingsPageQuery);
+	let viewer = $derived($userSettingsPageQuery.data?.viewer);
 
-	const EditUserMutation = graphql(`
+	let EditUserMutation = graphql(`
 		mutation EditUserMutation($input: EditUserInput!) {
 			editUser(input: $input) {
 				id
@@ -25,7 +25,7 @@
 		}
 	`);
 
-	const superform = superForm(defaults(valibot(editUserSchema)), {
+	let superform = superForm(defaults(valibot(editUserSchema)), {
 		SPA: true,
 		resetForm: false,
 		validators: valibot(editUserSchema),
@@ -41,7 +41,7 @@
 		},
 	});
 	let { constraints, form } = superform;
-	const file = fileProxy(form, "avatar");
+	let file = fileProxy(form, "avatar");
 </script>
 
 <Navbar {viewer} />

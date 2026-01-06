@@ -12,8 +12,8 @@
 	import type { PageData } from "./$houdini";
 
 	let props: { data: PageData } = $props();
-	const newsPageQuery = $derived(props.data.NewsPageQuery);
-	const newsMailbox = $derived($newsPageQuery.data?.viewer?.newsMailbox);
+	let newsPageQuery = $derived(props.data.NewsPageQuery);
+	let newsMailbox = $derived($newsPageQuery.data?.viewer?.newsMailbox);
 </script>
 
 <Navbar viewer={$newsPageQuery.data?.viewer}>
