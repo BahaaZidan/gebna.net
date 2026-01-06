@@ -22,6 +22,8 @@
 	let MarkThreadSeenMutation = graphql(`
 		mutation MarkThreadSeen($id: ID!) {
 			markThreadSeen(id: $id) {
+				...Important_Mailbox_Unseen_Threads_remove
+				...Important_Mailbox_Seen_Threads_insert @prepend
 				id
 				unseenMessagesCount
 				messages {
