@@ -1,4 +1,9 @@
+import { validateSearchParams } from "runed/kit";
+
 import { graphql } from "$houdini";
+
+import type { AllFilesPageQueryVariables } from "./$houdini";
+import { searchParamsSchema } from "./schema";
 
 export const _houdini_load = graphql(`
 	query AllFilesPageQuery(
@@ -42,3 +47,16 @@ export const _houdini_load = graphql(`
 		}
 	}
 `);
+
+export const _AllFilesPageQueryVariables: AllFilesPageQueryVariables = async ({ url }) => {
+	const {
+		data: { attachmentType, contactAddress },
+	} = validateSearchParams(url, searchParamsSchema);
+
+	return {
+		filterAttachments: {
+			...(attachmentType ? { attachmentType } : {}),
+			...(contactAddress ? { contactAddress } : {}),
+		},
+	};
+};
