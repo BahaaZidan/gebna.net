@@ -14,12 +14,12 @@
 
 	let props: { data: PageData } = $props();
 
-	const threadDetailsQuery = $derived(props.data.ThreadDetails);
-	const thread = $derived(
+	let threadDetailsQuery = $derived(props.data.ThreadDetails);
+	let thread = $derived(
 		$threadDetailsQuery.data?.node?.__typename === "Thread" ? $threadDetailsQuery.data.node : null
 	);
 
-	const MarkThreadSeenMutation = graphql(`
+	let MarkThreadSeenMutation = graphql(`
 		mutation MarkThreadSeen($id: ID!) {
 			markThreadSeen(id: $id) {
 				id
@@ -32,7 +32,7 @@
 		}
 	`);
 
-	const EditThreadMutation = graphql(`
+	let EditThreadMutation = graphql(`
 		mutation EditThreadMutation($input: EditThreadInput!) {
 			editThread(input: $input) {
 				id

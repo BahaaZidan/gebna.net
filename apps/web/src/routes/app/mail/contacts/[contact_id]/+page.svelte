@@ -13,8 +13,8 @@
 
 	let props: { data: PageData } = $props();
 
-	const contactDetailsPageQuery = $derived(props.data.ContactDetailsPageQuery);
-	const contact = $derived(
+	let contactDetailsPageQuery = $derived(props.data.ContactDetailsPageQuery);
+	let contact = $derived(
 		$contactDetailsPageQuery.data?.node?.__typename === "Contact"
 			? $contactDetailsPageQuery.data?.node
 			: null

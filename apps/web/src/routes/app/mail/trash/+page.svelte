@@ -11,8 +11,8 @@
 
 	let props: { data: PageData } = $props();
 
-	const trashPageQuery = $derived(props.data.TrashPageQuery);
-	const trashMailbox = $derived($trashPageQuery.data?.viewer?.trashMailbox);
+	let trashPageQuery = $derived(props.data.TrashPageQuery);
+	let trashMailbox = $derived($trashPageQuery.data?.viewer?.trashMailbox);
 </script>
 
 <Navbar viewer={$trashPageQuery.data?.viewer}>
