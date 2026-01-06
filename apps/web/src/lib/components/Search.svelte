@@ -1,13 +1,12 @@
 <script lang="ts">
 	import SearchIcon from "@lucide/svelte/icons/search";
 	import XIcon from "@lucide/svelte/icons/x";
-	import { getContextClient } from "@urql/svelte";
 	import { resource } from "runed";
 
 	import { resolve } from "$app/paths";
+	import { graphql } from "$houdini";
 
-	import { buildURQLFetchOptions } from "$lib/graphql";
-	import { graphql } from "$lib/graphql/generated";
+	import { makeFetch } from "$lib/auth";
 
 	const SearchQuery = graphql(`
 		query SearchQuery($input: SearchInput!) {
@@ -28,21 +27,15 @@
 	`);
 
 	let queryVal = $state("");
-	const urqlClient = getContextClient();
 
 	const searchResource = resource(
 		() => queryVal,
 		async (query, prevQuery, { signal }) => {
 			if (!query || query === "/" || query === prevQuery || query.length < 4) return;
-			const response = await urqlClient
-				.query(
-					SearchQuery,
-					{ input: { query } },
-					{
-						fetchOptions: buildURQLFetchOptions(signal),
-					}
-				)
-				.toPromise();
+			const response = await SearchQuery.fetch({
+				variables: { input: { query } },
+				fetch: makeFetch({ signal }),
+			});
 
 			return response;
 		},

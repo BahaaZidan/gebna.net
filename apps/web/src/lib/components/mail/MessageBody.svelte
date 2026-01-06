@@ -1,25 +1,29 @@
 <script lang="ts">
+	import { fragment, graphql, type MessageBody } from "$houdini";
+
 	import { autoIframeHeight } from "$lib/actions/autoIframeHeight";
-	import { graphql, useFragment, type FragmentType } from "$lib/graphql/generated";
 
-	const MessageBody = graphql(`
-		fragment MessageBody on Message {
-			id
-			bodyHTML
-		}
-	`);
-
-	let props: { message?: FragmentType<typeof MessageBody> | null } = $props();
-	const message = $derived(useFragment(MessageBody, props.message));
+	let props: { message?: MessageBody | null } = $props();
+	const message = $derived(
+		fragment(
+			props.message,
+			graphql(`
+				fragment MessageBody on Message {
+					id
+					bodyHTML
+				}
+			`)
+		)
+	);
 </script>
 
-{#if message?.bodyHTML}
+{#if $message?.bodyHTML}
 	<div class="w-full rounded-2xl bg-base-content p-4">
 		<iframe
 			title="email"
 			sandbox="allow-same-origin"
 			referrerpolicy="no-referrer"
-			srcdoc={message.bodyHTML}
+			srcdoc={$message.bodyHTML}
 			class="w-full"
 			use:autoIframeHeight
 		></iframe>

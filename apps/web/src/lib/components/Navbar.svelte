@@ -14,24 +14,27 @@
 
 	import { resolve } from "$app/paths";
 	import type { Pathname } from "$app/types";
+	import { fragment, graphql, type NavbarFragment } from "$houdini";
 
-	import { deleteAccessToken } from "$lib/authentication";
-	import { graphql, useFragment, type FragmentType } from "$lib/graphql/generated";
+	import { SessionToken } from "$lib/auth";
 
 	import Search from "./Search.svelte";
 
-	const NavbarFragment = graphql(`
-		fragment NavbarFragment on User {
-			id
-			username
-			name
-			avatar
-		}
-	`);
+	let props: { viewer?: NavbarFragment | null; prepend?: Snippet } = $props();
 
-	let props: { viewer?: FragmentType<typeof NavbarFragment> | null; prepend?: Snippet } = $props();
-
-	const viewer = $derived(useFragment(NavbarFragment, props.viewer));
+	const viewer = $derived(
+		fragment(
+			props.viewer,
+			graphql(`
+				fragment NavbarFragment on User {
+					id
+					username
+					name
+					avatar
+				}
+			`)
+		)
+	);
 
 	const resolvePath = resolve as (route: Pathname) => string;
 </script>
@@ -83,7 +86,7 @@
 			<div class="dropdown dropdown-center">
 				<div tabindex="0" role="button" class="avatar hover:cursor-pointer">
 					<div class="size-12 rounded-full">
-						<img alt="User avatar" src={viewer.avatar} />
+						<img alt="User avatar" src={$viewer?.avatar} />
 					</div>
 				</div>
 				<ul
@@ -94,7 +97,7 @@
 					<li>
 						<button
 							onclick={() => {
-								deleteAccessToken();
+								SessionToken.delete();
 								location.reload();
 							}}
 						>

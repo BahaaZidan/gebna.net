@@ -1,45 +1,17 @@
 <script lang="ts">
 	import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
-	import { getContextClient, queryStore } from "@urql/svelte";
 
 	import { resolve } from "$app/paths";
 
 	import Container from "$lib/components/Container.svelte";
 	import ThreadListItem from "$lib/components/mail/ThreadListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { graphql } from "$lib/graphql/generated";
 
-	const TransactionalPageQuery = graphql(`
-		query TransactionalPageQuery {
-			viewer {
-				...NavbarFragment
-				id
-				transactionalMailbox: mailbox(type: transactional) {
-					id
-					type
-					name
-					threads {
-						pageInfo {
-							hasNextPage
-							endCursor
-						}
-						edges {
-							cursor
-							node {
-								id
-								...ThreadListItem
-							}
-						}
-					}
-				}
-			}
-		}
-	`);
+	import type { PageData } from "./$houdini";
 
-	const transactionalPageQuery = queryStore({
-		client: getContextClient(),
-		query: TransactionalPageQuery,
-	});
+	let props: { data: PageData } = $props();
+
+	const transactionalPageQuery = $derived(props.data.TransactionalPageQuery);
 	const transactionalMailbox = $derived($transactionalPageQuery.data?.viewer?.transactionalMailbox);
 </script>
 

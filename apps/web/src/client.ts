@@ -1,14 +1,15 @@
+import { PUBLIC_API_URL } from "$env/static/public";
 import { HoudiniClient } from "$houdini";
 
-import { getAccessToken } from "$lib/authentication";
+import { SessionToken } from "$lib/auth";
 
 export default new HoudiniClient({
-	url: "http://localhost:5173/graphql",
+	url: new URL("/graphql", PUBLIC_API_URL).toString(),
 	fetchParams() {
-		const token = getAccessToken();
+		const token = SessionToken.value;
 		return {
 			headers: {
-				authentication: token ? `Bearer ${token}` : "",
+				Authorization: token ? `Bearer ${token}` : "",
 			},
 		};
 	},
