@@ -1,7 +1,7 @@
 import { Container } from "@cloudflare/containers";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
-import type { ThumbnailQueueMessage } from "$lib/thumbnails/queue";
+import type { QueueMessage } from "$lib/queue/messages";
 import { emailHandler } from "./worker-handlers/email";
 import { fetchHandler } from "./worker-handlers/fetch";
 import { queueHandler } from "./worker-handlers/queue";
@@ -25,7 +25,7 @@ export default class extends WorkerEntrypoint<CloudflareBindings> {
 	scheduled(controller: ScheduledController) {
 		return scheduledHandler(controller, this.env);
 	}
-	queue(batch: MessageBatch<ThumbnailQueueMessage>) {
+	queue(batch: MessageBatch<QueueMessage>) {
 		return queueHandler(batch, this.env, this.ctx);
 	}
 }

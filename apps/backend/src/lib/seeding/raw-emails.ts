@@ -5,7 +5,7 @@ import { ulid } from "ulid";
 import { getDB, MailboxSelectModel, type TransactionInstance } from "$lib/db";
 import * as schema from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
-import type { ThumbnailQueueMessage } from "$lib/thumbnails/queue";
+import type { ContactAvatarQueueMessage, ThumbnailQueueMessage } from "$lib/queue/messages";
 import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "$lib/utils/users";
@@ -109,6 +109,9 @@ export async function seedRawEmails(
 			filename?: string | null;
 		}[] = [];
 
+		let contactIdForAvatar: string | null = null;
+		let contactHasAvatar = false;
+
 		const shouldInsert = await db.transaction(async (tx) => {
 			const existing = await tx.query.messageTable.findFirst({
 				columns: { id: true },
@@ -117,16 +120,18 @@ export async function seedRawEmails(
 			});
 			if (existing) return false;
 
-			const contact = await findOrCreateContact(tx, {
-				ownerId: recipient.id,
-				fromAddress: seed.fromAddress,
-				fromName: seed.fromName,
-				targetMailboxId: screenerMailbox.id,
-				targetMailboxType: screenerMailbox.type,
-			});
-			const targetMailbox =
-				mailboxById.get(contact.targetMailboxId) ?? mailboxById.get(screenerMailbox.id);
-			if (!targetMailbox) throw new Error("Missing target mailbox for contact.");
+				const contact = await findOrCreateContact(tx, {
+					ownerId: recipient.id,
+					fromAddress: seed.fromAddress,
+					fromName: seed.fromName,
+					targetMailboxId: screenerMailbox.id,
+					targetMailboxType: screenerMailbox.type,
+				});
+				contactIdForAvatar = contact.id;
+				contactHasAvatar = Boolean(contact.avatar);
+				const targetMailbox =
+					mailboxById.get(contact.targetMailboxId) ?? mailboxById.get(screenerMailbox.id);
+				if (!targetMailbox) throw new Error("Missing target mailbox for contact.");
 
 			const unseen = targetMailbox.type === "important" || targetMailbox.type === "screener";
 			const thread = await findOrCreateThread(tx, {
@@ -231,9 +236,12 @@ export async function seedRawEmails(
 				);
 
 				const messages: ThumbnailQueueMessage[] = attachmentsForUpload.map((attachment) => ({
-					storageKey: attachment.storageKey,
-					mimeType: attachment.mimeType,
-					filename: attachment.filename ?? null,
+					type: "thumbnail",
+					payload: {
+						storageKey: attachment.storageKey,
+						mimeType: attachment.mimeType,
+						filename: attachment.filename ?? null,
+					},
 				}));
 
 				await env.THUMBNAIL_QUEUE.sendBatch(
@@ -249,6 +257,21 @@ export async function seedRawEmails(
 					.where(inArray(schema.attachmentTable.id, attachmentIds));
 				throw error;
 			}
+		}
+
+		if (shouldInsert && contactIdForAvatar && !contactHasAvatar) {
+			const contactAvatarMessage: ContactAvatarQueueMessage = {
+				type: "contact-avatar",
+				payload: {
+					contactId: contactIdForAvatar,
+				},
+			};
+			await env.THUMBNAIL_QUEUE.sendBatch([
+				{
+					body: contactAvatarMessage,
+					contentType: "json",
+				},
+			]);
 		}
 
 		if (shouldInsert) {

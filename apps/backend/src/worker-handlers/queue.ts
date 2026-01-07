@@ -1,19 +1,36 @@
 import { getRandom } from "@cloudflare/containers";
+import { eq } from "drizzle-orm";
 
-import type { ThumbnailQueueMessage } from "$lib/thumbnails/queue";
+import { DBInstance, getDB } from "$lib/db";
+import { contactTable } from "$lib/db/schema";
+import type {
+	ContactAvatarQueueMessage,
+	QueueMessage,
+	ThumbnailQueueMessage,
+} from "$lib/queue/messages";
+import { resolveAvatar } from "$lib/utils/email";
 
 export async function queueHandler(
-	batch: MessageBatch<ThumbnailQueueMessage>,
+	batch: MessageBatch<QueueMessage>,
 	env: CloudflareBindings,
 	ctx: ExecutionContext
 ) {
+	const db = getDB(env);
+
 	const tasks = batch.messages.map((message) =>
 		(async () => {
 			try {
-				await processThumbnailMessage(env, message.body);
+				switch (message.body.type) {
+					case "contact-avatar":
+						return await processContactAvatarMessage(db, message.body);
+					case "thumbnail":
+						return await processThumbnailMessage(env, message.body);
+					default:
+						return;
+				}
 				message.ack();
 			} catch (error) {
-				console.error("thumbnail queue processing failed", error);
+				console.error("queue processing failed", error);
 				message.retry({ delaySeconds: 30 });
 			}
 		})()
@@ -24,23 +41,39 @@ export async function queueHandler(
 	await all;
 }
 
-async function processThumbnailMessage(env: CloudflareBindings, message: ThumbnailQueueMessage) {
-	if (!message.storageKey) return;
+async function processContactAvatarMessage(db: DBInstance, message: ContactAvatarQueueMessage) {
+	const contact = await db.query.contactTable.findFirst({
+		where: (t, { eq }) => eq(t.id, message.payload.contactId),
+	});
+	if (!contact || contact.avatar) return;
 
-	const object = await env.R2_EMAILS.get(message.storageKey);
+	const avatar = await resolveAvatar(db, contact.address).catch(() => undefined);
+	if (!avatar) return;
+
+	await db
+		.update(contactTable)
+		.set({ avatar, updatedAt: new Date() })
+		.where(eq(contactTable.id, contact.id));
+}
+
+async function processThumbnailMessage(env: CloudflareBindings, message: ThumbnailQueueMessage) {
+	const { payload } = message;
+	if (!payload.storageKey) return;
+
+	const object = await env.R2_EMAILS.get(payload.storageKey);
 	if (!object) return;
 
 	const arrayBuffer = await object.arrayBuffer();
 	if (!arrayBuffer.byteLength) return;
 
-	const mimeType = message.mimeType ?? object.httpMetadata?.contentType ?? undefined;
+	const mimeType = payload.mimeType ?? object.httpMetadata?.contentType ?? undefined;
 
 	const headers: Record<string, string> = {
 		"x-background-secret": env.BACKGROUND_SECRET,
 		"content-type": mimeType ?? "application/octet-stream",
 	};
 
-	if (message.filename) headers["x-filename"] = message.filename;
+	if (payload.filename) headers["x-filename"] = payload.filename;
 	if (mimeType) headers["x-mime-type"] = mimeType;
 
 	const container = await getRandom(env.BACKGROUND_CONTAINER, 1);
@@ -53,7 +86,7 @@ async function processThumbnailMessage(env: CloudflareBindings, message: Thumbna
 	if (response.ok && response.headers.get("content-type") === "image/webp") {
 		const thumbnail = new Uint8Array(await response.arrayBuffer());
 		if (thumbnail.byteLength) {
-			await env.R2_EMAILS.put(`${message.storageKey}/thumbnail`, thumbnail, {
+			await env.R2_EMAILS.put(`${payload.storageKey}/thumbnail`, thumbnail, {
 				httpMetadata: { contentType: "image/webp" },
 			});
 		}
