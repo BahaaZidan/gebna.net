@@ -51,6 +51,14 @@ export const resolvers: Resolvers = {
 						}));
 					return address_user ? { ...address_user, __typename: "Contact" } : null;
 				}
+				case "Message": {
+					const message =
+						session &&
+						(await db.query.messageTable.findFirst({
+							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.ownerId, session.userId)),
+						}));
+					return message ? { ...message, __typename: "Message" } : null;
+				}
 				default:
 					return null;
 			}
