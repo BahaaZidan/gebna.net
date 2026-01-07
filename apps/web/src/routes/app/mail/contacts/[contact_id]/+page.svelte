@@ -3,10 +3,10 @@
 	import TagIcon from "@lucide/svelte/icons/tag";
 
 	import Container from "$lib/components/Container.svelte";
+	import AssignTargetMailboxButton from "$lib/components/mail/AssignTargetMailboxButton.svelte";
 	import AttachmentListItem from "$lib/components/mail/AttachmentListItem.svelte";
 	import ThreadListItem from "$lib/components/mail/ThreadListItem.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
-	import { AssignTargetMailboxMutation } from "$lib/graphql/mutations";
 	import { TARGET_MAILBOXES } from "$lib/mail";
 
 	import type { PageData } from "./$houdini";
@@ -37,36 +37,11 @@
 		</div>
 		<h1 class="text-3xl font-semibold">{contact.name}</h1>
 		<h3>{contact.address}</h3>
-		<div class="flex w-full justify-center gap-3 rounded-3xl bg-base-100 p-2">
+		<div class="flex w-full justify-center gap-3 bg-base-100 p-2">
 			<button class="btn btn-ghost"><BellOffIcon /> Not notifying</button>
-			<button
-				class="btn btn-ghost"
-				popovertarget="popover-target-mailboxes"
-				style="anchor-name:--anchor-target-mailboxes"
-			>
+			<AssignTargetMailboxButton {contact} class="btn btn-ghost">
 				<TargetMailboxIcon /> Delivering to {contact.targetMailbox.name}
-			</button>
-			<ul
-				class="menu dropdown w-52 rounded-box bg-base-100 shadow-sm"
-				popover
-				id="popover-target-mailboxes"
-				style="position-anchor:--anchor-target-mailboxes"
-			>
-				{#each TARGET_MAILBOXES.filter((b) => b.type !== contact.targetMailbox.type) as targetMailbox (targetMailbox.name)}
-					<li>
-						<button
-							onclick={() => {
-								AssignTargetMailboxMutation.mutate({
-									input: { contactID: contact.id, targetMailboxType: targetMailbox.type },
-								});
-							}}
-						>
-							<targetMailbox.icon />
-							{targetMailbox.name}
-						</button>
-					</li>
-				{/each}
-			</ul>
+			</AssignTargetMailboxButton>
 			<button class="btn btn-ghost"><TagIcon /> Autofile in...</button>
 		</div>
 		{#if contact.attachments.edges.length}
