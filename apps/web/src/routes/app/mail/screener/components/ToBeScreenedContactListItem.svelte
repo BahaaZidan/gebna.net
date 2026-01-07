@@ -1,14 +1,11 @@
 <script lang="ts">
-	import ArrowRightLeftIcon from "@lucide/svelte/icons/arrow-right-left";
-	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-	import NewspaperIcon from "@lucide/svelte/icons/newspaper";
 	import ThumbsDownIcon from "@lucide/svelte/icons/thumbs-down";
 	import ThumbsUpIcon from "@lucide/svelte/icons/thumbs-up";
 
 	import { fragment, graphql, type ToBeScreenedContactListItem } from "$houdini";
 
+	import AssignTargetMailboxButton from "$lib/components/mail/AssignTargetMailboxButton.svelte";
 	import MessageBody from "$lib/components/mail/MessageBody.svelte";
-	import { assignTargetMailbox } from "$lib/graphql/mutations";
 
 	let props: {
 		contact: ToBeScreenedContactListItem;
@@ -18,6 +15,7 @@
 			props.contact,
 			graphql(`
 				fragment ToBeScreenedContactListItem on Contact {
+					...AssignTargetMailboxButton
 					id
 					address
 					name
@@ -72,31 +70,13 @@
 				</div>
 			</div>
 			<div class="flex gap-2">
-				<div class="join">
-					<button
-						class="btn join-item"
-						onclick={() => {
-							assignTargetMailbox({ contactID: $contact.id, targetMailboxType: "important" });
-						}}
-					>
-						<ThumbsUpIcon /> Yes
-					</button>
-					<button
-						class="btn join-item p-2"
-						popovertarget="popover-{$contact.id}"
-						style="anchor-name:--anchor-{$contact.id}"
-					>
-						<ChevronDownIcon />
-					</button>
-				</div>
-				<button
-					class="btn"
-					onclick={() => {
-						assignTargetMailbox({ contactID: $contact.id, targetMailboxType: "trash" });
-					}}
-				>
-					<ThumbsDownIcon /> No
-				</button>
+				<AssignTargetMailboxButton contact={$contact} class="btn hover:bg-accent">
+					<div class="flex">
+						<ThumbsUpIcon class="size-5" />
+						<ThumbsDownIcon class="size-5" />
+					</div>
+					Screen
+				</AssignTargetMailboxButton>
 			</div>
 		</div>
 	</summary>
@@ -112,28 +92,3 @@
 		{/if}
 	</div>
 </details>
-<ul
-	class="menu dropdown w-52 bg-neutral shadow-sm"
-	popover
-	id="popover-{$contact.id}"
-	style="position-anchor:--anchor-{$contact.id}"
->
-	<li>
-		<button
-			onclick={() => {
-				assignTargetMailbox({ contactID: $contact.id, targetMailboxType: "news" });
-			}}
-		>
-			<NewspaperIcon /> News
-		</button>
-	</li>
-	<li>
-		<button
-			onclick={() => {
-				assignTargetMailbox({ contactID: $contact.id, targetMailboxType: "transactional" });
-			}}
-		>
-			<ArrowRightLeftIcon /> Transactional
-		</button>
-	</li>
-</ul>

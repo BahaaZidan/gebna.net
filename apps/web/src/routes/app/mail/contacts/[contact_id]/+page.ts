@@ -9,6 +9,7 @@ export const _houdini_load = graphql(`
 		}
 		node(id: $id) {
 			... on Contact {
+				...AssignTargetMailboxButton
 				id
 				name
 				address

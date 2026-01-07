@@ -56,14 +56,15 @@
 - [x] The user should be able edit the title of a thread
 - [x] Attachments standalone page. Search per filetype or sender across all attachments tied to your account
 - [x] Attachment thumbnail
-- [ ] Pagination
+- [x] A more scalable UI for screener flow.
+- [ ] Show thread participants in thread details page.
 - [ ] UI ONLY: The ability to select one or more threads in /app/mail and have a action menu popup. The menu option should change based on one or bulk
 - [ ] Mark as seen / Mark as unseen in /app/mail
 - [ ] Reply later
 - [ ] Focus & reply (a dedicated page to reply to all emails user marked as reply later)
 - [ ] Set aside
 - [ ] The ability to ignore specific threads. (i.e. new messages from the thread will be marked as seen)
-- [ ] A more scalable UI for screener flow and potentially everything else.
+- [ ] Pagination
 
 ### Beyond v0.5
 
@@ -90,7 +91,6 @@
 ### ?
 
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
-- [ ] LLM-generate a test script for inbound including threads
 - [ ] Store raw .eml in an R2 bucket
 - [ ] Merge threads together
 - [ ] Labels
