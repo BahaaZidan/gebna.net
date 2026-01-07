@@ -18,7 +18,7 @@
 </script>
 
 {#if $message?.bodyHTML}
-	<div class="w-full rounded-2xl bg-base-content p-4">
+	<div class="w-full bg-white p-4">
 		<iframe
 			title="email"
 			sandbox="allow-same-origin"

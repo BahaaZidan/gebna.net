@@ -33,7 +33,7 @@
 	<a
 		href={$attachment.url}
 		class={[
-			"flex flex-col items-center gap-2 rounded-3xl bg-base-100 p-3",
+			"flex flex-col items-center gap-2 bg-base-300 p-3 hover:bg-base-100",
 			size === "sm" ? "w-52" : "w-72",
 		]}
 	>

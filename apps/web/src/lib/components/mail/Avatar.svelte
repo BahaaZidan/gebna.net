@@ -3,7 +3,7 @@
 </script>
 
 <div class="avatar">
-	<div class="size-12 rounded-full">
+	<div class="size-12">
 		<img {src} {alt} />
 	</div>
 </div>
