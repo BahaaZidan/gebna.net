@@ -30,7 +30,7 @@
 
 <a
 	href={resolve("/app/mail/thread/[thread_id]", { thread_id: $thread.id })}
-	class="flex w-full items-center gap-3 rounded-3xl p-3 hover:bg-base-100"
+	class="flex w-full items-center gap-3 p-3 hover:bg-base-100"
 >
 	<Avatar src={$thread.from.avatar} alt="{$thread.from.address} avatar" />
 	<div class="flex flex-col gap-1">

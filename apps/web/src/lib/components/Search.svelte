@@ -95,7 +95,7 @@
 			{:else if searchResource.current}
 				{@const results = searchResource.current.data?.search?.messages}
 				{#each results as result (result.id)}
-					<div class="flex flex-col gap-1 rounded-lg bg-base-300 p-4">
+					<div class="flex flex-col gap-1 bg-base-300 p-4">
 						<a
 							data-sveltekit-reload
 							href={resolve("/app/mail/thread/[thread_id]", { thread_id: result.threadId })}

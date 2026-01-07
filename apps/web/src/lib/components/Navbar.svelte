@@ -42,7 +42,7 @@
 {#snippet navItem(label: string, route: Pathname, Icon: Component<IconProps, {}, "">)}
 	<a
 		href={resolvePath(route)}
-		class="flex w-32 flex-col items-center gap-1 rounded-3xl bg-base-300 p-3"
+		class="flex w-32 flex-col items-center gap-1 bg-base-300 p-3 hover:bg-base-100"
 	>
 		<Icon class="size-6" />
 		<span class="text-sm">{label}</span>
@@ -85,7 +85,7 @@
 		{#if viewer}
 			<div class="dropdown dropdown-center">
 				<div tabindex="0" role="button" class="avatar hover:cursor-pointer">
-					<div class="size-12 rounded-full">
+					<div class="size-12">
 						<img alt="User avatar" src={$viewer?.avatar} />
 					</div>
 				</div>
