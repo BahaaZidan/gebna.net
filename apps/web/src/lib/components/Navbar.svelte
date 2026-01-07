@@ -42,7 +42,7 @@
 {#snippet navItem(label: string, route: Pathname, Icon: Component<IconProps, {}, "">)}
 	<a
 		href={resolvePath(route)}
-		class="flex w-32 flex-col items-center gap-1 bg-base-300 p-3 hover:bg-base-100"
+		class="flex w-32 flex-col items-center gap-1 bg-base-300 p-3 hover:bg-base-200"
 	>
 		<Icon class="size-6" />
 		<span class="text-sm">{label}</span>
@@ -56,7 +56,7 @@
 	</div>
 	<div class="navbar-center">
 		<button
-			class="btn font-mono text-xl btn-ghost"
+			class="btn font-mono text-xl btn-outline"
 			popovertarget="navbar-center-popover"
 			style="anchor-name:--navbar-center-anchor"
 		>
@@ -66,7 +66,7 @@
 			popover
 			id="navbar-center-popover"
 			style="position-anchor:--navbar-center-anchor"
-			class="dropdown dropdown-center"
+			class="dropdown dropdown-center border"
 		>
 			<div class="flex w-md flex-col gap-4 rounded-3xl bg-base-100 p-6">
 				<div class="flex flex-wrap justify-center gap-2">
