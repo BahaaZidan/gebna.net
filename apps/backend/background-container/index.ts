@@ -25,7 +25,6 @@ const WEBP_QUALITY = 80;
 
 const log = (...args: unknown[]) => {
 	// Keep logging lightweight; Cloudflare truncates noisy logs.
-	// eslint-disable-next-line no-console
 	console.log("[thumb]", ...args);
 };
 
@@ -341,18 +340,20 @@ const server = http.createServer(async (req, res) => {
 			return;
 		}
 
-		// Auth
-		const providedSecret = header(req, SECRET_HEADER);
-		if (!providedSecret || !SECRET_ENV || providedSecret !== SECRET_ENV) {
-			forbidden(res);
-			return;
-		}
+			// Auth
+			const providedSecret = header(req, SECRET_HEADER);
+			if (!providedSecret || !SECRET_ENV || providedSecret !== SECRET_ENV) {
+				forbidden(res);
+				return;
+			}
 
-		// Body
-		if (!req.headers["content-length"] && req.headers["transfer-encoding"] == null) {
-			badRequest(res, "missing body");
-			return;
-		}
+			// Body
+			const hasBodyLength = Boolean(req.headers["content-length"]);
+			const hasTransferEncoding = typeof req.headers["transfer-encoding"] !== "undefined";
+			if (!hasBodyLength && !hasTransferEncoding) {
+				badRequest(res, "missing body");
+				return;
+			}
 
 		const contentType = header(req, "content-type");
 		const providedMime = header(req, MIME_HEADER);
@@ -360,19 +361,19 @@ const server = http.createServer(async (req, res) => {
 		const ext = getExtFromFilename(filename);
 
 		const body = await readBody(req);
-		const size = body.byteLength;
+			const size = body.byteLength;
 
 		// Try sniffing if caller didn’t provide usable metadata.
 		const sniff = await fileTypeFromBuffer(body).catch(() => null);
 		const detectedMime = sniff?.mime ?? null;
 
-		const kind = detectKind({ contentType, providedMime, ext, detectedMime });
-		log("request", { kind, size, contentType, providedMime, ext, detectedMime });
-		if (kind == null) {
-			log("skip: unsupported type", { contentType, providedMime, ext, detectedMime });
-			jsonNull(res, 200);
-			return;
-		}
+			const kind = detectKind({ contentType, providedMime, ext, detectedMime });
+			log("request", { kind, size, contentType, providedMime, ext, detectedMime });
+			if (kind === null) {
+				log("skip: unsupported type", { contentType, providedMime, ext, detectedMime });
+				jsonNull(res, 200);
+				return;
+			}
 
 		// If the input is an image, do it purely via sharp.
 		if (kind === "image") {
@@ -424,21 +425,19 @@ const server = http.createServer(async (req, res) => {
 			res.setHeader("content-type", "image/webp");
 			res.setHeader("content-length", String(webp.byteLength));
 			res.end(webp);
-		} finally {
-			// Best-effort cleanup
-			// (Cloudflare containers have ephemeral FS, but still avoid buildup)
-			// eslint-disable-next-line no-empty
-			await fs.rm(workDir, { recursive: true, force: true }).catch(() => {});
-		}
-	} catch (e) {
-		log("unhandled error", e);
-		// Any failure => null (per your requirement)
-		jsonNull(res, 200);
+			} finally {
+				// Best-effort cleanup
+				// (Cloudflare containers have ephemeral FS, but still avoid buildup)
+				await fs.rm(workDir, { recursive: true, force: true }).catch(() => undefined);
+			}
+		} catch (e) {
+			log("unhandled error", e);
+			// Any failure => null (per your requirement)
+			jsonNull(res, 200);
 	}
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-	// Keep logs minimal
-	// eslint-disable-next-line no-console
-	console.log(`thumbnail service listening on :${PORT}`);
-});
+	server.listen(PORT, "0.0.0.0", () => {
+		// Keep logs minimal
+		console.log(`thumbnail service listening on :${PORT}`);
+	});

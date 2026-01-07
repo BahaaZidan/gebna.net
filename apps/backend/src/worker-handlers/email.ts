@@ -18,10 +18,10 @@ import {
 	threadTable,
 } from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
-import { extractLocalPart, resolveAvatar } from "$lib/utils/email";
+import type { ContactAvatarQueueMessage, ThumbnailQueueMessage } from "$lib/queue/messages";
+import { extractLocalPart } from "$lib/utils/email";
 import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
-import type { ThumbnailQueueMessage } from "$lib/thumbnails/queue";
 import { generateImagePlaceholder } from "$lib/utils/users";
 
 export async function emailHandler(
@@ -39,7 +39,6 @@ export async function emailHandler(
 	const parsedEmail = await PostalMime.parse(envelope.raw);
 	if (!parsedEmail.from?.name) return envelope.setReject("FROM NOT SET!");
 
-	const avatarInference = resolveAvatar(db, envelope.from).catch(() => undefined);
 	const cidResolver = buildCidResolver(parsedEmail.attachments);
 	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
 		cidResolver,
@@ -68,10 +67,23 @@ export async function emailHandler(
 						targetMailboxType: "screener",
 						name: parsedEmail.from!.name,
 						avatarPlaceholder: generateImagePlaceholder(parsedEmail.from!.name),
-						avatar: await avatarInference,
 					})
 					.returning()
 			)[0];
+		if (!contact.avatar) {
+			await bindings.THUMBNAIL_QUEUE.sendBatch([
+				{
+					body: {
+						type: "contact-avatar",
+						payload: {
+							contactId: contact.id,
+						},
+					} satisfies ContactAvatarQueueMessage,
+					contentType: "json",
+				},
+			]);
+		}
+
 		const targetMailboxId = contact.targetMailboxId;
 		if (!targetMailboxId) throw new Error("SOMETHING_WENT_WRONG");
 
@@ -162,9 +174,12 @@ export async function emailHandler(
 			await tx.insert(attachmentTable).values(attachmentsToInsert);
 
 			const thumbnailMessages: ThumbnailQueueMessage[] = attachmentsToInsert.map((attachment) => ({
-				storageKey: attachment.storageKey,
-				mimeType: attachment.mimeType,
-				filename: attachment.fileName ?? null,
+				type: "thumbnail",
+				payload: {
+					storageKey: attachment.storageKey,
+					mimeType: attachment.mimeType,
+					filename: attachment.fileName ?? null,
+				},
 			}));
 
 			await bindings.THUMBNAIL_QUEUE.sendBatch(
