@@ -52,8 +52,11 @@
 	});
 </script>
 
-<details class="collapse mb-2 border border-base-300 bg-base-100" bind:open={opened}>
-	<summary class="collapse-title">
+<details
+	class="collapse relative mb-2 overflow-visible border border-base-300 bg-base-100"
+	bind:open={opened}
+>
+	<summary class="collapse-title sticky top-0 z-20 block border-b border-base-300 bg-base-100">
 		<div class="flex w-full items-center justify-between gap-2">
 			<div class="ml-4 flex items-center gap-3">
 				<div class="avatar">
