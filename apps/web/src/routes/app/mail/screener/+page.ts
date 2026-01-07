@@ -14,16 +14,7 @@ export const _houdini_load = graphql(`
 					edges {
 						node {
 							id
-							address
-							name
-							avatar
-							firstMessage {
-								...MessageBody
-								id
-								bodyText
-								bodyHTML
-								subject
-							}
+							...ToBeScreenedContactListItem
 						}
 					}
 				}
