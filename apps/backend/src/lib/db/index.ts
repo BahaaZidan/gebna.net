@@ -35,3 +35,4 @@ export type ContactSelectModel = typeof schema.contactTable.$inferSelect;
 export type AttachmentSelectModel = typeof schema.attachmentTable.$inferSelect;
 export type AttachmentInsertModel = typeof schema.attachmentTable.$inferInsert;
 export type ThreadParticipantInsertModel = typeof schema.threadParticipantTable.$inferInsert;
+export type AddressAvatarInferenceSelectModel = typeof schema.addressAvatarInferences.$inferSelect;

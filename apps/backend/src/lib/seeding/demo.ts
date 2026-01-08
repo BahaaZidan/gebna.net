@@ -18,7 +18,7 @@ type SenderProfile = {
 	address: string;
 	name: string;
 	mailbox: MailboxType;
-	avatar?: string;
+	uploadedAvatar?: string;
 };
 
 type MessageSeed = {
@@ -177,21 +177,21 @@ function makeSenders(
 			address: "maya.patel@acme-analytics.test",
 			name: "Maya Patel",
 			mailbox: "important",
-			avatar: "https://unavatar.io/github/mayapatel",
+			uploadedAvatar: "https://unavatar.io/github/mayapatel",
 		},
 		{
 			key: "zoe",
 			address: "zoe@studioevergreen.test",
 			name: "Zoe Keller",
 			mailbox: "important",
-			avatar: "https://unavatar.io/zoe",
+			uploadedAvatar: "https://unavatar.io/zoe",
 		},
 		{
 			key: "omar",
 			address: "omar@reforge.news",
 			name: "Omar Reforge",
 			mailbox: "news",
-			avatar: "https://unavatar.io/omar",
+			uploadedAvatar: "https://unavatar.io/omar",
 		},
 		{
 			key: "nina",
@@ -222,7 +222,7 @@ function makeSenders(
 			address: "claire@northwind-ventures.test",
 			name: "Claire Johnson",
 			mailbox: "screener",
-			avatar: "https://unavatar.io/linkedin/clairejohnson",
+			uploadedAvatar: "https://unavatar.io/linkedin/clairejohnson",
 		},
 	];
 
@@ -233,7 +233,7 @@ function makeSenders(
 		targetMailboxId: mailboxes[sender.mailbox].id,
 		targetMailboxType: sender.mailbox,
 		name: sender.name,
-		avatar: sender.avatar,
+		uploadedAvatar: sender.uploadedAvatar,
 		avatarPlaceholder: generateImagePlaceholder(sender.name),
 	}));
 }

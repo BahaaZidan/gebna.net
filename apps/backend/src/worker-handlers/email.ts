@@ -3,7 +3,9 @@ import PostalMime, { type Email } from "postal-mime";
 import { ulid } from "ulid";
 
 import {
+	AddressAvatarInferenceSelectModel,
 	AttachmentInsertModel,
+	ContactSelectModel,
 	getDB,
 	MailboxSelectModel,
 	ThreadParticipantInsertModel,
@@ -53,6 +55,9 @@ export async function emailHandler(
 	const snippet = normalizedBody.text.trim() ? normalizedBody.text.slice(0, 50) : null;
 
 	await db.transaction(async (tx) => {
+		const addressAvatarInference = await tx.query.addressAvatarInferences.findFirst({
+			where: (t, { eq }) => eq(t.address, envelope.from),
+		});
 		const contact =
 			(await tx.query.contactTable.findFirst({
 				where: (t, { eq, and }) =>
@@ -72,22 +77,11 @@ export async function emailHandler(
 						targetMailboxType: "screener",
 						name: parsedEmail.from!.name,
 						avatarPlaceholder: generateImagePlaceholder(parsedEmail.from!.name),
+						inferredAvatar: addressAvatarInference?.avatarURL,
 					})
 					.returning()
 			)[0];
-		if (!contact.avatar) {
-			await bindings.THUMBNAIL_QUEUE.sendBatch([
-				{
-					body: {
-						type: "contact-avatar",
-						payload: {
-							contactId: contact.id,
-						},
-					} satisfies ContactAvatarQueueMessage,
-					contentType: "json",
-				},
-			]);
-		}
+		await runAddressAvatarInference({ bindings, contact, inference: addressAvatarInference });
 
 		const targetMailboxId = contact.targetMailboxId;
 		if (!targetMailboxId) throw new Error("SOMETHING_WENT_WRONG");
@@ -288,4 +282,42 @@ async function incrementThreadUnseenCount(
 		unseenCount: unseen ? thread.unseenCount + 1 : thread.unseenCount,
 		lastMessageAt,
 	};
+}
+
+async function runAddressAvatarInference({
+	bindings,
+	inference,
+	contact,
+}: {
+	bindings: CloudflareBindings;
+	inference?: AddressAvatarInferenceSelectModel;
+	contact: ContactSelectModel;
+}) {
+	if (contact.uploadedAvatar) return;
+	if (!inference) return await enqueAddressAvatarInference({ bindings, contact });
+
+	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+	const isInferenceOlderThan7Days = Date.now() - inference.lastCheckedAt.getTime() > SEVEN_DAYS_MS;
+	if (!isInferenceOlderThan7Days) return;
+	await enqueAddressAvatarInference({ bindings, contact });
+}
+
+async function enqueAddressAvatarInference({
+	bindings,
+	contact,
+}: {
+	bindings: CloudflareBindings;
+	contact: ContactSelectModel;
+}) {
+	await bindings.THUMBNAIL_QUEUE.sendBatch([
+		{
+			body: {
+				type: "contact-avatar",
+				payload: {
+					contactId: contact.id,
+				},
+			} satisfies ContactAvatarQueueMessage,
+			contentType: "json",
+		},
+	]);
 }

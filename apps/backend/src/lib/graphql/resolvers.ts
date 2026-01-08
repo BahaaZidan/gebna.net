@@ -402,7 +402,7 @@ export const resolvers: Resolvers = {
 	},
 	Contact: {
 		id: (parent) => toGlobalId("Contact", parent.id),
-		avatar: (parent) => parent.avatar || parent.avatarPlaceholder,
+		avatar: (parent) => parent.uploadedAvatar || parent.inferredAvatar || parent.avatarPlaceholder,
 		targetMailbox: async (parent, _, { db }) => {
 			const mailbox = await db.query.mailboxTable.findFirst({
 				where: (t, { eq }) => eq(t.id, parent.targetMailboxId),

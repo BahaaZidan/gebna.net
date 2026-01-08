@@ -128,7 +128,7 @@ export async function seedRawEmails(
 				targetMailboxType: screenerMailbox.type,
 			});
 			contactIdForAvatar = contact.id;
-			contactHasAvatar = Boolean(contact.avatar);
+			contactHasAvatar = Boolean(contact.uploadedAvatar);
 			const targetMailbox =
 				mailboxById.get(contact.targetMailboxId) ?? mailboxById.get(screenerMailbox.id);
 			if (!targetMailbox) throw new Error("Missing target mailbox for contact.");
