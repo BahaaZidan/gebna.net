@@ -1,7 +1,8 @@
 import { Container } from "@cloudflare/containers";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
-import type { QueueMessage } from "$lib/queue/messages";
+import type { QueueMessage } from "$lib/queue/types";
+
 import { emailHandler } from "./worker-handlers/email";
 import { fetchHandler } from "./worker-handlers/fetch";
 import { queueHandler } from "./worker-handlers/queue";

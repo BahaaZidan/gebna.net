@@ -5,7 +5,7 @@ import { ulid } from "ulid";
 import { getDB, MailboxSelectModel, type TransactionInstance } from "$lib/db";
 import * as schema from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
-import type { ContactAvatarQueueMessage, ThumbnailQueueMessage } from "$lib/queue/messages";
+import type { ContactAvatarQueueMessage, ThumbnailQueueMessage } from "$lib/queue/types";
 import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "$lib/utils/users";
@@ -120,18 +120,18 @@ export async function seedRawEmails(
 			});
 			if (existing) return false;
 
-				const contact = await findOrCreateContact(tx, {
-					ownerId: recipient.id,
-					fromAddress: seed.fromAddress,
-					fromName: seed.fromName,
-					targetMailboxId: screenerMailbox.id,
-					targetMailboxType: screenerMailbox.type,
-				});
-				contactIdForAvatar = contact.id;
-				contactHasAvatar = Boolean(contact.avatar);
-				const targetMailbox =
-					mailboxById.get(contact.targetMailboxId) ?? mailboxById.get(screenerMailbox.id);
-				if (!targetMailbox) throw new Error("Missing target mailbox for contact.");
+			const contact = await findOrCreateContact(tx, {
+				ownerId: recipient.id,
+				fromAddress: seed.fromAddress,
+				fromName: seed.fromName,
+				targetMailboxId: screenerMailbox.id,
+				targetMailboxType: screenerMailbox.type,
+			});
+			contactIdForAvatar = contact.id;
+			contactHasAvatar = Boolean(contact.avatar);
+			const targetMailbox =
+				mailboxById.get(contact.targetMailboxId) ?? mailboxById.get(screenerMailbox.id);
+			if (!targetMailbox) throw new Error("Missing target mailbox for contact.");
 
 			const unseen = targetMailbox.type === "important" || targetMailbox.type === "screener";
 			const thread = await findOrCreateThread(tx, {
