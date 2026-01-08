@@ -1,3 +1,4 @@
+import { AVATAR_INFERENCE_DENYLIST } from "$lib/constant";
 import { DBInstance } from "$lib/db";
 
 import { getDomainAvatarUrl } from "./bimi";
@@ -29,6 +30,8 @@ export async function resolveAvatar(db: DBInstance, address: string) {
 		});
 		return sender?.avatar;
 	}
+	if (AVATAR_INFERENCE_DENYLIST.has(domain)) return;
+
 	const bimiLogo = await getDomainAvatarUrl(domain);
 	return bimiLogo;
 }

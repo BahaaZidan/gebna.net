@@ -18,7 +18,7 @@ import {
 	threadTable,
 } from "$lib/db/schema";
 import { increment } from "$lib/db/utils";
-import type { ContactAvatarQueueMessage, ThumbnailQueueMessage } from "$lib/queue/messages";
+import type { ContactAvatarQueueMessage, ThumbnailQueueMessage } from "$lib/queue/types";
 import { extractLocalPart } from "$lib/utils/email";
 import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
@@ -32,7 +32,12 @@ export async function emailHandler(
 	const db = getDB(bindings);
 
 	const recipientUser = await db.query.userTable.findFirst({
-		where: (t, { eq }) => eq(t.username, extractLocalPart(envelope.to)),
+		where: (t, { eq }) =>
+			eq(
+				t.username,
+				// TODO: handle cc, bcc, ...etc cases
+				extractLocalPart(envelope.to)
+			),
 	});
 	if (!recipientUser) return envelope.setReject("ADDRESS NOT FOUND!");
 
