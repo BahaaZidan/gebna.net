@@ -73,7 +73,8 @@ export const contactTable = sqliteTable(
 			.references(() => mailboxTable.id, { onDelete: "cascade" }),
 		targetMailboxType: text().$type<MailboxType>().notNull(),
 		name: text().notNull(),
-		avatar: text(),
+		uploadedAvatar: text(),
+		inferredAvatar: text(),
 		avatarPlaceholder: text().notNull(),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
@@ -210,3 +211,9 @@ export const threadParticipantTable = sqliteTable(
 		index("idx_thread_participant_thread").on(self.ownerId, self.threadId),
 	]
 );
+
+export const addressAvatarInferences = sqliteTable("address_avatar_inferences", {
+	address: citext().primaryKey(),
+	avatarURL: text().notNull(),
+	lastCheckedAt: integer({ mode: "timestamp" }).notNull(),
+});
