@@ -7,7 +7,7 @@ import type {
 	ContactAvatarQueueMessage,
 	QueueMessage,
 	ThumbnailQueueMessage,
-} from "$lib/queue/messages";
+} from "$lib/queue/types";
 import { resolveAvatar } from "$lib/utils/email";
 
 export async function queueHandler(
@@ -28,7 +28,6 @@ export async function queueHandler(
 					default:
 						return;
 				}
-				message.ack();
 			} catch (error) {
 				console.error("queue processing failed", error);
 				message.retry({ delaySeconds: 30 });
