@@ -11,13 +11,13 @@
 
 	let props: { data: PageData } = $props();
 
-	let trashPageQuery = $derived(props.data.TrashPageQuery);
-	let trashMailbox = $derived($trashPageQuery.data?.viewer?.trashMailbox);
+	let transactionalPageQuery = $derived(props.data.TransactionalPageQuery);
+	let transactionalMailbox = $derived($transactionalPageQuery.data?.viewer?.transactionalMailbox);
 </script>
 
-<Navbar viewer={$trashPageQuery.data?.viewer}>
+<Navbar viewer={$transactionalPageQuery.data?.viewer}>
 	{#snippet prepend()}
-		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
+		<a href={resolve("/app/desktop/mail")} class="btn mr-2 btn-accent">
 			<ChevronLeftIcon />
 			Important
 		</a>
@@ -25,9 +25,9 @@
 </Navbar>
 
 <Container>
-	{#if trashMailbox}
-		<h1 class="text-5xl font-bold">Trash</h1>
-		{#each trashMailbox.threads.edges as { node } (node.id)}
+	{#if transactionalMailbox}
+		<h1 class="text-5xl font-bold">Transactional</h1>
+		{#each transactionalMailbox.threads.edges as { node } (node.id)}
 			<ThreadListItem thread={node} />
 		{/each}
 	{/if}

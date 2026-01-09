@@ -88,7 +88,9 @@
 				<div class="flex w-full flex-col gap-3">
 					<div class="flex items-center gap-1">
 						<a
-							href={resolve("/app/mail/contacts/[contact_id]", { contact_id: message.from.id })}
+							href={resolve("/app/desktop/mail/contacts/[contact_id]", {
+								contact_id: message.from.id,
+							})}
 							class="font-semibold"
 						>
 							{message.from.name}

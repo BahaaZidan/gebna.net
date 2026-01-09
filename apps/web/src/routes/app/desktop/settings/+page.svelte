@@ -9,7 +9,7 @@
 	import TextInput from "$lib/components/forms/TextInput.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
 
-	import type { PageData } from "./$houdini";
+	import type { PageData } from "../../settings/$houdini";
 
 	let props: { data: PageData } = $props();
 	let userSettingsPageQuery = $derived(props.data.UserSettingsPageQuery);

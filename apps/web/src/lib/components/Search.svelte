@@ -98,7 +98,7 @@
 					<div class="flex flex-col gap-1 bg-base-300 p-4">
 						<a
 							data-sveltekit-reload
-							href={resolve("/app/mail/thread/[thread_id]", { thread_id: result.threadId })}
+							href={resolve("/app/desktop/mail/thread/[thread_id]", { thread_id: result.threadId })}
 							class="text-sm font-bold wrap-anywhere link-hover"
 						>
 							{result.subject}
