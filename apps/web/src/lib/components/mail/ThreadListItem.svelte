@@ -29,7 +29,7 @@
 </script>
 
 <a
-	href={resolve("/app/mail/thread/[thread_id]", { thread_id: $thread.id })}
+	href={resolve("/app/desktop/mail/thread/[thread_id]", { thread_id: $thread.id })}
 	class="flex w-full items-center gap-3 p-3 hover:bg-base-100"
 >
 	<Avatar src={$thread.from.avatar} alt="{$thread.from.address} avatar" />

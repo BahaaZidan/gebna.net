@@ -70,13 +70,13 @@
 		>
 			<div class="flex w-md flex-col gap-4 rounded-3xl bg-base-100 p-6">
 				<div class="flex flex-wrap justify-center gap-2">
-					{@render navItem("Important", "/app/mail", StarIcon)}
-					{@render navItem("News", "/app/mail/news", BookOpenIcon)}
-					{@render navItem("Transactional", "/app/mail/transactional", ReceiptTextIcon)}
-					{@render navItem("Reply Later", "/app/mail/reply-later", ReplyAllIcon)}
-					{@render navItem("Set Aside", "/app/mail/set-aside", PinIcon)}
-					{@render navItem("All Files", "/app/mail/all-files", ImagesIcon)}
-					{@render navItem("Trash", "/app/mail/trash", TrashIcon)}
+					{@render navItem("Important", "/app/desktop/mail", StarIcon)}
+					{@render navItem("News", "/app/desktop/mail/news", BookOpenIcon)}
+					{@render navItem("Transactional", "/app/desktop/mail/transactional", ReceiptTextIcon)}
+					{@render navItem("Reply Later", "/app/desktop/mail/reply-later", ReplyAllIcon)}
+					{@render navItem("Set Aside", "/app/desktop/mail/set-aside", PinIcon)}
+					{@render navItem("All Files", "/app/desktop/mail/all-files", ImagesIcon)}
+					{@render navItem("Trash", "/app/desktop/mail/trash", TrashIcon)}
 				</div>
 			</div>
 		</div>
@@ -93,7 +93,7 @@
 					tabindex="-1"
 					class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
 				>
-					<li><a href={resolve("/app/settings")}><SettingsIcon /> Settings</a></li>
+					<li><a href={resolve("/app/desktop/settings")}><SettingsIcon /> Settings</a></li>
 					<li>
 						<button
 							onclick={() => {

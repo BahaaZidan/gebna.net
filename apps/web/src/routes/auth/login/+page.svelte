@@ -29,7 +29,7 @@
 				if (isSessionCreatedErrorResponse(response)) return (form.message = response.error);
 				if (!isSessionCreatedSuccessResponse(response)) return;
 				SessionToken.value = response.accessToken;
-				await goto(resolve("/app/mail/"));
+				await goto(resolve("/app/desktop/mail/"));
 				location.reload();
 			}
 		},

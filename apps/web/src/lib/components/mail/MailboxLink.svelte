@@ -19,11 +19,11 @@
 	);
 
 	let mailboxTypeToPath: Record<MailboxType$options, Pathname> = {
-		important: "/app/mail",
-		news: "/app/mail/news",
-		screener: "/app/mail/screener",
-		transactional: "/app/mail/transactional",
-		trash: "/app/mail/trash",
+		important: "/app/desktop/mail",
+		news: "/app/desktop/mail/news",
+		screener: "/app/desktop/mail/screener",
+		transactional: "/app/desktop/mail/transactional",
+		trash: "/app/desktop/mail/trash",
 	};
 </script>
 

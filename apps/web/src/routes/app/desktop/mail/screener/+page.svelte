@@ -16,7 +16,7 @@
 
 <Navbar viewer={$screenerPageQuery.data?.viewer}>
 	{#snippet prepend()}
-		<a href={resolve("/app/mail")} class="btn mr-2 btn-accent">
+		<a href={resolve("/app/desktop/mail")} class="btn mr-2 btn-accent">
 			<ChevronLeftIcon />
 			Important
 		</a>

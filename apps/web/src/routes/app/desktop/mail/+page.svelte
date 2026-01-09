@@ -28,7 +28,7 @@
 
 		<div class="flex w-full justify-between">
 			<a
-				href={resolve("/app/mail/screener")}
+				href={resolve("/app/desktop/mail/screener")}
 				class={["btn btn-accent", { invisible: !viewer.screenerMailbox?.assignedContactsCount }]}
 			>
 				<div class="flex">
