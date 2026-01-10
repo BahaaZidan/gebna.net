@@ -34,12 +34,7 @@ export async function emailHandler(
 	const db = getDB(bindings);
 
 	const recipientUser = await db.query.userTable.findFirst({
-		where: (t, { eq }) =>
-			eq(
-				t.username,
-				// TODO: handle cc, bcc, ...etc cases
-				extractLocalPart(envelope.to)
-			),
+		where: (t, { eq }) => eq(t.username, extractLocalPart(envelope.to)),
 	});
 	if (!recipientUser) return envelope.setReject("ADDRESS NOT FOUND!");
 
