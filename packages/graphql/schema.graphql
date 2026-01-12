@@ -1,194 +1,275 @@
-type Query {
-	viewer: User
-	node(id: ID!): Node
-	search(input: SearchInput!): SearchResult
-}
-
-type Mutation {
-	assignTargetMailbox(input: AssignTargetMailboxInput!): Contact
-	markThreadSeen(id: ID!): Thread
-	editUser(input: EditUserInput!): User
-	editThread(input: EditThreadInput!): Thread
-}
-
-input SearchInput {
-	query: String!
-	mailboxId: ID
-	limit: Int
-	offset: Int
-}
-
-type SearchResult {
-	messages: [Message!]!
-}
-
-input AssignTargetMailboxInput {
-	contactID: ID!
-	targetMailboxType: MailboxType!
-}
-
-input EditUserInput {
-	name: String
-	avatar: File
-}
-
-input EditThreadInput {
-	id: ID!
-	title: String!
-}
-
-type User implements Node {
-	id: ID!
-	username: String!
-	name: String!
-	avatar: String!
-	mailbox(type: MailboxType!): Mailbox
-	mailboxes: [Mailbox!]!
-	attachments(first: Int, after: String, filter: AttachmentsFilter): AttachmentsConnection!
-	contacts(first: Int, after: String): ContactsConnection!
-}
-
-type Mailbox implements Node {
-	id: ID!
-	type: MailboxType!
-	name: String!
-	unseenThreadsCount: Int!
-	threads(first: Int, after: String, filter: ThreadsFilter): ThreadsConnection!
-	assignedContactsCount: Int!
-	contacts(first: Int, after: String): ContactsConnection!
-}
-
-enum MailboxType {
-	screener
-	important
-	news
-	transactional
-	trash
-}
-
-input ThreadsFilter {
-	unseen: Boolean!
-}
-
-type ThreadsConnection implements Connection {
-	pageInfo: PageInfo!
-	edges: [ThreadEdge!]!
-}
-
-type ThreadEdge implements Edge {
-	cursor: String
-	node: Thread!
-}
-
-type Thread implements Node {
-	id: ID!
-	from: Contact!
-	unseenMessagesCount: Int!
-	title: String
-	snippet: String
-	lastMessageAt: DateTime!
-	messages: [Message!]!
-	mailbox: Mailbox!
-}
-
-type Message implements Node {
-	id: ID!
-	threadId: ID!
-	from: Contact!
-	unseen: Boolean!
-	recievedAt: DateTime!
-	subject: String
-	to: [String!]
-	cc: [String!]
-	replyTo: [String!]
-	snippet: String
-	bodyText: String
-	bodyHTML: String
-	attachments: [Attachment!]!
-}
-
-type ContactsConnection implements Connection {
-	pageInfo: PageInfo!
-	edges: [ContactEdge!]!
-}
-
-type ContactEdge implements Edge {
-	cursor: String
-	node: Contact!
-}
-
-type Contact implements Node {
-	id: ID!
-	address: String!
-	name: String!
-	avatar: String!
-	targetMailbox: Mailbox!
-	firstMessage: Message
-	threads(first: Int, after: String): ThreadsConnection!
-	attachments(first: Int, after: String): AttachmentsConnection!
-}
-
-enum AttachmentType {
-	Image
-	PDF
-	CalendarInvite
-	Document
-	Spreadsheet
-	Presentation
-	Media
-	ZIP
-	Other
-}
-
-input AttachmentsFilter {
-	attachmentType: AttachmentType
-	contactAddress: EmailAddress
-}
-
-type AttachmentsConnection implements Connection {
-	pageInfo: PageInfo!
-	edges: [AttachmentEdge!]!
-}
-
-type AttachmentEdge implements Edge {
-	cursor: String
-	node: Attachment!
-}
-
-type Attachment implements Node {
-	id: ID!
-	fileName: String
-	mimeType: String!
-	contentId: String
-	url: String!
-	sizeInBytes: Int!
-	createdAt: DateTime!
-	thumbnail: String
-	type: AttachmentType!
-}
-
-interface Connection {
-	pageInfo: PageInfo!
-	edges: [Edge!]!
-}
-
-type PageInfo {
-	startCursor: String
-	endCursor: String
-	hasNextPage: Boolean
-	hasPreviousPage: Boolean
-}
-
-interface Edge {
-	cursor: String
-	node: Node!
-}
+scalar DateTime
+scalar Cursor
 
 interface Node {
 	id: ID!
 }
 
-scalar DateTime
-scalar URL
-scalar File
-scalar EmailAddress
+enum ConversationKind {
+	PRIVATE
+	GROUP
+}
+
+enum IdentityKind {
+	GEBNA_USER
+	EXTERNAL_EMAIL
+}
+
+"""
+Conversation placement for the viewer.
+Purely organizational (no gating).
+"""
+enum Mailbox {
+	IMPORTANT
+	TRASH
+}
+
+enum ParticipantRole {
+	MEMBER
+	ADMIN
+}
+
+enum ParticipantState {
+	ACTIVE
+	LEFT
+}
+
+enum Transport {
+	EMAIL
+	GEBNA_DM
+}
+
+enum DeliveryStatus {
+	QUEUED
+	SENT
+	DELIVERED
+	READ
+	FAILED
+}
+
+type Identity implements Node {
+	id: ID!
+
+	"""
+	Canonical address-like identifier.
+	Examples:
+	- "alice@gebna.net"
+	- "bob@gmail.com"
+	"""
+	address: String!
+
+	kind: IdentityKind!
+
+	"""
+	Viewer-scoped relationship metadata (contacts).
+	Always resolved.
+	"""
+	relationshipToViewer: IdentityRelationship!
+}
+
+type IdentityRelationship {
+	"""
+	Stable viewer-scoped relationship id.
+	Virtual or persisted depending on implementation.
+	"""
+	id: ID!
+
+	"""
+	Whether the viewer saved this identity as a contact.
+	"""
+	isContact: Boolean!
+
+	"""
+	Viewer-scoped display metadata.
+	Empty string allowed when not customized.
+	"""
+	displayName: String!
+	avatarUrl: String!
+}
+
+type Conversation implements Node {
+	id: ID!
+	kind: ConversationKind!
+	title: String!
+	participants: [ConversationParticipant!]!
+	lastMessage: Message!
+	updatedAt: DateTime!
+	viewerState: ConversationViewerState!
+	messages(last: Int!, before: Cursor): MessageConnection!
+}
+
+type ConversationParticipant {
+	identity: Identity!
+	role: ParticipantRole!
+	state: ParticipantState!
+	joinedAt: DateTime!
+
+	"""
+	Last message read by this participant.
+	Use a sentinel ID if none.
+	"""
+	lastReadMessageId: ID!
+}
+
+type ConversationViewerState {
+	mailbox: Mailbox!
+	unreadCount: Int!
+}
+
+type Message implements Node {
+	id: ID!
+
+	conversationId: ID!
+
+	sender: Identity!
+
+	bodyText: String!
+	createdAt: DateTime!
+
+	delivery: [DeliveryReceipt!]!
+}
+
+type DeliveryReceipt {
+	recipient: Identity!
+	status: DeliveryStatus!
+	at: DateTime!
+	error: String!
+	transport: Transport!
+}
+
+type PageInfo {
+	hasNextPage: Boolean!
+	endCursor: Cursor
+}
+
+type ConversationConnection {
+	edges: [ConversationEdge!]!
+	pageInfo: PageInfo!
+}
+
+type ConversationEdge {
+	cursor: Cursor!
+	node: Conversation!
+}
+
+type MessageConnection {
+	edges: [MessageEdge!]!
+	pageInfo: PageInfo!
+}
+
+type MessageEdge {
+	cursor: Cursor!
+	node: Message!
+}
+
+type IdentityConnection {
+	edges: [IdentityEdge!]!
+	pageInfo: PageInfo!
+}
+
+type IdentityEdge {
+	cursor: Cursor!
+	node: Identity!
+}
+
+type Viewer implements Node {
+	id: ID!
+
+	conversationsByMailbox(mailbox: Mailbox!, first: Int!, after: Cursor): ConversationConnection!
+
+	"""
+	List of saved contacts.
+	"""
+	contacts(query: String!, first: Int!, after: Cursor): IdentityConnection!
+}
+
+type Query {
+	viewer: Viewer
+	node(id: ID!): Node
+}
+
+input UpsertConversationInput {
+	kind: ConversationKind!
+
+	"""
+	For PRIVATE: exactly 1 address (the other participant).
+	Viewer is implied.
+	For GROUP: N addresses; viewer is implied.
+	"""
+	participantAddresses: [String!]!
+
+	title: String!
+}
+
+type UpsertConversationPayload {
+	conversation: Conversation!
+	created: Boolean!
+}
+
+input SendMessageInput {
+	conversationId: ID!
+	bodyText: String!
+	clientMutationId: String!
+}
+
+type SendMessagePayload {
+	clientMutationId: String!
+	message: Message!
+	decision: TransportDecision!
+}
+
+type TransportDecision {
+	chosen: Transport!
+	reason: String!
+	perRecipient: [RecipientTransportDecision!]!
+}
+
+type RecipientTransportDecision {
+	recipient: Identity!
+	chosen: Transport!
+	reason: String!
+}
+
+input MarkConversationReadInput {
+	conversationId: ID!
+	lastReadMessageId: ID!
+}
+
+type MarkConversationReadPayload {
+	conversation: Conversation!
+}
+
+input SetContactStatusInput {
+	identityId: ID!
+	isContact: Boolean!
+	displayName: String!
+	avatarUrl: String!
+}
+
+type SetContactStatusPayload {
+	identity: Identity!
+}
+
+input MoveConversationInput {
+	conversationId: ID!
+	mailbox: Mailbox!
+}
+
+type MoveConversationPayload {
+	conversation: Conversation!
+}
+
+type Mutation {
+	upsertConversation(input: UpsertConversationInput!): UpsertConversationPayload!
+	sendMessage(input: SendMessageInput!): SendMessagePayload!
+	markConversationRead(input: MarkConversationReadInput!): MarkConversationReadPayload!
+
+	setContactStatus(input: SetContactStatusInput!): SetContactStatusPayload!
+	moveConversation(input: MoveConversationInput!): MoveConversationPayload!
+}
+
+type Subscription {
+	messageAdded(conversationId: ID!): Message!
+	conversationUpdated: Conversation!
+	deliveryUpdated(messageId: ID!): [DeliveryReceipt!]!
+}
