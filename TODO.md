@@ -1,5 +1,17 @@
 ## TODOs
 
+### proto-3
+
+- [ ] Chats => A unified chat interface
+  - [ ] Contacts-based threading => Conversations/Chats
+  - [ ] Forced plain text view for email messages (with the ability to "View HTML version")
+  - [ ] Smart content detection:
+    - [ ] Calendar invites
+    - [ ] Body-less emails w/ attachments
+- [ ] Calendar
+- [ ] News => Email newsletters + RSS = unified news feed
+- [ ] Files => Generic cloud storage that also includes attachments
+
 ### v0
 
 - [x] Drop JMAP (I ended up deleting everything)
@@ -60,10 +72,6 @@
 - [ ] Show thread participants in thread details page.
 - [ ] UI ONLY: The ability to select one or more threads in /app/mail and have a action menu popup. The menu option should change based on one or bulk
 - [ ] Mark as seen / Mark as unseen in /app/mail
-- [ ] Reply later
-- [ ] Focus & reply (a dedicated page to reply to all emails user marked as reply later)
-- [ ] Set aside
-- [ ] The ability to ignore specific threads. (i.e. new messages from the thread will be marked as seen)
 - [ ] Pagination
 
 ### Beyond v0.5
@@ -77,14 +85,13 @@
 
 ### Beyond v1
 
-- [ ] Block pixel tracking
-- [ ] Custom domain support
 - [ ] Offline support
+- [ ] Custom domain support
+- [ ] Block pixel tracking
 - [ ] Tighter security by creating machine id for every session and checking against it pre usage
 - [ ] Users can forward their old emails to Gebna
 - [ ] Users can forward their Gebna emails to their old emails.
-- [ ] Keyboard shortcuts on desktop. (Superhuman for inspiration)
-- [ ] Users can anottate a thread with "note to self". Things like "don't forget to ask them about X if they don't bring it up!"
+- [ ] Keyboard shortcuts on desktop.
 - [ ] use svelte boundaries to show a graceful error message in case of an exception
 - [ ] Attachment previews
 
@@ -92,10 +99,11 @@
 
 - [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
 - [ ] Store raw .eml in an R2 bucket
-- [ ] Merge threads together
 - [ ] Labels
+- [ ] Workflows ?
+- [ ] Integrations/apps ?
 - [ ] Onboarding flow
-- [ ] Make sure bodyText/plainBody extraction is adequite. I've seen a few records with empty bodyText even though bodyHTML is defined.
 - [ ] Use a scalar to automatically unwrap input IDs on the schema level so that you don't have to litter resolver code with `fromGlobalId(args.id).id`
 - [ ] The ability to select a substring from the email body and save it for later reference. (in Hey it's called Clips. I don't think it's useful enough in Hey. I think it would be really cool to have that as a continuity feature with gebna notes.)
-- [ ] Read together. (batch mark all the unseen messages in your important mailbox)
+- [ ] Users can anottate a thread with "note to self". Things like "don't forget to ask them about X if they don't bring it up!"
+- [ ] Smart protocol switching (gebna <=> gebna) -> DMs, (gebna <=> non/3rd party) -> Email
