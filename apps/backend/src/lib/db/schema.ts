@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+	check,
 	customType,
 	index,
 	integer,
@@ -26,194 +27,222 @@ export const userTable = sqliteTable("user", {
 	name: text().notNull(),
 	avatar: text(),
 	avatarPlaceholder: text().notNull(),
-});
-
-export const sessionTable = sqliteTable("session", {
-	id: text().primaryKey(),
-	userId: text()
+	createdAt: integer({ mode: "timestamp" })
 		.notNull()
-		.references(() => userTable.id, { onDelete: "cascade" }),
-	refreshHash: text().notNull(),
-	userAgent: text(),
-	ip: text(),
-	createdAt: integer().notNull(),
-	expiresAt: integer().notNull(),
-	revoked: integer({ mode: "boolean" }).notNull().default(false),
+		.default(sql`(strftime('%s','now'))`),
 });
 
-const _MAILBOX_TYPES = ["screener", "important", "news", "transactional", "trash"] as const;
-type MailboxType = (typeof _MAILBOX_TYPES)[number];
-
-export const mailboxTable = sqliteTable(
-	"mailbox",
+const IdentityKind = ["GEBNA_USER", "EXTERNAL_EMAIL"] as const;
+type IdentityKind = (typeof IdentityKind)[number];
+/** Identity (a global endpoint-like entity; today email-ish, later can grow handles) */
+export const identityTable = sqliteTable(
+	"identity",
 	{
 		id: text().primaryKey(),
-		userId: text()
+		kind: text({ enum: IdentityKind }).notNull(),
+		/** Canonical handle (currently email address). Case-insensitive via CITEXT. */
+		address: citext().notNull(),
+		createdAt: integer({ mode: "timestamp" })
 			.notNull()
-			.references(() => userTable.id, { onDelete: "cascade" }),
-		name: text().notNull(),
-		type: text().$type<MailboxType>().notNull(),
+			.default(sql`(strftime('%s','now'))`),
 	},
 	(self) => [
-		index("mailbox_user_id").on(self.userId),
-		index("mailbox_user_id_type").on(self.userId, self.type),
+		uniqueIndex("uniq_identity_kind_address").on(self.kind, self.address),
+		index("idx_identity_address").on(self.address),
+		index("idx_identity_kind").on(self.kind),
 	]
 );
 
-export const contactTable = sqliteTable(
-	"contact",
+/** Viewer-scoped relationship (contacts) */
+export const identityRelationshipTable = sqliteTable(
+	"identity_relationship",
 	{
 		id: text().primaryKey(),
-		address: citext().notNull(),
 		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
-		targetMailboxId: text()
+		identityId: text()
 			.notNull()
-			.references(() => mailboxTable.id, { onDelete: "cascade" }),
-		targetMailboxType: text().$type<MailboxType>().notNull(),
-		name: text().notNull(),
-		uploadedAvatar: text(),
-		inferredAvatar: text(),
-		avatarPlaceholder: text().notNull(),
+			.references(() => identityTable.id, { onDelete: "cascade" }),
+		isContact: integer({ mode: "boolean" }).notNull().default(false),
+		updatedAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
+		createdAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
+		displayName: text(),
+		avatarUrl: text(),
+	},
+	(self) => [
+		uniqueIndex("uniq_identity_relationship_owner_identity").on(self.ownerId, self.identityId),
+		index("idx_identity_relationship_owner_contact").on(self.ownerId, self.isContact),
+		index("idx_identity_relationship_owner_display").on(self.ownerId, self.displayName),
+	]
+);
+
+const ConversationKind = ["PRIVATE", "GROUP"] as const;
+type ConversationKind = (typeof ConversationKind)[number];
+export const conversationTable = sqliteTable(
+	"conversation",
+	{
+		id: text().primaryKey(),
+		kind: text({ enum: ConversationKind }).notNull(),
+		title: text(),
+		/**
+		 * Deterministic key for PRIVATE conversations: "minIdentityId:maxIdentityId"
+		 * Must be NULL for GROUP conversations.
+		 */
+		dmKey: text(),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
 		updatedAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
+		lastMessageAt: integer({ mode: "timestamp" }),
 	},
-	(self) => [uniqueIndex("address_user_uniq").on(self.address, self.ownerId)]
+	(self) => [
+		uniqueIndex("uniq_conversation_dm_key").on(self.dmKey),
+		index("idx_conversation_kind_updated").on(self.kind, self.updatedAt),
+		index("idx_conversation_last_message_at").on(self.lastMessageAt),
+
+		check(
+			"chk_conversation_dmkey_kind",
+			sql`(
+				(${self.kind} = 'PRIVATE' AND ${self.dmKey} IS NOT NULL AND length(${self.dmKey}) > 0)
+				OR
+				(${self.kind} = 'GROUP' AND ${self.dmKey} IS NULL)
+			)`
+		),
+	]
 );
 
-export const threadTable = sqliteTable(
-	"thread",
+const ParticipantRole = ["MEMBER", "ADMIN"] as const;
+type ParticipantRole = (typeof ParticipantRole)[number];
+const ParticipantState = ["ACTIVE", "LEFT"] as const;
+type ParticipantState = (typeof ParticipantState)[number];
+export const conversationParticipantTable = sqliteTable(
+	"conversation_participant",
 	{
-		/** thread.id based on Headers.messageId if it exists. Otherwise, we make our own id */
 		id: text().primaryKey(),
-		/** Envelope.from of the first message */
-		firstMessageFrom: citext().notNull(),
+		conversationId: text()
+			.notNull()
+			.references(() => conversationTable.id, { onDelete: "cascade" }),
+		identityId: text()
+			.notNull()
+			.references(() => identityTable.id, { onDelete: "cascade" }),
+		role: text({ enum: ParticipantRole }).notNull(),
+		state: text({ enum: ParticipantState }).notNull(),
+		joinedAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
+		/**
+		 * Per-participant read pointer. You can use a sentinel ID (e.g. "0") in app code.
+		 */
+		lastReadMessageId: text().references(() => messageTable.id, { onDelete: "set null" }),
+	},
+	(self) => [
+		uniqueIndex("uniq_conversation_participant").on(self.conversationId, self.identityId),
+		index("idx_conversation_participant_conversation").on(self.conversationId),
+		index("idx_conversation_participant_identity").on(self.identityId),
+	]
+);
+
+const Mailbox = ["IMPORTANT", "TRASH"] as const;
+type Mailbox = (typeof Mailbox)[number];
+export const conversationViewerStateTable = sqliteTable(
+	"conversation_viewer_state",
+	{
+		id: text().primaryKey(),
 		ownerId: text()
 			.notNull()
 			.references(() => userTable.id, { onDelete: "cascade" }),
-		mailboxId: text()
+		conversationId: text()
 			.notNull()
-			.references(() => mailboxTable.id, { onDelete: "cascade" }),
-		mailboxType: text().$type<MailboxType>().notNull(),
-		unseenCount: integer().notNull(),
-		/** based on the subject of the first message or its' snippet */
-		title: text(),
-		/** based on the snippet of the first message */
-		snippet: text(),
-		lastMessageAt: integer({ mode: "timestamp" })
+			.references(() => conversationTable.id, { onDelete: "cascade" }),
+		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
-		/** Headers.messageId of the first message */
-		firstMessageId: text(),
-		/** Headers.subject of the first message */
-		firstMessageSubject: text(),
-		trashAt: integer({ mode: "timestamp" }),
+		updatedAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
+		mailbox: text({ enum: Mailbox }).notNull(),
+		unreadCount: integer().notNull(),
 	},
-	(self) => [index("idx_thread_mailbox").on(self.mailboxId)]
+	(self) => [
+		uniqueIndex("uniq_conversation_viewer_state").on(self.ownerId, self.conversationId),
+		index("idx_conversation_viewer_state_owner_mailbox").on(self.ownerId, self.mailbox),
+		index("idx_conversation_viewer_state_owner_updated").on(self.ownerId, self.updatedAt),
+	]
 );
 
-type MessageDirection = "inbound" | "outbound";
+type EmailMetadata = {
+	/** Headers.to */
+	to: string[];
+	/** Headers.cc */
+	cc: string[];
+	/** Headers.bcc */
+	bcc: string[];
+	/** Headers.replyTo ==> indicates the addresses to send the reply to that's possibly different from Envelope.from */
+	replyTo: string[];
+	/** Headers.inReplyTo ==> indicates the Email.messageId that this message is replying to */
+	inReplyTo: string;
+	/** Headers.messageId ==> a unique identifier for the message. provided by the vendor */
+	messageId: string;
+	/** Headers.references ==> It lists the entire ancestry of the conversation — all the Message-IDs leading up to this email. used for threading */
+	references: string;
+};
 export const messageTable = sqliteTable(
 	"message",
 	{
 		id: text().primaryKey(),
-		from: citext().notNull(),
-		ownerId: text()
+		conversationId: text()
 			.notNull()
-			.references(() => userTable.id, { onDelete: "cascade" }),
-		threadId: text()
+			.references(() => conversationTable.id, { onDelete: "cascade" }),
+		senderIdentityId: text()
 			.notNull()
-			.references(() => threadTable.id, { onDelete: "cascade" }),
-		/** redundant to optimize reads */
-		mailboxId: text()
-			.notNull()
-			.references(() => mailboxTable.id, { onDelete: "cascade" }),
-		direction: text().$type<MessageDirection>().notNull().default("inbound"),
-		unseen: integer({ mode: "boolean" }).notNull().default(true),
+			.references(() => identityTable.id, { onDelete: "restrict" }),
+		bodyText: text(),
+		bodyHTML: text(),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
-		/** Headers.subject */
-		subject: text(),
-		/** Headers.to */
-		to: text({ mode: "json" }).$type<string[]>(),
-		/** Headers.cc */
-		cc: text({ mode: "json" }).$type<string[]>(),
-		/** Headers.bcc */
-		bcc: text({ mode: "json" }).$type<string[]>(),
-		/** Headers.replyTo ==> indicates the addresses to send the reply to that's possibly different from Envelope.from */
-		replyTo: text({ mode: "json" }).$type<string[]>(),
-		/** Headers.inReplyTo ==> indicates the Email.messageId that this message is replying to */
-		inReplyTo: text(),
-		/** Headers.messageId ==> a unique identifier for the message. provided by the vendor */
-		messageId: text(),
-		/** Headers.references ==> It lists the entire ancestry of the conversation — all the Message-IDs leading up to this email. used for threading */
-		references: text(),
-		/** Based on Headers.subject or the first (?) characters in the body. */
-		snippet: text(),
-		/** PostalMime.Email.text */
-		bodyText: text(),
-		/** PostalMime.Email.html */
-		bodyHTML: text(),
-		/** Size of the whole Envelope */
-		sizeInBytes: integer().notNull(),
+		emailMetadata: text({ mode: "json" }).$type<EmailMetadata>(),
 	},
 	(self) => [
-		index("message_thread_idx").on(self.threadId),
-		uniqueIndex("uniq_message_ownerId_messageId").on(self.ownerId, self.messageId),
+		index("idx_message_conversation_created").on(self.conversationId, self.createdAt),
+		index("idx_message_sender_created").on(self.senderIdentityId, self.createdAt),
 	]
 );
 
-export const attachmentTable = sqliteTable(
-	"attachment",
+const DeliveryStatus = ["QUEUED", "SENT", "DELIVERED", "READ", "FAILED"] as const;
+type DeliveryStatus = (typeof DeliveryStatus)[number];
+const Transport = ["EMAIL", "GEBNA_DM"] as const;
+type Transport = (typeof Transport)[number];
+export const messageDeliveryTable = sqliteTable(
+	"message_delivery",
 	{
 		id: text().primaryKey(),
-		ownerId: text().references(() => userTable.id, { onDelete: "set null" }),
-		threadId: text().references(() => threadTable.id, { onDelete: "set null" }),
-		messageId: text().references(() => messageTable.id, { onDelete: "set null" }),
-		messageFrom: citext().notNull(),
-		storageKey: text().notNull(),
-		sizeInBytes: integer().notNull(),
-		fileName: text(),
-		mimeType: text().notNull(),
-		disposition: text().$type<"attachment" | "inline">(),
-		contentId: text(),
-		createdAt: integer({ mode: "timestamp" })
+		messageId: text()
+			.notNull()
+			.references(() => messageTable.id, { onDelete: "cascade" }),
+		recipientIdentityId: text()
+			.notNull()
+			.references(() => identityTable.id, { onDelete: "cascade" }),
+		status: text({ enum: DeliveryStatus }).notNull(),
+		transport: text({ enum: Transport }).notNull(),
+		latestStatusChangeAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
+		error: text(),
 	},
 	(self) => [
-		index("attachment_messageId_idx").on(self.messageId),
-		index("attachment_threadId_idx").on(self.threadId),
-		uniqueIndex("attachment_storageKey_uniq").on(self.storageKey),
+		uniqueIndex("uniq_message_delivery_message_recipient").on(
+			self.messageId,
+			self.recipientIdentityId
+		),
+		index("idx_message_delivery_message").on(self.messageId),
+		index("idx_message_delivery_recipient_status").on(self.recipientIdentityId, self.status),
 	]
 );
-
-export const threadParticipantTable = sqliteTable(
-	"thread_participant",
-	{
-		ownerId: text()
-			.notNull()
-			.references(() => userTable.id, { onDelete: "cascade" }),
-		threadId: text()
-			.notNull()
-			.references(() => threadTable.id, { onDelete: "cascade" }),
-		address: citext().notNull(),
-	},
-	(self) => [
-		uniqueIndex("uniq_thread_participant").on(self.ownerId, self.threadId, self.address),
-		index("idx_thread_participant_owner_address").on(self.ownerId, self.address, self.threadId),
-		index("idx_thread_participant_thread").on(self.ownerId, self.threadId),
-	]
-);
-
-export const addressAvatarInferences = sqliteTable("address_avatar_inferences", {
-	address: citext().primaryKey(),
-	avatarURL: text().notNull(),
-	lastCheckedAt: integer({ mode: "timestamp" }).notNull(),
-});

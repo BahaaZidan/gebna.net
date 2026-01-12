@@ -28,11 +28,26 @@ export type TransactionInstance = SQLiteTransaction<
 >;
 
 export type UserSelectModel = typeof schema.userTable.$inferSelect;
-export type MailboxSelectModel = typeof schema.mailboxTable.$inferSelect;
-export type ThreadSelectModel = typeof schema.threadTable.$inferSelect;
+export type UserInsertModel = typeof schema.userTable.$inferInsert;
+
+export type IdentitySelectModel = typeof schema.identityTable.$inferSelect;
+export type IdentityInsertModel = typeof schema.identityTable.$inferInsert;
+
+export type IdentityRelationshipSelectModel = typeof schema.identityRelationshipTable.$inferSelect;
+export type IdentityRelationshipInsertModel = typeof schema.identityRelationshipTable.$inferInsert;
+
+export type ConversationSelectModel = typeof schema.conversationTable.$inferSelect;
+export type ConversationInsertModel = typeof schema.conversationTable.$inferInsert;
+
+export type ConversationParticipantSelectModel = typeof schema.conversationParticipantTable.$inferSelect;
+export type ConversationParticipantInsertModel = typeof schema.conversationParticipantTable.$inferInsert;
+
+export type ConversationViewerStateSelectModel = typeof schema.conversationViewerStateTable.$inferSelect;
+export type ConversationViewerStateInsertModel =
+	typeof schema.conversationViewerStateTable.$inferInsert;
+
 export type MessageSelectModel = typeof schema.messageTable.$inferSelect;
-export type ContactSelectModel = typeof schema.contactTable.$inferSelect;
-export type AttachmentSelectModel = typeof schema.attachmentTable.$inferSelect;
-export type AttachmentInsertModel = typeof schema.attachmentTable.$inferInsert;
-export type ThreadParticipantInsertModel = typeof schema.threadParticipantTable.$inferInsert;
-export type AddressAvatarInferenceSelectModel = typeof schema.addressAvatarInferences.$inferSelect;
+export type MessageInsertModel = typeof schema.messageTable.$inferInsert;
+
+export type MessageDeliverySelectModel = typeof schema.messageDeliveryTable.$inferSelect;
+export type MessageDeliveryInsertModel = typeof schema.messageDeliveryTable.$inferInsert;
