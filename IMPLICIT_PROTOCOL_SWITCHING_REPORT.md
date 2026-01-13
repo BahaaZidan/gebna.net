@@ -64,3 +64,28 @@
 - Unread count increments for recipients and richer mailbox routing are not implemented yet.
 - Contact search filtering is minimal; viewer state defaults when absent.
 - `lastMessage` resolution depends on at least one message existing; no placeholder messages are created on conversation upsert.
+
+## Phase 2
+
+### What changed (behavior)
+- Rebuilt demo seeding to match the new conversation/identity/message_delivery model. Seeds three users (demo, fatima, omar) plus external identities, with both PRIVATE and GROUP conversations, messages, per-recipient deliveries (mixed transports/statuses), and viewer state rows. Seed data is resettable and uses stable IDs plus hashed passwords.
+- Raw email seeding endpoint now returns an explicit “unsupported” stub to avoid writing against the legacy schema until ingest is updated in a later phase.
+
+### Files changed/added
+- apps/backend/src/lib/seeding/demo.ts
+- apps/backend/src/lib/seeding/raw-emails.ts
+- IMPLICIT_PROTOCOL_SWITCHING_REPORT.md
+
+### Assumptions
+- Seeder controls three dedicated users (`demo`, `fatima`, `omar`); seed IDs are namespaced with stable strings.
+- Deleting seeded conversations/identities is safe because they are only created by this script.
+- Viewer state mailbox uses `IMPORTANT` for seeded conversations; unread counts are computed from deliveries targeting each viewer identity (non-READ/FAILED).
+
+### How to test
+- Ensure `SEEDING_ENDPOINTS_ENABLED=true`.
+- POST to `/seed/demo` (optionally `{ "reset": true, "username": "demo", "password": "DemoPassword!23", "name": "Gebna Demo" }`). Verify response counts and that identities/conversations/messages/deliveries are present in the DB.
+- Confirm `/seed/raw-emails` returns the “unsupported” status (stubbed until ingest work lands).
+
+### Known gaps intentionally deferred
+- Raw email seeding is stubbed; will be reintroduced once inbound ingest aligns with the new schema (Phase 3).
+- Seed demo does not attach email metadata/attachments; deliveries are static snapshots rather than lifecycle transitions.

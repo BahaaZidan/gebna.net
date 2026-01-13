@@ -172,7 +172,8 @@ Append `## Phase 1` to `IMPLICIT_PROTOCOL_SWITCHING_REPORT.md`:
 **Goal:** Update seed scripts so they:
 
 - Match the new DB semantics (identities, participants, deliveries)
-- Are **unified** (single entry) and **resettable**
+- Keep the raw seeding script separate. everything else is unified.
+- Are **resettable**
 - Provide fixtures for validating Phase 3 ingest work quickly and repeatedly
 
 **Non-goals:**
