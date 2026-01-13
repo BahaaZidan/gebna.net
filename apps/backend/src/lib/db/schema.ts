@@ -32,6 +32,19 @@ export const userTable = sqliteTable("user", {
 		.default(sql`(strftime('%s','now'))`),
 });
 
+export const sessionTable = sqliteTable("session", {
+	id: text().primaryKey(),
+	userId: text()
+		.notNull()
+		.references(() => userTable.id, { onDelete: "cascade" }),
+	refreshHash: text().notNull(),
+	userAgent: text(),
+	ip: text(),
+	createdAt: integer().notNull(),
+	expiresAt: integer().notNull(),
+	revoked: integer({ mode: "boolean" }).notNull().default(false),
+});
+
 const IdentityKind = ["GEBNA_USER", "EXTERNAL_EMAIL"] as const;
 type IdentityKind = (typeof IdentityKind)[number];
 /** Identity (a global endpoint-like entity; today email-ish, later can grow handles) */

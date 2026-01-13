@@ -23,10 +23,4 @@ app.use("/graphql", async (c) => {
 	});
 });
 
-app.get("/lolo", (c) => {
-	const lolo = { lolo: "lolo" };
-
-	return c.json(lolo);
-});
-
 export const fetchHandler = app.fetch;
