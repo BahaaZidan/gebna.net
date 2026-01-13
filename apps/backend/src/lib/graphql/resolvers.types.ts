@@ -22,6 +22,11 @@ export type Scalars = {
   DateTime: { input: Date; output: Date; }
 };
 
+export type AddConversationParticipantsInput = {
+  conversationId: Scalars['ID']['input'];
+  participantAddresses: Array<Scalars['String']['input']>;
+};
+
 export type Conversation = Node & {
   __typename?: 'Conversation';
   id: Scalars['ID']['output'];
@@ -189,11 +194,17 @@ export type MoveConversationInput = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  addConversationParticipants?: Maybe<Conversation>;
   markConversationRead: MarkConversationReadPayload;
   moveConversation?: Maybe<Conversation>;
   sendMessage: SendMessagePayload;
   setContactStatus?: Maybe<Identity>;
   upsertConversation: UpsertConversationPayload;
+};
+
+
+export type MutationAddConversationParticipantsArgs = {
+  input: AddConversationParticipantsInput;
 };
 
 
@@ -419,6 +430,7 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
+  AddConversationParticipantsInput: AddConversationParticipantsInput;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Conversation: ResolverTypeWrapper<ConversationSelectModel>;
   ConversationConnection: ResolverTypeWrapper<Omit<ConversationConnection, 'edges'> & { edges: Array<ResolversTypes['ConversationEdge']> }>;
@@ -464,6 +476,7 @@ export type ResolversTypes = {
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
+  AddConversationParticipantsInput: AddConversationParticipantsInput;
   Boolean: Scalars['Boolean']['output'];
   Conversation: ConversationSelectModel;
   ConversationConnection: Omit<ConversationConnection, 'edges'> & { edges: Array<ResolversParentTypes['ConversationEdge']> };
@@ -602,6 +615,7 @@ export type MessageEdgeResolvers<ContextType = Context, ParentType extends Resol
 };
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+  addConversationParticipants?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationAddConversationParticipantsArgs, 'input'>>;
   markConversationRead?: Resolver<ResolversTypes['MarkConversationReadPayload'], ParentType, ContextType, RequireFields<MutationMarkConversationReadArgs, 'input'>>;
   moveConversation?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationMoveConversationArgs, 'input'>>;
   sendMessage?: Resolver<ResolversTypes['SendMessagePayload'], ParentType, ContextType, RequireFields<MutationSendMessageArgs, 'input'>>;

@@ -193,6 +193,75 @@ export const resolvers: Resolvers = {
 				return { conversation, created };
 			});
 		},
+		addConversationParticipants: async (_parent, { input }, { viewer, db }) => {
+			const rawConversationId = fromGlobalId(input.conversationId).id;
+			const conversation = await db.query.conversationTable.findFirst({
+				where: (t, { eq }) => eq(t.id, rawConversationId),
+			});
+			if (!conversation) return null;
+			if (conversation.kind === "PRIVATE") throw new GraphQLError("Forbidden");
+
+			const viewerParticipant = await db.query.conversationParticipantTable.findFirst({
+				where: (t, { and, eq }) =>
+					and(eq(t.conversationId, rawConversationId), eq(t.identityId, viewer.identity.id)),
+			});
+			if (!viewerParticipant) throw new GraphQLError("Forbidden");
+
+			const addresses = input.participantAddresses
+				.map((a) => a.trim().toLowerCase())
+				.filter((a) => a.length);
+			if (!addresses.length) throw new GraphQLError("BAD_INPUT");
+
+			const identities = Array.from(new Set(addresses)).map((address) => {
+				return {
+					id: ulid(),
+					address,
+					kind: address.endsWith("@gebna.net") ? "GEBNA_USER" : "EXTERNAL_EMAIL",
+				} satisfies IdentityInsertModel;
+			});
+
+			const now = new Date();
+
+			await db.transaction(async (tx) => {
+				await tx.insert(identityTable).values(identities).onConflictDoNothing();
+				const participantIdentities = await tx.query.identityTable.findMany({
+					where: (t) =>
+						identities.length === 0
+							? sql`0`
+							: sql`
+								(${t.kind}, ${t.address})
+								IN (
+									VALUES ${sql.join(
+										identities.map((p) => sql`(${p.kind}, ${p.address})`),
+										sql`, `
+									)}
+								)
+							`,
+				});
+
+				const participantRows = participantIdentities.map(
+					(identity) =>
+						({
+							id: ulid(),
+							conversationId: rawConversationId,
+							identityId: identity.id,
+							role: DEFAULT_PARTICIPANT_ROLE,
+							state: DEFAULT_PARTICIPANT_STATE,
+							joinedAt: now,
+							lastReadMessageId: null,
+						}) satisfies typeof conversationParticipantTable.$inferInsert
+				);
+
+				if (participantRows.length) {
+					await tx
+						.insert(conversationParticipantTable)
+						.values(participantRows)
+						.onConflictDoNothing();
+				}
+			});
+
+			return conversation;
+		},
 		sendMessage: async (_parent, { input }, { viewer, db }) => {
 			const rawConversationId = fromGlobalId(input.conversationId).id;
 			const conversation = await db.query.conversationTable.findFirst({
