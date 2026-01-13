@@ -3,65 +3,84 @@ import { argon2id, setWASMModules } from "argon2-wasm-edge";
 import argon2WASM from "argon2-wasm-edge/wasm/argon2.wasm";
 // @ts-expect-error - wasm imports are handled by the bundler for workers
 import blake2bWASM from "argon2-wasm-edge/wasm/blake2b.wasm";
-import { eq } from "drizzle-orm";
-import { ulid } from "ulid";
+import { inArray } from "drizzle-orm";
 
 import { getDB } from "$lib/db";
-import * as schema from "$lib/db/schema";
+import {
+	conversationParticipantTable,
+	conversationTable,
+	conversationViewerStateTable,
+	identityTable,
+	messageDeliveryTable,
+	messageTable,
+	userTable,
+} from "$lib/db/schema";
 import { generateImagePlaceholder } from "$lib/utils/users";
 
-type MailboxType = (typeof schema.mailboxTable.$inferInsert)["type"];
-type MailboxInsert = typeof schema.mailboxTable.$inferInsert;
+const DEFAULT_PARTICIPANT_ROLE: (typeof conversationParticipantTable.$inferInsert)["role"] =
+	"MEMBER";
+const DEFAULT_PARTICIPANT_STATE: (typeof conversationParticipantTable.$inferInsert)["state"] =
+	"ACTIVE";
 
-type SenderProfile = {
-	key: string;
-	address: string;
+type SeedUser = {
+	userId: string;
+	username: string;
+	password: string;
 	name: string;
-	mailbox: MailboxType;
-	uploadedAvatar?: string;
+	identityId: string;
+	email: string;
 };
 
-type MessageSeed = {
-	bodyText?: string;
-	bodyHTML?: string;
-	subject?: string;
-	unseen?: boolean;
+type SeedIdentity = {
+	id: string;
+	address: string;
+	kind: (typeof identityTable.$inferInsert)["kind"];
+};
+
+type SeedMessage = {
+	id: string;
+	conversationId: string;
+	senderIdentityId: string;
+	bodyText: string;
 	createdAt: Date;
-	to?: string[];
-	cc?: string[];
-	bcc?: string[];
-	replyTo?: string[];
+	deliveries: {
+		recipientIdentityId: string;
+		status: (typeof messageDeliveryTable.$inferInsert)["status"];
+		transport: (typeof messageDeliveryTable.$inferInsert)["transport"];
+		latestStatusChangeAt?: Date;
+		error?: string | null;
+	}[];
 };
 
-type ThreadSeed = {
-	sender: SenderProfile;
-	mailbox: MailboxType;
-	subject: string;
-	messages: MessageSeed[];
+type SeedConversation = {
+	id: string;
+	kind: (typeof conversationTable.$inferInsert)["kind"];
+	title: string;
+	dmKey: string | null;
+	participantIdentityIds: string[];
+	messages: SeedMessage[];
 };
 
 export type SeedDemoOptions = {
 	reset?: boolean;
-	username?: string;
-	password?: string;
-	name?: string;
 };
 
 export type SeedDemoResult = {
 	status: "created" | "exists" | "reset-and-created";
 	resetPerformed: boolean;
-	user: {
+	users: Array<{
 		id: string;
 		username: string;
 		password: string;
 		name: string;
 		email: string;
-	};
+	}>;
 	counts: {
-		threads: number;
+		conversations: number;
 		messages: number;
-		contacts: number;
-		mailboxes: number;
+		deliveries: number;
+		participants: number;
+		identities: number;
 	};
 };
 
@@ -79,69 +98,363 @@ export async function seedDemo(
 	env: CloudflareBindings,
 	options: SeedDemoOptions = {}
 ): Promise<SeedDemoResult> {
-	const username = options.username ?? "demo";
-	const password = options.password ?? "DemoPassword!23";
-	const name = options.name ?? "Gebna Demo";
-	const email = `${username}@gebna.net`;
+	const seedUsers: SeedUser[] = [
+		{
+			userId: "seed-user-demo",
+			username: "demo",
+			password: "DemoPassword!23",
+			name: "Gebna Demo",
+			identityId: "seed-identity-demo",
+			email: "demo@gebna.net",
+		},
+		{
+			userId: "seed-user-fatima",
+			username: "fatima",
+			password: "DemoPassword!23",
+			name: "Fatima Ali",
+			identityId: "seed-identity-fatima",
+			email: "fatima@gebna.net",
+		},
+		{
+			userId: "seed-user-omar",
+			username: "omar",
+			password: "DemoPassword!23",
+			name: "Omar Reforge",
+			identityId: "seed-identity-omar",
+			email: "omar@gebna.net",
+		},
+	];
+
+	const identities: SeedIdentity[] = [
+		...seedUsers.map((user) => ({
+			id: user.identityId,
+			address: user.email,
+			kind: "GEBNA_USER" as const,
+		})),
+		{ id: "seed-identity-ops", address: "ops@acme.test", kind: "EXTERNAL_EMAIL" },
+		{ id: "seed-identity-press", address: "press@launch-weeklies.test", kind: "EXTERNAL_EMAIL" },
+	];
+
+	const now = new Date("2024-06-01T12:00:00Z");
+	const hoursAgo = (hrs: number) => new Date(now.getTime() - hrs * 60 * 60 * 1000);
+
+	const conversations: SeedConversation[] = [
+		{
+			id: "seed-conv-demo-fatima",
+			kind: "PRIVATE",
+			title: "Product onboarding",
+			dmKey: ["seed-identity-demo", "seed-identity-fatima"].sort().join(":"),
+			participantIdentityIds: ["seed-identity-demo", "seed-identity-fatima"],
+			messages: [
+				{
+					id: "seed-msg-fatima-1",
+					conversationId: "seed-conv-demo-fatima",
+					senderIdentityId: "seed-identity-fatima",
+					bodyText: "Can we ship the DM fallback this sprint?",
+					createdAt: hoursAgo(6),
+					deliveries: [
+						{
+							recipientIdentityId: "seed-identity-demo",
+							status: "DELIVERED",
+							transport: "GEBNA_DM",
+							latestStatusChangeAt: hoursAgo(5.5),
+						},
+					],
+				},
+				{
+					id: "seed-msg-fatima-2",
+					conversationId: "seed-conv-demo-fatima",
+					senderIdentityId: "seed-identity-demo",
+					bodyText: "Yes—rolling out to the beta group today.",
+					createdAt: hoursAgo(3),
+					deliveries: [
+						{
+							recipientIdentityId: "seed-identity-fatima",
+							status: "DELIVERED",
+							transport: "GEBNA_DM",
+							latestStatusChangeAt: hoursAgo(2.8),
+						},
+					],
+				},
+			],
+		},
+		{
+			id: "seed-conv-demo-omar",
+			kind: "PRIVATE",
+			title: "Infra follow-ups",
+			dmKey: ["seed-identity-demo", "seed-identity-omar"].sort().join(":"),
+			participantIdentityIds: ["seed-identity-demo", "seed-identity-omar"],
+			messages: [
+				{
+					id: "seed-msg-omar-1",
+					conversationId: "seed-conv-demo-omar",
+					senderIdentityId: "seed-identity-omar",
+					bodyText: "Provider failover is set. Need a quick DM test.",
+					createdAt: hoursAgo(8),
+					deliveries: [
+						{
+							recipientIdentityId: "seed-identity-demo",
+							status: "DELIVERED",
+							transport: "GEBNA_DM",
+							latestStatusChangeAt: hoursAgo(7.5),
+						},
+					],
+				},
+				{
+					id: "seed-msg-omar-2",
+					conversationId: "seed-conv-demo-omar",
+					senderIdentityId: "seed-identity-demo",
+					bodyText: "Confirmed—DM transport is working end-to-end.",
+					createdAt: hoursAgo(4),
+					deliveries: [
+						{
+							recipientIdentityId: "seed-identity-omar",
+							status: "DELIVERED",
+							transport: "GEBNA_DM",
+							latestStatusChangeAt: hoursAgo(3.7),
+						},
+					],
+				},
+			],
+		},
+		{
+			id: "seed-conv-launch",
+			kind: "GROUP",
+			title: "Launch updates",
+			dmKey: null,
+			participantIdentityIds: [
+				"seed-identity-demo",
+				"seed-identity-fatima",
+				"seed-identity-omar",
+				"seed-identity-ops",
+				"seed-identity-press",
+			],
+			messages: [
+				{
+					id: "seed-msg-launch-1",
+					conversationId: "seed-conv-launch",
+					senderIdentityId: "seed-identity-demo",
+					bodyText: "Release candidate is live. Need press copy approvals.",
+					createdAt: hoursAgo(12),
+					deliveries: [
+						{
+							recipientIdentityId: "seed-identity-fatima",
+							status: "DELIVERED",
+							transport: "GEBNA_DM",
+							latestStatusChangeAt: hoursAgo(11.8),
+						},
+						{
+							recipientIdentityId: "seed-identity-omar",
+							status: "DELIVERED",
+							transport: "GEBNA_DM",
+							latestStatusChangeAt: hoursAgo(11.8),
+						},
+						{
+							recipientIdentityId: "seed-identity-ops",
+							status: "SENT",
+							transport: "EMAIL",
+							latestStatusChangeAt: hoursAgo(11.9),
+						},
+						{
+							recipientIdentityId: "seed-identity-press",
+							status: "QUEUED",
+							transport: "EMAIL",
+							latestStatusChangeAt: hoursAgo(12),
+						},
+					],
+				},
+				{
+					id: "seed-msg-launch-2",
+					conversationId: "seed-conv-launch",
+					senderIdentityId: "seed-identity-ops",
+					bodyText: "Copy looks good. Scheduling send for tomorrow.",
+					createdAt: hoursAgo(2),
+					deliveries: [
+						{
+							recipientIdentityId: "seed-identity-demo",
+							status: "DELIVERED",
+							transport: "EMAIL",
+							latestStatusChangeAt: hoursAgo(1.5),
+						},
+						{
+							recipientIdentityId: "seed-identity-fatima",
+							status: "DELIVERED",
+							transport: "EMAIL",
+							latestStatusChangeAt: hoursAgo(1.5),
+						},
+						{
+							recipientIdentityId: "seed-identity-omar",
+							status: "DELIVERED",
+							transport: "EMAIL",
+							latestStatusChangeAt: hoursAgo(1.5),
+						},
+						{
+							recipientIdentityId: "seed-identity-press",
+							status: "QUEUED",
+							transport: "EMAIL",
+							latestStatusChangeAt: hoursAgo(2),
+						},
+					],
+				},
+			],
+		},
+	];
 
 	const db = getDB(env);
 
 	if (options.reset) {
-		await db.delete(schema.userTable).where(eq(schema.userTable.username, username));
+		await resetSeedData(db, {
+			usernames: seedUsers.map((u) => u.username),
+			identityIds: identities.map((i) => i.id),
+			conversationIds: conversations.map((c) => c.id),
+		});
 	}
 
-	const existing = await db.query.userTable.findFirst({
-		where: (t, { eq }) => eq(t.username, username),
+	const existingUsers = await db.query.userTable.findMany({
+		where: (t, { inArray }) =>
+			inArray(
+				t.username,
+				seedUsers.map((u) => u.username)
+			),
 	});
-	if (existing) {
+	if (existingUsers.length === seedUsers.length) {
 		return {
-			status: "exists",
+			status: options.reset ? "reset-and-created" : "exists",
 			resetPerformed: Boolean(options.reset),
-			user: { id: existing.id, username, password, name, email },
-			counts: { threads: 0, messages: 0, contacts: 0, mailboxes: 0 },
+			users: seedUsers.map((u) => ({
+				id: existingUsers.find((ex) => ex.username === u.username)?.id ?? u.userId,
+				username: u.username,
+				password: u.password,
+				name: u.name,
+				email: u.email,
+			})),
+			counts: { conversations: 0, messages: 0, deliveries: 0, participants: 0, identities: 0 },
 		};
 	}
 
-	const userId = ulid();
-	const mailboxes = makeMailboxes(userId);
-	const mailboxByType = Object.fromEntries(mailboxes.map((mb) => [mb.type, mb])) as Record<
-		MailboxType,
-		MailboxInsert
-	>;
+	const passwordHashes: Record<string, string> = {};
+	for (const user of seedUsers) {
+		passwordHashes[user.userId] = await hashPassword(user.password);
+	}
 
-	const senderProfiles = makeSenders(mailboxByType);
-	const threads = makeThreads(senderProfiles, mailboxByType, userId, email);
-
-	const passwordHash = await hashPassword(password);
-	const userAvatarPlaceholder = generateImagePlaceholder(name);
+	let totalMessages = 0;
+	let totalDeliveries = 0;
+	let totalParticipants = 0;
 
 	await db.transaction(async (tx) => {
-		await tx.insert(schema.userTable).values({
-			id: userId,
-			username,
-			passwordHash,
-			name,
-			avatarPlaceholder: userAvatarPlaceholder,
-		});
+		for (const user of seedUsers) {
+			await tx.insert(userTable).values({
+				id: user.userId,
+				username: user.username,
+				passwordHash: passwordHashes[user.userId],
+				name: user.name,
+				avatarPlaceholder: generateImagePlaceholder(user.name),
+			});
+		}
 
-		await tx.insert(schema.mailboxTable).values(mailboxes);
-		await tx.insert(schema.contactTable).values(senderProfiles);
-		await tx.insert(schema.threadTable).values(threads.threads);
-		await tx.insert(schema.messageTable).values(threads.messages);
-		if (threads.participants.length) {
-			await tx.insert(schema.threadParticipantTable).values(threads.participants);
+		await tx.insert(identityTable).values(
+			identities.map((identity) => ({
+				id: identity.id,
+				address: identity.address,
+				kind: identity.kind,
+			}))
+		);
+
+		for (const conversation of conversations) {
+			const latestMessageAt = conversation.messages.reduce(
+				(latest, message) => (message.createdAt > latest ? message.createdAt : latest),
+				now
+			);
+
+			await tx.insert(conversationTable).values({
+				id: conversation.id,
+				kind: conversation.kind,
+				title: conversation.title,
+				dmKey: conversation.dmKey,
+				createdAt: now,
+				updatedAt: latestMessageAt,
+				lastMessageAt: latestMessageAt,
+			});
+
+			const participantRows = conversation.participantIdentityIds.map((identityId) => ({
+				id: `${conversation.id}:${identityId}`,
+				conversationId: conversation.id,
+				identityId,
+				role: DEFAULT_PARTICIPANT_ROLE,
+				state: DEFAULT_PARTICIPANT_STATE,
+				joinedAt: now,
+				lastReadMessageId: null,
+			}));
+			totalParticipants += participantRows.length;
+			await tx.insert(conversationParticipantTable).values(participantRows).onConflictDoNothing();
+
+			for (const message of conversation.messages) {
+				totalMessages += 1;
+				await tx.insert(messageTable).values({
+					id: message.id,
+					conversationId: conversation.id,
+					senderIdentityId: message.senderIdentityId,
+					bodyText: message.bodyText,
+					bodyHTML: null,
+					createdAt: message.createdAt,
+					emailMetadata: null,
+				});
+
+				if (message.deliveries.length) {
+					totalDeliveries += message.deliveries.length;
+					await tx.insert(messageDeliveryTable).values(
+						message.deliveries.map((delivery) => ({
+							id: `${message.id}:${delivery.recipientIdentityId}`,
+							messageId: message.id,
+							recipientIdentityId: delivery.recipientIdentityId,
+							status: delivery.status,
+							transport: delivery.transport,
+							latestStatusChangeAt: delivery.latestStatusChangeAt ?? message.createdAt,
+							error: delivery.error ?? null,
+						}))
+					);
+				}
+			}
+
+			for (const user of seedUsers) {
+				const userIdentityId = user.identityId;
+				const unreadCountForViewer = conversation.messages.reduce((count, message) => {
+					const deliveredToViewer = message.deliveries.some(
+						(delivery) =>
+							delivery.recipientIdentityId === userIdentityId &&
+							delivery.status !== "READ" &&
+							delivery.status !== "FAILED"
+					);
+					return deliveredToViewer ? count + 1 : count;
+				}, 0);
+
+				await tx.insert(conversationViewerStateTable).values({
+					id: `cvs-${user.userId}:${conversation.id}`,
+					ownerId: user.userId,
+					conversationId: conversation.id,
+					mailbox: "IMPORTANT",
+					unreadCount: unreadCountForViewer,
+				});
+			}
 		}
 	});
 
 	return {
 		status: options.reset ? "reset-and-created" : "created",
 		resetPerformed: Boolean(options.reset),
-		user: { id: userId, username, password, name, email },
+		users: seedUsers.map((u) => ({
+			id: u.userId,
+			username: u.username,
+			password: u.password,
+			name: u.name,
+			email: u.email,
+		})),
 		counts: {
-			threads: threads.threads.length,
-			messages: threads.messages.length,
-			contacts: senderProfiles.length,
-			mailboxes: mailboxes.length,
+			conversations: conversations.length,
+			messages: totalMessages,
+			deliveries: totalDeliveries,
+			participants: totalParticipants,
+			identities: identities.length,
 		},
 	};
 }
@@ -158,350 +471,31 @@ async function hashPassword(password: string) {
 	});
 }
 
-function makeMailboxes(userId: string): MailboxInsert[] {
-	return [
-		{ id: ulid(), userId, type: "screener", name: "Screener" },
-		{ id: ulid(), userId, type: "important", name: "Important" },
-		{ id: ulid(), userId, type: "news", name: "News" },
-		{ id: ulid(), userId, type: "transactional", name: "Transactional" },
-		{ id: ulid(), userId, type: "trash", name: "Trash" },
-	];
-}
-
-function makeSenders(
-	mailboxes: Record<MailboxType, MailboxInsert>
-): (typeof schema.contactTable.$inferInsert)[] {
-	const senders: SenderProfile[] = [
-		{
-			key: "maya",
-			address: "maya.patel@acme-analytics.test",
-			name: "Maya Patel",
-			mailbox: "important",
-			uploadedAvatar: "https://unavatar.io/github/mayapatel",
-		},
-		{
-			key: "zoe",
-			address: "zoe@studioevergreen.test",
-			name: "Zoe Keller",
-			mailbox: "important",
-			uploadedAvatar: "https://unavatar.io/zoe",
-		},
-		{
-			key: "omar",
-			address: "omar@reforge.news",
-			name: "Omar Reforge",
-			mailbox: "news",
-			uploadedAvatar: "https://unavatar.io/omar",
-		},
-		{
-			key: "nina",
-			address: "nina@launch-weeklies.test",
-			name: "Nina Alvarez",
-			mailbox: "news",
-		},
-		{
-			key: "atlas",
-			address: "alerts@atlasbank.test",
-			name: "Atlas Bank",
-			mailbox: "transactional",
-		},
-		{
-			key: "relay",
-			address: "no-reply@relay-payments.test",
-			name: "Relay Payments",
-			mailbox: "transactional",
-		},
-		{
-			key: "rashid",
-			address: "rashid@futura-labs.test",
-			name: "Rashid Noor",
-			mailbox: "screener",
-		},
-		{
-			key: "claire",
-			address: "claire@northwind-ventures.test",
-			name: "Claire Johnson",
-			mailbox: "screener",
-			uploadedAvatar: "https://unavatar.io/linkedin/clairejohnson",
-		},
-	];
-
-	return senders.map((sender) => ({
-		id: ulid(),
-		address: sender.address,
-		ownerId: mailboxes[sender.mailbox].userId,
-		targetMailboxId: mailboxes[sender.mailbox].id,
-		targetMailboxType: sender.mailbox,
-		name: sender.name,
-		uploadedAvatar: sender.uploadedAvatar,
-		avatarPlaceholder: generateImagePlaceholder(sender.name),
-	}));
-}
-
-function makeThreads(
-	senders: (typeof schema.contactTable.$inferInsert)[],
-	mailboxes: Record<MailboxType, MailboxInsert>,
-	userId: string,
-	userEmail: string
+async function resetSeedData(
+	db: ReturnType<typeof getDB>,
+	{
+		usernames,
+		identityIds,
+		conversationIds,
+	}: { usernames: string[]; identityIds: string[]; conversationIds: string[] }
 ) {
-	const senderMap = new Map(senders.map((s) => [s.address, s]));
-	const now = Date.now();
-	const hoursAgo = (hours: number) => new Date(now - hours * 60 * 60 * 1000);
-	const daysAgo = (days: number) => new Date(now - days * 24 * 60 * 60 * 1000);
-
-	const seeds: ThreadSeed[] = [
-		{
-			sender: {
-				key: "maya",
-				address: "maya.patel@acme-analytics.test",
-				name: "Maya Patel",
-				mailbox: "important",
-			},
-			mailbox: "important",
-			subject: "Deliverability audit notes + next steps",
-			messages: [
-				{
-					bodyText:
-						"Sharing the top-line findings from your inbox warmup. CTRs are solid, but SPF is still missing for the new domain. I sketched next steps in the doc below.",
-					createdAt: hoursAgo(12),
-					unseen: false,
-					to: [userEmail],
-				},
-				{
-					bodyText:
-						"I can meet tomorrow to finalize the rollout. If you want, I can join your onboarding call with the SDR team.",
-					createdAt: hoursAgo(3),
-					unseen: true,
-					to: [userEmail],
-					cc: ["ops@acme-analytics.test"],
-				},
-			],
-		},
-		{
-			sender: {
-				key: "zoe",
-				address: "zoe@studioevergreen.test",
-				name: "Zoe Keller",
-				mailbox: "important",
-			},
-			mailbox: "important",
-			subject: "Prototype feedback and story beats",
-			messages: [
-				{
-					bodyHTML:
-						"<p>Love the calmer motion in the latest build. The onboarding story is almost there — I left inline comments with copy tweaks and a short Loom.</p><p>Let me know what you keep vs. cut.</p>",
-					createdAt: hoursAgo(26),
-					unseen: false,
-					to: [userEmail],
-				},
-				{
-					bodyText:
-						"Quick nudge: should we swap the hero for a live inbox preview? I can send a stitched mock if helpful.",
-					createdAt: hoursAgo(2),
-					unseen: true,
-					to: [userEmail],
-				},
-			],
-		},
-		{
-			sender: { key: "omar", address: "omar@reforge.news", name: "Omar Reforge", mailbox: "news" },
-			mailbox: "news",
-			subject: "Refactor Friday — staying out of spam folders",
-			messages: [
-				{
-					bodyText:
-						"This week we broke down how teams keep cold starts out of spam without killing velocity. Favorite bit: the gating flow used by Cabin's crew. Read time ~4 min.",
-					createdAt: daysAgo(1),
-					unseen: true,
-					to: [userEmail],
-				},
-			],
-		},
-		{
-			sender: {
-				key: "nina",
-				address: "nina@launch-weeklies.test",
-				name: "Nina Alvarez",
-				mailbox: "news",
-			},
-			mailbox: "news",
-			subject: "Launch Weeklies — founders screening their inbox",
-			messages: [
-				{
-					bodyText:
-						"Featuring a short story on how scrappy teams vet inbound before responding. We quoted Gebna briefly — let me know if anything looks off.",
-					createdAt: daysAgo(5),
-					unseen: false,
-					to: [userEmail],
-				},
-			],
-		},
-		{
-			sender: {
-				key: "atlas",
-				address: "alerts@atlasbank.test",
-				name: "Atlas Bank",
-				mailbox: "transactional",
-			},
-			mailbox: "transactional",
-			subject: "Payment confirmation — Gebna subscription",
-			messages: [
-				{
-					bodyText:
-						"We received your payment for the Gebna subscription (Invoice #21983). No action needed. Download the receipt from your billing portal anytime.",
-					createdAt: daysAgo(2),
-					unseen: false,
-					to: [userEmail],
-				},
-			],
-		},
-		{
-			sender: {
-				key: "relay",
-				address: "no-reply@relay-payments.test",
-				name: "Relay Payments",
-				mailbox: "transactional",
-			},
-			mailbox: "transactional",
-			subject: "Reminder: verify new payout destination",
-			messages: [
-				{
-					bodyText:
-						"A new payout destination was added for your workspace. Verify it within 24 hours to avoid delays.",
-					createdAt: hoursAgo(8),
-					unseen: true,
-					to: [userEmail],
-				},
-			],
-		},
-		{
-			sender: {
-				key: "rashid",
-				address: "rashid@futura-labs.test",
-				name: "Rashid Noor",
-				mailbox: "screener",
-			},
-			mailbox: "screener",
-			subject: "YC alum here — quick collab?",
-			messages: [
-				{
-					bodyText:
-						"Hey Bahaa, I run product at Futura Labs. Saw your post on inbox filtering — can I steal 15 minutes to swap notes on routing first-touch emails?",
-					createdAt: hoursAgo(6),
-					unseen: true,
-					to: [userEmail],
-				},
-			],
-		},
-		{
-			sender: {
-				key: "claire",
-				address: "claire@northwind-ventures.test",
-				name: "Claire Johnson",
-				mailbox: "screener",
-			},
-			mailbox: "screener",
-			subject: "Potential partnership with our portfolio",
-			messages: [
-				{
-					bodyText:
-						"We have 4 founders battling noisy inboxes. Happy to intro if you're taking on pilots this quarter.",
-					createdAt: hoursAgo(5),
-					unseen: true,
-					to: [userEmail],
-				},
-			],
-		},
-	];
-
-	const threads: (typeof schema.threadTable.$inferInsert)[] = [];
-	const messages: (typeof schema.messageTable.$inferInsert)[] = [];
-	const participants: (typeof schema.threadParticipantTable.$inferInsert)[] = [];
-
-	for (const seed of seeds) {
-		const sender = senderMap.get(seed.sender.address);
-		const mailbox = mailboxes[seed.mailbox];
-		if (!sender) throw new Error(`Missing sender profile for ${seed.sender.address}`);
-		if (!mailbox) throw new Error(`Missing mailbox for type ${seed.mailbox}`);
-		const senderAddress = sender.address;
-		if (!senderAddress) throw new Error(`Missing sender address for ${seed.sender.name}`);
-
-		const threadId = ulid();
-		const messageRows: (typeof schema.messageTable.$inferInsert)[] = [];
-		const threadParticipantAddresses = new Set<string>();
-		threadParticipantAddresses.add(senderAddress);
-		threadParticipantAddresses.add(userEmail);
-		const addParticipants = (addresses?: string[]) => {
-			for (const address of addresses ?? []) {
-				if (address) threadParticipantAddresses.add(address);
-			}
-		};
-
-		for (const [index, message] of seed.messages.entries()) {
-			const messageId = `<${ulid().toLowerCase()}@seed.gebna.net>`;
-			const previous = messageRows[messageRows.length - 1];
-			addParticipants(message.to ?? [userEmail]);
-			addParticipants(message.cc);
-			addParticipants(message.bcc);
-			addParticipants(message.replyTo);
-
-			messageRows.push({
-				id: ulid(),
-				from: senderAddress,
-				ownerId: userId,
-				threadId,
-				mailboxId: mailbox.id,
-				unseen: message.unseen !== false,
-				createdAt: message.createdAt,
-				subject: message.subject ?? seed.subject,
-				to: message.to ?? [userEmail],
-				cc: message.cc,
-				bcc: message.bcc,
-				replyTo: message.replyTo,
-				inReplyTo: index === 0 ? undefined : (previous?.messageId ?? undefined),
-				messageId,
-				references: previous?.messageId ? previous.messageId : undefined,
-				snippet:
-					message.bodyText?.slice(0, 120) ??
-					message.bodyHTML?.replace(/<[^>]+>/g, "")?.slice(0, 120),
-				bodyText: message.bodyText,
-				bodyHTML: message.bodyHTML,
-				sizeInBytes: estimateSize(message, seed.subject),
-			});
+	await db.transaction(async (tx) => {
+		if (conversationIds.length) {
+			await tx.delete(conversationTable).where(inArray(conversationTable.id, conversationIds));
 		}
 
-		const unseenCount = messageRows.filter((m) => m.unseen).length;
-		const firstMessage = messageRows[0];
-		const lastMessage = messageRows[messageRows.length - 1];
+		if (conversationIds.length) {
+			await tx
+				.delete(conversationViewerStateTable)
+				.where(inArray(conversationViewerStateTable.conversationId, conversationIds));
+		}
 
-		threads.push({
-			id: threadId,
-			firstMessageFrom: senderAddress,
-			ownerId: userId,
-			mailboxId: mailbox.id,
-			mailboxType: mailbox.type,
-			unseenCount,
-			title: seed.subject,
-			snippet: firstMessage?.snippet,
-			lastMessageAt: lastMessage?.createdAt ?? new Date(),
-			firstMessageId: firstMessage?.messageId,
-			firstMessageSubject: firstMessage?.subject,
-		});
+		if (identityIds.length) {
+			await tx.delete(identityTable).where(inArray(identityTable.id, identityIds));
+		}
 
-		messages.push(...messageRows);
-		participants.push(
-			...Array.from(threadParticipantAddresses).map((address) => ({
-				ownerId: userId,
-				threadId,
-				address,
-			}))
-		);
-	}
-
-	return { threads, messages, participants };
-}
-
-function estimateSize(message: MessageSeed, subject: string) {
-	const body = message.bodyText ?? message.bodyHTML ?? "";
-	return Math.max(700, new TextEncoder().encode(subject + body).byteLength + 400);
+		if (usernames.length) {
+			await tx.delete(userTable).where(inArray(userTable.username, usernames));
+		}
+	});
 }

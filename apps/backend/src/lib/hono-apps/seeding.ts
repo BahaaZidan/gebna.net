@@ -14,12 +14,9 @@ seedingApp.use("*", async (c, next) => {
 
 seedingApp.post("/demo", async (c) => {
 	const body = await readJsonBody(c);
-	const result = await seedDemo(c.env, {
-		reset: asBoolean(body.reset),
-		username: typeof body.username === "string" ? body.username : undefined,
-		password: typeof body.password === "string" ? body.password : undefined,
-		name: typeof body.name === "string" ? body.name : undefined,
-	});
+	const reset =
+		asBoolean(body.reset) || asBoolean(c.req.query("reset")) || asBoolean(c.req.header("x-reset-seed"));
+	const result = await seedDemo(c.env, { reset });
 
 	return c.json({ ok: true, outcome: result.status, reset: result.resetPerformed, result });
 });
