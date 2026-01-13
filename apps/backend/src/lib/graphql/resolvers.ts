@@ -103,6 +103,7 @@ export const resolvers: Resolvers = {
 	},
 	Mutation: {
 		upsertConversation: async (_parent, { input }, { viewer, db }) => {
+			// TODO: 1. rename to findOrCreate. 2. this does not "find" when conversation.kind === "GROUP".
 			const addresses = input.participantAddresses
 				.map((a) => a.trim().toLowerCase())
 				.filter((a) => a.length);
