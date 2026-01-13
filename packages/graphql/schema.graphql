@@ -64,10 +64,10 @@ type Identity implements Node {
 	Viewer-scoped relationship metadata (contacts).
 	Always resolved.
 	"""
-	relationshipToViewer: IdentityRelationship!
+	relationshipToViewer: IdentityRelationship
 }
 
-type IdentityRelationship {
+type IdentityRelationship implements Node {
 	"""
 	Stable viewer-scoped relationship id.
 	Virtual or persisted depending on implementation.
@@ -83,14 +83,14 @@ type IdentityRelationship {
 	Viewer-scoped display metadata.
 	Empty string allowed when not customized.
 	"""
-	displayName: String!
-	avatarUrl: String!
+	displayName: String
+	avatarUrl: String
 }
 
 type Conversation implements Node {
 	id: ID!
 	kind: ConversationKind!
-	title: String!
+	title: String
 	participants: [ConversationParticipant!]!
 	lastMessage: Message!
 	updatedAt: DateTime!
@@ -108,7 +108,7 @@ type ConversationParticipant {
 	Last message read by this participant.
 	Use a sentinel ID if none.
 	"""
-	lastReadMessageId: ID!
+	lastReadMessageId: ID
 }
 
 type ConversationViewerState {
@@ -123,7 +123,7 @@ type Message implements Node {
 
 	sender: Identity!
 
-	bodyText: String!
+	bodyText: String
 	createdAt: DateTime!
 
 	delivery: [DeliveryReceipt!]!
@@ -132,8 +132,8 @@ type Message implements Node {
 type DeliveryReceipt {
 	recipient: Identity!
 	status: DeliveryStatus!
-	at: DateTime!
-	error: String!
+	latestStatusChangeAt: DateTime!
+	error: String
 	transport: Transport!
 }
 
@@ -215,13 +215,6 @@ input SendMessageInput {
 type SendMessagePayload {
 	clientMutationId: String!
 	message: Message!
-	decision: TransportDecision!
-}
-
-type TransportDecision {
-	chosen: Transport!
-	reason: String!
-	perRecipient: [RecipientTransportDecision!]!
 }
 
 type RecipientTransportDecision {
@@ -242,12 +235,8 @@ type MarkConversationReadPayload {
 input SetContactStatusInput {
 	identityId: ID!
 	isContact: Boolean!
-	displayName: String!
-	avatarUrl: String!
-}
-
-type SetContactStatusPayload {
-	identity: Identity!
+	displayName: String
+	avatarUrl: String
 }
 
 input MoveConversationInput {
@@ -255,17 +244,13 @@ input MoveConversationInput {
 	mailbox: Mailbox!
 }
 
-type MoveConversationPayload {
-	conversation: Conversation!
-}
-
 type Mutation {
 	upsertConversation(input: UpsertConversationInput!): UpsertConversationPayload!
 	sendMessage(input: SendMessageInput!): SendMessagePayload!
 	markConversationRead(input: MarkConversationReadInput!): MarkConversationReadPayload!
 
-	setContactStatus(input: SetContactStatusInput!): SetContactStatusPayload!
-	moveConversation(input: MoveConversationInput!): MoveConversationPayload!
+	setContactStatus(input: SetContactStatusInput!): Identity
+	moveConversation(input: MoveConversationInput!): Conversation
 }
 
 type Subscription {

@@ -33,3 +33,33 @@
 ## Known gaps deferred
 - No dedicated `deliveredAt` column; timelines rely on `latestStatusChangeAt`.
 - Resolver coercions and status transitions still need implementation in Phase 1+.
+
+## Phase 1
+
+### What changed (behavior)
+- Implemented GraphQL resolvers for conversation/message flows: membership-checked `sendMessage` mutation creates `message` rows and per-recipient `message_delivery` rows with initial status `QUEUED`, `latestStatusChangeAt` set on insert, and `transport` chosen by recipient identity kind (GEBNA_USER → GEBNA_DM, EXTERNAL_EMAIL → EMAIL).
+- Transport decision summary now returned with deterministic `chosen` rule: `GEBNA_DM` if all recipients are Gebna users, otherwise `EMAIL`; includes per-recipient reasons.
+- Idempotency: `message.id` is deterministic (`cm:<conversationId>:<clientMutationId>`); retries return the existing message and backfill any missing deliveries.
+- Read paths now load deliveries, participants, viewer state defaults, message lists, and sender/recipient identities with nullability coercions (`bodyText`/`error` → empty string, `DeliveryReceipt.at` → `latestStatusChangeAt`).
+- Conversation and identity helpers auto-create viewer identity (GEBNA_USER) when missing using `<username>@gebna.net`.
+
+### Files changed/added
+- apps/backend/src/lib/graphql/resolvers.ts
+- IMPLICIT_PROTOCOL_SWITCHING_REPORT.md
+
+### Assumptions / invariants
+- Conversation membership is required to send; only ACTIVE participants are considered. Viewer identity is derived/created from the authenticated user’s username with kind `GEBNA_USER`.
+- Private conversations keyed by sorted participant identity ids (`dmKey`); titles default to empty string if null.
+- Default mailbox for viewer state is IMPORTANT; unread counts are zeroed on mark-as-read but not auto-incremented on send in this phase.
+- `lastMessage` requires at least one message in a conversation (will throw if queried before any message exists).
+
+### How to test
+- Create or reuse identities for recipients (addresses ending with `@gebna.net` are treated as `GEBNA_USER`, others as `EXTERNAL_EMAIL`).
+- Run `upsertConversation` with kind PRIVATE/GROUP to include the viewer and desired recipients.
+- Call `sendMessage` with the conversation id, bodyText, and clientMutationId; expect one `message_delivery` per recipient with status `QUEUED` and transport per identity kind.
+- Query the conversation/messages/delivery fields to verify transports, statuses, and non-null string coercions; `decision.chosen` should be `GEBNA_DM` only when all recipients are Gebna users.
+
+### Known gaps intentionally deferred
+- Unread count increments for recipients and richer mailbox routing are not implemented yet.
+- Contact search filtering is minimal; viewer state defaults when absent.
+- `lastMessage` resolution depends on at least one message existing; no placeholder messages are created on conversation upsert.

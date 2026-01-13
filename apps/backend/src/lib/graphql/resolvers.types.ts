@@ -1,6 +1,6 @@
 /* eslint-disable */
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
-import type { UserSelectModel, IdentitySelectModel, IdentityRelationshipSelectModel, ConversationSelectModel, ConversationParticipantSelectModel, ConversationViewerStateSelectModel, MessageSelectModel, MessageDeliverySelectModel } from '$lib/db';
+import type { UserSelectModel, IdentitySelectModel, IdentityRelationshipSelectModel, ConversationSelectModel, ConversationParticipantSelectModel, MessageSelectModel, MessageDeliverySelectModel } from '$lib/db';
 import type { Context } from '$lib/graphql/context';
 export type Maybe<T> = T | null | undefined;
 export type InputMaybe<T> = T | null | undefined;
@@ -29,7 +29,7 @@ export type Conversation = Node & {
   lastMessage: Message;
   messages: MessageConnection;
   participants: Array<ConversationParticipant>;
-  title: Scalars['String']['output'];
+  title?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   viewerState: ConversationViewerState;
 };
@@ -64,7 +64,7 @@ export type ConversationParticipant = {
    * Last message read by this participant.
    * Use a sentinel ID if none.
    */
-  lastReadMessageId: Scalars['ID']['output'];
+  lastReadMessageId?: Maybe<Scalars['ID']['output']>;
   role: ParticipantRole;
   state: ParticipantState;
 };
@@ -77,8 +77,8 @@ export type ConversationViewerState = {
 
 export type DeliveryReceipt = {
   __typename?: 'DeliveryReceipt';
-  at: Scalars['DateTime']['output'];
-  error: Scalars['String']['output'];
+  error?: Maybe<Scalars['String']['output']>;
+  latestStatusChangeAt: Scalars['DateTime']['output'];
   recipient: Identity;
   status: DeliveryStatus;
   transport: Transport;
@@ -106,7 +106,7 @@ export type Identity = Node & {
    * Viewer-scoped relationship metadata (contacts).
    * Always resolved.
    */
-  relationshipToViewer: IdentityRelationship;
+  relationshipToViewer?: Maybe<IdentityRelationship>;
 };
 
 export type IdentityConnection = {
@@ -125,14 +125,14 @@ export type IdentityKind =
   | 'EXTERNAL_EMAIL'
   | 'GEBNA_USER';
 
-export type IdentityRelationship = {
+export type IdentityRelationship = Node & {
   __typename?: 'IdentityRelationship';
-  avatarUrl: Scalars['String']['output'];
+  avatarUrl?: Maybe<Scalars['String']['output']>;
   /**
    * Viewer-scoped display metadata.
    * Empty string allowed when not customized.
    */
-  displayName: Scalars['String']['output'];
+  displayName?: Maybe<Scalars['String']['output']>;
   /**
    * Stable viewer-scoped relationship id.
    * Virtual or persisted depending on implementation.
@@ -162,7 +162,7 @@ export type MarkConversationReadPayload = {
 
 export type Message = Node & {
   __typename?: 'Message';
-  bodyText: Scalars['String']['output'];
+  bodyText?: Maybe<Scalars['String']['output']>;
   conversationId: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
   delivery: Array<DeliveryReceipt>;
@@ -187,17 +187,12 @@ export type MoveConversationInput = {
   mailbox: Mailbox;
 };
 
-export type MoveConversationPayload = {
-  __typename?: 'MoveConversationPayload';
-  conversation: Conversation;
-};
-
 export type Mutation = {
   __typename?: 'Mutation';
   markConversationRead: MarkConversationReadPayload;
-  moveConversation: MoveConversationPayload;
+  moveConversation?: Maybe<Conversation>;
   sendMessage: SendMessagePayload;
-  setContactStatus: SetContactStatusPayload;
+  setContactStatus?: Maybe<Identity>;
   upsertConversation: UpsertConversationPayload;
 };
 
@@ -271,20 +266,14 @@ export type SendMessageInput = {
 export type SendMessagePayload = {
   __typename?: 'SendMessagePayload';
   clientMutationId: Scalars['String']['output'];
-  decision: TransportDecision;
   message: Message;
 };
 
 export type SetContactStatusInput = {
-  avatarUrl: Scalars['String']['input'];
-  displayName: Scalars['String']['input'];
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
+  displayName?: InputMaybe<Scalars['String']['input']>;
   identityId: Scalars['ID']['input'];
   isContact: Scalars['Boolean']['input'];
-};
-
-export type SetContactStatusPayload = {
-  __typename?: 'SetContactStatusPayload';
-  identity: Identity;
 };
 
 export type Subscription = {
@@ -307,13 +296,6 @@ export type SubscriptionMessageAddedArgs = {
 export type Transport =
   | 'EMAIL'
   | 'GEBNA_DM';
-
-export type TransportDecision = {
-  __typename?: 'TransportDecision';
-  chosen: Transport;
-  perRecipient: Array<RecipientTransportDecision>;
-  reason: Scalars['String']['output'];
-};
 
 export type UpsertConversationInput = {
   kind: ConversationKind;
@@ -429,6 +411,7 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = 
   Node:
     | ( ConversationSelectModel & { __typename: 'Conversation' } )
     | ( IdentitySelectModel & { __typename: 'Identity' } )
+    | ( IdentityRelationshipSelectModel & { __typename: 'IdentityRelationship' } )
     | ( MessageSelectModel & { __typename: 'Message' } )
     | ( UserSelectModel & { __typename: 'Viewer' } )
   ;
@@ -442,7 +425,7 @@ export type ResolversTypes = {
   ConversationEdge: ResolverTypeWrapper<Omit<ConversationEdge, 'node'> & { node: ResolversTypes['Conversation'] }>;
   ConversationKind: ConversationKind;
   ConversationParticipant: ResolverTypeWrapper<ConversationParticipantSelectModel>;
-  ConversationViewerState: ResolverTypeWrapper<ConversationViewerStateSelectModel>;
+  ConversationViewerState: ResolverTypeWrapper<ConversationViewerState>;
   Cursor: ResolverTypeWrapper<Scalars['Cursor']['output']>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DeliveryReceipt: ResolverTypeWrapper<MessageDeliverySelectModel>;
@@ -461,7 +444,6 @@ export type ResolversTypes = {
   MessageConnection: ResolverTypeWrapper<Omit<MessageConnection, 'edges'> & { edges: Array<ResolversTypes['MessageEdge']> }>;
   MessageEdge: ResolverTypeWrapper<Omit<MessageEdge, 'node'> & { node: ResolversTypes['Message'] }>;
   MoveConversationInput: MoveConversationInput;
-  MoveConversationPayload: ResolverTypeWrapper<Omit<MoveConversationPayload, 'conversation'> & { conversation: ResolversTypes['Conversation'] }>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
@@ -470,13 +452,11 @@ export type ResolversTypes = {
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   RecipientTransportDecision: ResolverTypeWrapper<Omit<RecipientTransportDecision, 'recipient'> & { recipient: ResolversTypes['Identity'] }>;
   SendMessageInput: SendMessageInput;
-  SendMessagePayload: ResolverTypeWrapper<Omit<SendMessagePayload, 'decision' | 'message'> & { decision: ResolversTypes['TransportDecision'], message: ResolversTypes['Message'] }>;
+  SendMessagePayload: ResolverTypeWrapper<Omit<SendMessagePayload, 'message'> & { message: ResolversTypes['Message'] }>;
   SetContactStatusInput: SetContactStatusInput;
-  SetContactStatusPayload: ResolverTypeWrapper<Omit<SetContactStatusPayload, 'identity'> & { identity: ResolversTypes['Identity'] }>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Transport: Transport;
-  TransportDecision: ResolverTypeWrapper<Omit<TransportDecision, 'perRecipient'> & { perRecipient: Array<ResolversTypes['RecipientTransportDecision']> }>;
   UpsertConversationInput: UpsertConversationInput;
   UpsertConversationPayload: ResolverTypeWrapper<Omit<UpsertConversationPayload, 'conversation'> & { conversation: ResolversTypes['Conversation'] }>;
   Viewer: ResolverTypeWrapper<UserSelectModel>;
@@ -489,7 +469,7 @@ export type ResolversParentTypes = {
   ConversationConnection: Omit<ConversationConnection, 'edges'> & { edges: Array<ResolversParentTypes['ConversationEdge']> };
   ConversationEdge: Omit<ConversationEdge, 'node'> & { node: ResolversParentTypes['Conversation'] };
   ConversationParticipant: ConversationParticipantSelectModel;
-  ConversationViewerState: ConversationViewerStateSelectModel;
+  ConversationViewerState: ConversationViewerState;
   Cursor: Scalars['Cursor']['output'];
   DateTime: Scalars['DateTime']['output'];
   DeliveryReceipt: MessageDeliverySelectModel;
@@ -505,19 +485,16 @@ export type ResolversParentTypes = {
   MessageConnection: Omit<MessageConnection, 'edges'> & { edges: Array<ResolversParentTypes['MessageEdge']> };
   MessageEdge: Omit<MessageEdge, 'node'> & { node: ResolversParentTypes['Message'] };
   MoveConversationInput: MoveConversationInput;
-  MoveConversationPayload: Omit<MoveConversationPayload, 'conversation'> & { conversation: ResolversParentTypes['Conversation'] };
   Mutation: Record<PropertyKey, never>;
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node'];
   PageInfo: PageInfo;
   Query: Record<PropertyKey, never>;
   RecipientTransportDecision: Omit<RecipientTransportDecision, 'recipient'> & { recipient: ResolversParentTypes['Identity'] };
   SendMessageInput: SendMessageInput;
-  SendMessagePayload: Omit<SendMessagePayload, 'decision' | 'message'> & { decision: ResolversParentTypes['TransportDecision'], message: ResolversParentTypes['Message'] };
+  SendMessagePayload: Omit<SendMessagePayload, 'message'> & { message: ResolversParentTypes['Message'] };
   SetContactStatusInput: SetContactStatusInput;
-  SetContactStatusPayload: Omit<SetContactStatusPayload, 'identity'> & { identity: ResolversParentTypes['Identity'] };
   String: Scalars['String']['output'];
   Subscription: Record<PropertyKey, never>;
-  TransportDecision: Omit<TransportDecision, 'perRecipient'> & { perRecipient: Array<ResolversParentTypes['RecipientTransportDecision']> };
   UpsertConversationInput: UpsertConversationInput;
   UpsertConversationPayload: Omit<UpsertConversationPayload, 'conversation'> & { conversation: ResolversParentTypes['Conversation'] };
   Viewer: UserSelectModel;
@@ -529,7 +506,7 @@ export type ConversationResolvers<ContextType = Context, ParentType extends Reso
   lastMessage?: Resolver<ResolversTypes['Message'], ParentType, ContextType>;
   messages?: Resolver<ResolversTypes['MessageConnection'], ParentType, ContextType, RequireFields<ConversationMessagesArgs, 'last'>>;
   participants?: Resolver<Array<ResolversTypes['ConversationParticipant']>, ParentType, ContextType>;
-  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   viewerState?: Resolver<ResolversTypes['ConversationViewerState'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -548,7 +525,7 @@ export type ConversationEdgeResolvers<ContextType = Context, ParentType extends 
 export type ConversationParticipantResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ConversationParticipant'] = ResolversParentTypes['ConversationParticipant']> = {
   identity?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
   joinedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
-  lastReadMessageId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  lastReadMessageId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
   role?: Resolver<ResolversTypes['ParticipantRole'], ParentType, ContextType>;
   state?: Resolver<ResolversTypes['ParticipantState'], ParentType, ContextType>;
 };
@@ -567,8 +544,8 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
 }
 
 export type DeliveryReceiptResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DeliveryReceipt'] = ResolversParentTypes['DeliveryReceipt']> = {
-  at?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
-  error?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  error?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  latestStatusChangeAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   recipient?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
   status?: Resolver<ResolversTypes['DeliveryStatus'], ParentType, ContextType>;
   transport?: Resolver<ResolversTypes['Transport'], ParentType, ContextType>;
@@ -578,7 +555,7 @@ export type IdentityResolvers<ContextType = Context, ParentType extends Resolver
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['IdentityKind'], ParentType, ContextType>;
-  relationshipToViewer?: Resolver<ResolversTypes['IdentityRelationship'], ParentType, ContextType>;
+  relationshipToViewer?: Resolver<Maybe<ResolversTypes['IdentityRelationship']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -593,10 +570,11 @@ export type IdentityEdgeResolvers<ContextType = Context, ParentType extends Reso
 };
 
 export type IdentityRelationshipResolvers<ContextType = Context, ParentType extends ResolversParentTypes['IdentityRelationship'] = ResolversParentTypes['IdentityRelationship']> = {
-  avatarUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  displayName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  avatarUrl?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  displayName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   isContact?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type MarkConversationReadPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['MarkConversationReadPayload'] = ResolversParentTypes['MarkConversationReadPayload']> = {
@@ -604,7 +582,7 @@ export type MarkConversationReadPayloadResolvers<ContextType = Context, ParentTy
 };
 
 export type MessageResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Message'] = ResolversParentTypes['Message']> = {
-  bodyText?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  bodyText?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   conversationId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   delivery?: Resolver<Array<ResolversTypes['DeliveryReceipt']>, ParentType, ContextType>;
@@ -623,20 +601,16 @@ export type MessageEdgeResolvers<ContextType = Context, ParentType extends Resol
   node?: Resolver<ResolversTypes['Message'], ParentType, ContextType>;
 };
 
-export type MoveConversationPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['MoveConversationPayload'] = ResolversParentTypes['MoveConversationPayload']> = {
-  conversation?: Resolver<ResolversTypes['Conversation'], ParentType, ContextType>;
-};
-
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   markConversationRead?: Resolver<ResolversTypes['MarkConversationReadPayload'], ParentType, ContextType, RequireFields<MutationMarkConversationReadArgs, 'input'>>;
-  moveConversation?: Resolver<ResolversTypes['MoveConversationPayload'], ParentType, ContextType, RequireFields<MutationMoveConversationArgs, 'input'>>;
+  moveConversation?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationMoveConversationArgs, 'input'>>;
   sendMessage?: Resolver<ResolversTypes['SendMessagePayload'], ParentType, ContextType, RequireFields<MutationSendMessageArgs, 'input'>>;
-  setContactStatus?: Resolver<ResolversTypes['SetContactStatusPayload'], ParentType, ContextType, RequireFields<MutationSetContactStatusArgs, 'input'>>;
+  setContactStatus?: Resolver<Maybe<ResolversTypes['Identity']>, ParentType, ContextType, RequireFields<MutationSetContactStatusArgs, 'input'>>;
   upsertConversation?: Resolver<ResolversTypes['UpsertConversationPayload'], ParentType, ContextType, RequireFields<MutationUpsertConversationArgs, 'input'>>;
 };
 
 export type NodeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Node'] = ResolversParentTypes['Node']> = {
-  __resolveType: TypeResolveFn<'Conversation' | 'Identity' | 'Message' | 'Viewer', ParentType, ContextType>;
+  __resolveType: TypeResolveFn<'Conversation' | 'Identity' | 'IdentityRelationship' | 'Message' | 'Viewer', ParentType, ContextType>;
 };
 
 export type PageInfoResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PageInfo'] = ResolversParentTypes['PageInfo']> = {
@@ -657,24 +631,13 @@ export type RecipientTransportDecisionResolvers<ContextType = Context, ParentTyp
 
 export type SendMessagePayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['SendMessagePayload'] = ResolversParentTypes['SendMessagePayload']> = {
   clientMutationId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  decision?: Resolver<ResolversTypes['TransportDecision'], ParentType, ContextType>;
   message?: Resolver<ResolversTypes['Message'], ParentType, ContextType>;
-};
-
-export type SetContactStatusPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['SetContactStatusPayload'] = ResolversParentTypes['SetContactStatusPayload']> = {
-  identity?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
 };
 
 export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
   conversationUpdated?: SubscriptionResolver<ResolversTypes['Conversation'], "conversationUpdated", ParentType, ContextType>;
   deliveryUpdated?: SubscriptionResolver<Array<ResolversTypes['DeliveryReceipt']>, "deliveryUpdated", ParentType, ContextType, RequireFields<SubscriptionDeliveryUpdatedArgs, 'messageId'>>;
   messageAdded?: SubscriptionResolver<ResolversTypes['Message'], "messageAdded", ParentType, ContextType, RequireFields<SubscriptionMessageAddedArgs, 'conversationId'>>;
-};
-
-export type TransportDecisionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['TransportDecision'] = ResolversParentTypes['TransportDecision']> = {
-  chosen?: Resolver<ResolversTypes['Transport'], ParentType, ContextType>;
-  perRecipient?: Resolver<Array<ResolversTypes['RecipientTransportDecision']>, ParentType, ContextType>;
-  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type UpsertConversationPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['UpsertConversationPayload'] = ResolversParentTypes['UpsertConversationPayload']> = {
@@ -706,16 +669,13 @@ export type Resolvers<ContextType = Context> = {
   Message?: MessageResolvers<ContextType>;
   MessageConnection?: MessageConnectionResolvers<ContextType>;
   MessageEdge?: MessageEdgeResolvers<ContextType>;
-  MoveConversationPayload?: MoveConversationPayloadResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Node?: NodeResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RecipientTransportDecision?: RecipientTransportDecisionResolvers<ContextType>;
   SendMessagePayload?: SendMessagePayloadResolvers<ContextType>;
-  SetContactStatusPayload?: SetContactStatusPayloadResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
-  TransportDecision?: TransportDecisionResolvers<ContextType>;
   UpsertConversationPayload?: UpsertConversationPayloadResolvers<ContextType>;
   Viewer?: ViewerResolvers<ContextType>;
 };

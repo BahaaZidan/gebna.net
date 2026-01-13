@@ -7,12 +7,12 @@ import { argon2id, argon2Verify, setWASMModules } from "argon2-wasm-edge";
 import argon2WASM from "argon2-wasm-edge/wasm/argon2.wasm";
 // @ts-expect-error - wasm imports are handled by the bundler for workers
 import blake2bWASM from "argon2-wasm-edge/wasm/blake2b.wasm";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { ulid } from "ulid";
 
 import { getDB } from "$lib/db";
-import { mailboxTable, sessionTable, userTable } from "$lib/db/schema";
+import { identityTable, sessionTable, userTable } from "$lib/db/schema";
 import { generateImagePlaceholder } from "$lib/utils/users";
 
 type JwtPayload = {
@@ -64,7 +64,7 @@ authenticationApp.post("/register", async (c) => {
 
 	try {
 		await db.transaction(async (tx) => {
-			const [newUser] = await tx
+			await tx
 				.insert(userTable)
 				.values({
 					id: userId,
@@ -75,13 +75,11 @@ authenticationApp.post("/register", async (c) => {
 				})
 				.returning();
 
-			await tx.insert(mailboxTable).values([
-				{ userId: newUser.id, type: "screener", name: "Screener", id: ulid() },
-				{ userId: newUser.id, type: "important", name: "Important", id: ulid() },
-				{ userId: newUser.id, type: "news", name: "News", id: ulid() },
-				{ userId: newUser.id, type: "transactional", name: "Transactional", id: ulid() },
-				{ userId: newUser.id, type: "trash", name: "Trash", id: ulid() },
-			]);
+			await tx.insert(identityTable).values({
+				id: ulid(),
+				kind: "GEBNA_USER",
+				address: `${bodyValidation.output.username}@gebna.net`,
+			});
 		});
 	} catch (error) {
 		if (isUniqueConstraintError(error)) {
@@ -136,17 +134,17 @@ authenticationApp.post("/login", async (c) => {
 });
 
 authenticationApp.post("/logout", async (c) => {
-	const bearer = getBearer(c);
+	const bearer = getBearer(c.req.raw);
 	if (!bearer) return c.body(null, 204);
 
 	const db = getDB(c.env);
-	const session = await getCurrentSession(c.env, db, bearer);
-	if (!session) return c.body(null, 204);
+	const viewerInfo = await getViewerInfo(c.env, db, bearer);
+	if (!viewerInfo) return c.body(null, 204);
 
 	await db
 		.update(sessionTable)
 		.set({ revoked: true, expiresAt: nowSeconds() })
-		.where(eq(sessionTable.id, session.sessionId));
+		.where(eq(sessionTable.id, viewerInfo.session.id));
 
 	return c.body(null, 204);
 });
@@ -193,13 +191,11 @@ async function issueTokens({
 	};
 }
 
-export async function getCurrentSession(
+export async function getViewerInfo(
 	bindings: CloudflareBindings,
 	db: ReturnType<typeof getDB>,
-	bearer?: string | null
-): Promise<{ userId: string; sessionId: string } | null> {
-	if (!bearer) return null;
-
+	bearer: string
+) {
 	let payload: JwtPayload;
 	try {
 		payload = await verifyJwt(bearer, bindings.JWT_SECRET);
@@ -215,25 +211,30 @@ export async function getCurrentSession(
 	)
 		return null;
 
-	const session = await db.query.sessionTable.findFirst({
-		columns: {
-			id: true,
-			userId: true,
-			expiresAt: true,
-			revoked: true,
-		},
-		where: (t, { eq }) => eq(t.id, payload.sid),
-	});
+	const [viewerInfo] = await db
+		.select({
+			session: sessionTable,
+			user: userTable,
+			identity: identityTable,
+		})
+		.from(sessionTable)
+		.innerJoin(userTable, eq(sessionTable.userId, userTable.id))
+		.innerJoin(
+			identityTable,
+			and(eq(identityTable.address, userTable.username), eq(identityTable.kind, "GEBNA_USER"))
+		)
+		.where(eq(sessionTable.id, payload.sid))
+		.limit(1);
 
-	if (!session) return null;
-	if (session.revoked || session.expiresAt <= nowSeconds()) return null;
-	if (session.userId !== payload.sub) return null;
+	if (!viewerInfo) return null;
+	if (viewerInfo.session.revoked || viewerInfo.session.expiresAt <= nowSeconds()) return null;
+	if (viewerInfo.session.userId !== payload.sub) return null;
 
-	return { userId: payload.sub, sessionId: payload.sid };
+	return viewerInfo;
 }
 
-function getBearer(c: AppContext) {
-	const header = c.req.header("authorization") || c.req.header("Authorization");
+export function getBearer(request: Request): string | null {
+	const header = request.headers.get("authorization") || request.headers.get("Authorization");
 	if (!header || !header.toLowerCase().startsWith("bearer ")) return null;
 	return header.slice(7).trim();
 }

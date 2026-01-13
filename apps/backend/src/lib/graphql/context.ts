@@ -1,28 +1,22 @@
-import { YogaInitialContext } from "graphql-yoga";
+import { createGraphQLError, YogaInitialContext } from "graphql-yoga";
 
 import { getDB } from "$lib/db";
-import { getCurrentSession } from "$lib/hono-apps/authentication";
+import { getBearer, getViewerInfo } from "$lib/hono-apps/authentication";
 
 import { YogaServerContext } from "./types";
 
+const UNAUTHORIZED = createGraphQLError("UNAUTHORIZED");
+
 export async function context(event: YogaInitialContext & YogaServerContext) {
 	const db = getDB(event.env);
-	if (event.env.FORCED_USER_ID)
-		return {
-			...event,
-			db,
-			session: { userId: event.env.FORCED_USER_ID, sessionId: "" },
-		};
 
-	const getBearer = () => {
-		const header =
-			event.request.headers.get("authorization") || event.request.headers.get("Authorization");
-		if (!header || !header.toLowerCase().startsWith("bearer ")) return null;
-		return header.slice(7).trim();
-	};
+	const bearer = getBearer(event.request);
+	if (!bearer) throw UNAUTHORIZED;
 
-	const session = await getCurrentSession(event.env, db, getBearer());
-	return { ...event, db, session };
+	const viewer = await getViewerInfo(event.env, db, bearer);
+	if (!viewer) throw UNAUTHORIZED;
+
+	return { ...event, db, viewer };
 }
 
 export type Context = Awaited<ReturnType<typeof context>>;

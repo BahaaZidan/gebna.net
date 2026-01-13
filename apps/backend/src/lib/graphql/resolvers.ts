@@ -1,192 +1,365 @@
-import { v } from "@gebna/validation";
-import { editUserSchema } from "@gebna/validation/identity";
-import { editThreadSchema } from "@gebna/validation/mail";
-import { AwsClient } from "aws4fetch";
-import { and, count, desc, eq, gt, inArray, isNull, lt, not } from "drizzle-orm";
-import { DateTimeResolver, EmailAddressResolver, URLResolver } from "graphql-scalars";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { GraphQLError } from "graphql";
+import { DateTimeResolver } from "graphql-scalars";
+import { ulid } from "ulid";
 
+import { DBInstance, IdentityInsertModel, TransactionInstance } from "$lib/db";
 import {
-	ATTACHMENT_TYPE_BY_MIME,
-	DEFAULT_ATTACHMENT_TYPE,
-	MIME_TYPES_BY_ATTACHMENT_TYPE,
-} from "$lib/constant";
-import { searchMessages as searchMessagesDb } from "$lib/db";
-import {
-	attachmentTable,
-	contactTable,
+	conversationParticipantTable,
+	conversationTable,
+	conversationViewerStateTable,
+	identityRelationshipTable,
+	identityTable,
+	messageDeliveryTable,
 	messageTable,
-	threadParticipantTable,
-	threadTable,
-	userTable,
 } from "$lib/db/schema";
 
-import type { Resolvers } from "./resolvers.types";
+import type { Resolvers, ResolversTypes } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
+
+const DEFAULT_MAILBOX: ResolversTypes["Mailbox"] = "IMPORTANT";
+const DEFAULT_PARTICIPANT_ROLE: ResolversTypes["ParticipantRole"] = "MEMBER";
+const DEFAULT_PARTICIPANT_STATE: ResolversTypes["ParticipantState"] = "ACTIVE";
+
+async function getConversationParticipants(db: DBInstance, conversationId: string) {
+	return db
+		.select({ participant: conversationParticipantTable, identity: identityTable })
+		.from(conversationParticipantTable)
+		.innerJoin(identityTable, eq(identityTable.id, conversationParticipantTable.identityId))
+		.where(eq(conversationParticipantTable.conversationId, conversationId));
+}
+
+function transportForIdentity(identity: {
+	kind: ResolversTypes["IdentityKind"];
+}): ResolversTypes["Transport"] {
+	return identity.kind === "GEBNA_USER" ? "GEBNA_DM" : "EMAIL";
+}
+
+async function upsertViewerState({
+	tx,
+	conversationId,
+	ownerId,
+	mailbox = DEFAULT_MAILBOX,
+	unreadCount,
+}: {
+	tx: TransactionInstance | DBInstance;
+	conversationId: string;
+	ownerId: string;
+	mailbox?: ResolversTypes["Mailbox"];
+	unreadCount?: number;
+}) {
+	const [viewerState] = await tx
+		.insert(conversationViewerStateTable)
+		.values({
+			id: ulid(),
+			ownerId,
+			conversationId,
+			mailbox,
+			unreadCount: unreadCount ?? 0,
+		})
+		.onConflictDoUpdate({
+			target: [conversationViewerStateTable.ownerId, conversationViewerStateTable.conversationId],
+			set: {
+				...(unreadCount !== undefined ? { unreadCount } : {}),
+				...(mailbox ? { mailbox } : {}),
+				updatedAt: new Date(),
+			},
+		})
+		.returning();
+
+	return viewerState;
+}
 
 export const resolvers: Resolvers = {
 	Query: {
-		viewer: async (_parent, _args, { session, db }) => {
-			if (!session) return null;
-			const currentUser = db.query.userTable.findFirst({
-				where: (t, { eq }) => eq(t.id, session.userId),
-			});
-			return currentUser;
-		},
-		node: async (_parent, args, { session, db }) => {
+		viewer: async (_parent, _args, { viewer }) => viewer.user,
+		node: async (_parent, args, { viewer, db }) => {
 			const { type, id } = fromGlobalId(args.id);
+
 			switch (type) {
-				case "Thread": {
-					const thread =
-						session &&
-						(await db.query.threadTable.findFirst({
-							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.ownerId, session.userId)),
-						}));
-					return thread ? { ...thread, __typename: "Thread" } : null;
+				case "Conversation": {
+					const conversation = await db.query.conversationTable.findFirst({
+						where: (t, { eq }) => eq(t.id, id),
+					});
+					if (!conversation) return null;
+
+					const participant = await db.query.conversationParticipantTable.findFirst({
+						where: (t, { and, eq }) =>
+							and(eq(t.conversationId, id), eq(t.identityId, viewer.identity.id)),
+					});
+
+					return participant ? { ...conversation, __typename: "Conversation" } : null;
 				}
-				case "Contact": {
-					const address_user =
-						session &&
-						(await db.query.contactTable.findFirst({
-							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.ownerId, session.userId)),
-						}));
-					return address_user ? { ...address_user, __typename: "Contact" } : null;
-				}
-				case "Message": {
-					const message =
-						session &&
-						(await db.query.messageTable.findFirst({
-							where: (t, { eq, and }) => and(eq(t.id, id), eq(t.ownerId, session.userId)),
-						}));
-					return message ? { ...message, __typename: "Message" } : null;
+				case "Identity": {
+					const identity = await db.query.identityTable.findFirst({
+						where: (t, { eq }) => eq(t.id, id),
+					});
+					return identity ? { ...identity, __typename: "Identity" } : null;
 				}
 				default:
 					return null;
 			}
 		},
-		search: async (_parent, { input }, { session, db }) => {
-			if (!session) return null;
-			const mailboxId = input.mailboxId ? fromGlobalId(input.mailboxId).id : null;
-
-			const search_results = await searchMessagesDb(db, {
-				ownerId: session.userId,
-				query: input.query,
-				mailboxId,
-				limit: input.limit ?? 20,
-				offset: input.offset ?? 0,
-			});
-
-			if (!search_results.length) return null;
-
-			const messages = await db.query.messageTable.findMany({
-				where: (t, { inArray }) =>
-					inArray(
-						t.id,
-						search_results.map((m) => m.messageId)
-					),
-			});
-
-			return { messages };
-		},
 	},
 	Mutation: {
-		assignTargetMailbox: async (_, { input }, { session, db }) => {
-			if (!session) return;
-			const targetMailbox = await db.query.mailboxTable.findFirst({
-				where: (t, { eq, and }) =>
-					and(eq(t.userId, session.userId), eq(t.type, input.targetMailboxType)),
+		upsertConversation: async (_parent, { input }, { viewer, db }) => {
+			const addresses = input.participantAddresses
+				.map((a) => a.trim().toLowerCase())
+				.filter((a) => a.length);
+			if (!addresses.length) throw new GraphQLError("BAD_INPUT");
+			if (input.kind === "PRIVATE" && addresses.length !== 1)
+				throw new GraphQLError("PRIVATE conversations require exactly one participant address");
+
+			const identities = Array.from(new Set(addresses)).map((address) => {
+				return {
+					id: ulid(),
+					address,
+					kind: address.endsWith("@gebna.net") ? "GEBNA_USER" : "EXTERNAL_EMAIL",
+				} satisfies IdentityInsertModel;
 			});
-			if (!targetMailbox) return;
+
 			return await db.transaction(async (tx) => {
-				const [contact] = await tx
-					.update(contactTable)
-					.set({
-						targetMailboxId: targetMailbox.id,
-						targetMailboxType: targetMailbox.type,
+				await tx.insert(identityTable).values(identities).onConflictDoNothing();
+				const participantIdentities = await tx.query.identityTable.findMany({
+					where: (t) =>
+						identities.length === 0
+							? sql`0`
+							: sql`
+								(${t.kind}, ${t.address})
+								IN (
+									VALUES ${sql.join(
+										identities.map((p) => sql`(${p.kind}, ${p.address})`),
+										sql`, `
+									)}
+								)
+							`,
+				});
+				const allIdentities = [viewer.identity, ...participantIdentities];
+
+				let dmKey: string | null = null;
+				if (input.kind === "PRIVATE") {
+					const otherId = participantIdentities[0]?.id;
+					if (!otherId) throw new Error("Missing participant");
+					const [a, b] = [viewer.identity.id, otherId].sort();
+					dmKey = `${a}:${b}`;
+				}
+
+				const now = new Date();
+				let conversation =
+					(dmKey &&
+						(await db.query.conversationTable.findFirst({
+							where: (t, { eq }) => eq(t.dmKey, dmKey),
+						}))) ||
+					null;
+
+				let created = false;
+				if (!conversation) {
+					const [inserted] = await db
+						.insert(conversationTable)
+						.values({
+							id: ulid(),
+							kind: input.kind,
+							title: input.title,
+							dmKey,
+							createdAt: now,
+							updatedAt: now,
+							lastMessageAt: null,
+						})
+						.returning();
+					conversation = inserted;
+					created = true;
+				}
+
+				const participantRows = allIdentities.map(
+					(identity) =>
+						({
+							id: ulid(),
+							conversationId: conversation.id,
+							identityId: identity.id,
+							role: DEFAULT_PARTICIPANT_ROLE,
+							state: DEFAULT_PARTICIPANT_STATE,
+							joinedAt: now,
+							lastReadMessageId: null,
+						}) satisfies typeof conversationParticipantTable.$inferInsert
+				);
+				await tx.insert(conversationParticipantTable).values(participantRows).onConflictDoNothing();
+				await upsertViewerState({
+					tx,
+					conversationId: conversation.id,
+					ownerId: viewer.user.id,
+					unreadCount: 0,
+				});
+
+				return { conversation, created };
+			});
+		},
+		sendMessage: async (_parent, { input }, { viewer, db }) => {
+			const rawConversationId = fromGlobalId(input.conversationId).id;
+			const conversation = await db.query.conversationTable.findFirst({
+				where: (t, { eq }) => eq(t.id, rawConversationId),
+			});
+			if (!conversation) throw new Error("Conversation not found");
+
+			const participants = await getConversationParticipants(db, rawConversationId);
+			const activeParticipants = participants.filter(
+				({ participant }) => participant.state === DEFAULT_PARTICIPANT_STATE
+			);
+			const senderParticipant = activeParticipants.find(
+				({ participant }) => participant.identityId === viewer.identity.id
+			);
+			if (!senderParticipant) throw new Error("Sender is not a participant in this conversation");
+
+			const recipients = activeParticipants.filter(
+				({ participant }) => participant.identityId !== viewer.identity.id
+			);
+
+			const now = new Date();
+			const messageId = `cm:${rawConversationId}:${input.clientMutationId}`;
+
+			let message =
+				(await db.query.messageTable.findFirst({
+					where: (t, { eq }) => eq(t.id, messageId),
+				})) || null;
+
+			if (!message) {
+				await db.transaction(async (tx) => {
+					const [createdMessage] = await tx
+						.insert(messageTable)
+						.values({
+							id: messageId,
+							conversationId: rawConversationId,
+							senderIdentityId: viewer.identity.id,
+							bodyText: input.bodyText,
+							bodyHTML: null,
+							createdAt: now,
+						})
+						.returning();
+
+					message = createdMessage;
+
+					if (recipients.length) {
+						const deliveries = recipients.map(({ participant, identity }) => ({
+							id: ulid(),
+							messageId,
+							recipientIdentityId: participant.identityId,
+							status: "QUEUED" as const,
+							transport: transportForIdentity(identity),
+							latestStatusChangeAt: now,
+							error: null,
+						}));
+
+						await tx.insert(messageDeliveryTable).values(deliveries).onConflictDoNothing();
+					}
+
+					await tx
+						.update(conversationTable)
+						.set({ updatedAt: now, lastMessageAt: now })
+						.where(eq(conversationTable.id, rawConversationId));
+				});
+			} else {
+				// Ensure deliveries exist for all recipients when retrying the same mutation.
+				const existingDeliveries = await db.query.messageDeliveryTable.findMany({
+					where: (t, { eq }) => eq(t.messageId, messageId),
+				});
+				const existingRecipientIds = new Set(existingDeliveries.map((d) => d.recipientIdentityId));
+				const missingRecipients = recipients.filter(
+					({ participant }) => !existingRecipientIds.has(participant.identityId)
+				);
+				if (missingRecipients.length) {
+					await db.insert(messageDeliveryTable).values(
+						missingRecipients.map(({ participant, identity }) => ({
+							id: ulid(),
+							messageId,
+							recipientIdentityId: participant.identityId,
+							status: "QUEUED" as const,
+							transport: transportForIdentity(identity),
+							latestStatusChangeAt: now,
+							error: null,
+						}))
+					);
+				}
+			}
+
+			if (!message) throw new Error("Failed to create message");
+
+			return {
+				clientMutationId: input.clientMutationId,
+				message,
+			};
+		},
+		markConversationRead: async (_parent, { input }, { viewer, db }) => {
+			const rawConversationId = fromGlobalId(input.conversationId).id;
+			const rawMessageId = fromGlobalId(input.lastReadMessageId).id;
+
+			return await db.transaction(async (tx) => {
+				const conversation = await tx.query.conversationTable.findFirst({
+					where: (t, { eq }) => eq(t.id, rawConversationId),
+				});
+				if (!conversation) throw new Error("Conversation not found");
+
+				await tx
+					.update(conversationParticipantTable)
+					.set({ lastReadMessageId: rawMessageId })
+					.where(
+						and(
+							eq(conversationParticipantTable.conversationId, rawConversationId),
+							eq(conversationParticipantTable.identityId, viewer.identity.id)
+						)
+					);
+
+				await upsertViewerState({
+					tx,
+					conversationId: rawConversationId,
+					ownerId: viewer.user.id,
+					unreadCount: 0,
+				});
+
+				return { conversation };
+			});
+		},
+		setContactStatus: async (_parent, { input }, { viewer, db }) => {
+			const identityId = fromGlobalId(input.identityId).id;
+
+			const [upserted] = await db
+				.insert(identityRelationshipTable)
+				.values({
+					id: ulid(),
+					ownerId: viewer.user.id,
+					identityId,
+					isContact: input.isContact,
+					displayName: input.displayName,
+					avatarUrl: input.avatarUrl,
+				})
+				.onConflictDoUpdate({
+					target: [identityRelationshipTable.ownerId, identityRelationshipTable.identityId],
+					set: {
+						isContact: input.isContact,
+						displayName: input.displayName,
+						avatarUrl: input.avatarUrl,
 						updatedAt: new Date(),
-					})
-					.where(
-						and(
-							eq(contactTable.ownerId, session.userId),
-							eq(contactTable.id, fromGlobalId(input.contactID).id)
-						)
-					)
-					.returning();
-
-				// TODO: consider doing this in the background using `executionContext.waitUntil()`.
-				await tx
-					.update(messageTable)
-					.set({ mailboxId: targetMailbox.id })
-					.where(
-						and(eq(messageTable.ownerId, session.userId), eq(messageTable.from, contact.address))
-					);
-
-				await tx
-					.update(threadTable)
-					.set({ mailboxId: targetMailbox.id, trashAt: new Date() })
-					.where(
-						and(
-							eq(threadTable.ownerId, session.userId),
-							eq(threadTable.firstMessageFrom, contact.address)
-						)
-					);
-
-				return contact;
-			});
-		},
-		markThreadSeen: async (_, args, { session, db }) => {
-			if (!session?.userId) return;
-			return await db.transaction(async (tx) => {
-				const [thread] = await tx
-					.update(threadTable)
-					.set({ unseenCount: 0 })
-					.where(
-						and(
-							eq(threadTable.ownerId, session.userId),
-							eq(threadTable.id, fromGlobalId(args.id).id)
-						)
-					)
-					.returning();
-				if (!thread) return;
-				await tx
-					.update(messageTable)
-					.set({ unseen: false })
-					.where(and(eq(messageTable.threadId, thread.id), eq(messageTable.unseen, true)));
-
-				return thread;
-			});
-		},
-		editUser: async (_, args, { session, db, env }) => {
-			if (!session) return;
-			const input = v.parse(editUserSchema, args.input);
-			const avatarPath = `u/${session.userId}/avatar`;
-			const r2object = input.avatar ? await env.R2_AVATARS.put(avatarPath, input.avatar) : null;
-
-			const [user] = await db
-				.update(userTable)
-				.set({
-					...(r2object
-						? { avatar: new URL(avatarPath, "https://cdn-0.gebna.net/").toString() }
-						: {}),
-					...(input.name ? { name: input.name } : {}),
+					},
 				})
 				.returning();
 
-			return user;
+			return await db.query.identityTable.findFirst({
+				where: (t, { eq }) => eq(t.id, upserted.identityId),
+			});
 		},
-		editThread: async (_, args, { session, db }) => {
-			if (!session) return;
-			const input = v.parse(editThreadSchema, args.input);
+		moveConversation: async (_parent, { input }, { viewer, db }) => {
+			const rawConversationId = fromGlobalId(input.conversationId).id;
+			const conversation = await db.query.conversationTable.findFirst({
+				where: (t, { eq }) => eq(t.id, rawConversationId),
+			});
+			if (!conversation) return null;
 
-			const t = threadTable;
-			const [thread] = await db
-				.update(t)
-				.set({
-					title: input.title,
-				})
-				.where(and(eq(t.ownerId, session.userId), eq(t.id, fromGlobalId(args.input.id).id)))
-				.returning();
+			await upsertViewerState({
+				tx: db,
+				conversationId: rawConversationId,
+				ownerId: viewer.user.id,
+				mailbox: input.mailbox,
+			});
 
-			return thread;
+			return conversation;
 		},
 	},
 	Node: {
@@ -195,338 +368,196 @@ export const resolvers: Resolvers = {
 		},
 	},
 	DateTime: DateTimeResolver,
-	URL: URLResolver,
-	EmailAddress: EmailAddressResolver,
-	User: {
-		id: (parent) => toGlobalId("User", parent.id),
-		mailboxes: async (parent, _, { db }) => {
-			const mailboxes = await db.query.mailboxTable.findMany({
-				where: (t, { eq }) => eq(t.userId, parent.id),
-			});
-			return mailboxes;
+	Conversation: {
+		id: (parent) => toGlobalId("Conversation", parent.id),
+		participants: async (parent, _args, { db }) => {
+			const participants = await getConversationParticipants(db, parent.id);
+			return participants.map(({ participant }) => participant);
 		},
-		mailbox: async (parent, args, { db }) => {
-			const mailbox = await db.query.mailboxTable.findFirst({
-				where: (t, { eq, and }) => and(eq(t.userId, parent.id), eq(t.type, args.type)),
-			});
-			return mailbox;
-		},
-		avatar: (parent) => parent.avatar || parent.avatarPlaceholder,
-		attachments: async (parent, args, { db }) => {
-			const pageSize = args.first || 30;
-			const cursor = args.after;
-			const attachmentsPlusOne = await db
-				.select({ attachment: attachmentTable })
-				.from(attachmentTable)
-				.innerJoin(
-					contactTable,
-					and(
-						eq(contactTable.ownerId, attachmentTable.ownerId),
-						eq(contactTable.address, attachmentTable.messageFrom),
-						eq(contactTable.targetMailboxType, "important")
-					)
-				)
-				.where(
-					and(
-						eq(attachmentTable.ownerId, parent.id),
-						not(isNull(attachmentTable.threadId)),
-						cursor ? lt(attachmentTable.id, fromGlobalId(cursor).id) : undefined,
-						args.filter?.contactAddress
-							? eq(attachmentTable.messageFrom, args.filter.contactAddress)
-							: undefined,
-						args.filter?.attachmentType
-							? inArray(
-									attachmentTable.mimeType,
-									MIME_TYPES_BY_ATTACHMENT_TYPE[args.filter.attachmentType]
-								)
-							: undefined
-					)
-				)
-				.orderBy(desc(attachmentTable.id))
-				.limit(pageSize + 1);
-			const attachments = attachmentsPlusOne.slice(0, pageSize).map((row) => row.attachment);
-
-			return {
-				edges: attachments.map((node) => ({ node, cursor: toGlobalId("Attachment", node.id) })),
-				pageInfo: {
-					hasNextPage: attachmentsPlusOne.length > attachments.length,
-					endCursor: attachments.length
-						? toGlobalId("Attachment", attachments[attachments.length - 1].id)
-						: null,
-				},
-			};
-		},
-		contacts: async (parent, args, { db }) => {
-			const pageSize = args.first || 30;
-			const cursor = args.after;
-			const contactsPlusOne = await db.query.contactTable.findMany({
-				where: (t, { eq, and, lt }) =>
-					and(
-						eq(t.ownerId, parent.id),
-						eq(t.targetMailboxType, "important"),
-						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
-					),
-				orderBy: (t, { desc }) => desc(t.createdAt),
-				limit: pageSize + 1,
-			});
-			const contacts = contactsPlusOne.slice(0, pageSize);
-
-			return {
-				edges: contacts.map((node) => ({
-					node,
-					cursor: toGlobalId("Contact", node.id),
-				})),
-				pageInfo: {
-					hasNextPage: contactsPlusOne.length > contacts.length,
-					endCursor: contacts.length
-						? toGlobalId("Contact", contacts[contacts.length - 1].id)
-						: null,
-				},
-			};
-		},
-	},
-	Mailbox: {
-		id: (parent) => toGlobalId("Mailbox", parent.id),
-		threads: async (parent, args, { db }) => {
-			const pageSize = args.first || 30;
-			const cursor = args.after;
-			const threadsPlusOne = await db.query.threadTable.findMany({
-				where: (t, { eq, and, lt, gt }) =>
-					and(
-						eq(t.mailboxId, parent.id),
-						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined,
-						args.filter
-							? args.filter.unseen
-								? gt(t.unseenCount, 0)
-								: eq(t.unseenCount, 0)
-							: undefined
-					),
-				orderBy: (t, { desc }) => desc(t.lastMessageAt),
-				limit: pageSize + 1,
-			});
-			const threads = threadsPlusOne.slice(0, pageSize);
-
-			return {
-				edges: threads.map((node) => ({ node, cursor: toGlobalId("Thread", node.id) })),
-				pageInfo: {
-					hasNextPage: threadsPlusOne.length > threads.length,
-					endCursor: threads.length ? toGlobalId("Thread", threads[threads.length - 1].id) : null,
-				},
-			};
-		},
-		unseenThreadsCount: async (parent, _, { db }) => {
-			if (parent.type !== "important") return 0;
-			const [{ unseenThreadsCount }] = await db
-				.select({ unseenThreadsCount: count() })
-				.from(threadTable)
-				.where(and(eq(threadTable.mailboxId, parent.id), gt(threadTable.unseenCount, 0)));
-			return unseenThreadsCount;
-		},
-		assignedContactsCount: async (parent, _, { db }) => {
-			const [{ assignedContactsCount }] = await db
-				.select({ assignedContactsCount: count() })
-				.from(contactTable)
-				.where(eq(contactTable.targetMailboxId, parent.id));
-
-			return assignedContactsCount;
-		},
-		contacts: async (parent, args, { db }) => {
-			const pageSize = args.first || 30;
-			const cursor = args.after;
-			const contactsPlusOne = await db.query.contactTable.findMany({
-				where: (t, { eq, and, lt }) =>
-					and(
-						eq(t.ownerId, parent.userId),
-						eq(t.targetMailboxId, parent.id),
-						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
-					),
-				orderBy: (t, { desc }) => desc(t.createdAt),
-				limit: pageSize + 1,
-			});
-			const contacts = contactsPlusOne.slice(0, pageSize);
-
-			return {
-				edges: contacts.map((node) => ({
-					node,
-					cursor: toGlobalId("Contact", node.id),
-				})),
-				pageInfo: {
-					hasNextPage: contactsPlusOne.length > contacts.length,
-					endCursor: contacts.length
-						? toGlobalId("Contact", contacts[contacts.length - 1].id)
-						: null,
-				},
-			};
-		},
-	},
-	Thread: {
-		id: (parent) => toGlobalId("Thread", parent.id),
-		unseenMessagesCount: (parent) => parent.unseenCount,
-		messages: async (parent, _, { db }) => {
-			const messages = await db.query.messageTable.findMany({
-				where: (t, { eq }) => eq(t.threadId, parent.id),
+		lastMessage: async (parent, _args, { db }) => {
+			const message = await db.query.messageTable.findFirst({
+				where: (t, { eq }) => eq(t.conversationId, parent.id),
 				orderBy: (t, { desc }) => desc(t.createdAt),
 			});
-			return messages;
+			if (!message) throw new Error("Conversation has no messages");
+			return message;
 		},
-		from: async (parent, _, { db }) => {
-			const contact = await db.query.contactTable.findFirst({
+		viewerState: async (parent, _args, { viewer, db }) => {
+			const viewerState = await db.query.conversationViewerStateTable.findFirst({
 				where: (t, { and, eq }) =>
-					and(eq(t.ownerId, parent.ownerId), eq(t.address, parent.firstMessageFrom)),
+					and(eq(t.ownerId, viewer.user.id), eq(t.conversationId, parent.id)),
 			});
-			return contact!;
+			return viewerState ?? { mailbox: DEFAULT_MAILBOX, unreadCount: 0 };
 		},
-		mailbox: async (parent, _, { db }) => {
-			const mailbox = await db.query.mailboxTable.findFirst({
-				where: (t, { eq }) => eq(t.id, parent.mailboxId),
+		messages: async (parent, args, { db }) => {
+			const pageSize = args.last;
+			const beforeId = args.before ? fromGlobalId(args.before).id : null;
+			let beforeCreatedAt: Date | null = null;
+
+			if (beforeId) {
+				const beforeMessage = await db.query.messageTable.findFirst({
+					where: (t, { eq }) => eq(t.id, beforeId),
+				});
+				beforeCreatedAt = beforeMessage?.createdAt ?? null;
+			}
+
+			const messagesPlusOne = await db.query.messageTable.findMany({
+				where: (t, { and, eq, lt }) =>
+					and(
+						eq(t.conversationId, parent.id),
+						beforeCreatedAt ? lt(t.createdAt, beforeCreatedAt) : undefined
+					),
+				orderBy: (t, { desc }) => desc(t.createdAt),
+				limit: pageSize + 1,
 			});
-			return mailbox!;
+
+			const messages = messagesPlusOne.slice(0, pageSize);
+			return {
+				edges: messages.map((node) => ({
+					node,
+					cursor: toGlobalId("Message", node.id),
+				})),
+				pageInfo: {
+					hasNextPage: messagesPlusOne.length > messages.length,
+					endCursor: messages.length
+						? toGlobalId("Message", messages[messages.length - 1].id)
+						: null,
+				},
+			};
 		},
+	},
+	ConversationParticipant: {
+		identity: async (parent, _args, { db }) => {
+			const identity = await db.query.identityTable.findFirst({
+				where: (t, { eq }) => eq(t.id, parent.identityId),
+			});
+			if (!identity) throw new Error("Identity not found");
+			return identity;
+		},
+		lastReadMessageId: (parent) =>
+			parent.lastReadMessageId && toGlobalId("Message", parent.lastReadMessageId),
 	},
 	Message: {
 		id: (parent) => toGlobalId("Message", parent.id),
-		threadId: (parent) => toGlobalId("Thread", parent.threadId),
-		recievedAt: (parent) => parent.createdAt,
-		attachments: async (parent, _, { db }) => {
-			const attachments = await db.query.attachmentTable.findMany({
-				where: (t, { eq }) => eq(t.messageId, parent.id),
+		conversationId: (parent) => toGlobalId("Conversation", parent.conversationId),
+		sender: async (parent, _args, { db }) => {
+			const identity = await db.query.identityTable.findFirst({
+				where: (t, { eq }) => eq(t.id, parent.senderIdentityId),
 			});
-			return attachments;
+			if (!identity) throw new Error("Sender identity not found");
+			return identity;
 		},
-		from: async (parent, _, { db }) => {
-			const record = await db.query.contactTable.findFirst({
-				where: (t, { and, eq }) => and(eq(t.ownerId, parent.ownerId), eq(t.address, parent.from)),
+		delivery: async (parent, _args, { db }) => {
+			return db.query.messageDeliveryTable.findMany({
+				where: (t, { eq }) => eq(t.messageId, parent.id),
+				orderBy: (t, { desc }) => desc(t.latestStatusChangeAt),
 			});
-			return record!;
 		},
 	},
-	Contact: {
-		id: (parent) => toGlobalId("Contact", parent.id),
-		avatar: (parent) => parent.uploadedAvatar || parent.inferredAvatar || parent.avatarPlaceholder,
-		targetMailbox: async (parent, _, { db }) => {
-			const mailbox = await db.query.mailboxTable.findFirst({
-				where: (t, { eq }) => eq(t.id, parent.targetMailboxId),
+	DeliveryReceipt: {
+		recipient: async (parent, _args, { db }) => {
+			const identity = await db.query.identityTable.findFirst({
+				where: (t, { eq }) => eq(t.id, parent.recipientIdentityId),
 			});
-			return mailbox!;
+			if (!identity) throw new Error("Recipient not found");
+			return identity;
 		},
-		firstMessage: async (parent, _, { db, session }) => {
-			if (!session) return null;
-			const message = await db.query.messageTable.findFirst({
-				where: (t, { eq, and }) => and(eq(t.ownerId, session.userId), eq(t.from, parent.address)),
+	},
+	Identity: {
+		id: (parent) => toGlobalId("Identity", parent.id),
+		relationshipToViewer: async (parent, _args, { viewer, db }) => {
+			return await db.query.identityRelationshipTable.findFirst({
+				where: (t, { and, eq }) => and(eq(t.ownerId, viewer.user.id), eq(t.identityId, parent.id)),
 			});
-			return message;
 		},
-		threads: async (parent, args, { db }) => {
-			const pageSize = args.first || 30;
-			const cursor = args.after;
+	},
+	IdentityRelationship: {
+		id: (parent, _, { viewer }) =>
+			toGlobalId("IdentityRelationship", `${viewer.user.id}:${parent.id}`),
+	},
+	Viewer: {
+		id: (parent) => toGlobalId("Viewer", parent.id),
+		conversationsByMailbox: async (parent, args, { viewer, db }) => {
+			const pageSize = args.first;
+			const afterId = args.after ? fromGlobalId(args.after).id : null;
 
-			const threadsPlusOne = await db
-				.select({ thread: threadTable })
-				.from(threadTable)
+			const rows = await db
+				.select({ conversation: conversationTable, state: conversationViewerStateTable })
+				.from(conversationParticipantTable)
 				.innerJoin(
-					threadParticipantTable,
+					conversationTable,
+					eq(conversationTable.id, conversationParticipantTable.conversationId)
+				)
+				.leftJoin(
+					conversationViewerStateTable,
 					and(
-						eq(threadParticipantTable.ownerId, threadTable.ownerId),
-						eq(threadParticipantTable.threadId, threadTable.id),
-						eq(threadParticipantTable.address, parent.address)
+						eq(conversationViewerStateTable.conversationId, conversationTable.id),
+						eq(conversationViewerStateTable.ownerId, parent.id)
 					)
 				)
 				.where(
 					and(
-						eq(threadTable.ownerId, parent.ownerId),
-						// TODO: pagination cursor is based on `id` while ordering is by `lastMessageAt`.
-						// This can theoretically cause skips/duplicates if the two diverge.
-						// Revisit with a composite cursor if this becomes an issue.
-						cursor ? lt(threadTable.id, fromGlobalId(cursor).id) : undefined
+						eq(conversationParticipantTable.identityId, viewer.identity.id),
+						args.mailbox === DEFAULT_MAILBOX
+							? undefined
+							: eq(conversationViewerStateTable.mailbox, args.mailbox),
+						afterId ? lt(conversationTable.id, afterId) : undefined
 					)
 				)
-				.orderBy(desc(threadTable.lastMessageAt))
+				.orderBy(desc(conversationTable.updatedAt))
 				.limit(pageSize + 1);
 
-			const threads = threadsPlusOne.slice(0, pageSize).map((r) => r.thread);
-
+			const conversations = rows.slice(0, pageSize).map((row) => row.conversation);
 			return {
-				edges: threads.map((node) => ({ node, cursor: toGlobalId("Thread", node.id) })),
+				edges: conversations.map((node) => ({
+					node,
+					cursor: toGlobalId("Conversation", node.id),
+				})),
 				pageInfo: {
-					hasNextPage: threadsPlusOne.length > threads.length,
-					endCursor: threads.length ? toGlobalId("Thread", threads[threads.length - 1].id) : null,
-				},
-			};
-		},
-		attachments: async (parent, args, { db }) => {
-			const pageSize = args.first || 30;
-			const cursor = args.after;
-			const attachmentsPlusOne = await db.query.attachmentTable.findMany({
-				where: (t, { eq, and, lt }) =>
-					and(
-						eq(t.messageFrom, parent.address),
-						eq(t.ownerId, parent.ownerId),
-						not(isNull(t.threadId)),
-						cursor ? lt(t.id, fromGlobalId(cursor).id) : undefined
-					),
-				orderBy: (t, { desc }) => desc(t.createdAt),
-				limit: pageSize + 1,
-			});
-			const attachments = attachmentsPlusOne.slice(0, pageSize);
-
-			return {
-				edges: attachments.map((node) => ({ node, cursor: toGlobalId("Attachment", node.id) })),
-				pageInfo: {
-					hasNextPage: attachmentsPlusOne.length > attachments.length,
-					endCursor: attachments.length
-						? toGlobalId("Attachment", attachments[attachments.length - 1].id)
+					hasNextPage: rows.length > conversations.length,
+					endCursor: conversations.length
+						? toGlobalId("Conversation", conversations[conversations.length - 1].id)
 						: null,
 				},
 			};
 		},
-	},
-	Attachment: {
-		id: (parent) => toGlobalId("Attachment", parent.id),
-		type: (parent) =>
-			ATTACHMENT_TYPE_BY_MIME.get(parent.mimeType.toLowerCase()) ?? DEFAULT_ATTACHMENT_TYPE,
-		url: async (parent, _, { env }) => {
-			const R2_URL = `https://${env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-			const client = new AwsClient({
-				service: "s3",
-				region: "auto",
-				accessKeyId: env.CF_R2_ACCESS_KEY_ID,
-				secretAccessKey: env.CF_R2_SECRET_ACCESS_KEY,
-			});
+		contacts: async (parent, args, { db }) => {
+			const pageSize = args.first;
+			const afterId = args.after ? fromGlobalId(args.after).id : null;
 
-			const url = (
-				await client.sign(
-					new Request(
-						`${R2_URL}/${env.R2_BUCKET_NAME}/${parent.storageKey}?X-Amz-Expires=${3600 * 6}`
+			const relationshipsPlusOne = await db.query.identityRelationshipTable.findMany({
+				where: (t, { and, eq, lt }) =>
+					and(
+						eq(t.ownerId, parent.id),
+						eq(t.isContact, true),
+						afterId ? lt(t.id, afterId) : undefined,
+						args.query ? undefined : undefined
 					),
-					{
-						aws: { signQuery: true },
-					}
-				)
-			).url.toString();
-
-			return url;
-		},
-		thumbnail: async (parent, _, { env }) => {
-			const R2_URL = `https://${env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-			const client = new AwsClient({
-				service: "s3",
-				region: "auto",
-				accessKeyId: env.CF_R2_ACCESS_KEY_ID,
-				secretAccessKey: env.CF_R2_SECRET_ACCESS_KEY,
+				orderBy: (t, { desc }) => desc(t.updatedAt),
+				limit: pageSize + 1,
 			});
 
-			const thumbnailPath = `${R2_URL}/${env.R2_BUCKET_NAME}/${parent.storageKey}/thumbnail`;
-			const headResponse = await client.fetch(thumbnailPath, { method: "HEAD" });
-			if (headResponse.status === 404) return null;
-			if (!headResponse.ok) throw new Error(`Failed to check thumbnail: ${headResponse.status}`);
+			const relationships = relationshipsPlusOne.slice(0, pageSize);
+			const identityIds = relationships.map((rel) => rel.identityId);
+			const identities = identityIds.length
+				? await db.query.identityTable.findMany({
+						where: (t, { inArray }) => inArray(t.id, identityIds),
+					})
+				: [];
+			const identityById = new Map(identities.map((identity) => [identity.id, identity]));
 
-			const url = (
-				await client.sign(new Request(`${thumbnailPath}?X-Amz-Expires=${3600 * 6}`), {
-					aws: { signQuery: true },
-				})
-			).url.toString();
-
-			return url;
+			return {
+				edges: relationships.map((rel) => ({
+					node: identityById.get(rel.identityId)!,
+					cursor: toGlobalId("IdentityRelationship", rel.id),
+				})),
+				pageInfo: {
+					hasNextPage: relationshipsPlusOne.length > relationships.length,
+					endCursor: relationships.length
+						? toGlobalId("IdentityRelationship", relationships[relationships.length - 1].id)
+						: null,
+				},
+			};
 		},
 	},
 };

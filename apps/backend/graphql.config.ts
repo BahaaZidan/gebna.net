@@ -35,7 +35,6 @@ const config: IGraphQLConfig = {
 							IdentityRelationship: "$lib/db#IdentityRelationshipSelectModel",
 							Conversation: "$lib/db#ConversationSelectModel",
 							ConversationParticipant: "$lib/db#ConversationParticipantSelectModel",
-							ConversationViewerState: "$lib/db#ConversationViewerStateSelectModel",
 							Message: "$lib/db#MessageSelectModel",
 							DeliveryReceipt: "$lib/db#MessageDeliverySelectModel",
 						},
