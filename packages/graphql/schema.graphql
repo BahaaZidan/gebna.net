@@ -244,8 +244,14 @@ input MoveConversationInput {
 	mailbox: Mailbox!
 }
 
+input AddConversationParticipantsInput {
+	conversationId: ID!
+	participantAddresses: [String!]!
+}
+
 type Mutation {
 	upsertConversation(input: UpsertConversationInput!): UpsertConversationPayload!
+	addConversationParticipants(input: AddConversationParticipantsInput!): Conversation
 	sendMessage(input: SendMessageInput!): SendMessagePayload!
 	markConversationRead(input: MarkConversationReadInput!): MarkConversationReadPayload!
 

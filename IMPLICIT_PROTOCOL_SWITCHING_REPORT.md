@@ -42,6 +42,7 @@
 - Idempotency: `message.id` is deterministic (`cm:<conversationId>:<clientMutationId>`); retries return the existing message and backfill any missing deliveries.
 - Read paths now load deliveries, participants, viewer state defaults, message lists, and sender/recipient identities with nullability coercions (`bodyText`/`error` → empty string, `DeliveryReceipt.at` → `latestStatusChangeAt`).
 - Conversation and identity helpers auto-create viewer identity (GEBNA_USER) when missing using `<username>@gebna.net`.
+- Added `addConversationParticipants` mutation to append new identities/participants to an existing conversation when the caller is already a participant.
 
 ### Files changed/added
 - apps/backend/src/lib/graphql/resolvers.ts
