@@ -180,7 +180,7 @@ type Viewer implements Node {
 	"""
 	List of saved contacts.
 	"""
-	contacts(query: String!, first: Int!, after: Cursor): IdentityConnection!
+	contacts(query: String, first: Int!, after: Cursor): IdentityConnection!
 }
 
 type Query {
