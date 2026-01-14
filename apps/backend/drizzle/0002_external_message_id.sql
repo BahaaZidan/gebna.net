@@ -2,9 +2,27 @@ ALTER TABLE `message` ADD COLUMN `externalMessageId` text;--> statement-breakpoi
 WITH ranked AS (
 	SELECT
 		id,
-		json_extract(emailMetadata, '$.messageId') AS mid,
+		CASE
+			WHEN instr(json_extract(emailMetadata, '$.messageId'), '<') > 0
+				AND instr(json_extract(emailMetadata, '$.messageId'), '>') > instr(json_extract(emailMetadata, '$.messageId'), '<')
+			THEN substr(
+				json_extract(emailMetadata, '$.messageId'),
+				instr(json_extract(emailMetadata, '$.messageId'), '<'),
+				instr(json_extract(emailMetadata, '$.messageId'), '>') - instr(json_extract(emailMetadata, '$.messageId'), '<') + 1
+			)
+			ELSE trim(json_extract(emailMetadata, '$.messageId'))
+		END AS mid,
 		ROW_NUMBER() OVER (
-			PARTITION BY json_extract(emailMetadata, '$.messageId')
+			PARTITION BY CASE
+				WHEN instr(json_extract(emailMetadata, '$.messageId'), '<') > 0
+					AND instr(json_extract(emailMetadata, '$.messageId'), '>') > instr(json_extract(emailMetadata, '$.messageId'), '<')
+				THEN substr(
+					json_extract(emailMetadata, '$.messageId'),
+					instr(json_extract(emailMetadata, '$.messageId'), '<'),
+					instr(json_extract(emailMetadata, '$.messageId'), '>') - instr(json_extract(emailMetadata, '$.messageId'), '<') + 1
+				)
+				ELSE trim(json_extract(emailMetadata, '$.messageId'))
+			END
 			ORDER BY createdAt ASC, id ASC
 		) AS rn
 	FROM `message`

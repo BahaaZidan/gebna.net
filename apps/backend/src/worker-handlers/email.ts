@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import PostalMime from "postal-mime";
 import { ulid } from "ulid";
 
@@ -47,23 +47,48 @@ function identityKindFor(address: string): IdentityInsertModel["kind"] {
 	return address.endsWith("@gebna.net") ? "GEBNA_USER" : "EXTERNAL_EMAIL";
 }
 
-async function ensureIdentity(db: ReturnType<typeof getDB>, address: string) {
-	const normalized = normalizeAddress(address);
-	const kind = identityKindFor(normalized);
-	const existing = await db.query.identityTable.findFirst({
-		where: (t, { eq, and }) => and(eq(t.kind, kind), eq(t.address, normalized)),
-	});
-	if (existing) return existing;
+type IdentitySelect = typeof identityTable.$inferSelect;
+type IdentityKey = `${IdentityInsertModel["kind"]}:${string}`;
+
+async function ensureIdentities(db: ReturnType<typeof getDB>, addresses: string[]): Promise<IdentitySelect[]> {
+	const unique = new Map<IdentityKey, IdentityInsertModel>();
+
+	for (const address of addresses) {
+		const normalized = normalizeAddress(address);
+		if (!normalized) continue;
+		const kind = identityKindFor(normalized);
+		const key = `${kind}:${normalized}` as const;
+		if (unique.has(key)) continue;
+		unique.set(key, {
+			id: ulid(),
+			address: normalized,
+			kind,
+		});
+	}
+
+	const toInsert = Array.from(unique.values());
+	if (!toInsert.length) return [];
+
 	await db
 		.insert(identityTable)
-		.values({ id: ulid(), address: normalized, kind })
+		.values(toInsert)
 		.onConflictDoNothing({ target: [identityTable.kind, identityTable.address] });
 
-	const createdOrExisting = await db.query.identityTable.findFirst({
-		where: (t, { eq, and }) => and(eq(t.kind, kind), eq(t.address, normalized)),
+	const rows = await db.query.identityTable.findMany({
+		where: (t) =>
+			sql`
+				(${t.kind}, ${t.address})
+				IN (
+					VALUES ${sql.join(
+						toInsert.map((p) => sql`(${p.kind}, ${p.address})`),
+						sql`, `
+					)}
+				)
+			`,
 	});
-	if (!createdOrExisting) throw new Error("Failed to ensure identity");
-	return createdOrExisting;
+
+	if (rows.length !== toInsert.length) throw new Error("Failed to ensure identities");
+	return rows;
 }
 
 function transportForIdentity(identity: { kind: IdentityInsertModel["kind"] }) {
@@ -73,7 +98,7 @@ function transportForIdentity(identity: { kind: IdentityInsertModel["kind"] }) {
 async function findConversationIdByEmailThreadMessageIds(
 	db: TransactionInstance | ReturnType<typeof getDB>,
 	threadMessageIds: string[]
-) {
+): Promise<string | null> {
 	if (!threadMessageIds.length) return null;
 	const row = await db.query.messageTable.findFirst({
 		columns: { conversationId: true },
@@ -82,7 +107,7 @@ async function findConversationIdByEmailThreadMessageIds(
 		orderBy: (t) => [desc(t.createdAt)],
 	});
 
-	return row?.conversationId;
+	return row?.conversationId ?? null;
 }
 
 export async function emailHandler(
@@ -112,7 +137,6 @@ export async function emailHandler(
 	});
 
 	const fromAddress = normalizeAddress(parsedEmail.from.address);
-	const senderIdentity = await ensureIdentity(db, fromAddress);
 
 	const to = (parsedEmail.to ?? [])
 		.map((a) => a.address)
@@ -137,10 +161,12 @@ export async function emailHandler(
 		new Set([fromAddress, ...to, ...cc, ...bcc, ...replyTo, envelopeToAddress])
 	).filter(Boolean);
 
-	// TODO: optimize
-	const participantIdentities = await Promise.all(
-		participantAddresses.map((address) => ensureIdentity(db, address))
-	);
+	const participantIdentities = await ensureIdentities(db, participantAddresses);
+	const senderIdentity =
+		participantIdentities.find(
+			(i) => i.kind === identityKindFor(fromAddress) && i.address === fromAddress
+		) ?? null;
+	if (!senderIdentity) throw new Error("Missing sender identity");
 
 	const desiredConversationKind: ConversationInsertModel["kind"] =
 		participantIdentities.length > 2 ? "GROUP" : "PRIVATE";
