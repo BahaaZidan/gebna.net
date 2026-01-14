@@ -42,6 +42,7 @@ type SeedMessage = {
 	conversationId: string;
 	senderIdentityId: string;
 	bodyText: string;
+	externalMessageId?: string;
 	createdAt: Date;
 	deliveries: {
 		recipientIdentityId: string;
@@ -151,6 +152,7 @@ export async function seedDemo(
 					conversationId: "seed-conv-demo-fatima",
 					senderIdentityId: "seed-identity-fatima",
 					bodyText: "Can we ship the DM fallback this sprint?",
+					externalMessageId: "<seed-msg-fatima-1@gebna.seed>",
 					createdAt: hoursAgo(6),
 					deliveries: [
 						{
@@ -166,6 +168,7 @@ export async function seedDemo(
 					conversationId: "seed-conv-demo-fatima",
 					senderIdentityId: "seed-identity-demo",
 					bodyText: "Yes—rolling out to the beta group today.",
+					externalMessageId: "<seed-msg-fatima-2@gebna.seed>",
 					createdAt: hoursAgo(3),
 					deliveries: [
 						{
@@ -190,6 +193,7 @@ export async function seedDemo(
 					conversationId: "seed-conv-demo-omar",
 					senderIdentityId: "seed-identity-omar",
 					bodyText: "Provider failover is set. Need a quick DM test.",
+					externalMessageId: "<seed-msg-omar-1@gebna.seed>",
 					createdAt: hoursAgo(8),
 					deliveries: [
 						{
@@ -205,6 +209,7 @@ export async function seedDemo(
 					conversationId: "seed-conv-demo-omar",
 					senderIdentityId: "seed-identity-demo",
 					bodyText: "Confirmed—DM transport is working end-to-end.",
+					externalMessageId: "<seed-msg-omar-2@gebna.seed>",
 					createdAt: hoursAgo(4),
 					deliveries: [
 						{
@@ -235,6 +240,7 @@ export async function seedDemo(
 					conversationId: "seed-conv-launch",
 					senderIdentityId: "seed-identity-demo",
 					bodyText: "Release candidate is live. Need press copy approvals.",
+					externalMessageId: "<seed-msg-launch-1@gebna.seed>",
 					createdAt: hoursAgo(12),
 					deliveries: [
 						{
@@ -268,6 +274,7 @@ export async function seedDemo(
 					conversationId: "seed-conv-launch",
 					senderIdentityId: "seed-identity-ops",
 					bodyText: "Copy looks good. Scheduling send for tomorrow.",
+					externalMessageId: "<seed-msg-launch-2@gebna.seed>",
 					createdAt: hoursAgo(2),
 					deliveries: [
 						{
@@ -395,6 +402,7 @@ export async function seedDemo(
 					conversationId: conversation.id,
 					senderIdentityId: message.senderIdentityId,
 					bodyText: message.bodyText,
+					externalMessageId: message.externalMessageId ?? null,
 					bodyHTML: null,
 					createdAt: message.createdAt,
 					emailMetadata: null,

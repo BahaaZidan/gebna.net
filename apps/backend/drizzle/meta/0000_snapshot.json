@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "bf3346d1-4c67-4bc6-a901-62a64780f1e3",
+  "id": "721b4655-0e4c-40b8-a329-af264375a4ac",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "conversation_participant": {
@@ -179,7 +179,8 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(strftime('%s','now'))"
         }
       },
       "indexes": {
@@ -647,6 +648,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "externalMessageId": {
+          "name": "externalMessageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "bodyText": {
           "name": "bodyText",
           "type": "text",
@@ -678,6 +686,13 @@
         }
       },
       "indexes": {
+        "uniq_message_external_message_id": {
+          "name": "uniq_message_external_message_id",
+          "columns": [
+            "externalMessageId"
+          ],
+          "isUnique": true
+        },
         "idx_message_conversation_created": {
           "name": "idx_message_conversation_created",
           "columns": [
