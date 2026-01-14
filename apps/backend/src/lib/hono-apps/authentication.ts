@@ -7,7 +7,7 @@ import { argon2id, argon2Verify, setWASMModules } from "argon2-wasm-edge";
 import argon2WASM from "argon2-wasm-edge/wasm/argon2.wasm";
 // @ts-expect-error - wasm imports are handled by the bundler for workers
 import blake2bWASM from "argon2-wasm-edge/wasm/blake2b.wasm";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { ulid } from "ulid";
 
@@ -221,7 +221,10 @@ export async function getViewerInfo(
 		.innerJoin(userTable, eq(sessionTable.userId, userTable.id))
 		.innerJoin(
 			identityTable,
-			and(eq(identityTable.address, userTable.username), eq(identityTable.kind, "GEBNA_USER"))
+			and(
+				eq(identityTable.address, sql`${userTable.username} || '@gebna.net'`),
+				eq(identityTable.kind, "GEBNA_USER")
+			)
 		)
 		.where(eq(sessionTable.id, payload.sid))
 		.limit(1);
