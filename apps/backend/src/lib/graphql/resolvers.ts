@@ -14,6 +14,7 @@ import {
 	messageTable,
 } from "$lib/db/schema";
 
+import type { Context } from "./context";
 import type { Resolvers, ResolversTypes } from "./resolvers.types";
 import { fromGlobalId, toGlobalId } from "./utils";
 
@@ -34,6 +35,23 @@ function transportForIdentity(identity: {
 }): ResolversTypes["Transport"] {
 	return identity.kind === "GEBNA_USER" ? "GEBNA_DM" : "EMAIL";
 }
+
+function filterAsyncIterator<T>(
+	source: AsyncIterable<T>,
+	predicate: (value: T) => boolean
+): AsyncIterable<T> {
+	return {
+		async *[Symbol.asyncIterator]() {
+			for await (const value of source) {
+				if (predicate(value)) yield value;
+			}
+		},
+	};
+}
+
+type MessageAddedPayload = { conversationId: string; messageId: string };
+type DeliveryUpdatedPayload = { messageId: string };
+type ConversationUpdatedPayload = { conversationId: string };
 
 async function upsertViewerState({
 	tx,
@@ -263,7 +281,7 @@ export const resolvers: Resolvers = {
 
 			return conversation;
 		},
-		sendMessage: async (_parent, { input }, { viewer, db }) => {
+		sendMessage: async (_parent, { input }, { viewer, db, pubsub }) => {
 			const rawConversationId = fromGlobalId(input.conversationId).id;
 			const conversation = await db.query.conversationTable.findFirst({
 				where: (t, { eq }) => eq(t.id, rawConversationId),
@@ -290,10 +308,12 @@ export const resolvers: Resolvers = {
 				(await db.query.messageTable.findFirst({
 					where: (t, { eq }) => eq(t.id, messageId),
 				})) || null;
+			let insertedMessage = false;
+			let createdDeliveries = false;
 
 			if (!message) {
 				await db.transaction(async (tx) => {
-					const [createdMessage] = await tx
+					const [createdMessageRow] = await tx
 						.insert(messageTable)
 						.values({
 							id: messageId,
@@ -305,7 +325,8 @@ export const resolvers: Resolvers = {
 						})
 						.returning();
 
-					message = createdMessage;
+					message = createdMessageRow;
+					insertedMessage = true;
 
 					if (recipients.length) {
 						const deliveries = recipients.map(({ participant, identity }) => ({
@@ -319,6 +340,7 @@ export const resolvers: Resolvers = {
 						}));
 
 						await tx.insert(messageDeliveryTable).values(deliveries).onConflictDoNothing();
+						if (deliveries.length) createdDeliveries = true;
 					}
 
 					await tx
@@ -347,10 +369,19 @@ export const resolvers: Resolvers = {
 							error: null,
 						}))
 					);
+					createdDeliveries = true;
 				}
 			}
 
 			if (!message) throw new Error("Failed to create message");
+
+			if (insertedMessage) {
+				pubsub.publish("messageAdded", { conversationId: rawConversationId, messageId });
+				pubsub.publish("conversationUpdated", { conversationId: rawConversationId });
+			}
+			if (createdDeliveries) {
+				pubsub.publish("deliveryUpdated", { messageId });
+			}
 
 			return {
 				clientMutationId: input.clientMutationId,
@@ -430,6 +461,54 @@ export const resolvers: Resolvers = {
 			});
 
 			return conversation;
+		},
+	},
+	Subscription: {
+		messageAdded: {
+			subscribe: (_parent, args, { pubsub }) => {
+				const rawConversationId = fromGlobalId(args.conversationId).id;
+				return filterAsyncIterator(
+					pubsub.subscribe("messageAdded") as AsyncIterable<MessageAddedPayload>,
+					(payload) => {
+						return payload.conversationId === rawConversationId;
+					}
+				);
+			},
+			resolve: async (payload: MessageAddedPayload, _args: unknown, { db }: Context) => {
+				const message = await db.query.messageTable.findFirst({
+					where: (t, { eq }) => eq(t.id, payload.messageId),
+				});
+				if (!message) throw new Error("Message not found");
+				return message;
+			},
+		},
+		deliveryUpdated: {
+			subscribe: (_parent, args, { pubsub }) => {
+				const rawMessageId = fromGlobalId(args.messageId).id;
+				return filterAsyncIterator(
+					pubsub.subscribe("deliveryUpdated") as AsyncIterable<DeliveryUpdatedPayload>,
+					(payload) => {
+						return payload.messageId === rawMessageId;
+					}
+				);
+			},
+			resolve: async (payload: DeliveryUpdatedPayload, _args: unknown, { db }: Context) => {
+				return db.query.messageDeliveryTable.findMany({
+					where: (t, { eq }) => eq(t.messageId, payload.messageId),
+					orderBy: (t, { desc }) => desc(t.latestStatusChangeAt),
+				});
+			},
+		},
+		conversationUpdated: {
+			subscribe: (_parent, _args, { pubsub }) =>
+				pubsub.subscribe("conversationUpdated") as AsyncIterable<ConversationUpdatedPayload>,
+			resolve: async (payload: ConversationUpdatedPayload, _args: unknown, { db }: Context) => {
+				const conversation = await db.query.conversationTable.findFirst({
+					where: (t, { eq }) => eq(t.id, payload.conversationId),
+				});
+				if (!conversation) throw new Error("Conversation not found");
+				return conversation;
+			},
 		},
 	},
 	Node: {

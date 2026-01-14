@@ -3,4 +3,7 @@ type YogaExecutionContext = Pick<ExecutionContext, "waitUntil" | "passThroughOnE
 export type YogaServerContext = {
 	env: CloudflareBindings;
 	executionCtx: YogaExecutionContext;
+	db?: unknown;
+	viewer?: unknown;
+	pubsub?: unknown;
 };

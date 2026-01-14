@@ -20,6 +20,7 @@ import {
 	messageDeliveryTable,
 	messageTable,
 } from "$lib/db/schema";
+import { pubsub } from "$lib/graphql/pubsub";
 import { extractLocalPart } from "$lib/utils/email";
 import { buildCidResolver } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
@@ -50,7 +51,10 @@ function identityKindFor(address: string): IdentityInsertModel["kind"] {
 type IdentitySelect = typeof identityTable.$inferSelect;
 type IdentityKey = `${IdentityInsertModel["kind"]}:${string}`;
 
-async function ensureIdentities(db: ReturnType<typeof getDB>, addresses: string[]): Promise<IdentitySelect[]> {
+async function ensureIdentities(
+	db: ReturnType<typeof getDB>,
+	addresses: string[]
+): Promise<IdentitySelect[]> {
 	const unique = new Map<IdentityKey, IdentityInsertModel>();
 
 	for (const address of addresses) {
@@ -197,12 +201,14 @@ export async function emailHandler(
 		references: parsedEmail.references,
 	} satisfies MessageInsertModel["emailMetadata"];
 
-	await db.transaction(async (tx) => {
-		let conversation: ConversationSelectModel | null = null;
-		let persistedMessageId = ulid();
-		let insertedMessage = false;
-		let createdConversationId: string | null = null;
+	let conversation: ConversationSelectModel | null = null;
+	let persistedMessageId = ulid();
+	let insertedMessage = false;
+	let createdConversationId: string | null = null;
+	let createdDeliveries = false;
+	let conversationIdForPublish: string | null = null;
 
+	await db.transaction(async (tx) => {
 		if (externalMessageId) {
 			const existingMessage = await tx.query.messageTable.findFirst({
 				columns: { id: true, conversationId: true },
@@ -331,13 +337,15 @@ export async function emailHandler(
 		}
 
 		if (!conversation) throw new Error("Missing conversation");
+		const conversationId = conversation.id;
+		conversationIdForPublish = conversationId;
 
 		await tx
 			.insert(conversationParticipantTable)
 			.values(
 				participantIdentities.map((identity) => ({
 					id: ulid(),
-					conversationId: conversation.id,
+					conversationId,
 					identityId: identity.id,
 					role: DEFAULT_PARTICIPANT_ROLE,
 					state: DEFAULT_PARTICIPANT_STATE,
@@ -361,13 +369,14 @@ export async function emailHandler(
 
 		if (deliveries.length) {
 			await tx.insert(messageDeliveryTable).values(deliveries).onConflictDoNothing();
+			createdDeliveries = true;
 		}
 
 		if (insertedMessage) {
 			await tx
 				.update(conversationTable)
 				.set({ updatedAt: now, lastMessageAt: now })
-				.where(eq(conversationTable.id, conversation.id));
+				.where(eq(conversationTable.id, conversationId));
 		}
 
 		const recipientIdentityId = participantIdentities.find(
@@ -381,7 +390,7 @@ export async function emailHandler(
 			.values({
 				id: ulid(),
 				ownerId: recipientUser.id,
-				conversationId: conversation.id,
+				conversationId,
 				mailbox: "IMPORTANT",
 				unreadCount: viewerStateUnread,
 			})
@@ -393,4 +402,15 @@ export async function emailHandler(
 				},
 			});
 	});
+
+	if (insertedMessage && conversationIdForPublish) {
+		pubsub.publish("messageAdded", {
+			conversationId: conversationIdForPublish,
+			messageId: persistedMessageId,
+		});
+		pubsub.publish("conversationUpdated", { conversationId: conversationIdForPublish });
+	}
+	if ((insertedMessage || createdDeliveries) && conversationIdForPublish) {
+		pubsub.publish("deliveryUpdated", { messageId: persistedMessageId });
+	}
 }

@@ -115,3 +115,32 @@
 - No threading by `Message-Id`/`In-Reply-To`/`References`; GROUP conversations are always new instances.
 - No attachment handling or avatar inference in inbound ingest in this phase.
 - Additional local Gebna recipients beyond the primary addressed user do not get viewer state updates.
+
+## Phase 4
+
+### What changed (behavior)
+- Added WebSocket-based GraphQL subscriptions using Yoga. Implemented `messageAdded`, `deliveryUpdated`, and `conversationUpdated` subscriptions with in-memory pubsub.
+- Publish events when a new message/deliveries are created via `sendMessage` and the inbound email handler; delivery updates fire when deliveries are inserted.
+- Hono fetch handler now forwards the raw request to Yoga so WebSocket upgrades succeed.
+
+### Files changed/added
+- apps/backend/src/lib/graphql/pubsub.ts
+- apps/backend/src/lib/graphql/context.ts
+- apps/backend/src/lib/graphql/requestHandler.ts
+- apps/backend/src/worker-handlers/fetch.ts
+- apps/backend/src/lib/graphql/resolvers.ts
+- apps/backend/src/worker-handlers/email.ts
+
+### Assumptions / invariants
+- PubSub is in-memory per Worker instance; no cross-instance coordination (multi-region/replica fanout not handled yet).
+- Subscriptions require Authorization like other GraphQL operations.
+- Deliveries are considered “updated” when created (status `QUEUED` for sendMessage, `DELIVERED` for inbound email).
+
+### How to test
+- Start backend and connect to `/graphql` via WebSocket (GraphQL WS per Yoga defaults).
+- Subscribe to `messageAdded(conversationId)` and `deliveryUpdated(messageId)`; run `sendMessage` to see events.
+- Send an inbound email and observe `messageAdded`/`deliveryUpdated`/`conversationUpdated` events for the resolved conversation.
+
+### Known limitations
+- PubSub is single-instance only; no Durable Object coordination yet (Phase 5).
+- Delivery status transitions beyond creation are not wired; only creation events are emitted.
