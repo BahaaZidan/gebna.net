@@ -5,7 +5,7 @@ const xssExports =
 	// @ts-expect-error That’s the ESM/CJS interop quirk — parseTag lives on the CJS default export. I wired a module-level xssExports shim so runtime gets parseTag/parseAttr correctly.
 	("default" in xss ? (xss as { default: typeof xss }).default : xss) as typeof xss;
 
-export type NormalizeEmailOptions = {
+type NormalizeEmailOptions = {
 	maxHtmlBytes?: number;
 	maxTextBytes?: number;
 	blockRemoteImagesByDefault?: boolean;
@@ -14,27 +14,6 @@ export type NormalizeEmailOptions = {
 	stripInlineStyleAttributes?: boolean;
 	cidResolver?: (cid: string) => string | null;
 	remoteImagePlaceholder?: string;
-};
-
-export type NormalizedEmailBody = {
-	kind: "html" | "text" | "empty";
-	htmlDocument: string;
-	text: string;
-	warnings: string[];
-	flags: {
-		hadHtml: boolean;
-		hadText: boolean;
-		htmlTruncated: boolean;
-		textTruncated: boolean;
-		wasMalformedHtml: boolean;
-		strippedScripts: boolean;
-		strippedEventHandlers: boolean;
-		strippedDangerousUrls: boolean;
-		blockedRemoteImages: boolean;
-		hasRemoteImages: boolean;
-		rewroteCidUrls: boolean;
-		droppedUnsupportedTags: boolean;
-	};
 };
 
 type NormalizedOptions = Required<
@@ -107,86 +86,53 @@ const URL_ATTRS = new Set([
 	"formaction",
 ]);
 
-type SanitizationFlags = NormalizedEmailBody["flags"];
+type SanitizationFlags = {
+	wasMalformedHtml: boolean;
+	strippedScripts: boolean;
+	strippedEventHandlers: boolean;
+	strippedDangerousUrls: boolean;
+	blockedRemoteImages: boolean;
+	hasRemoteImages: boolean;
+	rewroteCidUrls: boolean;
+	droppedUnsupportedTags: boolean;
+};
 
 export function normalizeAndSanitizeEmailBody(
 	parsedEmail: Email,
 	options: NormalizeEmailOptions = {}
-): NormalizedEmailBody {
+): {
+	html: string | null;
+	plain: string;
+} | null {
 	const resolvedOptions: NormalizedOptions = { ...DEFAULT_OPTIONS, ...options };
 
-	const rawHtml = parsedEmail.html ?? "";
-	const rawText = parsedEmail.text ?? "";
-	const hadHtml = rawHtml.trim().length > 0;
-	const hadText = rawText.trim().length > 0;
-
-	const warnings: string[] = [];
-	const flags: SanitizationFlags = {
-		hadHtml,
-		hadText,
-		htmlTruncated: false,
-		textTruncated: false,
-		wasMalformedHtml: false,
-		strippedScripts: false,
-		strippedEventHandlers: false,
-		strippedDangerousUrls: false,
-		blockedRemoteImages: false,
-		hasRemoteImages: false,
-		rewroteCidUrls: false,
-		droppedUnsupportedTags: false,
-	};
+	const rawHtml = parsedEmail.html?.trim();
+	const rawText = parsedEmail.text?.trim();
+	const hadHtml = !!rawHtml?.length;
+	const hadText = !!rawText?.length;
 
 	if (hadHtml) {
 		const truncated = truncateToBytes(rawHtml, resolvedOptions.maxHtmlBytes);
-		flags.htmlTruncated = truncated.truncated;
-		if (flags.htmlTruncated) warnings.push("html_truncated");
-
-		const {
-			bodyHtml,
-			headStyles,
-			flags: sanitizeFlags,
-		} = sanitizeHtmlBody(truncated.value, resolvedOptions);
-		Object.assign(flags, sanitizeFlags);
-		if (flags.wasMalformedHtml) warnings.push("malformed_html");
+		const { bodyHtml, headStyles } = sanitizeHtmlBody(truncated.value, resolvedOptions);
 
 		const textSource = hadText ? rawText : htmlToPlainText(bodyHtml);
 		const textResult = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
-		flags.textTruncated = textResult.truncated;
-		if (flags.textTruncated) warnings.push("text_truncated");
 
 		return {
-			kind: "html",
-			htmlDocument: buildHtmlDocument(bodyHtml, headStyles),
-			text: textResult.value,
-			warnings,
-			flags,
+			html: buildHtmlDocument(bodyHtml, headStyles),
+			plain: textResult.value,
 		};
 	}
 
 	if (hadText) {
 		const truncated = truncateToBytes(rawText, resolvedOptions.maxTextBytes);
-		flags.textTruncated = truncated.truncated;
-		if (flags.textTruncated) warnings.push("text_truncated");
-
-		const bodyHtml = textToHtml(truncated.value);
 		return {
-			kind: "text",
-			htmlDocument: buildHtmlDocument(bodyHtml, []),
-			text: truncated.value,
-			warnings,
-			flags,
+			html: null,
+			plain: truncated.value,
 		};
 	}
 
-	warnings.push("empty_body");
-
-	return {
-		kind: "empty",
-		htmlDocument: buildHtmlDocument("<div>No content</div>", []),
-		text: "",
-		warnings,
-		flags,
-	};
+	return null;
 }
 
 function sanitizeHtmlBody(html: string, options: NormalizedOptions) {
@@ -549,12 +495,6 @@ function popIgnore(stack: string[], tagName: string) {
 	if (index !== -1) stack.splice(index, 1);
 }
 
-function textToHtml(text: string) {
-	const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-	const lines = normalized.split("\n").map(escapeText);
-	return lines.join("<br>");
-}
-
 function htmlToPlainText(html: string) {
 	const withBreaks = html
 		.replace(/<(br|hr)\s*\/?>/gi, "\n")
@@ -580,15 +520,6 @@ function decodeBasicEntities(value: string) {
 		.replace(/&gt;/gi, ">")
 		.replace(/&quot;/gi, '"')
 		.replace(/&#39;/gi, "'");
-}
-
-function escapeText(value: string) {
-	return value
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("'", "&#39;");
 }
 
 function truncateToBytes(value: string, maxBytes: number) {
