@@ -11,13 +11,7 @@ app.use(logger());
 app.route("/auth", authenticationApp);
 app.route("/seed", seedingApp);
 app.use("/graphql", async (c) => {
-	const request = new Request(c.req.url, {
-		method: c.req.method,
-		headers: c.req.raw.headers,
-		body: c.req.raw.body,
-	});
-
-	return graphqlRequestHandler.handleRequest(request, {
+	return graphqlRequestHandler.handleRequest(c.req.raw, {
 		env: c.env,
 		executionCtx: c.executionCtx,
 	});
