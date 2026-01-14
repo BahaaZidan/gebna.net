@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import PostalMime from "postal-mime";
 import { ulid } from "ulid";
 
@@ -10,6 +10,7 @@ import {
 	IdentityInsertModel,
 	MessageDeliveryInsertModel,
 	MessageInsertModel,
+	TransactionInstance,
 } from "$lib/db";
 import {
 	conversationParticipantTable,
@@ -65,26 +66,18 @@ function transportForIdentity(identity: { kind: IdentityInsertModel["kind"] }) {
 }
 
 async function findConversationIdByEmailThreadMessageIds(
-	db: ReturnType<typeof getDB>,
+	db: TransactionInstance | ReturnType<typeof getDB>,
 	threadMessageIds: string[]
-): Promise<string | null> {
+) {
 	if (!threadMessageIds.length) return null;
+	const row = await db.query.messageTable.findFirst({
+		columns: { conversationId: true },
+		where: (t) =>
+			and(isNotNull(t.externalMessageId), inArray(t.externalMessageId, threadMessageIds)),
+		orderBy: (t) => [desc(t.createdAt)],
+	});
 
-	const rows = await db.all<{ conversationId: string }>(
-		sql`SELECT conversationId
-				FROM message
-				WHERE emailMetadata IS NOT NULL
-					AND json_extract(emailMetadata, '$.messageId') IN (
-						${sql.join(
-							threadMessageIds.map((id) => sql`${id}`),
-							sql`, `
-						)}
-					)
-				ORDER BY createdAt DESC
-				LIMIT 1`
-	);
-
-	return rows[0]?.conversationId;
+	return row?.conversationId;
 }
 
 export async function emailHandler(
@@ -131,22 +124,7 @@ export async function emailHandler(
 		.map(normalizeAddress);
 
 	const envelopeToAddress = normalizeAddress(envelope.to);
-
-	const parsedMessageId = extractMessageIds(parsedEmail.messageId)[0];
-	let existingMessage: {
-		id: string;
-		conversationId: string;
-	} | null = null;
-	if (parsedMessageId) {
-		const existing = await db.all<{ id: string; conversationId: string }>(
-			sql`SELECT id, conversationId
-					FROM message
-					WHERE emailMetadata IS NOT NULL
-						AND json_extract(emailMetadata, '$.messageId') = ${parsedMessageId}
-					LIMIT 1`
-		);
-		existingMessage = existing[0];
-	}
+	const externalMessageId = extractMessageIds(parsedEmail.messageId)[0];
 
 	const participantAddresses = Array.from(
 		new Set([fromAddress, ...to, ...cc, ...bcc, ...replyTo, envelopeToAddress])
@@ -160,85 +138,22 @@ export async function emailHandler(
 	const desiredConversationKind: ConversationInsertModel["kind"] =
 		participantIdentities.length > 2 ? "GROUP" : "PRIVATE";
 	const now = new Date();
-
-	let conversation: ConversationSelectModel | null | undefined = null;
-
-	if (existingMessage) {
-		conversation = await db.query.conversationTable.findFirst({
-			where: (t, { eq }) => eq(t.id, existingMessage.conversationId),
-		});
-	}
-
-	if (!conversation && desiredConversationKind === "PRIVATE") {
-		const ids = participantIdentities.map((i) => i.id).sort();
-		const dmKey = `${ids[0]}:${ids[1]}`;
-		conversation =
-			(await db.query.conversationTable.findFirst({
-				where: (t, { eq }) => eq(t.dmKey, dmKey),
-			})) ||
-			(
-				await db
-					.insert(conversationTable)
-					.values({
-						id: ulid(),
-						kind: "PRIVATE",
-						title: parsedEmail.subject,
-						dmKey,
-					})
-					.returning()
-			)[0];
-	} else if (!conversation) {
-		const threadLookupMessageIds = Array.from(
-			new Set([
-				...extractMessageIds(parsedEmail.inReplyTo),
-				...extractMessageIds(parsedEmail.references),
-			])
-		);
-
-		const threadConversationId = await findConversationIdByEmailThreadMessageIds(
-			db,
-			threadLookupMessageIds
-		);
-		if (threadConversationId) {
-			const existingThreadConversation =
-				(await db.query.conversationTable.findFirst({
-					where: (t, { eq }) => eq(t.id, threadConversationId),
-				})) ?? null;
-			if (existingThreadConversation && existingThreadConversation.kind === "GROUP") {
-				conversation = existingThreadConversation;
-			}
-		}
-
-		if (conversation) {
-			// keep reused thread conversation
-		} else {
-			const [created] = await db
-				.insert(conversationTable)
-				.values({
-					id: ulid(),
-					kind: "GROUP",
-					title: parsedEmail.subject,
-				})
-				.returning();
-			conversation = created;
-		}
-	}
-
-	await db
-		.insert(conversationParticipantTable)
-		.values(
-			participantIdentities.map((identity) => ({
-				id: ulid(),
-				conversationId: conversation.id,
-				identityId: identity.id,
-				role: DEFAULT_PARTICIPANT_ROLE,
-				state: DEFAULT_PARTICIPANT_STATE,
-				lastReadMessageId: null,
-			}))
-		)
-		.onConflictDoNothing();
-
-	const messageId = ulid();
+	const dmKey =
+		desiredConversationKind === "PRIVATE"
+			? `${participantIdentities
+					.map((i) => i.id)
+					.sort()
+					.join(":")}`
+			: null;
+	const threadLookupMessageIds =
+		desiredConversationKind === "GROUP"
+			? Array.from(
+					new Set([
+						...extractMessageIds(parsedEmail.inReplyTo),
+						...extractMessageIds(parsedEmail.references),
+					])
+				)
+			: [];
 	const emailMetadata = {
 		to,
 		cc,
@@ -250,17 +165,144 @@ export async function emailHandler(
 	} satisfies MessageInsertModel["emailMetadata"];
 
 	await db.transaction(async (tx) => {
-		const persistedMessageId = existingMessage?.id ?? messageId;
-		if (!existingMessage) {
-			await tx.insert(messageTable).values({
-				id: persistedMessageId,
-				conversationId: conversation.id,
-				senderIdentityId: senderIdentity.id,
-				bodyText: normalizedBody?.plain,
-				bodyHTML: normalizedBody?.html,
-				emailMetadata,
+		let conversation: ConversationSelectModel | null = null;
+		let persistedMessageId = ulid();
+		let insertedMessage = false;
+		let createdConversationId: string | null = null;
+
+		if (externalMessageId) {
+			const existingMessage = await tx.query.messageTable.findFirst({
+				columns: { id: true, conversationId: true },
+				where: (t, { eq }) => eq(t.externalMessageId, externalMessageId),
 			});
+			if (existingMessage) {
+				const existingConversation = await tx.query.conversationTable.findFirst({
+					where: (t, { eq }) => eq(t.id, existingMessage.conversationId),
+				});
+				if (!existingConversation) throw new Error("Missing conversation for existing message");
+				conversation = existingConversation;
+				persistedMessageId = existingMessage.id;
+			}
 		}
+
+		if (!conversation) {
+			if (desiredConversationKind === "PRIVATE") {
+				if (!dmKey) throw new Error("Missing dmKey");
+				conversation =
+					(await tx.query.conversationTable.findFirst({
+						where: (t, { eq }) => eq(t.dmKey, dmKey),
+					})) ||
+					(
+						await tx
+							.insert(conversationTable)
+							.values({
+								id: ulid(),
+								kind: "PRIVATE",
+								title: parsedEmail.subject,
+								dmKey,
+							})
+							.returning()
+					)[0];
+				if (!conversation) throw new Error("Failed to create conversation");
+			} else {
+				const threadConversationId = await findConversationIdByEmailThreadMessageIds(
+					tx,
+					threadLookupMessageIds
+				);
+
+				const existingThreadConversation = threadConversationId
+					? await tx.query.conversationTable.findFirst({
+							where: (t, { eq }) => eq(t.id, threadConversationId),
+						})
+					: null;
+
+				if (existingThreadConversation && existingThreadConversation.kind === "GROUP") {
+					conversation = existingThreadConversation;
+				} else {
+					const [created] = await tx
+						.insert(conversationTable)
+						.values({
+							id: ulid(),
+							kind: "GROUP",
+							title: parsedEmail.subject,
+						})
+						.returning();
+					if (!created) throw new Error("Failed to create conversation");
+					conversation = created;
+					createdConversationId = created.id;
+				}
+			}
+
+			if (!conversation) throw new Error("Failed to resolve conversation");
+
+			const inserted =
+				externalMessageId === null
+					? await tx
+							.insert(messageTable)
+							.values({
+								id: persistedMessageId,
+								conversationId: conversation.id,
+								senderIdentityId: senderIdentity.id,
+								externalMessageId,
+								bodyText: normalizedBody?.plain,
+								bodyHTML: normalizedBody?.html,
+								emailMetadata,
+							})
+							.returning({ id: messageTable.id })
+					: await tx
+							.insert(messageTable)
+							.values({
+								id: persistedMessageId,
+								conversationId: conversation.id,
+								senderIdentityId: senderIdentity.id,
+								externalMessageId,
+								bodyText: normalizedBody?.plain,
+								bodyHTML: normalizedBody?.html,
+								emailMetadata,
+							})
+							.onConflictDoNothing({ target: messageTable.externalMessageId })
+							.returning({ id: messageTable.id });
+
+			if (inserted.length) {
+				insertedMessage = true;
+			} else if (externalMessageId) {
+				const winner = await tx.query.messageTable.findFirst({
+					columns: { id: true, conversationId: true },
+					where: (t, { eq }) => eq(t.externalMessageId, externalMessageId),
+				});
+				if (!winner) throw new Error("Expected existing message after conflict");
+
+				if (createdConversationId && createdConversationId !== winner.conversationId) {
+					await tx.delete(conversationTable).where(eq(conversationTable.id, createdConversationId));
+				}
+
+				const winnerConversation = await tx.query.conversationTable.findFirst({
+					where: (t, { eq }) => eq(t.id, winner.conversationId),
+				});
+				if (!winnerConversation) throw new Error("Missing conversation for existing message");
+
+				conversation = winnerConversation;
+				persistedMessageId = winner.id;
+			} else {
+				throw new Error("Message insert returned no rows without an externalMessageId");
+			}
+		}
+
+		if (!conversation) throw new Error("Missing conversation");
+
+		await tx
+			.insert(conversationParticipantTable)
+			.values(
+				participantIdentities.map((identity) => ({
+					id: ulid(),
+					conversationId: conversation.id,
+					identityId: identity.id,
+					role: DEFAULT_PARTICIPANT_ROLE,
+					state: DEFAULT_PARTICIPANT_STATE,
+					lastReadMessageId: null,
+				}))
+			)
+			.onConflictDoNothing();
 
 		const deliveries = participantIdentities
 			.filter((identity) => identity.id !== senderIdentity.id)
@@ -279,25 +321,18 @@ export async function emailHandler(
 			await tx.insert(messageDeliveryTable).values(deliveries).onConflictDoNothing();
 		}
 
-		if (!existingMessage) {
+		if (insertedMessage) {
 			await tx
 				.update(conversationTable)
 				.set({ updatedAt: now, lastMessageAt: now })
 				.where(eq(conversationTable.id, conversation.id));
 		}
 
-		const viewerStateUnread = deliveries.some((delivery) => {
-			const localAddress = participantAddresses.find(
-				(addr) => addr === `${recipientUser.username}@gebna.net`
-			);
-			return (
-				localAddress &&
-				delivery.recipientIdentityId ===
-					participantIdentities.find((i) => i.address === localAddress)?.id
-			);
-		})
-			? 1
-			: 0;
+		const recipientIdentityId = participantIdentities.find(
+			(i) => i.address === envelopeToAddress
+		)?.id;
+		const viewerStateUnread =
+			recipientIdentityId && recipientIdentityId !== senderIdentity.id ? 1 : 0;
 
 		await tx
 			.insert(conversationViewerStateTable)

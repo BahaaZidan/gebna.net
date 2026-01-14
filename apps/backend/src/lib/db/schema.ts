@@ -216,6 +216,11 @@ export const messageTable = sqliteTable(
 		senderIdentityId: text()
 			.notNull()
 			.references(() => identityTable.id, { onDelete: "restrict" }),
+		/**
+		 * Normalized RFC5322 Message-Id for inbound email de-duping and threading.
+		 * For non-email messages, this is NULL.
+		 */
+		externalMessageId: text().unique(),
 		bodyText: text(),
 		bodyHTML: text(),
 		createdAt: integer({ mode: "timestamp" })
