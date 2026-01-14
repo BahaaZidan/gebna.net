@@ -113,7 +113,7 @@ export const conversationTable = sqliteTable(
 		updatedAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
-		lastMessageAt: integer({ mode: "timestamp" }),
+		lastMessageAt: integer({ mode: "timestamp" }).default(sql`(strftime('%s','now'))`),
 	},
 	(self) => [
 		uniqueIndex("uniq_conversation_dm_key").on(self.dmKey),
@@ -200,11 +200,11 @@ type EmailMetadata = {
 	/** Headers.replyTo ==> indicates the addresses to send the reply to that's possibly different from Envelope.from */
 	replyTo: string[];
 	/** Headers.inReplyTo ==> indicates the Email.messageId that this message is replying to */
-	inReplyTo: string;
+	inReplyTo?: string;
 	/** Headers.messageId ==> a unique identifier for the message. provided by the vendor */
-	messageId: string;
+	messageId?: string;
 	/** Headers.references ==> It lists the entire ancestry of the conversation — all the Message-IDs leading up to this email. used for threading */
-	references: string;
+	references?: string;
 };
 export const messageTable = sqliteTable(
 	"message",

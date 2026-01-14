@@ -1,30 +1,54 @@
 import { eq } from "drizzle-orm";
-import PostalMime, { type Email } from "postal-mime";
+import PostalMime from "postal-mime";
 import { ulid } from "ulid";
 
 import {
-	AddressAvatarInferenceSelectModel,
-	AttachmentInsertModel,
-	ContactSelectModel,
+	ConversationInsertModel,
+	ConversationParticipantInsertModel,
+	ConversationSelectModel,
 	getDB,
-	MailboxSelectModel,
-	ThreadParticipantInsertModel,
-	ThreadSelectModel,
-	TransactionInstance,
+	IdentityInsertModel,
+	MessageDeliveryInsertModel,
+	MessageInsertModel,
 } from "$lib/db";
 import {
-	attachmentTable,
-	contactTable,
+	conversationParticipantTable,
+	conversationTable,
+	conversationViewerStateTable,
+	identityTable,
+	messageDeliveryTable,
 	messageTable,
-	threadParticipantTable,
-	threadTable,
 } from "$lib/db/schema";
-import { increment } from "$lib/db/utils";
-import type { ContactAvatarQueueMessage, ThumbnailQueueMessage } from "$lib/queue/types";
 import { extractLocalPart } from "$lib/utils/email";
-import { buildCidResolver, getAttachmentBytes } from "$lib/utils/email-attachments";
-import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
-import { generateImagePlaceholder } from "$lib/utils/users";
+
+const DEFAULT_PARTICIPANT_ROLE: ConversationParticipantInsertModel["role"] = "MEMBER";
+const DEFAULT_PARTICIPANT_STATE: ConversationParticipantInsertModel["state"] = "ACTIVE";
+
+function normalizeAddress(address: string) {
+	return address.trim().toLowerCase();
+}
+
+function identityKindFor(address: string): IdentityInsertModel["kind"] {
+	return address.endsWith("@gebna.net") ? "GEBNA_USER" : "EXTERNAL_EMAIL";
+}
+
+async function ensureIdentity(db: ReturnType<typeof getDB>, address: string) {
+	const normalized = normalizeAddress(address);
+	const kind = identityKindFor(normalized);
+	const existing = await db.query.identityTable.findFirst({
+		where: (t, { eq, and }) => and(eq(t.kind, kind), eq(t.address, normalized)),
+	});
+	if (existing) return existing;
+	const [created] = await db
+		.insert(identityTable)
+		.values({ id: ulid(), address: normalized, kind })
+		.returning();
+	return created;
+}
+
+function transportForIdentity(identity: { kind: IdentityInsertModel["kind"] }) {
+	return identity.kind === "GEBNA_USER" ? "GEBNA_DM" : "EMAIL";
+}
 
 export async function emailHandler(
 	envelope: ForwardableEmailMessage,
@@ -33,286 +57,164 @@ export async function emailHandler(
 ) {
 	const db = getDB(bindings);
 
+	const recipientLocal = extractLocalPart(envelope.to);
 	const recipientUser = await db.query.userTable.findFirst({
-		where: (t, { eq }) => eq(t.username, extractLocalPart(envelope.to)),
+		where: (t, { eq }) => eq(t.username, recipientLocal),
 	});
 	if (!recipientUser) return envelope.setReject("ADDRESS NOT FOUND!");
 
 	const parsedEmail = await PostalMime.parse(envelope.raw);
-	if (!parsedEmail.from?.name) return envelope.setReject("FROM NOT SET!");
+	if (!parsedEmail.from?.address) return envelope.setReject("FROM NOT SET!");
 
-	const cidResolver = buildCidResolver(parsedEmail.attachments);
-	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
-		cidResolver,
-		blockRemoteImagesByDefault: false,
-		allowDataImages: Boolean(cidResolver),
-	});
-	const snippet = normalizedBody.text.trim() ? normalizedBody.text.slice(0, 50) : null;
+	const fromAddress = normalizeAddress(parsedEmail.from.address);
+	const senderIdentity = await ensureIdentity(db, fromAddress);
 
-	await db.transaction(async (tx) => {
-		const addressAvatarInference = await tx.query.addressAvatarInferences.findFirst({
-			where: (t, { eq }) => eq(t.address, envelope.from),
-		});
-		const contact =
-			(await tx.query.contactTable.findFirst({
-				where: (t, { eq, and }) =>
-					and(eq(t.ownerId, recipientUser.id), eq(t.address, envelope.from)),
+	const to = (parsedEmail.to ?? [])
+		.map((a) => a.address)
+		.filter(Boolean)
+		.map(normalizeAddress);
+	const cc = (parsedEmail.cc ?? [])
+		.map((a) => a.address)
+		.filter(Boolean)
+		.map(normalizeAddress);
+	const bcc = (parsedEmail.bcc ?? [])
+		.map((a) => a.address)
+		.filter(Boolean)
+		.map(normalizeAddress);
+	const replyTo = (parsedEmail.replyTo ?? [])
+		.map((a) => a.address)
+		.filter(Boolean)
+		.map(normalizeAddress);
+
+	const participantAddresses = Array.from(
+		new Set([fromAddress, ...to, ...cc, ...bcc, ...replyTo, envelope.to])
+	).filter(Boolean);
+
+	// TODO: optimize
+	const participantIdentities = await Promise.all(
+		participantAddresses.map((address) => ensureIdentity(db, address))
+	);
+
+	const conversationKind: ConversationInsertModel["kind"] =
+		participantIdentities.length > 2 ? "GROUP" : "PRIVATE";
+	const now = new Date();
+
+	let conversation: ConversationSelectModel | null = null;
+	if (conversationKind === "PRIVATE") {
+		const ids = participantIdentities.map((i) => i.id).sort();
+		const dmKey = `${ids[0]}:${ids[1]}`;
+		conversation =
+			(await db.query.conversationTable.findFirst({
+				where: (t, { eq }) => eq(t.dmKey, dmKey),
 			})) ||
 			(
-				await tx
-					.insert(contactTable)
+				await db
+					.insert(conversationTable)
 					.values({
 						id: ulid(),
-						address: envelope.from,
-						ownerId: recipientUser.id,
-						targetMailboxId: (await tx.query.mailboxTable.findFirst({
-							where: (t, { eq, and }) =>
-								and(eq(t.userId, recipientUser.id), eq(t.type, "screener")),
-						}))!.id,
-						targetMailboxType: "screener",
-						name: parsedEmail.from!.name,
-						avatarPlaceholder: generateImagePlaceholder(parsedEmail.from!.name),
-						inferredAvatar: addressAvatarInference?.avatarURL,
+						kind: "PRIVATE",
+						title: parsedEmail.subject,
+						dmKey,
 					})
 					.returning()
 			)[0];
-		await runAddressAvatarInference({ bindings, contact, inference: addressAvatarInference });
-
-		const targetMailboxId = contact.targetMailboxId;
-		if (!targetMailboxId) throw new Error("SOMETHING_WENT_WRONG");
-
-		const targetMailbox = await tx.query.mailboxTable.findFirst({
-			where: (t, { eq }) => eq(t.id, targetMailboxId),
-		});
-		if (!targetMailbox) throw new Error("SOMETHING_WENT_WRONG");
-		const unseen = targetMailbox.type === "important" || targetMailbox.type === "screener";
-
-		const thread = await findOrCreateThread({
-			tx,
-			envelope,
-			parsedEmail,
-			recipientId: recipientUser.id,
-			targetMailbox,
-			unseen,
-		});
-
-		const to = parsedEmail.to?.map((a) => a.address).filter(Boolean) || [];
-		const cc = parsedEmail.cc?.map((a) => a.address).filter(Boolean) || [];
-		const bcc = parsedEmail.bcc?.map((a) => a.address).filter(Boolean) || [];
-		const replyTo = parsedEmail.replyTo?.map((a) => a.address).filter(Boolean) || [];
-
-		const createdMessageId = ulid();
-		await tx.insert(messageTable).values({
-			id: createdMessageId,
-			from: envelope.from,
-			mailboxId: targetMailboxId,
-			ownerId: recipientUser.id,
-			threadId: thread.id,
-			to,
-			cc,
-			bcc,
-			replyTo,
-			subject: parsedEmail.subject,
-			messageId: parsedEmail.messageId,
-			references: parsedEmail.references,
-			inReplyTo: parsedEmail.inReplyTo,
-			bodyHTML: normalizedBody.htmlDocument,
-			bodyText: normalizedBody.text,
-			snippet,
-			sizeInBytes: envelope.rawSize,
-			unseen,
-		});
-
-		const participantAddresses = new Set<string>([envelope.from, ...to, ...cc, ...bcc, ...replyTo]);
-
-		tx.insert(threadParticipantTable)
-			.values(
-				Array.from(participantAddresses).map(
-					(address) =>
-						({
-							address,
-							ownerId: recipientUser.id,
-							threadId: thread.id,
-						}) satisfies ThreadParticipantInsertModel
-				)
-			)
-			.onConflictDoNothing();
-
-		if (parsedEmail.attachments.length) {
-			const attachmentsToInsert = await Promise.all(
-				parsedEmail.attachments.map(async (attachment) => {
-					const createdAttachmentId = ulid();
-					const storageKey = `u/${recipientUser.id}/m/${createdMessageId}/a/${createdAttachmentId}`;
-
-					const body = getAttachmentBytes(attachment);
-					await bindings.R2_EMAILS.put(storageKey, body, {
-						httpMetadata: { contentType: attachment.mimeType },
-					});
-
-					return {
-						id: createdAttachmentId,
-						ownerId: recipientUser.id,
-						threadId: thread.id,
-						messageId: createdMessageId,
-						messageFrom: envelope.from,
-						storageKey,
-						sizeInBytes: body.byteLength,
-						fileName: attachment.filename,
-						mimeType: attachment.mimeType,
-						disposition: attachment.disposition,
-						contentId: attachment.contentId,
-					} satisfies AttachmentInsertModel;
-				})
-			);
-
-			await tx.insert(attachmentTable).values(attachmentsToInsert);
-
-			const thumbnailMessages: ThumbnailQueueMessage[] = attachmentsToInsert.map((attachment) => ({
-				type: "thumbnail",
-				payload: {
-					storageKey: attachment.storageKey,
-					mimeType: attachment.mimeType,
-					filename: attachment.fileName ?? null,
-				},
-			}));
-
-			await bindings.THUMBNAIL_QUEUE.sendBatch(
-				thumbnailMessages.map((message) => ({
-					body: message,
-					contentType: "json",
-				}))
-			);
-		}
-	});
-}
-
-async function findOrCreateThread({
-	tx,
-	envelope,
-	targetMailbox,
-	unseen,
-	recipientId,
-	parsedEmail,
-}: {
-	tx: TransactionInstance;
-	envelope: ForwardableEmailMessage;
-	targetMailbox: MailboxSelectModel;
-	unseen: boolean;
-	recipientId: string;
-	parsedEmail: Email;
-}) {
-	const replyThread = await getThreadFromMessageId(tx, recipientId, parsedEmail.inReplyTo);
-	if (replyThread) return incrementThreadUnseenCount(tx, replyThread, unseen);
-
-	const referenceIds = parseReferences(parsedEmail.references);
-	for (const referenceId of referenceIds) {
-		const referenceThread = await getThreadFromMessageId(tx, recipientId, referenceId);
-		if (referenceThread) return incrementThreadUnseenCount(tx, referenceThread, unseen);
+	} else {
+		const [created] = await db
+			.insert(conversationTable)
+			.values({
+				id: ulid(),
+				kind: "GROUP",
+				title: parsedEmail.subject,
+			})
+			.returning();
+		conversation = created;
 	}
 
-	const [createdThread] = await tx
-		.insert(threadTable)
-		.values({
-			id: ulid(),
-			firstMessageFrom: envelope.from,
-			mailboxId: targetMailbox.id,
-			mailboxType: targetMailbox.type,
-			ownerId: recipientId,
-			title: parsedEmail.subject,
-			firstMessageSubject: parsedEmail.subject,
-			firstMessageId: parsedEmail.messageId,
-			snippet: parsedEmail.text?.slice(0, 50),
-			unseenCount: unseen ? 1 : 0,
-			trashAt: targetMailbox.type === "trash" ? new Date() : null,
+	await db
+		.insert(conversationParticipantTable)
+		.values(
+			participantIdentities.map((identity) => ({
+				id: ulid(),
+				conversationId: conversation.id,
+				identityId: identity.id,
+				role: DEFAULT_PARTICIPANT_ROLE,
+				state: DEFAULT_PARTICIPANT_STATE,
+				lastReadMessageId: null,
+			}))
+		)
+		.onConflictDoNothing();
+
+	const messageId = ulid();
+	const emailMetadata = {
+		to,
+		cc,
+		bcc,
+		replyTo,
+		inReplyTo: parsedEmail.inReplyTo,
+		messageId: parsedEmail.messageId,
+		references: parsedEmail.references,
+	} satisfies MessageInsertModel["emailMetadata"];
+
+	await db.transaction(async (tx) => {
+		await tx.insert(messageTable).values({
+			id: messageId,
+			conversationId: conversation.id,
+			senderIdentityId: senderIdentity.id,
+			bodyText: parsedEmail.text,
+			bodyHTML: parsedEmail.html,
+			emailMetadata,
+		});
+
+		const deliveries = participantIdentities
+			.filter((identity) => identity.id !== senderIdentity.id)
+			.map(
+				(identity) =>
+					({
+						id: `${messageId}:${identity.id}`,
+						messageId,
+						recipientIdentityId: identity.id,
+						status: "DELIVERED",
+						transport: transportForIdentity(identity),
+					}) satisfies MessageDeliveryInsertModel
+			);
+
+		if (deliveries.length) {
+			await tx.insert(messageDeliveryTable).values(deliveries).onConflictDoNothing();
+		}
+
+		await tx
+			.update(conversationTable)
+			.set({ updatedAt: now, lastMessageAt: now })
+			.where(eq(conversationTable.id, conversation.id));
+
+		const viewerStateUnread = deliveries.some((delivery) => {
+			const localAddress = participantAddresses.find(
+				(addr) => addr === `${recipientUser.username}@gebna.net`
+			);
+			return (
+				localAddress &&
+				delivery.recipientIdentityId ===
+					participantIdentities.find((i) => i.address === localAddress)?.id
+			);
 		})
-		.returning();
+			? 1
+			: 0;
 
-	return createdThread;
-}
-
-function parseReferences(references?: string | null) {
-	if (!references?.trim()) return [];
-
-	const validHeader = /^(\s*<[^<>\s@]+@[^<>\s@]+>\s*)+$/;
-	if (!validHeader.test(references)) return [];
-
-	const matches = references.matchAll(/<([^<>]+)>/g);
-	return Array.from(matches, (match) => match[1]);
-}
-
-async function getThreadFromMessageId(
-	tx: TransactionInstance,
-	recipientId: string,
-	messageId?: string | null
-) {
-	if (!messageId) return null;
-
-	const message = await tx.query.messageTable.findFirst({
-		columns: { threadId: true },
-		where: (t, { eq, and }) => and(eq(t.ownerId, recipientId), eq(t.messageId, messageId)),
-	});
-	if (!message) return null;
-
-	return tx.query.threadTable.findFirst({
-		where: (t, { eq, and }) => and(eq(t.id, message.threadId), eq(t.ownerId, recipientId)),
-	});
-}
-
-async function incrementThreadUnseenCount(
-	tx: TransactionInstance,
-	thread: ThreadSelectModel,
-	unseen: boolean
-) {
-	const lastMessageAt = new Date();
-	await tx
-		.update(threadTable)
-		.set({
-			...(unseen ? { unseenCount: increment(threadTable.unseenCount) } : {}),
-			lastMessageAt,
-		})
-		.where(eq(threadTable.id, thread.id));
-
-	return {
-		...thread,
-		unseenCount: unseen ? thread.unseenCount + 1 : thread.unseenCount,
-		lastMessageAt,
-	};
-}
-
-async function runAddressAvatarInference({
-	bindings,
-	inference,
-	contact,
-}: {
-	bindings: CloudflareBindings;
-	inference?: AddressAvatarInferenceSelectModel;
-	contact: ContactSelectModel;
-}) {
-	if (contact.uploadedAvatar) return;
-	if (!inference) return await enqueAddressAvatarInference({ bindings, contact });
-
-	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-	const isInferenceOlderThan7Days = Date.now() - inference.lastCheckedAt.getTime() > SEVEN_DAYS_MS;
-	if (!isInferenceOlderThan7Days) return;
-	await enqueAddressAvatarInference({ bindings, contact });
-}
-
-async function enqueAddressAvatarInference({
-	bindings,
-	contact,
-}: {
-	bindings: CloudflareBindings;
-	contact: ContactSelectModel;
-}) {
-	await bindings.THUMBNAIL_QUEUE.sendBatch([
-		{
-			body: {
-				type: "contact-avatar",
-				payload: {
-					contactId: contact.id,
+		await tx
+			.insert(conversationViewerStateTable)
+			.values({
+				id: ulid(),
+				ownerId: recipientUser.id,
+				conversationId: conversation.id,
+				mailbox: "IMPORTANT",
+				unreadCount: viewerStateUnread,
+			})
+			.onConflictDoUpdate({
+				target: [conversationViewerStateTable.ownerId, conversationViewerStateTable.conversationId],
+				set: {
+					unreadCount: viewerStateUnread,
+					updatedAt: now,
 				},
-			} satisfies ContactAvatarQueueMessage,
-			contentType: "json",
-		},
-	]);
+			});
+	});
 }
