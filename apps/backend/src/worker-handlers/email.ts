@@ -54,11 +54,16 @@ async function ensureIdentity(db: ReturnType<typeof getDB>, address: string) {
 		where: (t, { eq, and }) => and(eq(t.kind, kind), eq(t.address, normalized)),
 	});
 	if (existing) return existing;
-	const [created] = await db
+	await db
 		.insert(identityTable)
 		.values({ id: ulid(), address: normalized, kind })
-		.returning();
-	return created;
+		.onConflictDoNothing({ target: [identityTable.kind, identityTable.address] });
+
+	const createdOrExisting = await db.query.identityTable.findFirst({
+		where: (t, { eq, and }) => and(eq(t.kind, kind), eq(t.address, normalized)),
+	});
+	if (!createdOrExisting) throw new Error("Failed to ensure identity");
+	return createdOrExisting;
 }
 
 function transportForIdentity(identity: { kind: IdentityInsertModel["kind"] }) {
@@ -95,6 +100,9 @@ export async function emailHandler(
 
 	const parsedEmail = await PostalMime.parse(envelope.raw);
 	if (!parsedEmail.from?.address) return envelope.setReject("FROM NOT SET!");
+	const externalMessageId = extractMessageIds(parsedEmail.messageId)[0];
+	if (!parsedEmail.messageId || !externalMessageId?.length)
+		return envelope.setReject("MISSING MESSAGE-ID");
 
 	const cidResolver = buildCidResolver(parsedEmail.attachments);
 	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
@@ -124,7 +132,6 @@ export async function emailHandler(
 		.map(normalizeAddress);
 
 	const envelopeToAddress = normalizeAddress(envelope.to);
-	const externalMessageId = extractMessageIds(parsedEmail.messageId)[0];
 
 	const participantAddresses = Array.from(
 		new Set([fromAddress, ...to, ...cc, ...bcc, ...replyTo, envelopeToAddress])
@@ -191,18 +198,27 @@ export async function emailHandler(
 				conversation =
 					(await tx.query.conversationTable.findFirst({
 						where: (t, { eq }) => eq(t.dmKey, dmKey),
-					})) ||
-					(
-						await tx
-							.insert(conversationTable)
-							.values({
-								id: ulid(),
-								kind: "PRIVATE",
-								title: parsedEmail.subject,
-								dmKey,
-							})
-							.returning()
-					)[0];
+					})) ?? null;
+
+				if (!conversation) {
+					const inserted = await tx
+						.insert(conversationTable)
+						.values({
+							id: ulid(),
+							kind: "PRIVATE",
+							title: parsedEmail.subject,
+							dmKey,
+						})
+						.onConflictDoNothing({ target: conversationTable.dmKey })
+						.returning();
+
+					conversation =
+						inserted[0] ??
+						(await tx.query.conversationTable.findFirst({
+							where: (t, { eq }) => eq(t.dmKey, dmKey),
+						})) ??
+						null;
+				}
 				if (!conversation) throw new Error("Failed to create conversation");
 			} else {
 				const threadConversationId = await findConversationIdByEmailThreadMessageIds(
