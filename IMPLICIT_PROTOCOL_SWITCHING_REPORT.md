@@ -89,3 +89,29 @@
 ### Known gaps intentionally deferred
 - Raw email seeding is stubbed; will be reintroduced once inbound ingest aligns with the new schema (Phase 3).
 - Seed demo does not attach email metadata/attachments; deliveries are static snapshots rather than lifecycle transitions.
+
+## Phase 3
+
+### What changed (behavior)
+- Inbound email handler now writes to the new conversation/message/message_delivery schema: ensures identities for sender/recipients, creates participants, chooses conversation kind (PRIVATE with dmKey when 2 participants, otherwise GROUP), inserts messages with email metadata, and inserts per-recipient delivery rows (transport by identity kind, status `DELIVERED`, latestStatusChangeAt = receive time).
+- Viewer state for the addressed Gebna user is created/upserted with unread count when a delivery targets their identity.
+
+### Files changed/added
+- apps/backend/src/worker-handlers/email.ts
+
+### Assumptions
+- Participants come from sender + To/Cc/Bcc/Reply-To + addressed user; GROUP conversations always created anew (no threading by Message-Id/References yet).
+- Deliveries are marked `DELIVERED` on ingest for all non-sender participants; transports follow identity kind (`GEBNA_USER` → GEBNA_DM, `EXTERNAL_EMAIL` → EMAIL).
+- Only the primary addressed Gebna user gets a conversation viewer state update; other local recipients (if any) are not yet handled.
+
+### How to test
+- Send an inbound email to `<username>@gebna.net`; after processing, query the conversation/messages via GraphQL:
+  - Conversation exists (PRIVATE for 2 participants, GROUP otherwise) with participants for sender and all header recipients.
+  - Message contains body text/html and email metadata.
+  - `message.delivery` has one row per recipient (excluding sender) with transport mapped by identity kind and status `DELIVERED`.
+  - Viewer state for the addressed user is present with unread count > 0 when applicable.
+
+### Known gaps intentionally deferred
+- No threading by `Message-Id`/`In-Reply-To`/`References`; GROUP conversations are always new instances.
+- No attachment handling or avatar inference in inbound ingest in this phase.
+- Additional local Gebna recipients beyond the primary addressed user do not get viewer state updates.

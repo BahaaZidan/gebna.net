@@ -20,6 +20,8 @@ import {
 	messageTable,
 } from "$lib/db/schema";
 import { extractLocalPart } from "$lib/utils/email";
+import { buildCidResolver } from "$lib/utils/email-attachments";
+import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
 
 const DEFAULT_PARTICIPANT_ROLE: ConversationParticipantInsertModel["role"] = "MEMBER";
 const DEFAULT_PARTICIPANT_STATE: ConversationParticipantInsertModel["state"] = "ACTIVE";
@@ -65,6 +67,13 @@ export async function emailHandler(
 
 	const parsedEmail = await PostalMime.parse(envelope.raw);
 	if (!parsedEmail.from?.address) return envelope.setReject("FROM NOT SET!");
+
+	const cidResolver = buildCidResolver(parsedEmail.attachments);
+	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
+		cidResolver,
+		blockRemoteImagesByDefault: false,
+		allowDataImages: Boolean(cidResolver),
+	});
 
 	const fromAddress = normalizeAddress(parsedEmail.from.address);
 	const senderIdentity = await ensureIdentity(db, fromAddress);
@@ -160,8 +169,8 @@ export async function emailHandler(
 			id: messageId,
 			conversationId: conversation.id,
 			senderIdentityId: senderIdentity.id,
-			bodyText: parsedEmail.text,
-			bodyHTML: parsedEmail.html,
+			bodyText: normalizedBody?.plain,
+			bodyHTML: normalizedBody?.html,
 			emailMetadata,
 		});
 
