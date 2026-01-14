@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import PostalMime from "postal-mime";
 import { ulid } from "ulid";
 
@@ -30,6 +30,18 @@ function normalizeAddress(address: string) {
 	return address.trim().toLowerCase();
 }
 
+function extractMessageIds(headerValue?: string | null): string[] {
+	if (!headerValue) return [];
+	const matches =
+		headerValue
+			.match(/<[^>]+>/g)
+			?.map((m) => m.trim())
+			.filter(Boolean) ?? [];
+	if (matches.length) return matches;
+	const fallback = headerValue.trim();
+	return fallback ? [fallback] : [];
+}
+
 function identityKindFor(address: string): IdentityInsertModel["kind"] {
 	return address.endsWith("@gebna.net") ? "GEBNA_USER" : "EXTERNAL_EMAIL";
 }
@@ -50,6 +62,29 @@ async function ensureIdentity(db: ReturnType<typeof getDB>, address: string) {
 
 function transportForIdentity(identity: { kind: IdentityInsertModel["kind"] }) {
 	return identity.kind === "GEBNA_USER" ? "GEBNA_DM" : "EMAIL";
+}
+
+async function findConversationIdByEmailThreadMessageIds(
+	db: ReturnType<typeof getDB>,
+	threadMessageIds: string[]
+): Promise<string | null> {
+	if (!threadMessageIds.length) return null;
+
+	const rows = await db.all<{ conversationId: string }>(
+		sql`SELECT conversationId
+				FROM message
+				WHERE emailMetadata IS NOT NULL
+					AND json_extract(emailMetadata, '$.messageId') IN (
+						${sql.join(
+							threadMessageIds.map((id) => sql`${id}`),
+							sql`, `
+						)}
+					)
+				ORDER BY createdAt DESC
+				LIMIT 1`
+	);
+
+	return rows[0]?.conversationId;
 }
 
 export async function emailHandler(
@@ -95,8 +130,26 @@ export async function emailHandler(
 		.filter(Boolean)
 		.map(normalizeAddress);
 
+	const envelopeToAddress = normalizeAddress(envelope.to);
+
+	const parsedMessageId = extractMessageIds(parsedEmail.messageId)[0] ?? null;
+	let existingMessage: {
+		id: string;
+		conversationId: string;
+	} | null = null;
+	if (parsedMessageId) {
+		const existing = await db.all<{ id: string; conversationId: string }>(
+			sql`SELECT id, conversationId
+					FROM message
+					WHERE emailMetadata IS NOT NULL
+						AND json_extract(emailMetadata, '$.messageId') = ${parsedMessageId}
+					LIMIT 1`
+		);
+		existingMessage = existing[0] ?? null;
+	}
+
 	const participantAddresses = Array.from(
-		new Set([fromAddress, ...to, ...cc, ...bcc, ...replyTo, envelope.to])
+		new Set([fromAddress, ...to, ...cc, ...bcc, ...replyTo, envelopeToAddress])
 	).filter(Boolean);
 
 	// TODO: optimize
@@ -104,12 +157,49 @@ export async function emailHandler(
 		participantAddresses.map((address) => ensureIdentity(db, address))
 	);
 
-	const conversationKind: ConversationInsertModel["kind"] =
+	const desiredConversationKind: ConversationInsertModel["kind"] =
 		participantIdentities.length > 2 ? "GROUP" : "PRIVATE";
 	const now = new Date();
 
 	let conversation: ConversationSelectModel | null = null;
-	if (conversationKind === "PRIVATE") {
+
+	if (existingMessage) {
+		conversation =
+			(await db.query.conversationTable.findFirst({
+				where: (t, { eq }) => eq(t.id, existingMessage.conversationId),
+			})) ?? null;
+		if (conversation && conversation.kind === "PRIVATE" && desiredConversationKind === "GROUP") {
+			conversation = null;
+		}
+	}
+
+	const threadLookupMessageIds = Array.from(
+		new Set([
+			...extractMessageIds(parsedEmail.inReplyTo),
+			...extractMessageIds(parsedEmail.references),
+		])
+	);
+
+	if (!conversation) {
+		const threadConversationId = await findConversationIdByEmailThreadMessageIds(
+			db,
+			threadLookupMessageIds
+		);
+		if (threadConversationId) {
+			const existingThreadConversation =
+				(await db.query.conversationTable.findFirst({
+					where: (t, { eq }) => eq(t.id, threadConversationId),
+				})) ?? null;
+			if (
+				existingThreadConversation &&
+				!(existingThreadConversation.kind === "PRIVATE" && desiredConversationKind === "GROUP")
+			) {
+				conversation = existingThreadConversation;
+			}
+		}
+	}
+
+	if (!conversation && desiredConversationKind === "PRIVATE") {
 		const ids = participantIdentities.map((i) => i.id).sort();
 		const dmKey = `${ids[0]}:${ids[1]}`;
 		conversation =
@@ -127,7 +217,7 @@ export async function emailHandler(
 					})
 					.returning()
 			)[0];
-	} else {
+	} else if (!conversation) {
 		const [created] = await db
 			.insert(conversationTable)
 			.values({
@@ -165,22 +255,25 @@ export async function emailHandler(
 	} satisfies MessageInsertModel["emailMetadata"];
 
 	await db.transaction(async (tx) => {
-		await tx.insert(messageTable).values({
-			id: messageId,
-			conversationId: conversation.id,
-			senderIdentityId: senderIdentity.id,
-			bodyText: normalizedBody?.plain,
-			bodyHTML: normalizedBody?.html,
-			emailMetadata,
-		});
+		const persistedMessageId = existingMessage?.id ?? messageId;
+		if (!existingMessage) {
+			await tx.insert(messageTable).values({
+				id: persistedMessageId,
+				conversationId: conversation.id,
+				senderIdentityId: senderIdentity.id,
+				bodyText: normalizedBody?.plain,
+				bodyHTML: normalizedBody?.html,
+				emailMetadata,
+			});
+		}
 
 		const deliveries = participantIdentities
 			.filter((identity) => identity.id !== senderIdentity.id)
 			.map(
 				(identity) =>
 					({
-						id: `${messageId}:${identity.id}`,
-						messageId,
+						id: `${persistedMessageId}:${identity.id}`,
+						messageId: persistedMessageId,
 						recipientIdentityId: identity.id,
 						status: "DELIVERED",
 						transport: transportForIdentity(identity),
@@ -191,10 +284,12 @@ export async function emailHandler(
 			await tx.insert(messageDeliveryTable).values(deliveries).onConflictDoNothing();
 		}
 
-		await tx
-			.update(conversationTable)
-			.set({ updatedAt: now, lastMessageAt: now })
-			.where(eq(conversationTable.id, conversation.id));
+		if (!existingMessage) {
+			await tx
+				.update(conversationTable)
+				.set({ updatedAt: now, lastMessageAt: now })
+				.where(eq(conversationTable.id, conversation.id));
+		}
 
 		const viewerStateUnread = deliveries.some((delivery) => {
 			const localAddress = participantAddresses.find(
