@@ -132,7 +132,7 @@ export async function emailHandler(
 
 	const envelopeToAddress = normalizeAddress(envelope.to);
 
-	const parsedMessageId = extractMessageIds(parsedEmail.messageId)[0] ?? null;
+	const parsedMessageId = extractMessageIds(parsedEmail.messageId)[0];
 	let existingMessage: {
 		id: string;
 		conversationId: string;
@@ -145,7 +145,7 @@ export async function emailHandler(
 						AND json_extract(emailMetadata, '$.messageId') = ${parsedMessageId}
 					LIMIT 1`
 		);
-		existingMessage = existing[0] ?? null;
+		existingMessage = existing[0];
 	}
 
 	const participantAddresses = Array.from(
@@ -161,42 +161,12 @@ export async function emailHandler(
 		participantIdentities.length > 2 ? "GROUP" : "PRIVATE";
 	const now = new Date();
 
-	let conversation: ConversationSelectModel | null = null;
+	let conversation: ConversationSelectModel | null | undefined = null;
 
 	if (existingMessage) {
-		conversation =
-			(await db.query.conversationTable.findFirst({
-				where: (t, { eq }) => eq(t.id, existingMessage.conversationId),
-			})) ?? null;
-		if (conversation && conversation.kind === "PRIVATE" && desiredConversationKind === "GROUP") {
-			conversation = null;
-		}
-	}
-
-	const threadLookupMessageIds = Array.from(
-		new Set([
-			...extractMessageIds(parsedEmail.inReplyTo),
-			...extractMessageIds(parsedEmail.references),
-		])
-	);
-
-	if (!conversation) {
-		const threadConversationId = await findConversationIdByEmailThreadMessageIds(
-			db,
-			threadLookupMessageIds
-		);
-		if (threadConversationId) {
-			const existingThreadConversation =
-				(await db.query.conversationTable.findFirst({
-					where: (t, { eq }) => eq(t.id, threadConversationId),
-				})) ?? null;
-			if (
-				existingThreadConversation &&
-				!(existingThreadConversation.kind === "PRIVATE" && desiredConversationKind === "GROUP")
-			) {
-				conversation = existingThreadConversation;
-			}
-		}
+		conversation = await db.query.conversationTable.findFirst({
+			where: (t, { eq }) => eq(t.id, existingMessage.conversationId),
+		});
 	}
 
 	if (!conversation && desiredConversationKind === "PRIVATE") {
@@ -218,15 +188,40 @@ export async function emailHandler(
 					.returning()
 			)[0];
 	} else if (!conversation) {
-		const [created] = await db
-			.insert(conversationTable)
-			.values({
-				id: ulid(),
-				kind: "GROUP",
-				title: parsedEmail.subject,
-			})
-			.returning();
-		conversation = created;
+		const threadLookupMessageIds = Array.from(
+			new Set([
+				...extractMessageIds(parsedEmail.inReplyTo),
+				...extractMessageIds(parsedEmail.references),
+			])
+		);
+
+		const threadConversationId = await findConversationIdByEmailThreadMessageIds(
+			db,
+			threadLookupMessageIds
+		);
+		if (threadConversationId) {
+			const existingThreadConversation =
+				(await db.query.conversationTable.findFirst({
+					where: (t, { eq }) => eq(t.id, threadConversationId),
+				})) ?? null;
+			if (existingThreadConversation && existingThreadConversation.kind === "GROUP") {
+				conversation = existingThreadConversation;
+			}
+		}
+
+		if (conversation) {
+			// keep reused thread conversation
+		} else {
+			const [created] = await db
+				.insert(conversationTable)
+				.values({
+					id: ulid(),
+					kind: "GROUP",
+					title: parsedEmail.subject,
+				})
+				.returning();
+			conversation = created;
+		}
 	}
 
 	await db
