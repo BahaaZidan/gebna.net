@@ -337,7 +337,7 @@ export type Viewer = Node & {
 export type ViewerContactsArgs = {
   after?: InputMaybe<Scalars['Cursor']['input']>;
   first: Scalars['Int']['input'];
-  query: Scalars['String']['input'];
+  query?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -660,7 +660,7 @@ export type UpsertConversationPayloadResolvers<ContextType = Context, ParentType
 };
 
 export type ViewerResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Viewer'] = ResolversParentTypes['Viewer']> = {
-  contacts?: Resolver<ResolversTypes['IdentityConnection'], ParentType, ContextType, RequireFields<ViewerContactsArgs, 'first' | 'query'>>;
+  contacts?: Resolver<ResolversTypes['IdentityConnection'], ParentType, ContextType, RequireFields<ViewerContactsArgs, 'first'>>;
   conversationsByMailbox?: Resolver<ResolversTypes['ConversationConnection'], ParentType, ContextType, RequireFields<ViewerConversationsByMailboxArgs, 'first' | 'mailbox'>>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
