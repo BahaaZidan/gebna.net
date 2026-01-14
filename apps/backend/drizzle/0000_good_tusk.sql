@@ -21,7 +21,7 @@ CREATE TABLE `conversation` (
 	`dmKey` text,
 	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`updatedAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
-	`lastMessageAt` integer,
+	`lastMessageAt` integer DEFAULT (strftime('%s','now')),
 	CONSTRAINT "chk_conversation_dmkey_kind" CHECK((
 				("conversation"."kind" = 'PRIVATE' AND "conversation"."dmKey" IS NOT NULL AND length("conversation"."dmKey") > 0)
 				OR
@@ -92,6 +92,7 @@ CREATE TABLE `message` (
 	`id` text PRIMARY KEY NOT NULL,
 	`conversationId` text NOT NULL,
 	`senderIdentityId` text NOT NULL,
+	`externalMessageId` text,
 	`bodyText` text,
 	`bodyHTML` text,
 	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
@@ -100,6 +101,7 @@ CREATE TABLE `message` (
 	FOREIGN KEY (`senderIdentityId`) REFERENCES `identity`(`id`) ON UPDATE no action ON DELETE restrict
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `uniq_message_external_message_id` ON `message` (`externalMessageId`);--> statement-breakpoint
 CREATE INDEX `idx_message_conversation_created` ON `message` (`conversationId`,`createdAt`);--> statement-breakpoint
 CREATE INDEX `idx_message_sender_created` ON `message` (`senderIdentityId`,`createdAt`);--> statement-breakpoint
 CREATE TABLE `session` (
