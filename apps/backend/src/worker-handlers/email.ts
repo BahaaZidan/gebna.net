@@ -404,13 +404,13 @@ export async function emailHandler(
 	});
 
 	if (insertedMessage && conversationIdForPublish) {
-		pubsub.publish("messageAdded", {
+		await pubsub.publish("messageAdded", {
 			conversationId: conversationIdForPublish,
 			messageId: persistedMessageId,
 		});
-		pubsub.publish("conversationUpdated", { conversationId: conversationIdForPublish });
+		await pubsub.publish("conversationUpdated", { conversationId: conversationIdForPublish });
 	}
 	if ((insertedMessage || createdDeliveries) && conversationIdForPublish) {
-		pubsub.publish("deliveryUpdated", { messageId: persistedMessageId });
+		await pubsub.publish("deliveryUpdated", { messageId: persistedMessageId });
 	}
 }
