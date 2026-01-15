@@ -376,11 +376,11 @@ export const resolvers: Resolvers = {
 			if (!message) throw new Error("Failed to create message");
 
 			if (insertedMessage) {
-				pubsub.publish("messageAdded", { conversationId: rawConversationId, messageId });
-				pubsub.publish("conversationUpdated", { conversationId: rawConversationId });
+				await pubsub.publish("messageAdded", { conversationId: rawConversationId, messageId });
+				await pubsub.publish("conversationUpdated", { conversationId: rawConversationId });
 			}
 			if (createdDeliveries) {
-				pubsub.publish("deliveryUpdated", { messageId });
+				await pubsub.publish("deliveryUpdated", { messageId });
 			}
 
 			return {
