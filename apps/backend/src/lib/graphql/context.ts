@@ -2,7 +2,7 @@ import { createGraphQLError, YogaInitialContext } from "graphql-yoga";
 
 import { DBInstance, getDB } from "$lib/db";
 import { getBearer, getViewerInfo } from "$lib/hono-apps/authentication";
-import { pubsub } from "./pubsub";
+import { getConversationPubSub } from "./pubsub";
 
 import { YogaServerContext } from "./types";
 
@@ -13,7 +13,7 @@ export async function context(
 ): Promise<{
 	db: DBInstance;
 	viewer: NonNullable<Awaited<ReturnType<typeof getViewerInfo>>>;
-	pubsub: typeof pubsub;
+	pubsub: ReturnType<typeof getConversationPubSub>;
 	env: CloudflareBindings;
 	executionCtx: YogaServerContext["executionCtx"];
 }> {
@@ -29,7 +29,13 @@ export async function context(
 	const viewer = await getViewerInfo(event.env, db, bearer);
 	if (!viewer) throw UNAUTHORIZED;
 
-	return { db, viewer, pubsub, env: event.env, executionCtx: event.executionCtx };
+	return {
+		db,
+		viewer,
+		pubsub: getConversationPubSub(event.env, event.executionCtx),
+		env: event.env,
+		executionCtx: event.executionCtx,
+	};
 }
 
 export type Context = Awaited<ReturnType<typeof context>>;

@@ -1,4 +1,15 @@
-import { AttachmentType } from "./graphql/resolvers.types";
+const _ATTACHMENT_TYPES = [
+	"Image",
+	"PDF",
+	"CalendarInvite",
+	"Document",
+	"Spreadsheet",
+	"Presentation",
+	"Media",
+	"ZIP",
+	"Other",
+] as const;
+type AttachmentType = (typeof _ATTACHMENT_TYPES)[number];
 
 export const MIME_TYPES_BY_ATTACHMENT_TYPE: Record<AttachmentType, string[]> = {
 	Image: [

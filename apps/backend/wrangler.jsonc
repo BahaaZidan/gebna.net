@@ -52,6 +52,10 @@
 				"class_name": "BackgroundContainer",
 				"name": "BACKGROUND_CONTAINER",
 			},
+			{
+				"class_name": "ConversationEventsDurableObject",
+				"name": "CONVERSATION_EVENTS",
+			},
 		],
 	},
 	"queues": {
@@ -71,6 +75,10 @@
 		{
 			"new_sqlite_classes": ["BackgroundContainer"],
 			"tag": "v1",
+		},
+		{
+			"tag": "v2",
+			"new_classes": ["ConversationEventsDurableObject"],
 		},
 	],
 }
