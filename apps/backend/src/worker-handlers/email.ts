@@ -20,7 +20,7 @@ import {
 	messageDeliveryTable,
 	messageTable,
 } from "$lib/db/schema";
-import { pubsub } from "$lib/graphql/pubsub";
+import { getConversationPubSub } from "$lib/graphql/pubsub";
 import { extractLocalPart } from "$lib/utils/email";
 import { buildCidResolver } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
@@ -117,9 +117,10 @@ async function findConversationIdByEmailThreadMessageIds(
 export async function emailHandler(
 	envelope: ForwardableEmailMessage,
 	bindings: CloudflareBindings,
-	_context: ExecutionContext
+	executionCtx: ExecutionContext
 ) {
 	const db = getDB(bindings);
+	const pubsub = getConversationPubSub(bindings, executionCtx);
 
 	const recipientLocal = extractLocalPart(envelope.to);
 	const recipientUser = await db.query.userTable.findFirst({
@@ -411,6 +412,9 @@ export async function emailHandler(
 		await pubsub.publish("conversationUpdated", { conversationId: conversationIdForPublish });
 	}
 	if ((insertedMessage || createdDeliveries) && conversationIdForPublish) {
-		await pubsub.publish("deliveryUpdated", { messageId: persistedMessageId });
+		await pubsub.publish("deliveryUpdated", {
+			conversationId: conversationIdForPublish,
+			messageId: persistedMessageId,
+		});
 	}
 }

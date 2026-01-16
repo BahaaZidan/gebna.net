@@ -269,12 +269,96 @@ Append `## Phase 4` including:
 
 # Phase 5 — Production-grade connection coordination (Durable Objects)
 
+## Phase 5 design notes (DO-per-conversation PubSub backing for Yoga)
+
+These are implementation notes to avoid ambiguity. They do not change the phase ordering or constraints.
+
+### Goal
+
+Keep the GraphQL Yoga WebSocket subscriptions interface the same as Phase 4, but replace the underlying PubSub distribution so it works across Worker instances using Cloudflare Durable Objects.
+
+### Scope key
+
+- Use one Durable Object instance per conversation.
+- Durable Object id MUST be derived from `conversationId` (e.g., `env.CONVERSATION_EVENTS.idFromName(conversationId)`).
+
+This ensures “hot” traffic is limited to busy conversations rather than a global singleton.
+
+### Event types and topics
+
+Use a small set of event names; include `conversationId` in payload (even though the DO is scoped).
+Recommended:
+
+- `messageAdded`
+- `deliveryUpdated`
+
+If your Yoga PubSub expects string topics, you can namespace them:
+
+- `messageAdded:<conversationId>`
+- `deliveryUpdated:<conversationId>`
+
+### Data model for events
+
+Events must be JSON-serializable. Include:
+
+- `conversationId`
+- `type` (one of the event types)
+- `payload` (the GraphQL-shaped payload you want to publish)
+- `seq` (optional but recommended): a monotonically increasing integer maintained by the conversation DO for ordering + de-dupe.
+
+### Worker ↔ DO connection strategy (important)
+
+Avoid “one WS per GraphQL subscriber”.
+
+Implement one Worker↔DO WebSocket connection per conversation per Worker instance:
+
+- When the first local subscriber in a Worker subscribes to `:<conversationId>`, the Worker ensures it has a WS to that conversation DO.
+- Multiplex all local Yoga subscribers for that conversation over that single WS.
+- When the last local subscriber for that conversation unsubscribes, close the WS after a short idle timeout.
+
+This keeps connection counts low.
+
+### Publish flow (mutation/ingest → DO)
+
+After DB writes in Phase 1/3 code paths:
+
+1. Call the conversation DO “publish” endpoint (HTTP or WS message) with the event.
+2. The DO increments `seq` and broadcasts the event to all connected Worker instances.
+3. Each Worker receives the event and dispatches it into Yoga’s local PubSub (EventTarget), waking GraphQL subscriptions.
+
+### Subscribe flow (Yoga → local EventTarget → DO)
+
+- Yoga subscriptions run inside the Worker and attach listeners to a local EventTarget.
+- The DO is used only to distribute events across Workers; Yoga still reads from the local EventTarget.
+- When WS messages arrive from the DO, the Worker creates a `CustomEvent` and dispatchEvent() on the local EventTarget.
+
+### Minimal DO interface
+
+Implement a conversation DO that supports:
+
+- WebSocket upgrade for Worker instances (not end-users):
+  - Worker authenticates using a shared secret/nonce derived from env (simple; document it).
+- Receiving publish messages:
+  - Accept `{ type, payload, conversationId }` and broadcast to connected sockets.
+
+### Where to wire this in Yoga
+
+In Phase 5:
+
+- Keep Yoga subscriptions over WebSocket (Phase 4).
+- Replace the Phase 4 in-memory PubSub/EventTarget with a DO-backed event distribution layer:
+  - Maintain a local EventTarget for Yoga
+  - Mirror publishes to the DO
+  - Mirror DO broadcasts into local EventTarget dispatches
+
+Document limitations and any security assumptions in IMPLICIT_PROTOCOL_SWITCHING_REPORT.md under Phase 5.
+
 **Goal:** Make realtime **production-grade** on Cloudflare by coordinating WebSocket connections via Durable Objects.
 
 **Requirements**
 
 - Introduce Durable Objects as the coordination layer:
-  - DO per conversation or per user (choose and justify)
+  - DO per conversation
   - handle fanout reliably
   - keep ordering sane
 - Keep GraphQL Yoga WebSocket interface; DO provides the backing coordination mechanism.

@@ -144,3 +144,36 @@
 ### Known limitations
 - PubSub is single-instance only; no Durable Object coordination yet (Phase 5).
 - Delivery status transitions beyond creation are not wired; only creation events are emitted.
+
+## Phase 5
+
+### What changed (behavior)
+- Replaced the in-memory pubsub with a Durable Object-backed coordinator per conversation. A single Worker↔DO WebSocket per conversation is shared across local subscribers; events carry `conversationId`, a `sourceId` for de-dupe, and optional `seq` ordering from the DO.
+- GraphQL Yoga context now provides a DO-aware pubsub that mirrors publishes to the DO and dispatches DO broadcasts into the local EventTarget used by subscriptions. Connections idle-close after 30s with reconnect/backoff on failure.
+- Subscription resolvers now ensure conversation-scoped connections: `messageAdded` uses conversation-scoped subscribe, `deliveryUpdated` resolves the message’s conversationId before subscribing, and `conversationUpdated` warms connections for the viewer’s active conversations.
+- Email ingest publishes delivery updates with conversation ids so delivery subscriptions can be routed to the right DO.
+- Publishing now uses HTTP POST to the Durable Object (secret-gated) while Worker sockets are receive-only; the DO persists and increments `seq` in storage before broadcasting for at-least-once fanout (duplicates possible, order recoverable via `seq`).
+
+### DO design choice and rationale
+- DO class `ConversationEventsDurableObject` (binding `CONVERSATION_EVENTS`) runs one instance per `conversationId` (stub derived via `idFromName(conversationId)`), broadcasting JSON events to all connected worker sockets. A shared secret `CONVERSATION_EVENTS_SECRET` gates worker connections and POST publishes. Per-DO monotonic `seq` is stored in DO storage and attached for ordering/de-dupe.
+- Worker side keeps one WebSocket per conversation per instance to receive DO broadcasts while publishes go through `DOStub.fetch` POST; idle timer and reconnection keep connection counts low while tolerating worker restarts.
+
+### Failure modes and reconnection strategy
+- If the DO binding/secret is absent or the DO is unreachable, the pubsub falls back to local-only delivery (no cross-instance fanout). Socket failures trigger a 1s reconnect with queued events retained until an open socket is available.
+- `conversationUpdated` connections are warmed for conversations the viewer belongs to at subscription time; newly joined conversations may require a resubscribe to start receiving cross-instance updates.
+
+### Files changed/added
+- apps/backend/src/lib/graphql/pubsub.ts
+- apps/backend/src/lib/graphql/context.ts
+- apps/backend/src/lib/graphql/resolvers.ts
+- apps/backend/src/worker-handlers/email.ts
+- apps/backend/src/lib/durable-objects/conversation-events.ts
+- apps/backend/src/index.ts
+- apps/backend/wrangler.jsonc
+- apps/backend/worker-configuration.d.ts
+
+### How to test
+- Ensure `CONVERSATION_EVENTS` is configured (wrangler migration tag `v2`) and set `CONVERSATION_EVENTS_SECRET` in the worker env.
+- Start the backend and open two WebSocket clients to `/graphql` on different worker instances or processes. Subscribe to `messageAdded(conversationId)` and `deliveryUpdated(messageId)`.
+- Send a message via `sendMessage`; observe both subscribers receive `messageAdded`/`conversationUpdated`, and `deliveryUpdated` events. Close one subscriber to confirm the remaining subscriptions continue via the shared connection and reconnect after a forced DO restart.
+- For regression around publish transport, open a subscription client A, send repeated messages from a separate session B, and confirm A receives every event (not just the first) with `seq` progressing monotonically.

@@ -36,21 +36,30 @@ function transportForIdentity(identity: {
 	return identity.kind === "GEBNA_USER" ? "GEBNA_DM" : "EMAIL";
 }
 
-function filterAsyncIterator<T>(
+async function* filterAsyncIterator<T>(
 	source: AsyncIterable<T>,
 	predicate: (value: T) => boolean
-): AsyncIterable<T> {
-	return {
-		async *[Symbol.asyncIterator]() {
-			for await (const value of source) {
-				if (predicate(value)) yield value;
-			}
-		},
-	};
+): AsyncGenerator<T, void, unknown> {
+	for await (const value of source) {
+		if (predicate(value)) yield value;
+	}
+}
+
+async function* withCleanup<T>(
+	source: AsyncIterable<T>,
+	onFinally: () => void
+): AsyncGenerator<T, void, unknown> {
+	try {
+		for await (const value of source) {
+			yield value;
+		}
+	} finally {
+		onFinally();
+	}
 }
 
 type MessageAddedPayload = { conversationId: string; messageId: string };
-type DeliveryUpdatedPayload = { messageId: string };
+type DeliveryUpdatedPayload = { conversationId: string; messageId: string };
 type ConversationUpdatedPayload = { conversationId: string };
 
 async function upsertViewerState({
@@ -380,7 +389,7 @@ export const resolvers: Resolvers = {
 				await pubsub.publish("conversationUpdated", { conversationId: rawConversationId });
 			}
 			if (createdDeliveries) {
-				await pubsub.publish("deliveryUpdated", { messageId });
+				await pubsub.publish("deliveryUpdated", { conversationId: rawConversationId, messageId });
 			}
 
 			return {
@@ -467,12 +476,7 @@ export const resolvers: Resolvers = {
 		messageAdded: {
 			subscribe: (_parent, args, { pubsub }) => {
 				const rawConversationId = fromGlobalId(args.conversationId).id;
-				return filterAsyncIterator(
-					pubsub.subscribe("messageAdded") as AsyncIterable<MessageAddedPayload>,
-					(payload) => {
-						return payload.conversationId === rawConversationId;
-					}
-				);
+				return pubsub.subscribeToConversation("messageAdded", rawConversationId);
 			},
 			resolve: async (payload: MessageAddedPayload, _args: unknown, { db }: Context) => {
 				const message = await db.query.messageTable.findFirst({
@@ -483,10 +487,18 @@ export const resolvers: Resolvers = {
 			},
 		},
 		deliveryUpdated: {
-			subscribe: (_parent, args, { pubsub }) => {
+			subscribe: async (_parent, args, { pubsub, db }) => {
 				const rawMessageId = fromGlobalId(args.messageId).id;
+				const message = await db.query.messageTable.findFirst({
+					columns: { conversationId: true },
+					where: (t, { eq }) => eq(t.id, rawMessageId),
+				});
+				if (!message) throw new Error("Message not found");
+
 				return filterAsyncIterator(
-					pubsub.subscribe("deliveryUpdated") as AsyncIterable<DeliveryUpdatedPayload>,
+					pubsub.subscribeToConversation("deliveryUpdated", message.conversationId) as AsyncIterable<
+						DeliveryUpdatedPayload
+					>,
 					(payload) => {
 						return payload.messageId === rawMessageId;
 					}
@@ -500,8 +512,24 @@ export const resolvers: Resolvers = {
 			},
 		},
 		conversationUpdated: {
-			subscribe: (_parent, _args, { pubsub }) =>
-				pubsub.subscribe("conversationUpdated") as AsyncIterable<ConversationUpdatedPayload>,
+			subscribe: async (_parent, _args, { pubsub, db, viewer }) => {
+				const participantConversations = await db.query.conversationParticipantTable.findMany({
+					columns: { conversationId: true, state: true },
+					where: (t, { and, eq }) =>
+						and(
+							eq(t.identityId, viewer.identity.id),
+							eq(t.state, DEFAULT_PARTICIPANT_STATE)
+						),
+				});
+				const conversationIds = Array.from(
+					new Set(participantConversations.map((p) => p.conversationId))
+				);
+				const cleanup = pubsub.trackConversations(conversationIds);
+				return withCleanup(
+					pubsub.subscribe("conversationUpdated") as AsyncIterable<ConversationUpdatedPayload>,
+					cleanup
+				);
+			},
 			resolve: async (payload: ConversationUpdatedPayload, _args: unknown, { db }: Context) => {
 				const conversation = await db.query.conversationTable.findFirst({
 					where: (t, { eq }) => eq(t.id, payload.conversationId),

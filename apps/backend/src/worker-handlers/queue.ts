@@ -2,7 +2,7 @@ import { getRandom } from "@cloudflare/containers";
 import { eq } from "drizzle-orm";
 
 import { DBInstance, getDB } from "$lib/db";
-import { addressAvatarInferences, contactTable } from "$lib/db/schema";
+import { identityRelationshipTable } from "$lib/db/schema";
 import type {
 	ContactAvatarQueueMessage,
 	QueueMessage,
@@ -41,28 +41,24 @@ export async function queueHandler(
 }
 
 async function processContactAvatarMessage(db: DBInstance, message: ContactAvatarQueueMessage) {
-	const contact = await db.query.contactTable.findFirst({
-		where: (t, { eq }) => eq(t.id, message.payload.contactId),
+	const contact = await db.query.identityRelationshipTable.findFirst({
+		where: (t, { and, eq }) => and(eq(t.id, message.payload.contactId), eq(t.isContact, true)),
 	});
-	if (!contact || contact.uploadedAvatar) return;
+	if (!contact) return;
 
-	const inferredAvatar = await resolveAvatar(db, contact.address).catch(() => undefined);
+	const identity = await db.query.identityTable.findFirst({
+		where: (t, { eq }) => eq(t.id, contact.identityId),
+	});
+	if (!identity) return;
+
+	const inferredAvatar = await resolveAvatar(db, identity.address).catch(() => undefined);
 	if (!inferredAvatar) return;
 
 	const now = new Date();
-	await db.transaction(async (tx) => {
-		await tx
-			.update(contactTable)
-			.set({ inferredAvatar, updatedAt: now })
-			.where(eq(contactTable.id, contact.id));
-		await tx
-			.insert(addressAvatarInferences)
-			.values({ address: contact.address, lastCheckedAt: now, avatarURL: inferredAvatar })
-			.onConflictDoUpdate({
-				target: addressAvatarInferences.address,
-				set: { lastCheckedAt: now, avatarURL: inferredAvatar },
-			});
-	});
+	await db
+		.update(identityRelationshipTable)
+		.set({ avatarUrl: inferredAvatar, updatedAt: now })
+		.where(eq(identityRelationshipTable.id, contact.id));
 }
 
 async function processThumbnailMessage(env: CloudflareBindings, message: ThumbnailQueueMessage) {

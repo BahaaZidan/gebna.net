@@ -7,6 +7,7 @@ import { emailHandler } from "./worker-handlers/email";
 import { fetchHandler } from "./worker-handlers/fetch";
 import { queueHandler } from "./worker-handlers/queue";
 import { scheduledHandler } from "./worker-handlers/scheduled";
+export { ConversationEventsDurableObject } from "./lib/durable-objects/conversation-events";
 
 export class BackgroundContainer extends Container<CloudflareBindings> {
 	defaultPort = 8787;
