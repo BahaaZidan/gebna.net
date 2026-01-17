@@ -12,6 +12,7 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
+		"@fontsource/inter": "^5.2.8",
 		"@gebna/types": "workspace:*",
 		"@sveltejs/adapter-cloudflare": "^7.2.5",
 		"@sveltejs/kit": "^2.49.5",
