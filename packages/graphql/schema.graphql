@@ -175,6 +175,9 @@ type IdentityEdge {
 
 type Viewer implements Node {
 	id: ID!
+	username: String!
+	name: String!
+	avatar: String!
 
 	conversationsByMailbox(mailbox: Mailbox!, first: Int!, after: Cursor): ConversationConnection!
 
