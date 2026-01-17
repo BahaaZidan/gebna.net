@@ -1,84 +1,50 @@
-<script lang="ts" generics="T extends Record<string, unknown>">
-	import type { Snippet } from "svelte";
-	import type { HTMLInputTypeAttribute } from "svelte/elements";
-	import {
-		formFieldProxy,
-		type FormPathArrays,
-		type FormPathLeaves,
-		type SuperForm,
-	} from "sveltekit-superforms";
+<script lang="ts">
+	import type { FieldElementProps } from "@formisch/svelte";
 
-	import InputFieldError from "./InputFieldError.svelte";
-	import RemoveInputButton from "./RemoveInputButton.svelte";
-
-	interface Props {
-		superform: SuperForm<T>;
-		field: FormPathLeaves<T>;
+	interface Props extends FieldElementProps {
+		class?: string;
+		type: "text" | "email" | "tel" | "password" | "url" | "number" | "date";
 		label?: string;
 		placeholder?: string;
-		hint?: string;
-		type?: HTMLInputTypeAttribute;
-		join?: Snippet;
-		remover?: {
-			field: FormPathArrays<T>;
-			index: number;
-		};
-		disabled?: boolean;
-		prepend?: Snippet;
+		required?: boolean;
+		input: string | number | undefined;
+		errors: [string, ...string[]] | null;
 	}
 
-	let {
-		superform,
-		field,
-		label,
-		placeholder,
-		hint,
-		type = "text",
-		remover,
-		join,
-		disabled,
-		prepend,
-	}: Props = $props();
+	let { class: className, label, name, required, input, errors, ...fieldProps }: Props = $props();
 
-	const { value, errors, constraints } = $derived(formFieldProxy(superform, field));
+	let value: string | number | undefined = $state();
 
-	const isJoined = $derived(!!remover || !!join);
+	$effect(() => {
+		if (!Number.isNaN(input)) {
+			value = input;
+		}
+	});
 </script>
 
-<div class="flex flex-col">
-	<fieldset class="fieldset">
-		{#if label}
-			<legend class="fieldset-legend">{label}</legend>
+<fieldset class="fieldset">
+	<legend class="fieldset-legend">
+		{label}
+		{#if required}
+			<span class="text-error">*</span>
 		{/if}
-		<div class={{ join: isJoined }}>
-			<label class={["input w-full", { "input-error": !!$errors, "join-item": isJoined }]}>
-				{@render prepend?.()}
-				<input
-					{type}
-					class="grow"
-					{placeholder}
-					name={field}
-					bind:value={$value}
-					aria-invalid={!!$errors}
-					{disabled}
-					{...$constraints}
-				/>
-			</label>
-			{#if join}
-				{@render join()}
-			{:else if remover}
-				<RemoveInputButton
-					{superform}
-					field={remover.field}
-					index={remover.index}
-					class="join-item btn-secondary"
-					{disabled}
-				/>
-			{/if}
-		</div>
-		{#if hint}
-			<p class="label">{hint}</p>
-		{/if}
-	</fieldset>
-	<InputFieldError errors={$errors} />
-</div>
+	</legend>
+	<input
+		{...fieldProps}
+		id={name}
+		{name}
+		class={[
+			"input",
+			{
+				"input-error": errors,
+			},
+		]}
+		{value}
+		{required}
+		aria-invalid={!!errors}
+		aria-errormessage={`${name}-error`}
+	/>
+	{#if errors}
+		<p class="label text-error">{errors[0]}</p>
+	{/if}
+</fieldset>

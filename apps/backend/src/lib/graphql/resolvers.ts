@@ -496,9 +496,10 @@ export const resolvers: Resolvers = {
 				if (!message) throw new Error("Message not found");
 
 				return filterAsyncIterator(
-					pubsub.subscribeToConversation("deliveryUpdated", message.conversationId) as AsyncIterable<
-						DeliveryUpdatedPayload
-					>,
+					pubsub.subscribeToConversation(
+						"deliveryUpdated",
+						message.conversationId
+					) as AsyncIterable<DeliveryUpdatedPayload>,
 					(payload) => {
 						return payload.messageId === rawMessageId;
 					}
@@ -516,10 +517,7 @@ export const resolvers: Resolvers = {
 				const participantConversations = await db.query.conversationParticipantTable.findMany({
 					columns: { conversationId: true, state: true },
 					where: (t, { and, eq }) =>
-						and(
-							eq(t.identityId, viewer.identity.id),
-							eq(t.state, DEFAULT_PARTICIPANT_STATE)
-						),
+						and(eq(t.identityId, viewer.identity.id), eq(t.state, DEFAULT_PARTICIPANT_STATE)),
 				});
 				const conversationIds = Array.from(
 					new Set(participantConversations.map((p) => p.conversationId))
@@ -654,6 +652,7 @@ export const resolvers: Resolvers = {
 	},
 	Viewer: {
 		id: (parent) => toGlobalId("Viewer", parent.id),
+		avatar: (parent) => parent.avatar || parent.avatarPlaceholder,
 		conversationsByMailbox: async (parent, args, { viewer, db }) => {
 			const pageSize = args.first;
 			const afterId = args.after ? fromGlobalId(args.after).id : null;

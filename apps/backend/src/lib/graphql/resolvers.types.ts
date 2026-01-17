@@ -328,10 +328,13 @@ export type UpsertConversationPayload = {
 
 export type Viewer = Node & {
   __typename?: 'Viewer';
+  avatar: Scalars['String']['output'];
   /** List of saved contacts. */
   contacts: IdentityConnection;
   conversationsByMailbox: ConversationConnection;
   id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  username: Scalars['String']['output'];
 };
 
 
@@ -662,9 +665,12 @@ export type UpsertConversationPayloadResolvers<ContextType = Context, ParentType
 };
 
 export type ViewerResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Viewer'] = ResolversParentTypes['Viewer']> = {
+  avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   contacts?: Resolver<ResolversTypes['IdentityConnection'], ParentType, ContextType, RequireFields<ViewerContactsArgs, 'first'>>;
   conversationsByMailbox?: Resolver<ResolversTypes['ConversationConnection'], ParentType, ContextType, RequireFields<ViewerConversationsByMailboxArgs, 'first' | 'mailbox'>>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  username?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
