@@ -18,8 +18,8 @@
 	import type { LayoutData } from "./$houdini";
 
 	let props: { children: Snippet; data: LayoutData } = $props();
-	let AppLayoutQuery = $derived(props.data.AppLayoutQuery);
-	let viewer = $derived($AppLayoutQuery.data?.viewer);
+	let MainViewerQuery = $derived(props.data.MainViewerQuery);
+	let viewer = $derived($MainViewerQuery.data?.viewer);
 
 	let loginForm = createForm({
 		schema: loginSchema,
@@ -75,11 +75,11 @@
 	</div>
 {:else}
 	<main class="flex">
-		<div class="flex h-screen w-16 flex-col items-center justify-between border-r py-3">
+		<div class="flex h-screen w-16 min-w-16 flex-col items-center justify-between border-r py-3">
 			<div class="flex flex-col">
 				{@render iconLink({ route: "/app/desktop", label: "Dashboard", Icon: LayoutDashboardIcon })}
 				{@render iconLink({
-					route: "/app/desktop/mail",
+					route: "/app/desktop/messages",
 					label: "Messages",
 					Icon: MessagesSquareIcon,
 				})}

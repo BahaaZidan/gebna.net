@@ -653,7 +653,8 @@ export const resolvers: Resolvers = {
 	Viewer: {
 		id: (parent) => toGlobalId("Viewer", parent.id),
 		avatar: (parent) => parent.avatar || parent.avatarPlaceholder,
-		conversationsByMailbox: async (parent, args, { viewer, db }) => {
+		identity: (_parent, _args, { viewer }) => viewer.identity,
+		conversations: async (parent, args, { viewer, db }) => {
 			const pageSize = args.first;
 			const afterId = args.after ? fromGlobalId(args.after).id : null;
 
