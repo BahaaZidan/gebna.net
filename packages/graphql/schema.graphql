@@ -124,6 +124,7 @@ type Message implements Node {
 	sender: Identity!
 
 	bodyText: String
+	bodyHTML: String
 	createdAt: DateTime!
 
 	delivery: [DeliveryReceipt!]!
