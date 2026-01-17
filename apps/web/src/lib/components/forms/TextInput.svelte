@@ -40,9 +40,9 @@
 		prepend,
 	}: Props = $props();
 
-	const { value, errors, constraints } = formFieldProxy(superform, field);
+	const { value, errors, constraints } = $derived(formFieldProxy(superform, field));
 
-	const isJoined = !!remover || !!join;
+	const isJoined = $derived(!!remover || !!join);
 </script>
 
 <div class="flex flex-col">
