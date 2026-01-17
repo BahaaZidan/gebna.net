@@ -3,11 +3,6 @@
 	themes: black --default;
 }
 
-/* @plugin "daisyui/theme" {
-	name: "dark";
-	--radius-selector: 1.5rem;
-	--radius-field: 1.5rem;
-	--radius-box: 1.5rem;
-	--size-selector: 0.25rem;
-	--size-field: 0.25rem;
-} */
+@theme {
+	--font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
