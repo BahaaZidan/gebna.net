@@ -331,8 +331,9 @@ export type Viewer = Node & {
   avatar: Scalars['String']['output'];
   /** List of saved contacts. */
   contacts: IdentityConnection;
-  conversationsByMailbox: ConversationConnection;
+  conversations: ConversationConnection;
   id: Scalars['ID']['output'];
+  identity: Identity;
   name: Scalars['String']['output'];
   username: Scalars['String']['output'];
 };
@@ -345,7 +346,7 @@ export type ViewerContactsArgs = {
 };
 
 
-export type ViewerConversationsByMailboxArgs = {
+export type ViewerConversationsArgs = {
   after?: InputMaybe<Scalars['Cursor']['input']>;
   first: Scalars['Int']['input'];
   mailbox: Mailbox;
@@ -667,8 +668,9 @@ export type UpsertConversationPayloadResolvers<ContextType = Context, ParentType
 export type ViewerResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Viewer'] = ResolversParentTypes['Viewer']> = {
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   contacts?: Resolver<ResolversTypes['IdentityConnection'], ParentType, ContextType, RequireFields<ViewerContactsArgs, 'first'>>;
-  conversationsByMailbox?: Resolver<ResolversTypes['ConversationConnection'], ParentType, ContextType, RequireFields<ViewerConversationsByMailboxArgs, 'first' | 'mailbox'>>;
+  conversations?: Resolver<ResolversTypes['ConversationConnection'], ParentType, ContextType, RequireFields<ViewerConversationsArgs, 'first' | 'mailbox'>>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  identity?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   username?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;

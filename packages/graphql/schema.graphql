@@ -179,7 +179,9 @@ type Viewer implements Node {
 	name: String!
 	avatar: String!
 
-	conversationsByMailbox(mailbox: Mailbox!, first: Int!, after: Cursor): ConversationConnection!
+	identity: Identity!
+
+	conversations(mailbox: Mailbox!, first: Int!, after: Cursor): ConversationConnection!
 
 	"""
 	List of saved contacts.
