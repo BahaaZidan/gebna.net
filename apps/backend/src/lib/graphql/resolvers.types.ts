@@ -167,6 +167,7 @@ export type MarkConversationReadPayload = {
 
 export type Message = Node & {
   __typename?: 'Message';
+  bodyHTML?: Maybe<Scalars['String']['output']>;
   bodyText?: Maybe<Scalars['String']['output']>;
   conversationId: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
@@ -595,6 +596,7 @@ export type MarkConversationReadPayloadResolvers<ContextType = Context, ParentTy
 };
 
 export type MessageResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Message'] = ResolversParentTypes['Message']> = {
+  bodyHTML?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   bodyText?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   conversationId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
