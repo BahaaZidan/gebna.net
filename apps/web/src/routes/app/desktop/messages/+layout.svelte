@@ -24,8 +24,8 @@
 	</div>
 {/snippet}
 
-<div class="flex">
-	<div class="flex h-screen w-[40%] min-w-xs flex-col border-r px-5 py-3">
+<div class="flex h-full min-h-0">
+	<div class="flex h-full w-[40%] min-w-xs flex-col border-r px-5 py-3">
 		<div class="flex justify-between">
 			<h1 class="font-mono text-2xl font-bold">gebna</h1>
 			<div class="flex">
@@ -33,7 +33,7 @@
 				{@render iconButton({ label: "Menu", Icon: EllipsisVerticalIcon })}
 			</div>
 		</div>
-		<div class="flex flex-col overflow-y-scroll">
+		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
 			{#if conversations}
 				{#each conversations as { node } (node.id)}
 					<a
@@ -57,7 +57,7 @@
 			{/if}
 		</div>
 	</div>
-	<div class="w-full">
+	<div class="flex h-full min-h-0 w-full flex-col overflow-hidden">
 		{@render props.children()}
 	</div>
 </div>
