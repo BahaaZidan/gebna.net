@@ -11,11 +11,26 @@ export const _houdini_load = graphql(`
 						kind
 						title
 						updatedAt
+						viewerState {
+							unreadCount
+						}
+						lastMessage {
+							id
+							bodyText
+						}
 						participants {
 							identity {
 								id
 								address
 								kind
+								name
+								avatar
+								relationshipToViewer {
+									id
+									isContact
+									displayName
+									avatarUrl
+								}
 							}
 						}
 					}
