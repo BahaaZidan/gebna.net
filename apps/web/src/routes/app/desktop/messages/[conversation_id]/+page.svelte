@@ -1,4 +1,11 @@
 <script lang="ts">
+	import { type IconProps } from "@lucide/svelte";
+	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
+	import MicIcon from "@lucide/svelte/icons/mic";
+	import PlusIcon from "@lucide/svelte/icons/plus";
+	import SearchIcon from "@lucide/svelte/icons/search";
+	import { type Component } from "svelte";
+
 	import { formatInboxDate } from "$lib/format";
 
 	import type { PageData } from "./$houdini";
@@ -14,27 +21,65 @@
 
 	let MainViewerQuery = $derived(props.data.MainViewerQuery);
 	let viewer = $derived($MainViewerQuery.data?.viewer);
+
+	// TODO: fix the overflow issue in the message list. This needs to be a proper chatting UI
 </script>
 
 {#if conversation && viewer}
-	<div class="flex flex-col-reverse">
-		{#each conversation.messages.edges as { node } (node.id)}
-			<div class={["chat", node.sender.id === viewer.identity.id ? "chat-end" : "chat-start"]}>
-				<div class="avatar chat-image">
-					<div class="w-10 rounded-full">
-						<img
-							alt="Tailwind CSS chat bubble component"
-							src="https://img.daisyui.com/images/profile/demo/kenobee@192.webp"
-						/>
-					</div>
-				</div>
-				<div class="chat-header">
-					{node.sender.address}
-					<time class="text-xs opacity-50">{formatInboxDate(node.createdAt)}</time>
-				</div>
-				<div class="chat-bubble">{node.bodyText}</div>
-				<div class="chat-footer opacity-50">Delivered</div>
+	<div class="flex flex-col p-3">
+		<div class="flex justify-between">
+			<div class="flex items-center gap-2">
+				<img
+					class="size-10"
+					alt="Tailwind CSS chat bubble component"
+					src="https://img.daisyui.com/images/profile/demo/kenobee@192.webp"
+				/>
+				Person / Group name
 			</div>
-		{/each}
+			<div class="flex">
+				{@render iconButton({ label: "Search", Icon: SearchIcon })}
+				{@render iconButton({ label: "Menu", Icon: EllipsisVerticalIcon })}
+			</div>
+		</div>
+		<div class="flex max-h-[85vh] flex-col-reverse overflow-y-scroll">
+			{#each conversation.messages.edges as { node } (node.id)}
+				{@const bySelf = node.sender.id === viewer.identity.id}
+				<div class={["chat", bySelf ? "chat-end" : "chat-start"]}>
+					{#if !bySelf}
+						<div class="avatar chat-image">
+							<div class="w-10">
+								<img
+									alt="Tailwind CSS chat bubble component"
+									src="https://img.daisyui.com/images/profile/demo/kenobee@192.webp"
+								/>
+							</div>
+						</div>
+					{/if}
+					<div class="chat-header">
+						{node.sender.address}
+						<time class="text-xs opacity-50">{formatInboxDate(node.createdAt)}</time>
+					</div>
+					<div class="chat-bubble">{node.bodyText}</div>
+					<div class="chat-footer opacity-50">Delivered</div>
+				</div>
+			{/each}
+		</div>
+		<div class="textarea flex w-full">
+			<button class="btn btn-ghost">
+				<PlusIcon />
+			</button>
+			<textarea class="grow"></textarea>
+			<button class="btn btn-ghost">
+				<MicIcon />
+			</button>
+		</div>
 	</div>
 {/if}
+
+{#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconProps> })}
+	<div class="tooltip tooltip-bottom" data-tip={label}>
+		<button class="btn p-2 btn-ghost">
+			<Icon />
+		</button>
+	</div>
+{/snippet}

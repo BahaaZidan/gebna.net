@@ -33,7 +33,7 @@
 				{@render iconButton({ label: "Menu", Icon: EllipsisVerticalIcon })}
 			</div>
 		</div>
-		<div class="flex flex-col">
+		<div class="flex flex-col overflow-y-scroll">
 			{#if conversations}
 				{#each conversations as { node } (node.id)}
 					<a

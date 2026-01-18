@@ -74,7 +74,9 @@
 		</Form>
 	</div>
 {:else}
-	<main class="flex">
+	<main
+		class="flex h-screen max-h-screen min-h-screen w-screen max-w-screen min-w-screen overflow-hidden"
+	>
 		<div class="flex h-screen w-16 min-w-16 flex-col items-center justify-between border-r py-3">
 			<div class="flex flex-col">
 				{@render iconLink({ route: "/app/desktop", label: "Dashboard", Icon: LayoutDashboardIcon })}
