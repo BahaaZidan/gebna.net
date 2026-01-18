@@ -216,24 +216,24 @@ export const messageTable = sqliteTable(
 		senderIdentityId: text()
 			.notNull()
 			.references(() => identityTable.id, { onDelete: "restrict" }),
-			/**
-			 * Normalized RFC5322 Message-Id for inbound email de-duping and threading.
-			 * For non-email messages, this is NULL.
-			 */
-			externalMessageId: text(),
-			bodyText: text(),
-			bodyHTML: text(),
-			createdAt: integer({ mode: "timestamp" })
-				.notNull()
-				.default(sql`(strftime('%s','now'))`),
-			emailMetadata: text({ mode: "json" }).$type<EmailMetadata>(),
-		},
-		(self) => [
-			uniqueIndex("uniq_message_external_message_id").on(self.externalMessageId),
-			index("idx_message_conversation_created").on(self.conversationId, self.createdAt),
-			index("idx_message_sender_created").on(self.senderIdentityId, self.createdAt),
-		]
-	);
+		/**
+		 * Normalized RFC5322 Message-Id for inbound email de-duping and threading.
+		 * For non-email messages, this is NULL.
+		 */
+		externalMessageId: text(),
+		bodyText: text(),
+		bodyHTML: text(),
+		createdAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
+		emailMetadata: text({ mode: "json" }).$type<EmailMetadata>(),
+	},
+	(self) => [
+		uniqueIndex("uniq_message_external_message_id").on(self.externalMessageId),
+		index("idx_message_conversation_created").on(self.conversationId, self.createdAt),
+		index("idx_message_sender_created").on(self.senderIdentityId, self.createdAt),
+	]
+);
 
 const DeliveryStatus = ["QUEUED", "SENT", "DELIVERED", "READ", "FAILED"] as const;
 type DeliveryStatus = (typeof DeliveryStatus)[number];
