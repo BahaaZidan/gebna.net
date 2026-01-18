@@ -21,13 +21,11 @@
 
 	let MainViewerQuery = $derived(props.data.MainViewerQuery);
 	let viewer = $derived($MainViewerQuery.data?.viewer);
-
-	// TODO: fix the overflow issue in the message list. This needs to be a proper chatting UI
 </script>
 
 {#if conversation && viewer}
-	<div class="flex flex-col p-3">
-		<div class="flex justify-between">
+	<div class="flex h-full min-h-0 flex-col">
+		<div class="flex shrink-0 justify-between border-b p-3">
 			<div class="flex items-center gap-2">
 				<img
 					class="size-10"
@@ -41,7 +39,7 @@
 				{@render iconButton({ label: "Menu", Icon: EllipsisVerticalIcon })}
 			</div>
 		</div>
-		<div class="flex max-h-[85vh] flex-col-reverse overflow-y-scroll">
+		<div class="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto p-3">
 			{#each conversation.messages.edges as { node } (node.id)}
 				{@const bySelf = node.sender.id === viewer.identity.id}
 				<div class={["chat", bySelf ? "chat-end" : "chat-start"]}>
@@ -64,14 +62,20 @@
 				</div>
 			{/each}
 		</div>
-		<div class="textarea flex w-full">
-			<button class="btn btn-ghost">
-				<PlusIcon />
-			</button>
-			<textarea class="grow"></textarea>
-			<button class="btn btn-ghost">
-				<MicIcon />
-			</button>
+		<div class="flex shrink-0 flex-col gap-2 border-t pt-3">
+			<div class="flex w-full items-end gap-2">
+				<button class="btn btn-ghost">
+					<PlusIcon />
+				</button>
+				<textarea
+					class="textarea-bordered textarea grow resize-none"
+					rows="1"
+					placeholder="Message"
+				></textarea>
+				<button class="btn btn-ghost">
+					<MicIcon />
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}
