@@ -105,8 +105,10 @@ export type Identity = Node & {
    * - "bob@gmail.com"
    */
   address: Scalars['String']['output'];
+  avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   kind: IdentityKind;
+  name: Scalars['String']['output'];
   /**
    * Viewer-scoped relationship metadata (contacts).
    * Always resolved.
@@ -571,8 +573,10 @@ export type DeliveryReceiptResolvers<ContextType = Context, ParentType extends R
 
 export type IdentityResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Identity'] = ResolversParentTypes['Identity']> = {
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['IdentityKind'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   relationshipToViewer?: Resolver<Maybe<ResolversTypes['IdentityRelationship']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };

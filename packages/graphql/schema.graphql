@@ -60,6 +60,9 @@ type Identity implements Node {
 
 	kind: IdentityKind!
 
+	name: String!
+	avatar: String!
+
 	"""
 	Viewer-scoped relationship metadata (contacts).
 	Always resolved.

@@ -3,6 +3,7 @@
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
 	import MessageSquarePlusIcon from "@lucide/svelte/icons/message-square-plus";
 	import SearchIcon from "@lucide/svelte/icons/search";
+	import UsersIcon from "@lucide/svelte/icons/users";
 	import { type Component, type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
@@ -14,6 +15,8 @@
 	let props: { children: Snippet; data: LayoutData } = $props();
 	let ConversationsListQuery = $derived(props.data.ConversationsListQuery);
 	let conversations = $derived($ConversationsListQuery.data?.viewer?.conversations.edges);
+	let MainViewerQuery = $derived(props.data.MainViewerQuery);
+	let viewer = $derived($MainViewerQuery.data?.viewer);
 </script>
 
 {#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconProps> })}
@@ -36,21 +39,34 @@
 		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
 			{#if conversations}
 				{#each conversations as { node } (node.id)}
+					{@const otherParticipants = node.participants.filter(
+						(p) => p.identity.id !== viewer?.identity.id
+					)}
 					<a
 						href={resolve("/app/desktop/messages/[conversation_id]", { conversation_id: node.id })}
-						class="flex w-full items-center gap-3 p-3 hover:bg-base-100"
+						class="flex w-full items-center gap-3 p-3 hover:bg-base-200"
 					>
-						<img
-							src="https://img.daisyui.com/images/profile/demo/batperson@192.webp"
-							alt="I don't event know"
-							class="size-12 object-contain"
-						/>
-						<div class="flex flex-col gap-1">
-							<div class="font-semibold">{node.title}</div>
-							<div class="line-clamp-1 text-sm">{node.kind}</div>
-						</div>
-						<div class="ml-auto text-sm">
-							{formatInboxDate(node.updatedAt)}
+						{#if node.kind === "PRIVATE"}
+							<img
+								src={otherParticipants[0].identity.avatar}
+								alt="I don't event know"
+								class="size-12 object-contain"
+							/>
+						{:else}
+							<div class="flex size-12 min-h-12 min-w-12 items-center justify-center bg-base-300">
+								<UsersIcon />
+							</div>
+						{/if}
+						<div class="flex w-full flex-col gap-1">
+							<div class="flex justify-between">
+								<div class="font-semibold">
+									{node.kind === "PRIVATE" ? otherParticipants[0].identity.name : node.title}
+								</div>
+								<div class="ml-auto text-sm">
+									{formatInboxDate(node.updatedAt)}
+								</div>
+							</div>
+							<div class="line-clamp-1 text-sm text-gray-400">{node.lastMessage.bodyText}</div>
 						</div>
 					</a>
 				{/each}

@@ -13,6 +13,7 @@ import {
 	messageDeliveryTable,
 	messageTable,
 } from "$lib/db/schema";
+import { extractLocalPart } from "$lib/utils/email";
 
 import type { Context } from "./context";
 import type { Resolvers, ResolversTypes } from "./resolvers.types";
@@ -644,6 +645,20 @@ export const resolvers: Resolvers = {
 			return await db.query.identityRelationshipTable.findFirst({
 				where: (t, { and, eq }) => and(eq(t.ownerId, viewer.user.id), eq(t.identityId, parent.id)),
 			});
+		},
+		name: async (parent, _args, { db }) => {
+			if (parent.kind === "EXTERNAL_EMAIL") return "";
+			const user = await db.query.userTable.findFirst({
+				where: (t, { eq }) => eq(t.username, extractLocalPart(parent.address)),
+			});
+			return user!.name;
+		},
+		avatar: async (parent, _args, { db }) => {
+			if (parent.kind === "EXTERNAL_EMAIL") return "";
+			const user = await db.query.userTable.findFirst({
+				where: (t, { eq }) => eq(t.username, extractLocalPart(parent.address)),
+			});
+			return user!.avatar || user!.avatarPlaceholder;
 		},
 	},
 	IdentityRelationship: {
