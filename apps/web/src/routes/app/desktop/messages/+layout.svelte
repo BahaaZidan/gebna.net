@@ -28,7 +28,7 @@
 {/snippet}
 
 <div class="flex h-full min-h-0">
-	<div class="flex h-full w-[40%] min-w-xs flex-col border-r px-5 py-3">
+	<div class="flex h-full w-[40%] max-w-[40%] min-w-xs flex-col border-r px-5 py-3">
 		<div class="flex justify-between">
 			<h1 class="font-mono text-2xl font-bold">gebna</h1>
 			<div class="flex">
@@ -60,13 +60,15 @@
 						<div class="flex w-full flex-col gap-1">
 							<div class="flex justify-between">
 								<div class="font-semibold">
-									{node.kind === "PRIVATE" ? otherParticipants[0].identity.name : node.title}
+									{node.kind === "PRIVATE"
+										? otherParticipants[0].identity.name || otherParticipants[0].identity.address
+										: node.title}
 								</div>
 								<div class="ml-auto text-sm">
 									{formatInboxDate(node.updatedAt)}
 								</div>
 							</div>
-							<div class="line-clamp-1 text-sm text-gray-400">{node.lastMessage.bodyText}</div>
+							<div class="line-clamp-2 text-sm text-gray-400">{node.lastMessage.bodyText}</div>
 						</div>
 					</a>
 				{/each}
