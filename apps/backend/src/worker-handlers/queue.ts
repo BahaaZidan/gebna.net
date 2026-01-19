@@ -45,13 +45,13 @@ async function processAddressAvatarMessage(
 	{ payload: { address } }: InferAddressAvatarQueueMessage
 ) {
 	const identity = await db.query.identityTable.findFirst({
-		where: (t, { eq }) => eq(t.id, address),
+		where: (t, { eq }) => eq(t.address, address),
 	});
-	if (!identity) return;
+	if (!identity || identity.kind === "GEBNA_USER") return;
 
 	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 	const isInferenceOlderThan7Days = Date.now() - identity.updatedAt.getTime() > SEVEN_DAYS_MS;
-	if (!isInferenceOlderThan7Days) return;
+	if (!isInferenceOlderThan7Days && identity.inferredAvatar) return;
 
 	const inferredAvatar = await resolveAvatar(address).catch(() => undefined);
 	if (!inferredAvatar) return;

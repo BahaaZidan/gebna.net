@@ -349,7 +349,7 @@ async function ensureIdentities(
 		if (!address.address) continue;
 		const key = `${"EXTERNAL_EMAIL"}:${address.address}` as const;
 		const existing = unique.get(key);
-		const name = address.name.trim();
+		const name = address.name;
 		if (existing) {
 			if (!existing.name && name) {
 				existing.name = name;
