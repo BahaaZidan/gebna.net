@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "721b4655-0e4c-40b8-a329-af264375a4ac",
+  "id": "306dacda-35ea-404f-b377-bb9181fcb993",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "conversation_participant": {
@@ -378,15 +378,15 @@
           "autoincrement": false,
           "default": "(strftime('%s','now'))"
         },
-        "displayName": {
-          "name": "displayName",
+        "givenName": {
+          "name": "givenName",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "avatarUrl": {
-          "name": "avatarUrl",
+        "uploadedAvatar": {
+          "name": "uploadedAvatar",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -407,14 +407,6 @@
           "columns": [
             "ownerId",
             "isContact"
-          ],
-          "isUnique": false
-        },
-        "idx_identity_relationship_owner_display": {
-          "name": "idx_identity_relationship_owner_display",
-          "columns": [
-            "ownerId",
-            "displayName"
           ],
           "isUnique": false
         }
@@ -482,13 +474,33 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(strftime('%s','now'))"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "inferredAvatar": {
+          "name": "inferredAvatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "avatarPlaceholder": {
+          "name": "avatarPlaceholder",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {
-        "uniq_identity_kind_address": {
-          "name": "uniq_identity_kind_address",
+        "identity_address_unique": {
+          "name": "identity_address_unique",
           "columns": [
-            "kind",
             "address"
           ],
           "isUnique": true

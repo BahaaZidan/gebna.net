@@ -54,23 +54,25 @@ CREATE TABLE `identity_relationship` (
 	`isContact` integer DEFAULT false NOT NULL,
 	`updatedAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
-	`displayName` text,
-	`avatarUrl` text,
+	`givenName` text,
+	`uploadedAvatar` text,
 	FOREIGN KEY (`ownerId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`identityId`) REFERENCES `identity`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `uniq_identity_relationship_owner_identity` ON `identity_relationship` (`ownerId`,`identityId`);--> statement-breakpoint
 CREATE INDEX `idx_identity_relationship_owner_contact` ON `identity_relationship` (`ownerId`,`isContact`);--> statement-breakpoint
-CREATE INDEX `idx_identity_relationship_owner_display` ON `identity_relationship` (`ownerId`,`displayName`);--> statement-breakpoint
 CREATE TABLE `identity` (
 	`id` text PRIMARY KEY NOT NULL,
 	`kind` text NOT NULL,
 	`address` text COLLATE NOCASE NOT NULL,
-	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL
+	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
+	`name` text,
+	`inferredAvatar` text,
+	`avatarPlaceholder` text NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `uniq_identity_kind_address` ON `identity` (`kind`,`address`);--> statement-breakpoint
+CREATE UNIQUE INDEX `identity_address_unique` ON `identity` (`address`);--> statement-breakpoint
 CREATE INDEX `idx_identity_address` ON `identity` (`address`);--> statement-breakpoint
 CREATE INDEX `idx_identity_kind` ON `identity` (`kind`);--> statement-breakpoint
 CREATE TABLE `message_delivery` (
