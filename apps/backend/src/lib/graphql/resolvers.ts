@@ -650,14 +650,15 @@ export const resolvers: Resolvers = {
 			});
 		},
 		name: async (parent, _args, { db }) => {
-			if (parent.kind === "EXTERNAL_EMAIL") return "";
+			if (parent.kind === "EXTERNAL_EMAIL") return parent.name;
 			const user = await db.query.userTable.findFirst({
 				where: (t, { eq }) => eq(t.username, extractLocalPart(parent.address)),
 			});
-			return user!.name;
+			return user?.name;
 		},
 		avatar: async (parent, _args, { db }) => {
-			if (parent.kind === "EXTERNAL_EMAIL") return "";
+			if (parent.kind === "EXTERNAL_EMAIL")
+				return parent.inferredAvatar || parent.avatarPlaceholder;
 			const user = await db.query.userTable.findFirst({
 				where: (t, { eq }) => eq(t.username, extractLocalPart(parent.address)),
 			});

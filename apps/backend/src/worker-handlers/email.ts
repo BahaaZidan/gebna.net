@@ -1,5 +1,5 @@
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
-import PostalMime, { type Address } from "postal-mime";
+import { eq } from "drizzle-orm";
+import PostalMime from "postal-mime";
 import * as R from "ramda";
 import { ulid } from "ulid";
 
@@ -8,16 +8,13 @@ import {
 	ConversationParticipantInsertModel,
 	ConversationSelectModel,
 	getDB,
-	IdentityInsertModel,
 	MessageDeliveryInsertModel,
 	MessageInsertModel,
-	TransactionInstance,
 } from "$lib/db";
 import {
 	conversationParticipantTable,
 	conversationTable,
 	conversationViewerStateTable,
-	identityTable,
 	messageDeliveryTable,
 	messageTable,
 } from "$lib/db/schema";
@@ -26,7 +23,11 @@ import { InferAddressAvatarQueueMessage } from "$lib/queue/types";
 import { extractLocalPart } from "$lib/utils/email";
 import { buildCidResolver } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
-import { generateImagePlaceholder } from "$lib/utils/users";
+import {
+	ensureIdentities,
+	extractMessageIds,
+	findConversationIdByEmailThreadMessageIds,
+} from "$lib/utils/email-ingest";
 
 const DEFAULT_PARTICIPANT_ROLE: ConversationParticipantInsertModel["role"] = "MEMBER";
 const DEFAULT_PARTICIPANT_STATE: ConversationParticipantInsertModel["state"] = "ACTIVE";
@@ -322,86 +323,4 @@ export async function emailHandler(
 			contentType: "json",
 		}))
 	);
-}
-
-function extractMessageIds(headerValue?: string | null): string[] {
-	if (!headerValue) return [];
-	const matches =
-		headerValue
-			.match(/<[^>]+>/g)
-			?.map((m) => m.trim())
-			.filter(Boolean) ?? [];
-	if (matches.length) return matches;
-	const fallback = headerValue.trim();
-	return fallback ? [fallback] : [];
-}
-
-type IdentitySelect = typeof identityTable.$inferSelect;
-type IdentityKey = `${IdentityInsertModel["kind"]}:${string}`;
-
-async function ensureIdentities(
-	db: ReturnType<typeof getDB>,
-	addresses: Address[]
-): Promise<IdentitySelect[]> {
-	const unique = new Map<IdentityKey, IdentityInsertModel>();
-
-	for (const address of addresses) {
-		if (!address.address) continue;
-		const key = `${"EXTERNAL_EMAIL"}:${address.address}` as const;
-		const existing = unique.get(key);
-		const name = address.name;
-		if (existing) {
-			if (!existing.name && name) {
-				existing.name = name;
-				existing.avatarPlaceholder = generateImagePlaceholder(name);
-			}
-			continue;
-		}
-		unique.set(key, {
-			id: ulid(),
-			address: address.address,
-			kind: "EXTERNAL_EMAIL",
-			name,
-			avatarPlaceholder: generateImagePlaceholder(name),
-		});
-	}
-
-	const toInsert = Array.from(unique.values());
-	if (!toInsert.length) return [];
-
-	await db
-		.insert(identityTable)
-		.values(toInsert)
-		.onConflictDoNothing({ target: [identityTable.kind, identityTable.address] });
-
-	const rows = await db.query.identityTable.findMany({
-		where: (t) =>
-			sql`
-				(${t.kind}, ${t.address})
-				IN (
-					VALUES ${sql.join(
-						toInsert.map((p) => sql`(${p.kind}, ${p.address})`),
-						sql`, `
-					)}
-				)
-			`,
-	});
-
-	if (rows.length !== toInsert.length) throw new Error("Failed to ensure identities");
-	return rows;
-}
-
-async function findConversationIdByEmailThreadMessageIds(
-	db: TransactionInstance | ReturnType<typeof getDB>,
-	threadMessageIds: string[]
-): Promise<string | null> {
-	if (!threadMessageIds.length) return null;
-	const row = await db.query.messageTable.findFirst({
-		columns: { conversationId: true },
-		where: (t) =>
-			and(isNotNull(t.externalMessageId), inArray(t.externalMessageId, threadMessageIds)),
-		orderBy: (t) => [desc(t.createdAt)],
-	});
-
-	return row?.conversationId ?? null;
 }
