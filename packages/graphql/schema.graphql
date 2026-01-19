@@ -59,8 +59,7 @@ type Identity implements Node {
 	address: String!
 
 	kind: IdentityKind!
-
-	name: String!
+	name: String
 	avatar: String!
 
 	"""

@@ -14,6 +14,7 @@ import {
 	messageTable,
 } from "$lib/db/schema";
 import { extractLocalPart } from "$lib/utils/email";
+import { generateImagePlaceholder } from "$lib/utils/users";
 
 import type { Context } from "./context";
 import type { Resolvers, ResolversTypes } from "./resolvers.types";
@@ -144,6 +145,7 @@ export const resolvers: Resolvers = {
 					id: ulid(),
 					address,
 					kind: address.endsWith("@gebna.net") ? "GEBNA_USER" : "EXTERNAL_EMAIL",
+					avatarPlaceholder: generateImagePlaceholder(address),
 				} satisfies IdentityInsertModel;
 			});
 
@@ -246,6 +248,7 @@ export const resolvers: Resolvers = {
 					id: ulid(),
 					address,
 					kind: address.endsWith("@gebna.net") ? "GEBNA_USER" : "EXTERNAL_EMAIL",
+					avatarPlaceholder: generateImagePlaceholder(address),
 				} satisfies IdentityInsertModel;
 			});
 
@@ -438,15 +441,15 @@ export const resolvers: Resolvers = {
 					ownerId: viewer.user.id,
 					identityId,
 					isContact: input.isContact,
-					displayName: input.displayName,
-					avatarUrl: input.avatarUrl,
+					givenName: input.displayName,
+					uploadedAvatar: input.avatarUrl,
 				})
 				.onConflictDoUpdate({
 					target: [identityRelationshipTable.ownerId, identityRelationshipTable.identityId],
 					set: {
 						isContact: input.isContact,
-						displayName: input.displayName,
-						avatarUrl: input.avatarUrl,
+						givenName: input.displayName,
+						uploadedAvatar: input.avatarUrl,
 						updatedAt: new Date(),
 					},
 				})

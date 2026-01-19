@@ -108,7 +108,7 @@ export type Identity = Node & {
   avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   kind: IdentityKind;
-  name: Scalars['String']['output'];
+  name?: Maybe<Scalars['String']['output']>;
   /**
    * Viewer-scoped relationship metadata (contacts).
    * Always resolved.
@@ -576,7 +576,7 @@ export type IdentityResolvers<ContextType = Context, ParentType extends Resolver
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['IdentityKind'], ParentType, ContextType>;
-  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   relationshipToViewer?: Resolver<Maybe<ResolversTypes['IdentityRelationship']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };

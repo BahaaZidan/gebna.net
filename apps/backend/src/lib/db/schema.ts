@@ -54,13 +54,15 @@ export const identityTable = sqliteTable(
 		id: text().primaryKey(),
 		kind: text({ enum: IdentityKind }).notNull(),
 		/** Canonical handle (currently email address). Case-insensitive via CITEXT. */
-		address: citext().notNull(),
+		address: citext().notNull().unique(),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
+		name: text(),
+		inferredAvatar: text(),
+		avatarPlaceholder: text().notNull(),
 	},
 	(self) => [
-		uniqueIndex("uniq_identity_kind_address").on(self.kind, self.address),
 		index("idx_identity_address").on(self.address),
 		index("idx_identity_kind").on(self.kind),
 	]
@@ -84,13 +86,12 @@ export const identityRelationshipTable = sqliteTable(
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
-		displayName: text(),
-		avatarUrl: text(),
+		givenName: text(),
+		uploadedAvatar: text(),
 	},
 	(self) => [
 		uniqueIndex("uniq_identity_relationship_owner_identity").on(self.ownerId, self.identityId),
 		index("idx_identity_relationship_owner_contact").on(self.ownerId, self.isContact),
-		index("idx_identity_relationship_owner_display").on(self.ownerId, self.displayName),
 	]
 );
 
