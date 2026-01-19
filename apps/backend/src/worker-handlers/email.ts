@@ -22,6 +22,7 @@ import {
 	messageTable,
 } from "$lib/db/schema";
 import { getConversationPubSub } from "$lib/graphql/pubsub";
+import { InferAddressAvatarQueueMessage } from "$lib/queue/types";
 import { extractLocalPart } from "$lib/utils/email";
 import { buildCidResolver } from "$lib/utils/email-attachments";
 import { normalizeAndSanitizeEmailBody } from "$lib/utils/email-html-normalization";
@@ -57,14 +58,14 @@ export async function emailHandler(
 		allowDataImages: Boolean(cidResolver),
 	});
 
-	const toEntries = parsedEmail.to ?? [];
-	const ccEntries = parsedEmail.cc ?? [];
-	const bccEntries = parsedEmail.bcc ?? [];
-	const replyToEntries = parsedEmail.replyTo ?? [];
-	const to = toEntries.map((a) => a.address).filter(Boolean);
-	const cc = ccEntries.map((a) => a.address).filter(Boolean);
-	const bcc = bccEntries.map((a) => a.address).filter(Boolean);
-	const replyTo = replyToEntries.map((a) => a.address).filter(Boolean);
+	const toEntries = parsedEmail.to?.filter((a) => !!a.address) ?? [];
+	const ccEntries = parsedEmail.cc?.filter((a) => !!a.address) ?? [];
+	const bccEntries = parsedEmail.bcc?.filter((a) => !!a.address) ?? [];
+	const replyToEntries = parsedEmail.replyTo?.filter((a) => !!a.address) ?? [];
+	const to = toEntries.map((a) => a.address!);
+	const cc = ccEntries.map((a) => a.address!);
+	const bcc = bccEntries.map((a) => a.address!);
+	const replyTo = replyToEntries.map((a) => a.address!);
 	const participants = [
 		parsedEmail.from,
 		...toEntries,
@@ -309,6 +310,18 @@ export async function emailHandler(
 			messageId: persistedMessageId,
 		});
 	}
+
+	await bindings.QUEUE.sendBatch(
+		uniqueParticipants.map((p) => ({
+			body: {
+				type: "infer-address-avatar",
+				payload: {
+					address: p.address!,
+				},
+			} satisfies InferAddressAvatarQueueMessage,
+			contentType: "json",
+		}))
+	);
 }
 
 function extractMessageIds(headerValue?: string | null): string[] {

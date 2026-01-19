@@ -2,9 +2,9 @@ import { getRandom } from "@cloudflare/containers";
 import { eq } from "drizzle-orm";
 
 import { DBInstance, getDB } from "$lib/db";
-import { identityRelationshipTable } from "$lib/db/schema";
+import { identityTable } from "$lib/db/schema";
 import type {
-	ContactAvatarQueueMessage,
+	InferAddressAvatarQueueMessage,
 	QueueMessage,
 	ThumbnailQueueMessage,
 } from "$lib/queue/types";
@@ -21,8 +21,8 @@ export async function queueHandler(
 		(async () => {
 			try {
 				switch (message.body.type) {
-					case "contact-avatar":
-						return await processContactAvatarMessage(db, message.body);
+					case "infer-address-avatar":
+						return await processAddressAvatarMessage(db, message.body);
 					case "thumbnail":
 						return await processThumbnailMessage(env, message.body);
 					default:
@@ -40,25 +40,27 @@ export async function queueHandler(
 	await all;
 }
 
-async function processContactAvatarMessage(db: DBInstance, message: ContactAvatarQueueMessage) {
-	const contact = await db.query.identityRelationshipTable.findFirst({
-		where: (t, { and, eq }) => and(eq(t.id, message.payload.contactId), eq(t.isContact, true)),
-	});
-	if (!contact) return;
-
+async function processAddressAvatarMessage(
+	db: DBInstance,
+	{ payload: { address } }: InferAddressAvatarQueueMessage
+) {
 	const identity = await db.query.identityTable.findFirst({
-		where: (t, { eq }) => eq(t.id, contact.identityId),
+		where: (t, { eq }) => eq(t.id, address),
 	});
 	if (!identity) return;
 
-	const inferredAvatar = await resolveAvatar(db, identity.address).catch(() => undefined);
+	const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+	const isInferenceOlderThan7Days = Date.now() - identity.updatedAt.getTime() > SEVEN_DAYS_MS;
+	if (!isInferenceOlderThan7Days) return;
+
+	const inferredAvatar = await resolveAvatar(address).catch(() => undefined);
 	if (!inferredAvatar) return;
 
 	const now = new Date();
 	await db
-		.update(identityRelationshipTable)
-		.set({ avatarUrl: inferredAvatar, updatedAt: now })
-		.where(eq(identityRelationshipTable.id, contact.id));
+		.update(identityTable)
+		.set({ inferredAvatar, updatedAt: now })
+		.where(eq(identityTable.address, address));
 }
 
 async function processThumbnailMessage(env: CloudflareBindings, message: ThumbnailQueueMessage) {

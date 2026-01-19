@@ -61,13 +61,13 @@
 	"queues": {
 		"producers": [
 			{
-				"queue": "gebna-attachment-thumbnails",
-				"binding": "THUMBNAIL_QUEUE",
+				"queue": "gebna-queue",
+				"binding": "QUEUE",
 			},
 		],
 		"consumers": [
 			{
-				"queue": "gebna-attachment-thumbnails",
+				"queue": "gebna-queue",
 			},
 		],
 	},
