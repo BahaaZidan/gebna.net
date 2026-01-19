@@ -79,7 +79,9 @@ export async function emailHandler(
 
 	const participantIdentities = await ensureIdentities(db, uniqueParticipants);
 	const senderIdentity =
-		participantIdentities.find((i) => i.address === parsedEmail.from?.address) ?? null;
+		participantIdentities.find(
+			(i) => i.address.toLowerCase() === parsedEmail.from?.address?.toLowerCase()
+		) ?? null;
 	if (!senderIdentity) throw new Error("Missing sender identity");
 
 	const desiredConversationKind: ConversationInsertModel["kind"] =
