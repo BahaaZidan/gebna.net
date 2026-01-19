@@ -364,6 +364,7 @@ export async function seedDemo(
 				id: identity.id,
 				address: identity.address,
 				kind: identity.kind,
+				avatarPlaceholder: generateImagePlaceholder(identity.address),
 			}))
 		);
 
