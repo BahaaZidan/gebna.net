@@ -58,6 +58,9 @@ export const identityTable = sqliteTable(
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
+		updatedAt: integer({ mode: "timestamp" })
+			.notNull()
+			.default(sql`(strftime('%s','now'))`),
 		name: text(),
 		inferredAvatar: text(),
 		avatarPlaceholder: text().notNull(),
@@ -115,6 +118,7 @@ export const conversationTable = sqliteTable(
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
 		lastMessageAt: integer({ mode: "timestamp" }).default(sql`(strftime('%s','now'))`),
+		uploadedAvatar: text(),
 	},
 	(self) => [
 		uniqueIndex("uniq_conversation_dm_key").on(self.dmKey),

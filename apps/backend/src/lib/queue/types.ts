@@ -7,11 +7,12 @@ export type ThumbnailQueueMessage = {
 	};
 };
 
-export type ContactAvatarQueueMessage = {
-	type: "contact-avatar";
+export type InferAddressAvatarQueueMessage = {
+	type: "infer-address-avatar";
 	payload: {
-		contactId: string;
+		/** abc@example.com */
+		address: string;
 	};
 };
 
-export type QueueMessage = ThumbnailQueueMessage | ContactAvatarQueueMessage;
+export type QueueMessage = ThumbnailQueueMessage | InferAddressAvatarQueueMessage;

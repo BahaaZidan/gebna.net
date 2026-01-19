@@ -22,6 +22,7 @@ CREATE TABLE `conversation` (
 	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`updatedAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`lastMessageAt` integer DEFAULT (strftime('%s','now')),
+	`uploadedAvatar` text,
 	CONSTRAINT "chk_conversation_dmkey_kind" CHECK((
 				("conversation"."kind" = 'PRIVATE' AND "conversation"."dmKey" IS NOT NULL AND length("conversation"."dmKey") > 0)
 				OR
@@ -67,6 +68,7 @@ CREATE TABLE `identity` (
 	`kind` text NOT NULL,
 	`address` text COLLATE NOCASE NOT NULL,
 	`createdAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
+	`updatedAt` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`name` text,
 	`inferredAvatar` text,
 	`avatarPlaceholder` text NOT NULL
