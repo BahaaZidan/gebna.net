@@ -127,6 +127,8 @@ type Message implements Node {
 
 	bodyText: String
 	bodyHTML: String
+	bodyTextWithLinks: String
+	bodyMD: String
 	createdAt: DateTime!
 
 	delivery: [DeliveryReceipt!]!

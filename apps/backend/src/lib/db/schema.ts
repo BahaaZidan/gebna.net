@@ -228,6 +228,8 @@ export const messageTable = sqliteTable(
 		externalMessageId: text(),
 		bodyText: text(),
 		bodyHTML: text(),
+		bodyTextWithLinks: text(),
+		bodyMD: text(),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),
