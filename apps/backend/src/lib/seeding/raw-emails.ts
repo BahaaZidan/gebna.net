@@ -33,6 +33,7 @@ type SeedEmail = {
 	createdAt: Date;
 	externalMessageId: string;
 	bodyText: string | null;
+	bodyTextWithLinks: string | null;
 	bodyHTML: string | null;
 };
 
@@ -262,6 +263,7 @@ export async function seedRawEmails(
 						senderIdentityId: senderIdentity.id,
 						externalMessageId: seed.externalMessageId,
 						bodyText: seed.bodyText,
+						bodyTextWithLinks: seed.bodyTextWithLinks,
 						bodyHTML: seed.bodyHTML,
 						createdAt: seed.createdAt,
 						emailMetadata,
@@ -440,6 +442,7 @@ async function loadSeedEmails(options: { limit?: number; offset?: number } = {})
 			createdAt: coerceDate(parsedEmail.date),
 			externalMessageId,
 			bodyText: normalizedBody?.plain ?? null,
+			bodyTextWithLinks: normalizedBody?.plainWithLinks ?? null,
 			bodyHTML: normalizedBody?.html ?? null,
 		});
 	}

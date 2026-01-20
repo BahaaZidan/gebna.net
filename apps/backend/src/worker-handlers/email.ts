@@ -204,6 +204,7 @@ export async function emailHandler(
 					senderIdentityId: senderIdentity.id,
 					externalMessageId,
 					bodyText: normalizedBody?.plain,
+					bodyTextWithLinks: normalizedBody?.plainWithLinks,
 					bodyHTML: normalizedBody?.html,
 					emailMetadata,
 				})
