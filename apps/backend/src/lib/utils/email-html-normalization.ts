@@ -1,3 +1,4 @@
+import { htmlToText } from "html-to-text";
 import type { Email } from "postal-mime";
 import * as xss from "xss";
 
@@ -115,7 +116,8 @@ export function normalizeAndSanitizeEmailBody(
 		const truncated = truncateToBytes(rawHtml, resolvedOptions.maxHtmlBytes);
 		const { bodyHtml, headStyles } = sanitizeHtmlBody(truncated.value, resolvedOptions);
 
-		const textSource = hadText ? rawText : htmlToPlainText(bodyHtml);
+		// INTENTIONAL: some servers send stub plain text bodies like "It looks like your email client might not support HTML formatted email.". So we always consider the html body as the prefered source
+		const textSource = htmlToPlainText(bodyHtml).replace(/\n{2,}/g, "\n");
 		const textResult = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
 
 		return {
@@ -125,7 +127,10 @@ export function normalizeAndSanitizeEmailBody(
 	}
 
 	if (hadText) {
-		const truncated = truncateToBytes(rawText, resolvedOptions.maxTextBytes);
+		const truncated = truncateToBytes(
+			rawText.replace(/\n{2,}/g, "\n"),
+			resolvedOptions.maxTextBytes
+		);
 		return {
 			html: null,
 			plain: truncated.value,
@@ -496,30 +501,16 @@ function popIgnore(stack: string[], tagName: string) {
 }
 
 function htmlToPlainText(html: string) {
-	const withBreaks = html
-		.replace(/<(br|hr)\s*\/?>/gi, "\n")
-		.replace(/<(\/)?(p|div|section|article|header|footer|h[1-6]|tr|td|th|blockquote)[^>]*>/gi, "\n")
-		.replace(/<li[^>]*>/gi, "\n- ");
+	const result = htmlToText(html, {
+		wordwrap: false,
+		selectors: [
+			{ selector: "img", format: "skip" },
+			{ selector: "style", format: "skip" },
+			{ selector: "script", format: "skip" },
+		],
+	});
 
-	const withoutTags = withBreaks.replace(/<[^>]+>/g, " ");
-	const decoded = decodeBasicEntities(withoutTags);
-
-	return decoded
-		.replace(/\u00a0/g, " ")
-		.replace(/\s*\n\s*/g, "\n")
-		.replace(/[ \t]{2,}/g, " ")
-		.replace(/\n{3,}/g, "\n\n")
-		.trim();
-}
-
-function decodeBasicEntities(value: string) {
-	return value
-		.replace(/&nbsp;/gi, " ")
-		.replace(/&amp;/gi, "&")
-		.replace(/&lt;/gi, "<")
-		.replace(/&gt;/gi, ">")
-		.replace(/&quot;/gi, '"')
-		.replace(/&#39;/gi, "'");
+	return result;
 }
 
 function truncateToBytes(value: string, maxBytes: number) {

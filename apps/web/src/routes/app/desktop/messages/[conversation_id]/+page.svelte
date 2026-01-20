@@ -60,9 +60,8 @@
 						<time class="text-xs opacity-50">{formatInboxDate(node.createdAt)}</time>
 					</div>
 					<div class="chat-bubble">
-						<pre class="font-sans wrap-anywhere whitespace-pre-wrap [unicode-bidi:plaintext]">
-							{node.bodyText}
-						</pre>
+						<pre
+							class="font-sans wrap-anywhere whitespace-pre-wrap [unicode-bidi:plaintext]">{node.bodyText}</pre>
 					</div>
 					<div class="chat-footer opacity-50">Delivered</div>
 				</div>
