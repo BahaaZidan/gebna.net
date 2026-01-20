@@ -11,7 +11,7 @@ export function formatInboxDate(date: Date | string): string {
 		return format(d, "MMM d"); // "Jun 12"
 	}
 
-	return format(d, "MMM d, yyyy"); // "Jun 12, 2023"
+	return format(d, "dd/MM/yyyy");
 }
 
 export function formatSizeInBytes(sizeInBytes: number): string {

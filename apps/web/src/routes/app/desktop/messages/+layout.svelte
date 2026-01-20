@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { IconProps } from "@lucide/svelte";
+	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
 	import MessageSquarePlusIcon from "@lucide/svelte/icons/message-square-plus";
 	import { type Component, type Snippet } from "svelte";
@@ -41,7 +42,7 @@
 				{#each conversations as { node } (node.id)}
 					<a
 						href={resolve("/app/desktop/messages/[conversation_id]", { conversation_id: node.id })}
-						class="flex w-full items-center gap-3 p-3 hover:bg-base-200"
+						class="group flex w-full items-center gap-3 p-3 hover:bg-base-200"
 					>
 						<ConversationAvatar
 							conversation={node}
@@ -49,15 +50,22 @@
 							class="size-12 min-h-12 min-w-12"
 						/>
 						<div class="flex w-full flex-col gap-1">
-							<div class="flex justify-between">
-								<div class="font-semibold">
+							<div class="flex items-baseline justify-between">
+								<div class="line-clamp-1 font-semibold">
 									<ConversationTitle conversation={node} viewerIdentityId={viewer?.identity.id} />
 								</div>
-								<div class="ml-auto text-sm">
+								<div class="mx-px text-xs whitespace-nowrap text-gray-400">
 									{formatInboxDate(node.updatedAt)}
 								</div>
 							</div>
-							<div class="line-clamp-2 text-sm text-gray-400">{node.lastMessage.bodyText}</div>
+							<div class="flex min-h-6 justify-between">
+								<div class="line-clamp-1 min-w-0 text-sm wrap-anywhere text-gray-400">
+									{node.lastMessage.bodyText}
+								</div>
+								<button class="btn hidden btn-ghost btn-xs group-hover:inline-flex">
+									<ChevronDownIcon class="size-5.5" />
+								</button>
+							</div>
 						</div>
 					</a>
 				{/each}
