@@ -6,6 +6,8 @@ export const _houdini_load = graphql(`
 	query ConversationDetailsQuery($id: ID!) {
 		node(id: $id) {
 			... on Conversation {
+				...ConversationTitle
+				...ConversationAvatar
 				id
 				kind
 				lastMessage {
@@ -21,6 +23,8 @@ export const _houdini_load = graphql(`
 								id
 								address
 								kind
+								avatar
+								name
 							}
 						}
 					}
