@@ -2,12 +2,12 @@
 	import type { IconProps } from "@lucide/svelte";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
 	import MessageSquarePlusIcon from "@lucide/svelte/icons/message-square-plus";
-	import SearchIcon from "@lucide/svelte/icons/search";
-	import UsersIcon from "@lucide/svelte/icons/users";
 	import { type Component, type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
 
+	import ConversationAvatar from "$lib/components/mail/ConversationAvatar.svelte";
+	import ConversationTitle from "$lib/components/mail/ConversationTitle.svelte";
 	import { formatInboxDate } from "$lib/format";
 
 	import type { LayoutData } from "./$houdini";
@@ -39,30 +39,19 @@
 		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
 			{#if conversations}
 				{#each conversations as { node } (node.id)}
-					{@const otherParticipants = node.participants.filter(
-						(p) => p.identity.id !== viewer?.identity.id
-					)}
 					<a
 						href={resolve("/app/desktop/messages/[conversation_id]", { conversation_id: node.id })}
 						class="flex w-full items-center gap-3 p-3 hover:bg-base-200"
 					>
-						{#if node.kind === "PRIVATE"}
-							<img
-								src={otherParticipants[0].identity.avatar}
-								alt="I don't event know"
-								class="size-12 object-contain"
-							/>
-						{:else}
-							<div class="flex size-12 min-h-12 min-w-12 items-center justify-center bg-base-300">
-								<UsersIcon />
-							</div>
-						{/if}
+						<ConversationAvatar
+							conversation={node}
+							viewerIdentityId={viewer?.identity.id}
+							class="size-12 min-h-12 min-w-12"
+						/>
 						<div class="flex w-full flex-col gap-1">
 							<div class="flex justify-between">
 								<div class="font-semibold">
-									{node.kind === "PRIVATE"
-										? otherParticipants[0].identity.name || otherParticipants[0].identity.address
-										: node.title}
+									<ConversationTitle conversation={node} viewerIdentityId={viewer?.identity.id} />
 								</div>
 								<div class="ml-auto text-sm">
 									{formatInboxDate(node.updatedAt)}

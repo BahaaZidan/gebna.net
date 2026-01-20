@@ -6,6 +6,8 @@
 	import SearchIcon from "@lucide/svelte/icons/search";
 	import { type Component } from "svelte";
 
+	import ConversationAvatar from "$lib/components/mail/ConversationAvatar.svelte";
+	import ConversationTitle from "$lib/components/mail/ConversationTitle.svelte";
 	import { formatInboxDate } from "$lib/format";
 
 	import type { PageData } from "./$houdini";
@@ -27,12 +29,12 @@
 	<div class="flex h-full min-h-0 flex-col">
 		<div class="flex shrink-0 justify-between border-b p-3">
 			<div class="flex items-center gap-2">
-				<img
-					class="size-10"
-					alt="Tailwind CSS chat bubble component"
-					src="https://img.daisyui.com/images/profile/demo/kenobee@192.webp"
+				<ConversationAvatar
+					{conversation}
+					viewerIdentityId={viewer?.identity.id}
+					class="size-10 min-h-10 min-w-10"
 				/>
-				Person / Group name
+				<div><ConversationTitle {conversation} viewerIdentityId={viewer.identity.id} /></div>
 			</div>
 			<div class="flex">
 				{@render iconButton({ label: "Search", Icon: SearchIcon })}
@@ -47,8 +49,8 @@
 						<div class="avatar chat-image">
 							<div class="w-10">
 								<img
-									alt="Tailwind CSS chat bubble component"
-									src="https://img.daisyui.com/images/profile/demo/kenobee@192.webp"
+									alt="{node.sender.name || node.sender.address} avatar"
+									src={node.sender.avatar}
 								/>
 							</div>
 						</div>

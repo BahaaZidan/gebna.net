@@ -7,6 +7,8 @@ export const _houdini_load = graphql(`
 			conversations(first: 30, mailbox: IMPORTANT) {
 				edges {
 					node {
+						...ConversationTitle
+						...ConversationAvatar
 						id
 						kind
 						title
