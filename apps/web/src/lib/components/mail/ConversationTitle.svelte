@@ -35,15 +35,17 @@
 	);
 </script>
 
-{#if $conversation.kind === "PRIVATE"}
-	{#if otherParticipants[0].identity.relationshipToViewer?.isContact}
-		{otherParticipants[0].identity.relationshipToViewer.displayName ||
-			otherParticipants[0].identity.name ||
-			otherParticipants[0].identity.address}
+<span class="wrap-anywhere">
+	{#if $conversation.kind === "PRIVATE"}
+		{#if otherParticipants[0].identity.relationshipToViewer?.isContact}
+			{otherParticipants[0].identity.relationshipToViewer.displayName ||
+				otherParticipants[0].identity.name ||
+				otherParticipants[0].identity.address}
+		{:else}
+			{otherParticipants[0].identity.name || otherParticipants[0].identity.address}
+		{/if}
 	{:else}
-		{otherParticipants[0].identity.name || otherParticipants[0].identity.address}
+		{$conversation.title ||
+			otherParticipants.map((p) => p.identity.name || p.identity.address).join(", ")}
 	{/if}
-{:else}
-	{$conversation.title ||
-		otherParticipants.map((p) => p.identity.name || p.identity.address).join(", ")}
-{/if}
+</span>
