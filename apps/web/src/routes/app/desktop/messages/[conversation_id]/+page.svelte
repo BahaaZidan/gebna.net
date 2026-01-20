@@ -59,12 +59,16 @@
 						{node.sender.address}
 						<time class="text-xs opacity-50">{formatInboxDate(node.createdAt)}</time>
 					</div>
-					<div class="chat-bubble">{node.bodyText}</div>
+					<div class="chat-bubble">
+						<pre class="font-sans wrap-anywhere whitespace-pre-wrap [unicode-bidi:plaintext]">
+							{node.bodyText}
+						</pre>
+					</div>
 					<div class="chat-footer opacity-50">Delivered</div>
 				</div>
 			{/each}
 		</div>
-		<div class="flex shrink-0 flex-col gap-2 border-t pt-3">
+		<div class="flex shrink-0 flex-col gap-2 border-t p-3">
 			<div class="flex w-full items-end gap-2">
 				<button class="btn btn-ghost">
 					<PlusIcon />
