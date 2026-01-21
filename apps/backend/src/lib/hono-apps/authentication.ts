@@ -79,6 +79,7 @@ authenticationApp.post("/register", async (c) => {
 				id: ulid(),
 				kind: "GEBNA_USER",
 				address: `${bodyValidation.output.username}@gebna.net`,
+				avatarPlaceholder: generateImagePlaceholder(bodyValidation.output.name),
 			});
 		});
 	} catch (error) {
