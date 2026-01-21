@@ -61,8 +61,6 @@
 					</div>
 					<div class="chat-bubble">
 						<div class="prose wrap-anywhere">{@html node.bodyMD}</div>
-						<!-- <pre
-							class="font-sans wrap-anywhere whitespace-pre-wrap [unicode-bidi:plaintext]">{node.bodyText}</pre> -->
 					</div>
 					<div class="chat-footer opacity-50">Delivered</div>
 				</div>
