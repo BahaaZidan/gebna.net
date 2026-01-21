@@ -503,7 +503,7 @@ function popIgnore(stack: string[], tagName: string) {
 	if (index !== -1) stack.splice(index, 1);
 }
 
-async function htmlToMarkdownHTML(html: string): Promise<string> {
+export async function htmlToMarkdownHTML(html: string): Promise<string> {
 	const turndown = makeTurndownMeaninglessCleaner();
 
 	const md = turndown.turndown(html);

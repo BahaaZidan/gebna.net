@@ -14,6 +14,7 @@ import {
 	messageTable,
 } from "$lib/db/schema";
 import { extractLocalPart } from "$lib/utils/email";
+import { htmlToMarkdownHTML } from "$lib/utils/email-html-normalization";
 import { generateImagePlaceholder } from "$lib/utils/users";
 
 import type { Context } from "./context";
@@ -619,6 +620,8 @@ export const resolvers: Resolvers = {
 	Message: {
 		id: (parent) => toGlobalId("Message", parent.id),
 		conversationId: (parent) => toGlobalId("Conversation", parent.conversationId),
+		bodyMD: (parent) =>
+			parent.bodyMD ? parent.bodyMD : parent.bodyText && htmlToMarkdownHTML(parent.bodyText),
 		sender: async (parent, _args, { db }) => {
 			const identity = await db.query.identityTable.findFirst({
 				where: (t, { eq }) => eq(t.id, parent.senderIdentityId),
