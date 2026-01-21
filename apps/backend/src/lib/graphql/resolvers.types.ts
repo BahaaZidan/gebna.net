@@ -172,7 +172,6 @@ export type Message = Node & {
   bodyHTML?: Maybe<Scalars['String']['output']>;
   bodyMD?: Maybe<Scalars['String']['output']>;
   bodyText?: Maybe<Scalars['String']['output']>;
-  bodyTextWithLinks?: Maybe<Scalars['String']['output']>;
   conversationId: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
   delivery: Array<DeliveryReceipt>;
@@ -609,7 +608,6 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
   bodyHTML?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   bodyMD?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   bodyText?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  bodyTextWithLinks?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   conversationId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   delivery?: Resolver<Array<ResolversTypes['DeliveryReceipt']>, ParentType, ContextType>;
