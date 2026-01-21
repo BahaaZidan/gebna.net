@@ -53,7 +53,7 @@ export async function emailHandler(
 		return envelope.setReject("MISSING MESSAGE-ID");
 
 	const cidResolver = buildCidResolver(parsedEmail.attachments);
-	const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
+	const normalizedBody = await normalizeAndSanitizeEmailBody(parsedEmail, {
 		cidResolver,
 		blockRemoteImagesByDefault: false,
 		allowDataImages: Boolean(cidResolver),
@@ -206,6 +206,7 @@ export async function emailHandler(
 					bodyText: normalizedBody?.plain,
 					bodyTextWithLinks: normalizedBody?.plainWithLinks,
 					bodyHTML: normalizedBody?.html,
+					bodyMD: normalizedBody?.md,
 					emailMetadata,
 				})
 				.onConflictDoNothing({ target: messageTable.externalMessageId })

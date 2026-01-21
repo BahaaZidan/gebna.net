@@ -1,6 +1,12 @@
 import { htmlToText } from "html-to-text";
 import type { FormatCallback } from "html-to-text";
 import type { Email } from "postal-mime";
+import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import TurndownService from "turndown";
+import { unified } from "unified";
 import * as xss from "xss";
 
 const xssExports =
@@ -99,14 +105,15 @@ type SanitizationFlags = {
 	droppedUnsupportedTags: boolean;
 };
 
-export function normalizeAndSanitizeEmailBody(
+export async function normalizeAndSanitizeEmailBody(
 	parsedEmail: Email,
 	options: NormalizeEmailOptions = {}
-): {
+): Promise<{
 	html: string | null;
 	plain: string;
 	plainWithLinks: string;
-} | null {
+	md: string | null;
+} | null> {
 	const resolvedOptions: NormalizedOptions = { ...DEFAULT_OPTIONS, ...options };
 
 	const rawHtml = parsedEmail.html?.trim();
@@ -122,15 +129,15 @@ export function normalizeAndSanitizeEmailBody(
 		const textSource = htmlToPlainText(bodyHtml).replace(/\n{2,}/g, "\n");
 		const textSourceWithLinks = htmlToTextWithLinks(bodyHtml);
 		const textResult = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
-		const textWithLinksResult = truncateToBytes(
-			textSourceWithLinks,
-			resolvedOptions.maxTextBytes
-		);
+		const textWithLinksResult = truncateToBytes(textSourceWithLinks, resolvedOptions.maxTextBytes);
+
+		const markdownHtml = bodyHtml ? await htmlToMarkdownHTML(bodyHtml) : "";
 
 		return {
 			html: buildHtmlDocument(bodyHtml, headStyles),
 			plain: textResult.value,
 			plainWithLinks: textWithLinksResult.value,
+			md: markdownHtml || null,
 		};
 	}
 
@@ -138,14 +145,12 @@ export function normalizeAndSanitizeEmailBody(
 		const textSource = rawText.replace(/\n{2,}/g, "\n");
 		const textSourceWithLinks = textSource.replace(/\n/g, "<br>");
 		const truncated = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
-		const truncatedWithLinks = truncateToBytes(
-			textSourceWithLinks,
-			resolvedOptions.maxTextBytes
-		);
+		const truncatedWithLinks = truncateToBytes(textSourceWithLinks, resolvedOptions.maxTextBytes);
 		return {
 			html: null,
 			plain: truncated.value,
 			plainWithLinks: truncatedWithLinks.value,
+			md: truncated.value,
 		};
 	}
 
@@ -568,6 +573,226 @@ function htmlToTextWithLinks(html: string) {
 	});
 
 	return result.replace(/\n{2,}/g, "\n").replace(/\n/g, "<br>");
+}
+
+async function htmlToMarkdownHTML(html: string): Promise<string> {
+	const turndown = makeTurndownMeaninglessCleaner();
+	// turndown.addRule("dropImages", {
+	// 	filter: (node) => node.nodeName === "IMG",
+	// 	replacement: () => "",
+	// });
+
+	const md = turndown.turndown(html);
+
+	const resultHTML = (
+		await unified()
+			.use(remarkParse)
+			.use(remarkGfm)
+			.use(remarkRehype)
+			.use(rehypeStringify)
+			.process(md)
+	).toString();
+
+	return resultHTML.replace(EMPTY_PARAGRAPH_RE, "");
+}
+
+// eslint-disable-next-line no-misleading-character-class
+const INVISIBLE_RE = /[\p{White_Space}\p{Zs}\u00A0\u00AD\u200B\u200C\u200D\uFEFF\u034F]+/gu;
+// - White_Space covers normal whitespace/newlines/tabs
+// - Zs covers unicode “space separators” (includes U+2007 FIGURE SPACE)
+// - U+00A0 NBSP
+// - U+00AD soft hyphen
+// - zero-width chars
+// - U+034F combining grapheme joiner (your “͏” char)
+// eslint-disable-next-line no-misleading-character-class
+const TEXT_INVISIBLE_RE = /[\u00AD\u200B\u200C\u200D\uFEFF\u034F]+/g;
+const EMPTY_PARAGRAPH_RE = /<p>(?:\s|&nbsp;|&#160;|&#xA0;|\u00A0)*<\/p>/g;
+
+function stripInvisible(s: string): string {
+	return s.replace(INVISIBLE_RE, "");
+}
+
+function isMeaninglessText(s: string): boolean {
+	return stripInvisible(s).length === 0;
+}
+
+function makeTurndownMeaninglessCleaner() {
+	const turndown = new TurndownService();
+
+	// 1) Remove images (since you wanted that)
+	turndown.addRule("dropImages", {
+		filter: (node) => node.nodeName === "IMG",
+		replacement: () => "",
+	});
+
+	// 2) CLEAN ALL TEXT NODES (this is the key)
+	// Turndown processes text nodes via "escape", so override it.
+	const originalEscape = turndown.escape.bind(turndown);
+	turndown.escape = (text: string) => {
+		// Remove zero-width-ish chars but keep normal spacing intact
+		const cleaned = text.replace(TEXT_INVISIBLE_RE, "").replace(/\u00A0/g, " ");
+		// Then let Turndown do its normal escaping
+		return originalEscape(cleaned);
+	};
+	const escape = turndown.escape.bind(turndown);
+
+	turndown.addRule("unwrapNestedAnchors", {
+		filter: (node) =>
+			node.nodeType === 1 &&
+			(node as Element).nodeName === "A" &&
+			(hasAnchorAncestor(node) ||
+				hasAnchorDescendant(node as Element) ||
+				hasBlockDescendant(node as Element)),
+		replacement: (_content, node) => {
+			const el = node as Element;
+			const text = normalizeLinkText(extractAnchorText(el));
+			if (!text) return "";
+			if (hasAnchorAncestor(el)) return escape(text);
+			const href = el.getAttribute("href");
+			if (!href) return escape(text);
+			const title = el.getAttribute("title");
+			const titlePart = title ? ` "${title.replace(/"/g, '\\"')}"` : "";
+			return `[${escape(text)}](${href}${titlePart})`;
+		},
+	});
+
+	// 3) Remove ANY element whose (recursive) textContent is meaningless after cleanup
+	turndown.addRule("dropMeaninglessElements", {
+		filter: (node) => {
+			if (node.nodeType !== 1) return false; // elements only
+			const el = node as Element;
+
+			// don't remove root containers
+			if (el.nodeName === "HTML" || el.nodeName === "BODY") return false;
+
+			// keep line-break-ish structural tags if you want
+			if (el.nodeName === "BR" || el.nodeName === "HR") return false;
+
+			// If it has any meaningful text, keep it.
+			// (textContent is recursive: includes descendants)
+			return isMeaninglessText(el.textContent ?? "");
+		},
+		replacement: () => "",
+	});
+
+	// 4) Also drop empty links created after image/text stripping: <a><img/></a> or <a>nbsp</a>
+	turndown.addRule("dropEmptyLinks", {
+		filter: (node) => {
+			if (node.nodeType !== 1) return false;
+			const el = node as Element;
+			if (el.nodeName !== "A") return false;
+			return isMeaninglessText(el.textContent ?? "");
+		},
+		replacement: () => "",
+	});
+
+	return turndown;
+}
+
+function hasAnchorAncestor(node: Node): boolean {
+	let p: Node | null = node.parentNode;
+	while (p) {
+		if (p.nodeType === 1 && (p as Element).nodeName === "A") return true;
+		p = p.parentNode;
+	}
+	return false;
+}
+
+function hasAnchorDescendant(node: Element): boolean {
+	return node.getElementsByTagName("A").length > 0;
+}
+
+const BLOCK_TAGS = new Set([
+	"ADDRESS",
+	"ARTICLE",
+	"ASIDE",
+	"BLOCKQUOTE",
+	"CANVAS",
+	"DIV",
+	"DL",
+	"DT",
+	"DD",
+	"FIELDSET",
+	"FIGCAPTION",
+	"FIGURE",
+	"FOOTER",
+	"FORM",
+	"H1",
+	"H2",
+	"H3",
+	"H4",
+	"H5",
+	"H6",
+	"HEADER",
+	"HR",
+	"LI",
+	"MAIN",
+	"NAV",
+	"OL",
+	"P",
+	"PRE",
+	"SECTION",
+	"TABLE",
+	"TBODY",
+	"TD",
+	"TFOOT",
+	"TH",
+	"THEAD",
+	"TR",
+	"UL",
+]);
+
+function hasBlockDescendant(node: Element): boolean {
+	const stack: Element[] = [];
+	for (let child = node.firstElementChild; child; child = child.nextElementSibling) {
+		stack.push(child);
+	}
+	while (stack.length > 0) {
+		const el = stack.pop()!;
+		if (BLOCK_TAGS.has(el.tagName)) return true;
+		for (let child = el.firstElementChild; child; child = child.nextElementSibling) {
+			stack.push(child);
+		}
+	}
+	return false;
+}
+
+function extractAnchorText(node: Element): string {
+	const parts: string[] = [];
+	const stack: Array<{ node: Node; exit: boolean }> = [{ node, exit: false }];
+	const visited = new Set<Node>();
+	while (stack.length > 0) {
+		const { node: current, exit } = stack.pop()!;
+		if (current.nodeType === 3) {
+			parts.push(current.nodeValue ?? "");
+			continue;
+		}
+		if (current.nodeType !== 1) continue;
+		const el = current as Element;
+		const isBlock = BLOCK_TAGS.has(el.tagName) || el.tagName === "BR";
+		if (isBlock && exit) {
+			parts.push(" ");
+			continue;
+		}
+		if (exit) continue;
+		if (visited.has(current)) continue;
+		visited.add(current);
+		if (isBlock) parts.push(" ");
+		stack.push({ node: current, exit: true });
+		for (let child = el.lastChild; child; child = child.previousSibling) {
+			stack.push({ node: child, exit: false });
+		}
+	}
+	return parts.join("");
+}
+
+function normalizeLinkText(s: string): string {
+	// keep normal spaces, remove zero-width-ish chars (your existing policy)
+	return s
+		.replace(TEXT_INVISIBLE_RE, "")
+		.replace(/\u00A0/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
 }
 
 function truncateToBytes(value: string, maxBytes: number) {
