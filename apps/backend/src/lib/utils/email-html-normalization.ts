@@ -108,45 +108,39 @@ export async function normalizeAndSanitizeEmailBody(
 	parsedEmail: Email,
 	options: NormalizeEmailOptions = {}
 ): Promise<{
-	html: string | null;
+	html: string;
 	plain: string;
-	md: string | null;
+	md: string;
 } | null> {
 	const resolvedOptions: NormalizedOptions = { ...DEFAULT_OPTIONS, ...options };
 
 	const rawHtml = parsedEmail.html?.trim();
 	const rawText = parsedEmail.text?.trim();
-	const hadHtml = !!rawHtml?.length;
-	const hadText = !!rawText?.length;
 
-	if (hadHtml) {
-		const truncated = truncateToBytes(rawHtml, resolvedOptions.maxHtmlBytes);
-		const { bodyHtml, headStyles } = sanitizeHtmlBody(truncated.value, resolvedOptions);
+	if (!rawHtml?.length && !rawText?.length) return null;
+	const source = rawHtml || rawText;
+	if (!source) return null;
 
-		// INTENTIONAL: some servers send stub plain text bodies like "It looks like your email client might not support HTML formatted email.". So we always consider the html body as the prefered source
-		const textSource = htmlToPlainText(bodyHtml).replace(/\n{2,}/g, "\n");
-		const textResult = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
+	const truncated = truncateToBytes(source, resolvedOptions.maxHtmlBytes);
+	const { bodyHtml, headStyles } = sanitizeHtmlBody(truncated.value, resolvedOptions);
 
-		const markdownHtml = bodyHtml ? await htmlToMarkdownHTML(bodyHtml) : "";
+	const markdownHtml = await htmlToMarkdownHTML(bodyHtml);
 
-		return {
-			html: buildHtmlDocument(bodyHtml, headStyles),
-			plain: textResult.value,
-			md: markdownHtml || null,
-		};
-	}
+	const textSource = htmlToText(markdownHtml, {
+		wordwrap: false,
+		selectors: [
+			{ selector: "img", format: "skip" },
+			{ selector: "style", format: "skip" },
+			{ selector: "script", format: "skip" },
+		],
+	}).replace(/\n{2,}/g, "\n");
+	const textResult = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
 
-	if (hadText) {
-		const textSource = rawText.replace(/\n{2,}/g, "\n");
-		const truncated = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
-		return {
-			html: null,
-			plain: truncated.value,
-			md: truncated.value,
-		};
-	}
-
-	return null;
+	return {
+		html: buildHtmlDocument(bodyHtml, headStyles),
+		plain: textResult.value,
+		md: markdownHtml,
+	};
 }
 
 function sanitizeHtmlBody(html: string, options: NormalizedOptions) {
@@ -509,23 +503,8 @@ function popIgnore(stack: string[], tagName: string) {
 	if (index !== -1) stack.splice(index, 1);
 }
 
-function htmlToPlainText(html: string) {
-	return htmlToText(html, {
-		wordwrap: false,
-		selectors: [
-			{ selector: "img", format: "skip" },
-			{ selector: "style", format: "skip" },
-			{ selector: "script", format: "skip" },
-		],
-	});
-}
-
 async function htmlToMarkdownHTML(html: string): Promise<string> {
 	const turndown = makeTurndownMeaninglessCleaner();
-	// turndown.addRule("dropImages", {
-	// 	filter: (node) => node.nodeName === "IMG",
-	// 	replacement: () => "",
-	// });
 
 	const md = turndown.turndown(html);
 
@@ -543,12 +522,6 @@ async function htmlToMarkdownHTML(html: string): Promise<string> {
 
 // eslint-disable-next-line no-misleading-character-class
 const INVISIBLE_RE = /[\p{White_Space}\p{Zs}\u00A0\u00AD\u200B\u200C\u200D\uFEFF\u034F]+/gu;
-// - White_Space covers normal whitespace/newlines/tabs
-// - Zs covers unicode “space separators” (includes U+2007 FIGURE SPACE)
-// - U+00A0 NBSP
-// - U+00AD soft hyphen
-// - zero-width chars
-// - U+034F combining grapheme joiner (your “͏” char)
 // eslint-disable-next-line no-misleading-character-class
 const TEXT_INVISIBLE_RE = /[\u00AD\u200B\u200C\u200D\uFEFF\u034F]+/g;
 const EMPTY_PARAGRAPH_RE = /<p>(?:\s|&nbsp;|&#160;|&#xA0;|\u00A0)*<\/p>/g;
