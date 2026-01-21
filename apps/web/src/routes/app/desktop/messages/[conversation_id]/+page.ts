@@ -17,8 +17,6 @@ export const _houdini_load = graphql(`
 					edges {
 						node {
 							id
-							bodyText
-							bodyHTML
 							bodyMD
 							createdAt
 							sender {
