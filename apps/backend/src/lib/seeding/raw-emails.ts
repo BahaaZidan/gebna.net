@@ -35,6 +35,7 @@ type SeedEmail = {
 	bodyText: string | null;
 	bodyTextWithLinks: string | null;
 	bodyHTML: string | null;
+	bodyMD: string | null;
 };
 
 export type SeedRawEmailOptions = {
@@ -265,6 +266,7 @@ export async function seedRawEmails(
 						bodyText: seed.bodyText,
 						bodyTextWithLinks: seed.bodyTextWithLinks,
 						bodyHTML: seed.bodyHTML,
+						bodyMD: seed.bodyMD,
 						createdAt: seed.createdAt,
 						emailMetadata,
 					})
@@ -427,7 +429,7 @@ async function loadSeedEmails(options: { limit?: number; offset?: number } = {})
 		}
 
 		const cidResolver = buildCidResolver(parsedEmail.attachments ?? []);
-		const normalizedBody = normalizeAndSanitizeEmailBody(parsedEmail, {
+		const normalizedBody = await normalizeAndSanitizeEmailBody(parsedEmail, {
 			cidResolver,
 			blockRemoteImagesByDefault: false,
 			allowDataImages: Boolean(cidResolver),
@@ -444,6 +446,7 @@ async function loadSeedEmails(options: { limit?: number; offset?: number } = {})
 			bodyText: normalizedBody?.plain ?? null,
 			bodyTextWithLinks: normalizedBody?.plainWithLinks ?? null,
 			bodyHTML: normalizedBody?.html ?? null,
+			bodyMD: normalizedBody?.md ?? null,
 		});
 	}
 
