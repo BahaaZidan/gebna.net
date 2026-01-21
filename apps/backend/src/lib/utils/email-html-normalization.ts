@@ -563,7 +563,7 @@ function makeTurndownMeaninglessCleaner() {
 				hasBlockDescendant(node as Element)),
 		replacement: (_content, node) => {
 			const el = node as Element;
-			const text = normalizeLinkText(extractAnchorText(el));
+			const text = normalizeLinkText(extractElementText(el));
 			if (!text) return "";
 			if (hasAnchorAncestor(el)) return escape(text);
 			const href = el.getAttribute("href");
@@ -571,6 +571,15 @@ function makeTurndownMeaninglessCleaner() {
 			const title = el.getAttribute("title");
 			const titlePart = title ? ` "${title.replace(/"/g, '\\"')}"` : "";
 			return `[${escape(text)}](${href}${titlePart})`;
+		},
+	});
+
+	turndown.addRule("tableToMarkdown", {
+		filter: (node) => node.nodeType === 1 && (node as Element).nodeName === "TABLE",
+		replacement: (content, node) => {
+			const table = node as Element;
+			if (!isDataTable(table)) return content;
+			return tableToMarkdown(table);
 		},
 	});
 
@@ -675,7 +684,7 @@ function hasBlockDescendant(node: Element): boolean {
 	return false;
 }
 
-function extractAnchorText(node: Element): string {
+function extractElementText(node: Element): string {
 	const parts: string[] = [];
 	const stack: Array<{ node: Node; exit: boolean }> = [{ node, exit: false }];
 	const visited = new Set<Node>();
@@ -702,6 +711,82 @@ function extractAnchorText(node: Element): string {
 		}
 	}
 	return parts.join("");
+}
+
+function isDataTable(table: Element): boolean {
+	if ((table.getAttribute("role") || "").toLowerCase() === "presentation") return false;
+	if (table.querySelector("table")) return false;
+	const headerText = normalizeLinkText(
+		extractElementText(table.querySelector("caption, th") ?? table)
+	);
+	const rows = Array.from(table.querySelectorAll("tr"));
+	if (rows.length < 2) return false;
+	let maxCols = 0;
+	let minCols = Number.POSITIVE_INFINITY;
+	let totalCells = 0;
+	let meaningfulCells = 0;
+	let blockCells = 0;
+	let longCells = 0;
+	let textLength = 0;
+	let rowWithMultipleValues = 0;
+	for (const row of rows) {
+		const cells = Array.from(row.querySelectorAll("th, td"));
+		if (cells.length === 0) continue;
+		maxCols = Math.max(maxCols, cells.length);
+		minCols = Math.min(minCols, cells.length);
+		let nonEmptyInRow = 0;
+		for (const cell of cells) {
+			const text = normalizeLinkText(extractElementText(cell));
+			totalCells += 1;
+			if (hasBlockDescendant(cell)) blockCells += 1;
+			if (text.length > 120) longCells += 1;
+			if (text.length > 0) {
+				meaningfulCells += 1;
+				textLength += text.length;
+				nonEmptyInRow += 1;
+			}
+		}
+		if (nonEmptyInRow >= 2) rowWithMultipleValues += 1;
+	}
+	if (maxCols < 2 || totalCells === 0) return false;
+	if (minCols !== maxCols) return false;
+	if (meaningfulCells / totalCells < 0.5) return false;
+	if (rowWithMultipleValues === 0) return false;
+	if (!headerText) {
+		if (blockCells / totalCells > 0.3) return false;
+		if (longCells / totalCells > 0.2) return false;
+	}
+	return textLength >= 10;
+}
+
+function tableToMarkdown(table: Element): string {
+	const rows = Array.from(table.querySelectorAll("tr"));
+	const rowCells: string[][] = [];
+	for (const row of rows) {
+		const cells = Array.from(row.querySelectorAll("th, td"));
+		if (cells.length === 0) continue;
+		rowCells.push(
+			cells.map((cell) => {
+				const text = normalizeLinkText(extractElementText(cell));
+				return text.replace(/\|/g, "\\|");
+			})
+		);
+	}
+	if (rowCells.length === 0) return "";
+	const colCount = Math.max(...rowCells.map((row) => row.length));
+	for (const row of rowCells) {
+		while (row.length < colCount) row.push("");
+	}
+	const header = rowCells[0];
+	const body = rowCells.slice(1);
+	const lines = [
+		`| ${header.join(" | ")} |`,
+		`| ${Array.from({ length: colCount }).map(() => "---").join(" | ")} |`,
+	];
+	for (const row of body) {
+		lines.push(`| ${row.join(" | ")} |`);
+	}
+	return `${lines.join("\n")}\n`;
 }
 
 function normalizeLinkText(s: string): string {
