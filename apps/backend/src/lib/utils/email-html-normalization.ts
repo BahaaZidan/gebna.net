@@ -1,5 +1,4 @@
 import { htmlToText } from "html-to-text";
-import type { FormatCallback } from "html-to-text";
 import type { Email } from "postal-mime";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
@@ -111,7 +110,6 @@ export async function normalizeAndSanitizeEmailBody(
 ): Promise<{
 	html: string | null;
 	plain: string;
-	plainWithLinks: string;
 	md: string | null;
 } | null> {
 	const resolvedOptions: NormalizedOptions = { ...DEFAULT_OPTIONS, ...options };
@@ -127,29 +125,23 @@ export async function normalizeAndSanitizeEmailBody(
 
 		// INTENTIONAL: some servers send stub plain text bodies like "It looks like your email client might not support HTML formatted email.". So we always consider the html body as the prefered source
 		const textSource = htmlToPlainText(bodyHtml).replace(/\n{2,}/g, "\n");
-		const textSourceWithLinks = htmlToTextWithLinks(bodyHtml);
 		const textResult = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
-		const textWithLinksResult = truncateToBytes(textSourceWithLinks, resolvedOptions.maxTextBytes);
 
 		const markdownHtml = bodyHtml ? await htmlToMarkdownHTML(bodyHtml) : "";
 
 		return {
 			html: buildHtmlDocument(bodyHtml, headStyles),
 			plain: textResult.value,
-			plainWithLinks: textWithLinksResult.value,
 			md: markdownHtml || null,
 		};
 	}
 
 	if (hadText) {
 		const textSource = rawText.replace(/\n{2,}/g, "\n");
-		const textSourceWithLinks = textSource.replace(/\n/g, "<br>");
 		const truncated = truncateToBytes(textSource, resolvedOptions.maxTextBytes);
-		const truncatedWithLinks = truncateToBytes(textSourceWithLinks, resolvedOptions.maxTextBytes);
 		return {
 			html: null,
 			plain: truncated.value,
-			plainWithLinks: truncatedWithLinks.value,
 			md: truncated.value,
 		};
 	}
@@ -526,53 +518,6 @@ function htmlToPlainText(html: string) {
 			{ selector: "script", format: "skip" },
 		],
 	});
-}
-
-function htmlToTextWithLinks(html: string) {
-	const result = htmlToText(html, {
-		wordwrap: false,
-		formatters: {
-			anchorTag: ((elem, walk, builder, formatOptions) => {
-				const attribs = elem.attribs ?? {};
-				let href = attribs.href ?? "";
-				const children = elem.children ?? [];
-
-				if (formatOptions.ignoreHref || !href) {
-					builder.addInline("<a>", { noWordTransform: true });
-					walk(children, builder);
-					builder.addInline("</a>", { noWordTransform: true });
-					return;
-				}
-
-				href = href.replace(/^mailto:/, "");
-				if (formatOptions.noAnchorUrl && href[0] === "#") {
-					builder.addInline("<a>", { noWordTransform: true });
-					walk(children, builder);
-					builder.addInline("</a>", { noWordTransform: true });
-					return;
-				}
-
-				if (typeof formatOptions.pathRewrite === "function") {
-					href = formatOptions.pathRewrite(href, undefined);
-				}
-				if (href[0] === "/" && formatOptions.baseUrl) {
-					href = `${formatOptions.baseUrl.replace(/\/$/, "")}${href}`;
-				}
-
-				builder.addInline(`<a href="${escapeAttribute(href)}">`, { noWordTransform: true });
-				walk(children, builder);
-				builder.addInline("</a>", { noWordTransform: true });
-			}) satisfies FormatCallback,
-		},
-		selectors: [
-			{ selector: "a", format: "anchorTag" },
-			{ selector: "img", format: "skip" },
-			{ selector: "style", format: "skip" },
-			{ selector: "script", format: "skip" },
-		],
-	});
-
-	return result.replace(/\n{2,}/g, "\n").replace(/\n/g, "<br>");
 }
 
 async function htmlToMarkdownHTML(html: string): Promise<string> {

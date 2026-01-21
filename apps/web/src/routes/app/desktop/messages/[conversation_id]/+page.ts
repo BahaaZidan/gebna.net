@@ -20,7 +20,6 @@ export const _houdini_load = graphql(`
 							bodyText
 							bodyHTML
 							bodyMD
-							bodyTextWithLinks
 							createdAt
 							sender {
 								id
