@@ -4,7 +4,7 @@ Gebna is a super-app that provides all the common software an average person nee
 
 # Why?
 
-**A certain level of power must never be allowed to exist**. I wholeheartedly believe that. Google, Apple, and Microsoft have so much hold over your digital life. So much so that you can't imagine using your laptop/phone or accessing the internet without depending on at least one of their services. The insight and the hold they have over our digital life (which usually co-insides with our physical life) is unfathomable. The insight is being sold to companies actively (and very quickly) developing dystopian surveillance systems. The hold is being used so that we get to a point where we can't make a simple transaction without being approved by some institution. From the information you consume to the currency you use, No matter where you live in the world: You are enslaved.
+**A certain level of power must never be allowed to exist**. I wholeheartedly believe that. Google, Apple, and Microsoft have so much hold over your digital life. So much so that you can't imagine using your laptop/phone or accessing the internet without depending on at least one of their services. The insight and the hold they have over our digital life (which usually co-insides with our physical life) is unfathomable. The insight is being sold to companies that are actively (and very quickly) developing dystopian surveillance systems. The hold is being used so that we get to a point where we can't make a simple transaction without being approved by some institution. From the information you consume to the currency you use, No matter where you live in the world: You are enslaved.
 
 We can do better. I'm not saying this in a hollow-motivational manner. I actually mean it. It's actually not that hard and it won't take 10 years. We already have a truly global currency that is not and cannot be controlled by anyone: Bitcoin. We already have the world wide web as a software distribution platform that is not and cannot be controlled by anyone (government harassment non-withstanding). We just need to build the software we need on top of these two and we might wake up one day not scared to write a blog expressing our opinion or else all transactions going into our online store will be blocked by the central bank of our country because cash is dead and they control the flow of money now.
 
@@ -18,10 +18,14 @@ The focus of Gebna is providing quality software for the average person. That me
 
 # How will this make money?
 
-Very simple, a user is a customer. They wanna use this, they have to pay for it. This is how software was distributed before the deformed ad-centric web arrived at the hands of companies like Google and Facebook.
+Very simple, a user is a customer. They wanna use this, they have to pay for it. This is how software was distributed before the deformed ad-centric web arrived by the hands of companies like Google and Facebook.
 
-How much exactly? I don't know at the moment. But I'll try to make it as affordable as possible while enabling Gebna to grow and improve.
+> How much exactly?
 
-But Google gives you 10GB for free. No one will pay for this. You're right. We can't compete with any free-tier. But the goal is to make it sustainable for us to be able to have competitive pricing compared to their paid tiers.
+I don't know at the moment. But I'll try to make it as affordable as possible while enabling Gebna to grow and improve.
+
+> But Google offers 15GB for free. No one will pay for this.
+
+You're right. We can't compete with any free-tier. But the goal is to make it sustainable for us to be able to have competitive pricing compared to their paid tiers.
 
 Keep in mind that we might go for a usage-based model instead of tiered subscriptions. As I think the way subscriptions are implemented today is predatory.
