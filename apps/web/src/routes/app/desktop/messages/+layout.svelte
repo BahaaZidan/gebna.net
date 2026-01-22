@@ -44,15 +44,11 @@
 						href={resolve("/app/desktop/messages/[conversation_id]", { conversation_id: node.id })}
 						class="group flex w-full items-center gap-3 p-3 hover:bg-base-200"
 					>
-						<ConversationAvatar
-							conversation={node}
-							viewerIdentityId={viewer?.identity.id}
-							class="size-12 min-h-12 min-w-12"
-						/>
+						<ConversationAvatar conversation={node} class="size-12 min-h-12 min-w-12" />
 						<div class="flex w-full flex-col gap-1">
 							<div class="flex items-baseline justify-between">
 								<div class="line-clamp-1 font-semibold">
-									<ConversationTitle conversation={node} viewerIdentityId={viewer?.identity.id} />
+									<ConversationTitle conversation={node} />
 								</div>
 								<div class="mx-px text-xs whitespace-nowrap text-gray-400">
 									{formatInboxDate(node.updatedAt)}
