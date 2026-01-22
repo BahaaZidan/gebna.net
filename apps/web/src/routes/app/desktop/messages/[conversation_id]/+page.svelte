@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { type IconProps } from "@lucide/svelte";
+	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
 	import MicIcon from "@lucide/svelte/icons/mic";
 	import PlusIcon from "@lucide/svelte/icons/plus";
@@ -29,12 +30,8 @@
 	<div class="flex h-full min-h-0 flex-col">
 		<div class="flex shrink-0 justify-between border-b p-3">
 			<div class="flex items-center gap-2">
-				<ConversationAvatar
-					{conversation}
-					viewerIdentityId={viewer?.identity.id}
-					class="size-10 min-h-10 min-w-10"
-				/>
-				<div><ConversationTitle {conversation} viewerIdentityId={viewer.identity.id} /></div>
+				<ConversationAvatar {conversation} class="size-10 min-h-10 min-w-10" />
+				<div><ConversationTitle {conversation} /></div>
 			</div>
 			<div class="flex">
 				{@render iconButton({ label: "Search", Icon: SearchIcon })}
@@ -59,7 +56,12 @@
 						{node.sender.address}
 						<time class="text-xs opacity-50">{formatInboxDate(node.createdAt)}</time>
 					</div>
-					<div class="chat-bubble">
+					<div class="group chat-bubble">
+						<button
+							class="btn absolute top-0 -right-7 m-0 hidden size-7 border-0 bg-base-300 p-0 group-hover:inline-flex"
+						>
+							<ChevronDownIcon class="size-5" />
+						</button>
 						<div dir="auto" class="prose wrap-anywhere">{@html node.bodyMD}</div>
 					</div>
 					<div class="chat-footer opacity-50">Delivered</div>

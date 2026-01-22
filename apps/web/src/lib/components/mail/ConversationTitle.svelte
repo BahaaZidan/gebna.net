@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { fragment, graphql, type ConversationTitle } from "$houdini";
 
-	let props: { conversation: ConversationTitle; viewerIdentityId?: string } = $props();
+	import { getViewer } from "$lib/graphql";
+
+	let props: { conversation: ConversationTitle } = $props();
 	let conversation = $derived(
 		fragment(
 			props.conversation,
@@ -30,8 +32,9 @@
 		)
 	);
 
+	let viewer = getViewer();
 	let otherParticipants = $derived(
-		$conversation.participants.filter((p) => p.identity.id !== props.viewerIdentityId)
+		$conversation.participants.filter((p) => p.identity.id !== viewer?.identity.id)
 	);
 </script>
 
