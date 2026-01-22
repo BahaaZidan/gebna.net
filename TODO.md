@@ -1,10 +1,10 @@
-## TODOs
+# TODOs
 
-### proto-3
+## proto-3
+
+### BIG
 
 - [ ] Chats => A unified chat interface
-  - [ ] Contacts-based threading => Conversations/Chats
-  - [ ] Forced plain text view for email messages (with the ability to "View HTML version")
   - [ ] Smart content detection:
     - [ ] Calendar invites
     - [ ] Body-less emails w/ attachments
@@ -12,82 +12,31 @@
 - [ ] News => Email newsletters + RSS = unified news feed
 - [ ] Files => Generic cloud storage that also includes attachments
 
-### v0
+### smol
 
-- [x] Drop JMAP (I ended up deleting everything)
-- [x] Better structure
-- [x] Rework authentication
-- [x] Redo the database design around a simpler single-user method
-- [x] Redo the inbound worker code to reflect the new design
-- [x] Sanitize PostalMime.Email.html
-- [x] Parse PostalMime.Email.references into an array of addresses instead of the raw string
-- [x] Manually Test inbound again
-- [x] Attachments
-- [x] Setup graphql-yoga with hono
-- [x] Setup server codegen for GQL typesafety
-- [x] Watch and run codegen
-- [x] Stitch existing authentication with the graphql-yoga instance
-- [x] Rough graphql schema draft
-- [x] Resolvers for the rough schema draft
-- [x] Mailbox.threads
-- [x] Mailbox.unseenThreadsCount
-- [x] Query to view thread(s?) detail
-- [x] Basic UI layout
-- [x] Basic login/signup UI
-- [x] Research capacitor limitations
-- [x] Research using react-native for the web ui SPA and mobile 😢
-- [x] Setup URQL
-- [x] Setup graphql-codegen client preset w/ watchmode
-- [x] Missing data
-  - [x] Thread.snippet
-  - [x] Address.profile_picture
-  - [x] Address.full_name
-  - [x] User.profile_picture
-  - [x] User.name
-- [x] User.mailboxes should be filtered based on an array of types (i.e. ["important", "screener"])
-- [x] Screener flow
-- [x] Rename AddressProfile to Contact across the system
-- [x] Important box page UI
-- [x] Important thread detail UI
-- [x] Seen/unseen cross-cutting
-- [x] Better seeding => use real bodyHTML instead of these toy examples
-- [x] News Box
-- [x] Transactional Box
-- [x] Trash Box
-- [x] Downloadable attachments
-- [x] Attachments UI
-- [x] Basic Full Text Search
-- [x] FTS UI
-- [x] Delete emails that has been in a trash mailbox for more than (?) days
-- [x] Allow user to change their profile picture
-- [x] Attachment blobs garbage collection
+- [ ] generate snippets on the resolvers level
+- [ ] store snippet in the database
+- [ ]
 
-### v0.5
+## v0.5
 
-- [x] Every address gets a dedicated page where a user can see all the email threads sent/recieved between the address and the user. You can also see the files/attachments. Finally, you're able to change where their future emails go.
-- [x] The user should be able edit the title of a thread
-- [x] Attachments standalone page. Search per filetype or sender across all attachments tied to your account
-- [x] Attachment thumbnail
-- [x] A more scalable UI for screener flow.
 - [ ] Show thread participants in thread details page.
-- [ ] UI ONLY: The ability to select one or more threads in /app/mail and have a action menu popup. The menu option should change based on one or bulk
 - [ ] Mark as seen / Mark as unseen in /app/mail
 - [ ] Pagination
 
-### Beyond v0.5
+## Beyond v0.5
 
 - [ ] Dataloaders everywhere
 - [ ] Database indexing based on the queries web ui is using
 
-### v0.6
+## v0.6
 
-- [ ] Outbound
+- [ ] Email Outbound
 
-### Beyond v1
+## Beyond v1
 
 - [ ] Offline support
 - [ ] Custom domain support
-- [ ] Block pixel tracking
 - [ ] Tighter security by creating machine id for every session and checking against it pre usage
 - [ ] Users can forward their old emails to Gebna
 - [ ] Users can forward their Gebna emails to their old emails.
@@ -95,15 +44,11 @@
 - [ ] use svelte boundaries to show a graceful error message in case of an exception
 - [ ] Attachment previews
 
-### ?
+## ?
 
-- [ ] Check constraint to make sure the user have at least one trash, important, news, and paper trail box
 - [ ] Store raw .eml in an R2 bucket
 - [ ] Labels
 - [ ] Workflows ?
 - [ ] Integrations/apps ?
-- [ ] Onboarding flow
 - [ ] Use a scalar to automatically unwrap input IDs on the schema level so that you don't have to litter resolver code with `fromGlobalId(args.id).id`
 - [ ] The ability to select a substring from the email body and save it for later reference. (in Hey it's called Clips. I don't think it's useful enough in Hey. I think it would be really cool to have that as a continuity feature with gebna notes.)
-- [ ] Users can anottate a thread with "note to self". Things like "don't forget to ask them about X if they don't bring it up!"
-- [ ] Smart protocol switching (gebna <=> gebna) -> DMs, (gebna <=> non/3rd party) -> Email
