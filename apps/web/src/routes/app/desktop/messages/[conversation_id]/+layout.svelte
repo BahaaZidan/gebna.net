@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { type IconProps } from "@lucide/svelte";
 	import CheckCheckIcon from "@lucide/svelte/icons/check-check";
-	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
 	import MicIcon from "@lucide/svelte/icons/mic";
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import SearchIcon from "@lucide/svelte/icons/search";
 	import { type Component, type Snippet } from "svelte";
 
+	import { resolve } from "$app/paths";
+
 	import { floatingDropdown } from "$lib/actions/floating-dropdown";
 	import ConversationAvatar from "$lib/components/mail/ConversationAvatar.svelte";
 	import ConversationTitle from "$lib/components/mail/ConversationTitle.svelte";
-	import Portal from "$lib/components/Portal.svelte";
 	import { formatInboxDate } from "$lib/format";
 
-	import type { PageData } from "./$houdini";
+	import type { LayoutData } from "./$houdini";
 
-	let props: { children: Snippet; data: PageData } = $props();
+	let props: { children: Snippet; data: LayoutData } = $props();
 
 	let ConversationDetailsQuery = $derived(props.data.ConversationDetailsQuery);
 	let conversation = $derived(
@@ -73,9 +73,26 @@
 								<EllipsisVerticalIcon class="size-6" />
 							</summary>
 							<ul class="dropdown-content menu z-1 w-52 rounded-box bg-base-200 p-2 shadow">
-								<li><a>Item 1</a></li>
-								<li><a>Item 2</a></li>
-								<li><a class="text-error">Delete</a></li>
+								<li>
+									<a
+										href={resolve(
+											"/app/desktop/messages/[conversation_id]/details/[message_id]/html",
+											{ conversation_id: conversation.id, message_id: node.id }
+										)}
+									>
+										HTML version
+									</a>
+								</li>
+								<li>
+									<a
+										href={resolve(
+											"/app/desktop/messages/[conversation_id]/details/[message_id]/delivery",
+											{ conversation_id: conversation.id, message_id: node.id }
+										)}
+									>
+										Delivery report
+									</a>
+								</li>
 							</ul>
 						</details>
 						<div dir="auto" class="prose wrap-anywhere">{@html node.bodyMD}</div>
