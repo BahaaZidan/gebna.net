@@ -28,7 +28,7 @@
 					<XIcon />
 				</a>
 			</div>
-			<div class="px-6 pb-6">
+			<div class="px-6 pt-2 pb-6">
 				{@render props.children()}
 			</div>
 		</div>

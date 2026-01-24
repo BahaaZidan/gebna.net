@@ -126,6 +126,13 @@ export const resolvers: Resolvers = {
 					});
 					return identity ? { ...identity, __typename: "Identity" } : null;
 				}
+				case "Message": {
+					// TODO: authorization lol
+					const message = await db.query.messageTable.findFirst({
+						where: (t, { eq }) => eq(t.id, id),
+					});
+					return message ? { ...message, __typename: "Message" } : null;
+				}
 				default:
 					return null;
 			}
