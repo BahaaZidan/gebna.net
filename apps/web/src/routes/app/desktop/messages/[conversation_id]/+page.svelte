@@ -8,8 +8,10 @@
 	import SearchIcon from "@lucide/svelte/icons/search";
 	import { type Component } from "svelte";
 
+	import { floatingDropdown } from "$lib/actions/floating-dropdown";
 	import ConversationAvatar from "$lib/components/mail/ConversationAvatar.svelte";
 	import ConversationTitle from "$lib/components/mail/ConversationTitle.svelte";
+	import Portal from "$lib/components/Portal.svelte";
 	import { formatInboxDate } from "$lib/format";
 
 	import type { PageData } from "./$houdini";
@@ -60,9 +62,22 @@
 						<time class="text-xs opacity-50">{formatInboxDate(node.createdAt)}</time>
 					</div>
 					<div class="group chat-bubble">
-						<button class="btn invisible absolute top-0 right-0 btn-sm group-hover:visible">
-							<ChevronDownIcon />
-						</button>
+						<details
+							class="dropdown absolute dropdown-start top-0 -right-11"
+							use:floatingDropdown={{ placement: "bottom-start", offsetPx: 0 }}
+						>
+							<summary
+								class="btn invisible size-11 list-none border-0 bg-base-300 group-focus-within:visible group-hover:visible group-has-[details[open]]:visible"
+								aria-label="Open menu"
+							>
+								<EllipsisVerticalIcon class="size-6" />
+							</summary>
+							<ul class="dropdown-content menu z-1 w-52 rounded-box bg-base-200 p-2 shadow">
+								<li><a>Item 1</a></li>
+								<li><a>Item 2</a></li>
+								<li><a class="text-error">Delete</a></li>
+							</ul>
+						</details>
 						<div dir="auto" class="prose wrap-anywhere">{@html node.bodyMD}</div>
 					</div>
 					<div class="chat-footer">
