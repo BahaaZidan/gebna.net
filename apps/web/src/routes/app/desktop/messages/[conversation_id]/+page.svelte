@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { type IconProps } from "@lucide/svelte";
+	import CheckCheckIcon from "@lucide/svelte/icons/check-check";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
 	import MicIcon from "@lucide/svelte/icons/mic";
@@ -52,19 +53,21 @@
 							</div>
 						</div>
 					{/if}
-					<div class="chat-header">
-						{node.sender.address}
+					<div class={["chat-header", bySelf && "flex-row-reverse"]}>
+						{#if !bySelf}
+							{node.sender.name || node.sender.address}
+						{/if}
 						<time class="text-xs opacity-50">{formatInboxDate(node.createdAt)}</time>
 					</div>
 					<div class="group chat-bubble">
-						<button
-							class="btn absolute top-0 -right-7 m-0 hidden size-7 border-0 bg-base-300 p-0 group-hover:inline-flex"
-						>
-							<ChevronDownIcon class="size-5" />
+						<button class="btn invisible absolute top-0 right-0 btn-sm group-hover:visible">
+							<ChevronDownIcon />
 						</button>
 						<div dir="auto" class="prose wrap-anywhere">{@html node.bodyMD}</div>
 					</div>
-					<div class="chat-footer opacity-50">Delivered</div>
+					<div class="chat-footer">
+						<CheckCheckIcon class="size-4" /> Delivered
+					</div>
 				</div>
 			{/each}
 		</div>
