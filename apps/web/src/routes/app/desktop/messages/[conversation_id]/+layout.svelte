@@ -2,9 +2,11 @@
 	import { type IconProps } from "@lucide/svelte";
 	import CheckCheckIcon from "@lucide/svelte/icons/check-check";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
+	import FileCodeIcon from "@lucide/svelte/icons/file-code";
 	import MicIcon from "@lucide/svelte/icons/mic";
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import SearchIcon from "@lucide/svelte/icons/search";
+	import SendIcon from "@lucide/svelte/icons/send";
 	import { type Component, type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
@@ -80,7 +82,7 @@
 											{ conversation_id: conversation.id, message_id: node.id }
 										)}
 									>
-										HTML version
+										<FileCodeIcon /> HTML Version
 									</a>
 								</li>
 								<li>
@@ -90,7 +92,7 @@
 											{ conversation_id: conversation.id, message_id: node.id }
 										)}
 									>
-										Delivery report
+										<SendIcon /> Delivery Report
 									</a>
 								</li>
 							</ul>
