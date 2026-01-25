@@ -3,10 +3,10 @@
 	import CheckCheckIcon from "@lucide/svelte/icons/check-check";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
 	import FileCodeIcon from "@lucide/svelte/icons/file-code";
-	import MicIcon from "@lucide/svelte/icons/mic";
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import SearchIcon from "@lucide/svelte/icons/search";
 	import SendIcon from "@lucide/svelte/icons/send";
+	import SendHorizontalIcon from "@lucide/svelte/icons/send-horizontal";
 	import { type Component, type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
@@ -65,7 +65,7 @@
 					</div>
 					<div class="group chat-bubble">
 						<details
-							class="dropdown absolute dropdown-start top-0 -right-11"
+							class={["dropdown absolute dropdown-start top-0", bySelf ? "-left-11" : "-right-11"]}
 							use:floatingDropdown={{ placement: "bottom-start", offsetPx: 0 }}
 						>
 							<summary
@@ -75,16 +75,18 @@
 								<EllipsisVerticalIcon class="size-6" />
 							</summary>
 							<ul class="dropdown-content menu z-1 w-52 rounded-box bg-base-200 p-2 shadow">
-								<li>
-									<a
-										href={resolve(
-											"/app/desktop/messages/[conversation_id]/details/[message_id]/html",
-											{ conversation_id: conversation.id, message_id: node.id }
-										)}
-									>
-										<FileCodeIcon /> HTML Version
-									</a>
-								</li>
+								{#if node.hasHTML}
+									<li>
+										<a
+											href={resolve(
+												"/app/desktop/messages/[conversation_id]/details/[message_id]/html",
+												{ conversation_id: conversation.id, message_id: node.id }
+											)}
+										>
+											<FileCodeIcon class="size-5" /> HTML Version
+										</a>
+									</li>
+								{/if}
 								<li>
 									<a
 										href={resolve(
@@ -92,7 +94,7 @@
 											{ conversation_id: conversation.id, message_id: node.id }
 										)}
 									>
-										<SendIcon /> Delivery Report
+										<SendIcon class="size-5" /> Delivery Report
 									</a>
 								</li>
 							</ul>
@@ -116,7 +118,7 @@
 					placeholder="Message"
 				></textarea>
 				<button class="btn btn-ghost">
-					<MicIcon />
+					<SendHorizontalIcon />
 				</button>
 			</div>
 		</div>

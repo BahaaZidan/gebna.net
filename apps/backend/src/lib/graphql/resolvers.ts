@@ -642,6 +642,7 @@ export const resolvers: Resolvers = {
 				orderBy: (t, { desc }) => desc(t.latestStatusChangeAt),
 			});
 		},
+		hasHTML: (parent) => !!parent.bodyHTML,
 	},
 	DeliveryReceipt: {
 		recipient: async (parent, _args, { db }) => {

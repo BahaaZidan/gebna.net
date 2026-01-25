@@ -175,6 +175,7 @@ export type Message = Node & {
   conversationId: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
   delivery: Array<DeliveryReceipt>;
+  hasHTML: Scalars['Boolean']['output'];
   id: Scalars['ID']['output'];
   sender: Identity;
 };
@@ -611,6 +612,7 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
   conversationId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   delivery?: Resolver<Array<ResolversTypes['DeliveryReceipt']>, ParentType, ContextType>;
+  hasHTML?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   sender?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
