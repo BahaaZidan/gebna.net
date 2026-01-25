@@ -50,7 +50,12 @@
 								<div class="line-clamp-1 font-semibold">
 									<ConversationTitle conversation={node} />
 								</div>
-								<div class="mx-px text-xs whitespace-nowrap text-gray-400">
+								<div
+									class={[
+										"mx-px text-xs whitespace-nowrap",
+										node.viewerState.unreadCount ? "text-primary-content" : "text-gray-400",
+									]}
+								>
 									{formatInboxDate(node.updatedAt)}
 								</div>
 							</div>
@@ -58,9 +63,14 @@
 								<div class="line-clamp-1 min-w-0 text-sm wrap-anywhere text-gray-400">
 									{node.lastMessage.bodyText}
 								</div>
-								<button class="btn hidden btn-ghost btn-xs group-hover:inline-flex">
-									<ChevronDownIcon class="size-5.5" />
-								</button>
+								<div class="flex gap-1">
+									{#if node.viewerState.unreadCount}
+										<div class="badge badge-primary">{node.viewerState.unreadCount}</div>
+									{/if}
+									<button class="btn hidden btn-ghost btn-xs group-hover:inline-flex">
+										<ChevronDownIcon class="size-5.5" />
+									</button>
+								</div>
 							</div>
 						</div>
 					</a>

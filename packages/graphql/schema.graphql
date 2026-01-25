@@ -243,10 +243,6 @@ input MarkConversationReadInput {
 	lastReadMessageId: ID!
 }
 
-type MarkConversationReadPayload {
-	conversation: Conversation!
-}
-
 input SetContactStatusInput {
 	identityId: ID!
 	isContact: Boolean!
@@ -268,7 +264,7 @@ type Mutation {
 	upsertConversation(input: UpsertConversationInput!): UpsertConversationPayload!
 	addConversationParticipants(input: AddConversationParticipantsInput!): Conversation
 	sendMessage(input: SendMessageInput!): Message!
-	markConversationRead(input: MarkConversationReadInput!): MarkConversationReadPayload!
+	markConversationRead(id: ID!): Conversation!
 
 	setContactStatus(input: SetContactStatusInput!): Identity
 	moveConversation(input: MoveConversationInput!): Conversation

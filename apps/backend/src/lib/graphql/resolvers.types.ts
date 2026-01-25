@@ -171,11 +171,6 @@ export type MarkConversationReadInput = {
   lastReadMessageId: Scalars['ID']['input'];
 };
 
-export type MarkConversationReadPayload = {
-  __typename?: 'MarkConversationReadPayload';
-  conversation: Conversation;
-};
-
 export type Message = Node & {
   __typename?: 'Message';
   bodyHTML?: Maybe<Scalars['String']['output']>;
@@ -209,7 +204,7 @@ export type MoveConversationInput = {
 export type Mutation = {
   __typename?: 'Mutation';
   addConversationParticipants?: Maybe<Conversation>;
-  markConversationRead: MarkConversationReadPayload;
+  markConversationRead: Conversation;
   moveConversation?: Maybe<Conversation>;
   sendMessage: Message;
   setContactStatus?: Maybe<Identity>;
@@ -223,7 +218,7 @@ export type MutationAddConversationParticipantsArgs = {
 
 
 export type MutationMarkConversationReadArgs = {
-  input: MarkConversationReadInput;
+  id: Scalars['ID']['input'];
 };
 
 
@@ -475,7 +470,6 @@ export type ResolversTypes = {
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   Mailbox: Mailbox;
   MarkConversationReadInput: MarkConversationReadInput;
-  MarkConversationReadPayload: ResolverTypeWrapper<Omit<MarkConversationReadPayload, 'conversation'> & { conversation: ResolversTypes['Conversation'] }>;
   Message: ResolverTypeWrapper<MessageSelectModel>;
   MessageConnection: ResolverTypeWrapper<Omit<MessageConnection, 'edges'> & { edges: Array<ResolversTypes['MessageEdge']> }>;
   MessageEdge: ResolverTypeWrapper<Omit<MessageEdge, 'node'> & { node: ResolversTypes['Message'] }>;
@@ -517,7 +511,6 @@ export type ResolversParentTypes = {
   IdentityRelationship: IdentityRelationshipSelectModel;
   Int: Scalars['Int']['output'];
   MarkConversationReadInput: MarkConversationReadInput;
-  MarkConversationReadPayload: Omit<MarkConversationReadPayload, 'conversation'> & { conversation: ResolversParentTypes['Conversation'] };
   Message: MessageSelectModel;
   MessageConnection: Omit<MessageConnection, 'edges'> & { edges: Array<ResolversParentTypes['MessageEdge']> };
   MessageEdge: Omit<MessageEdge, 'node'> & { node: ResolversParentTypes['Message'] };
@@ -623,10 +616,6 @@ export type IdentityRelationshipResolvers<ContextType = Context, ParentType exte
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type MarkConversationReadPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['MarkConversationReadPayload'] = ResolversParentTypes['MarkConversationReadPayload']> = {
-  conversation?: Resolver<ResolversTypes['Conversation'], ParentType, ContextType>;
-};
-
 export type MessageResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Message'] = ResolversParentTypes['Message']> = {
   bodyHTML?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   bodyMD?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -654,7 +643,7 @@ export type MessageEdgeResolvers<ContextType = Context, ParentType extends Resol
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addConversationParticipants?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationAddConversationParticipantsArgs, 'input'>>;
-  markConversationRead?: Resolver<ResolversTypes['MarkConversationReadPayload'], ParentType, ContextType, RequireFields<MutationMarkConversationReadArgs, 'input'>>;
+  markConversationRead?: Resolver<ResolversTypes['Conversation'], ParentType, ContextType, RequireFields<MutationMarkConversationReadArgs, 'id'>>;
   moveConversation?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationMoveConversationArgs, 'input'>>;
   sendMessage?: Resolver<ResolversTypes['Message'], ParentType, ContextType, RequireFields<MutationSendMessageArgs, 'input'>>;
   setContactStatus?: Resolver<Maybe<ResolversTypes['Identity']>, ParentType, ContextType, RequireFields<MutationSetContactStatusArgs, 'input'>>;
@@ -719,7 +708,6 @@ export type Resolvers<ContextType = Context> = {
   IdentityConnection?: IdentityConnectionResolvers<ContextType>;
   IdentityEdge?: IdentityEdgeResolvers<ContextType>;
   IdentityRelationship?: IdentityRelationshipResolvers<ContextType>;
-  MarkConversationReadPayload?: MarkConversationReadPayloadResolvers<ContextType>;
   Message?: MessageResolvers<ContextType>;
   MessageConnection?: MessageConnectionResolvers<ContextType>;
   MessageEdge?: MessageEdgeResolvers<ContextType>;

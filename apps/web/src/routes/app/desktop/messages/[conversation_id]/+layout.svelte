@@ -31,7 +31,31 @@
 	let MainViewerQuery = $derived(props.data.MainViewerQuery);
 	let viewer = $derived($MainViewerQuery.data?.viewer);
 
-	const SendMessageMutation = graphql(`
+	let MarkConversationReadMutation = graphql(`
+		mutation MarkConversationReadMutation($id: ID!) {
+			markConversationRead(id: $id) {
+				id
+				viewerState {
+					mailbox
+					unreadCount
+				}
+			}
+		}
+	`);
+	$effect(() => {
+		if (!conversation) return;
+		let timeout: NodeJS.Timeout | null;
+		if (conversation.viewerState.unreadCount > 0) {
+			timeout = setTimeout(() => {
+				MarkConversationReadMutation.mutate({ id: conversation.id });
+			}, 2000);
+		}
+		return () => {
+			if (timeout) clearTimeout(timeout);
+		};
+	});
+
+	let SendMessageMutation = graphql(`
 		mutation SendMessageMutation($input: SendMessageInput!) {
 			sendMessage(input: $input) {
 				...Conversation_Messages_insert @prepend
