@@ -69,10 +69,10 @@
 							use:floatingDropdown={{ placement: "bottom-start", offsetPx: 0 }}
 						>
 							<summary
-								class="btn invisible size-11 list-none border-0 bg-base-300 group-focus-within:visible group-hover:visible group-has-[details[open]]:visible"
+								class="btn invisible size-11 list-none border-0 bg-base-300 p-0 group-focus-within:visible group-hover:visible group-has-[details[open]]:visible"
 								aria-label="Open menu"
 							>
-								<EllipsisVerticalIcon class="size-6" />
+								<EllipsisVerticalIcon class="size-4.5" />
 							</summary>
 							<ul class="dropdown-content menu z-1 w-52 rounded-box bg-base-200 p-2 shadow">
 								{#if node.hasHTML}
