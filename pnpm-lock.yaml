@@ -227,10 +227,10 @@ importers:
         specifier: ^5.5.14
         version: 5.5.14
       houdini:
-        specifier: ^2.0.0-next.11
+        specifier: 2.0.0-next.11
         version: 2.0.0-next.11(vite@7.3.0(@types/node@25.0.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       houdini-svelte:
-        specifier: ^3.0.0-next.13
+        specifier: 3.0.0-next.13
         version: 3.0.0-next.13(@sveltejs/kit@2.49.5(@sveltejs/vite-plugin-svelte@6.2.2(svelte@5.46.4)(vite@7.3.0(@types/node@25.0.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.46.4)(typescript@5.9.3)(vite@7.3.0(@types/node@25.0.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.46.4)(vite@7.3.0(@types/node@25.0.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       svelte:
         specifier: ^5.46.4

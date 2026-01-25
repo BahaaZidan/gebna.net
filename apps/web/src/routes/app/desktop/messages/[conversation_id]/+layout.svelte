@@ -10,6 +10,7 @@
 	import { type Component, type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
+	import { graphql } from "$houdini";
 
 	import { floatingDropdown } from "$lib/actions/floating-dropdown";
 	import ConversationAvatar from "$lib/components/mail/ConversationAvatar.svelte";
@@ -29,6 +30,28 @@
 
 	let MainViewerQuery = $derived(props.data.MainViewerQuery);
 	let viewer = $derived($MainViewerQuery.data?.viewer);
+
+	const SendMessageMutation = graphql(`
+		mutation SendMessageMutation($input: SendMessageInput!) {
+			sendMessage(input: $input) {
+				...Conversation_Messages_insert @prepend
+				id
+				createdAt
+				bodyMD
+			}
+		}
+	`);
+	let messageVal = $state("");
+	async function sendMessage() {
+		if (!conversation) return;
+		await SendMessageMutation.mutate({
+			input: {
+				bodyMD: messageVal,
+				conversationId: conversation.id,
+			},
+		});
+		messageVal = "";
+	}
 </script>
 
 {#if conversation && viewer}
@@ -116,8 +139,14 @@
 					class="textarea-bordered textarea grow resize-none"
 					rows="1"
 					placeholder="Message"
+					bind:value={messageVal}
+					disabled={$SendMessageMutation.fetching}
 				></textarea>
-				<button class="btn btn-ghost">
+				<button
+					disabled={$SendMessageMutation.fetching}
+					onclick={sendMessage}
+					class="btn btn-ghost"
+				>
 					<SendHorizontalIcon />
 				</button>
 			</div>
