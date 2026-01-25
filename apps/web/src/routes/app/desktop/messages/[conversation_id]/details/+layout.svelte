@@ -17,8 +17,8 @@
 
 {#if conversation}
 	<dialog open class="modal">
-		<div class="modal-box border p-0">
-			<div class="flex justify-end">
+		<div class="relative modal-box max-h-[90vh] w-2xl min-w-2xl border p-0">
+			<div class="sticky top-0 flex justify-end bg-base-100">
 				{#if history.length}
 					<button class="btn btn-ghost" onclick={() => history.back()}>
 						<XIcon />
