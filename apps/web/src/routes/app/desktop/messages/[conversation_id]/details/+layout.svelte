@@ -2,18 +2,41 @@
 	import XIcon from "@lucide/svelte/icons/x";
 	import type { Snippet } from "svelte";
 
-	let props: { children: Snippet } = $props();
+	import { resolve } from "$app/paths";
+
+	import type { LayoutData } from "./$houdini";
+
+	let props: { children: Snippet; data: LayoutData } = $props();
+	let ConversationDetailsQuery = $derived(props.data.ConversationDetailsQuery);
+	let conversation = $derived(
+		$ConversationDetailsQuery.data?.node?.__typename === "Conversation"
+			? $ConversationDetailsQuery.data?.node
+			: null
+	);
 </script>
 
-<dialog open class="modal">
-	<div class="modal-box border p-0">
-		<div class="flex justify-end">
-			<button class="btn btn-ghost" onclick={() => history.back()}>
-				<XIcon />
-			</button>
+{#if conversation}
+	<dialog open class="modal">
+		<div class="modal-box border p-0">
+			<div class="flex justify-end">
+				{#if history.length}
+					<button class="btn btn-ghost" onclick={() => history.back()}>
+						<XIcon />
+					</button>
+				{:else}
+					<a
+						class="btn btn-ghost"
+						href={resolve("/app/desktop/messages/[conversation_id]", {
+							conversation_id: conversation.id,
+						})}
+					>
+						<XIcon />
+					</a>
+				{/if}
+			</div>
+			<div class="px-6 pt-2 pb-6">
+				{@render props.children()}
+			</div>
 		</div>
-		<div class="px-6 pt-2 pb-6">
-			{@render props.children()}
-		</div>
-	</div>
-</dialog>
+	</dialog>
+{/if}
