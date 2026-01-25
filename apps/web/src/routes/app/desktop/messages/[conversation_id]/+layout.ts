@@ -19,6 +19,7 @@ export const _houdini_load = graphql(`
 							id
 							bodyMD
 							createdAt
+							hasHTML
 							sender {
 								id
 								address
