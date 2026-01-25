@@ -1,8 +1,24 @@
 scalar DateTime
-scalar Cursor
 
 interface Node {
 	id: ID!
+}
+
+interface Edge {
+	cursor: String
+	node: Node!
+}
+
+type PageInfo {
+	startCursor: String
+	endCursor: String
+	hasNextPage: Boolean
+	hasPreviousPage: Boolean
+}
+
+interface Connection {
+	pageInfo: PageInfo!
+	edges: [Edge!]!
 }
 
 enum ConversationKind {
@@ -97,7 +113,7 @@ type Conversation implements Node {
 	lastMessage: Message!
 	updatedAt: DateTime!
 	viewerState: ConversationViewerState!
-	messages(last: Int!, before: Cursor): MessageConnection!
+	messages(last: Int!, before: String): MessageConnection!
 }
 
 type ConversationParticipant {
@@ -142,38 +158,33 @@ type DeliveryReceipt {
 	transport: Transport!
 }
 
-type PageInfo {
-	hasNextPage: Boolean!
-	endCursor: Cursor
-}
-
-type ConversationConnection {
+type ConversationConnection implements Connection {
 	edges: [ConversationEdge!]!
 	pageInfo: PageInfo!
 }
 
-type ConversationEdge {
-	cursor: Cursor!
+type ConversationEdge implements Edge {
+	cursor: String!
 	node: Conversation!
 }
 
-type MessageConnection {
+type MessageConnection implements Connection {
 	edges: [MessageEdge!]!
 	pageInfo: PageInfo!
 }
 
-type MessageEdge {
-	cursor: Cursor!
+type MessageEdge implements Edge {
+	cursor: String!
 	node: Message!
 }
 
-type IdentityConnection {
+type IdentityConnection implements Connection {
 	edges: [IdentityEdge!]!
 	pageInfo: PageInfo!
 }
 
-type IdentityEdge {
-	cursor: Cursor!
+type IdentityEdge implements Edge {
+	cursor: String!
 	node: Identity!
 }
 
@@ -185,12 +196,12 @@ type Viewer implements Node {
 
 	identity: Identity!
 
-	conversations(mailbox: Mailbox!, first: Int!, after: Cursor): ConversationConnection!
+	conversations(mailbox: Mailbox!, first: Int!, after: String): ConversationConnection!
 
 	"""
 	List of saved contacts.
 	"""
-	contacts(query: String, first: Int!, after: Cursor): IdentityConnection!
+	contacts(query: String, first: Int!, after: String): IdentityConnection!
 }
 
 type Query {
@@ -218,13 +229,7 @@ type UpsertConversationPayload {
 
 input SendMessageInput {
 	conversationId: ID!
-	bodyText: String!
-	clientMutationId: String!
-}
-
-type SendMessagePayload {
-	clientMutationId: String!
-	message: Message!
+	bodyMD: String!
 }
 
 type RecipientTransportDecision {
@@ -262,7 +267,7 @@ input AddConversationParticipantsInput {
 type Mutation {
 	upsertConversation(input: UpsertConversationInput!): UpsertConversationPayload!
 	addConversationParticipants(input: AddConversationParticipantsInput!): Conversation
-	sendMessage(input: SendMessageInput!): SendMessagePayload!
+	sendMessage(input: SendMessageInput!): Message!
 	markConversationRead(input: MarkConversationReadInput!): MarkConversationReadPayload!
 
 	setContactStatus(input: SetContactStatusInput!): Identity

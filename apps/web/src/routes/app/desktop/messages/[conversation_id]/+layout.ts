@@ -13,7 +13,7 @@ export const _houdini_load = graphql(`
 				lastMessage {
 					id
 				}
-				messages(last: 30) {
+				messages(last: 30) @paginate(name: "Conversation_Messages") {
 					edges {
 						node {
 							id

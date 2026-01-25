@@ -222,7 +222,7 @@ class ConversationEventHub {
 	private async publishViaDurableObject(envelope: PublishEnvelope) {
 		const id = this.env.CONVERSATION_EVENTS.idFromName(envelope.conversationId);
 		const stub = this.env.CONVERSATION_EVENTS.get(id);
-		const response = await stub.fetch("https://conversation-events/publish", {
+		const response = await stub.fetch(`https://conversation-events/${envelope.conversationId}`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
