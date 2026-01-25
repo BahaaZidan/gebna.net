@@ -380,25 +380,14 @@ export const resolvers: Resolvers = {
 
 			return message;
 		},
-		markConversationRead: async (_parent, { input }, { viewer, db }) => {
-			const rawConversationId = fromGlobalId(input.conversationId).id;
-			const rawMessageId = fromGlobalId(input.lastReadMessageId).id;
+		markConversationRead: async (_parent, args, { viewer, db }) => {
+			const rawConversationId = fromGlobalId(args.id).id;
 
 			return await db.transaction(async (tx) => {
 				const conversation = await tx.query.conversationTable.findFirst({
 					where: (t, { eq }) => eq(t.id, rawConversationId),
 				});
 				if (!conversation) throw new Error("Conversation not found");
-
-				await tx
-					.update(conversationParticipantTable)
-					.set({ lastReadMessageId: rawMessageId })
-					.where(
-						and(
-							eq(conversationParticipantTable.conversationId, rawConversationId),
-							eq(conversationParticipantTable.identityId, viewer.identity.id)
-						)
-					);
 
 				await upsertViewerState({
 					tx,
@@ -407,7 +396,7 @@ export const resolvers: Resolvers = {
 					unreadCount: 0,
 				});
 
-				return { conversation };
+				return conversation;
 			});
 		},
 		setContactStatus: async (_parent, { input }, { viewer, db }) => {
@@ -455,63 +444,59 @@ export const resolvers: Resolvers = {
 			return conversation;
 		},
 	},
-		Subscription: {
-			messageAdded: {
-				subscribe: async (_parent, args, { pubsub, db, viewer }) => {
-					const rawConversationId = fromGlobalId(args.conversationId).id;
-					const participant = await db.query.conversationParticipantTable.findFirst({
-						where: (t, { and, eq }) =>
-							and(
-								eq(t.conversationId, rawConversationId),
-								eq(t.identityId, viewer.identity.id),
-								eq(t.state, DEFAULT_PARTICIPANT_STATE)
-							),
-					});
-					if (!participant) throw new GraphQLError("Forbidden");
-					return pubsub.subscribeToConversation("messageAdded", rawConversationId);
-				},
-				resolve: async (
-					payload: MessageAddedPayload,
-					_args: unknown,
-					{ db, viewer }: Context
-				) => {
-					const message = await db.query.messageTable.findFirst({
-						where: (t, { eq }) => eq(t.id, payload.messageId),
-					});
-					if (!message) throw new Error("Message not found");
-					const participant = await db.query.conversationParticipantTable.findFirst({
-						where: (t, { and, eq }) =>
-							and(
-								eq(t.conversationId, message.conversationId),
-								eq(t.identityId, viewer.identity.id),
-								eq(t.state, DEFAULT_PARTICIPANT_STATE)
-							),
-					});
-					if (!participant) throw new GraphQLError("Forbidden");
-					return message;
-				},
+	Subscription: {
+		messageAdded: {
+			subscribe: async (_parent, args, { pubsub, db, viewer }) => {
+				const rawConversationId = fromGlobalId(args.conversationId).id;
+				const participant = await db.query.conversationParticipantTable.findFirst({
+					where: (t, { and, eq }) =>
+						and(
+							eq(t.conversationId, rawConversationId),
+							eq(t.identityId, viewer.identity.id),
+							eq(t.state, DEFAULT_PARTICIPANT_STATE)
+						),
+				});
+				if (!participant) throw new GraphQLError("Forbidden");
+				return pubsub.subscribeToConversation("messageAdded", rawConversationId);
 			},
-			deliveryUpdated: {
-				subscribe: async (_parent, args, { pubsub, db, viewer }) => {
-					const rawMessageId = fromGlobalId(args.messageId).id;
-					const message = await db.query.messageTable.findFirst({
-						columns: { conversationId: true },
-						where: (t, { eq }) => eq(t.id, rawMessageId),
-					});
-					if (!message) throw new Error("Message not found");
-					const participant = await db.query.conversationParticipantTable.findFirst({
-						where: (t, { and, eq }) =>
-							and(
-								eq(t.conversationId, message.conversationId),
-								eq(t.identityId, viewer.identity.id),
-								eq(t.state, DEFAULT_PARTICIPANT_STATE)
-							),
-					});
-					if (!participant) throw new GraphQLError("Forbidden");
+			resolve: async (payload: MessageAddedPayload, _args: unknown, { db, viewer }: Context) => {
+				const message = await db.query.messageTable.findFirst({
+					where: (t, { eq }) => eq(t.id, payload.messageId),
+				});
+				if (!message) throw new Error("Message not found");
+				const participant = await db.query.conversationParticipantTable.findFirst({
+					where: (t, { and, eq }) =>
+						and(
+							eq(t.conversationId, message.conversationId),
+							eq(t.identityId, viewer.identity.id),
+							eq(t.state, DEFAULT_PARTICIPANT_STATE)
+						),
+				});
+				if (!participant) throw new GraphQLError("Forbidden");
+				return message;
+			},
+		},
+		deliveryUpdated: {
+			subscribe: async (_parent, args, { pubsub, db, viewer }) => {
+				const rawMessageId = fromGlobalId(args.messageId).id;
+				const message = await db.query.messageTable.findFirst({
+					columns: { conversationId: true },
+					where: (t, { eq }) => eq(t.id, rawMessageId),
+				});
+				if (!message) throw new Error("Message not found");
+				const participant = await db.query.conversationParticipantTable.findFirst({
+					where: (t, { and, eq }) =>
+						and(
+							eq(t.conversationId, message.conversationId),
+							eq(t.identityId, viewer.identity.id),
+							eq(t.state, DEFAULT_PARTICIPANT_STATE)
+						),
+				});
+				if (!participant) throw new GraphQLError("Forbidden");
 
-					return filterAsyncIterator(
-						pubsub.subscribeToConversation(
-							"deliveryUpdated",
+				return filterAsyncIterator(
+					pubsub.subscribeToConversation(
+						"deliveryUpdated",
 						message.conversationId
 					) as AsyncIterable<DeliveryUpdatedPayload>,
 					(payload) => {
@@ -519,101 +504,91 @@ export const resolvers: Resolvers = {
 					}
 				);
 			},
-				resolve: async (
-					payload: DeliveryUpdatedPayload,
-					_args: unknown,
-					{ db, viewer }: Context
-				) => {
-					const message = await db.query.messageTable.findFirst({
-						columns: { conversationId: true },
-						where: (t, { eq }) => eq(t.id, payload.messageId),
-					});
-					if (!message) throw new Error("Message not found");
-					const participant = await db.query.conversationParticipantTable.findFirst({
-						where: (t, { and, eq }) =>
-							and(
-								eq(t.conversationId, message.conversationId),
-								eq(t.identityId, viewer.identity.id),
-								eq(t.state, DEFAULT_PARTICIPANT_STATE)
-							),
-					});
-					if (!participant) throw new GraphQLError("Forbidden");
-					return db.query.messageDeliveryTable.findMany({
-						where: (t, { eq }) => eq(t.messageId, payload.messageId),
-						orderBy: (t, { desc }) => desc(t.latestStatusChangeAt),
+			resolve: async (payload: DeliveryUpdatedPayload, _args: unknown, { db, viewer }: Context) => {
+				const message = await db.query.messageTable.findFirst({
+					columns: { conversationId: true },
+					where: (t, { eq }) => eq(t.id, payload.messageId),
+				});
+				if (!message) throw new Error("Message not found");
+				const participant = await db.query.conversationParticipantTable.findFirst({
+					where: (t, { and, eq }) =>
+						and(
+							eq(t.conversationId, message.conversationId),
+							eq(t.identityId, viewer.identity.id),
+							eq(t.state, DEFAULT_PARTICIPANT_STATE)
+						),
+				});
+				if (!participant) throw new GraphQLError("Forbidden");
+				return db.query.messageDeliveryTable.findMany({
+					where: (t, { eq }) => eq(t.messageId, payload.messageId),
+					orderBy: (t, { desc }) => desc(t.latestStatusChangeAt),
 				});
 			},
-			},
-			conversationUpdated: {
-				subscribe: async (_parent, _args, { pubsub, db, viewer }) => {
-					const loadConversationIds = async () => {
-						const participantConversations =
-							await db.query.conversationParticipantTable.findMany({
-								columns: { conversationId: true, state: true },
-								where: (t, { and, eq }) =>
-									and(
-										eq(t.identityId, viewer.identity.id),
-										eq(t.state, DEFAULT_PARTICIPANT_STATE)
-									),
-							});
-						return Array.from(
-							new Set(participantConversations.map((p) => p.conversationId))
-						);
-					};
-
-					let conversationIds = await loadConversationIds();
-					let allowed = new Set(conversationIds);
-					let cleanup = pubsub.trackConversations(conversationIds);
-					let refreshInFlight = false;
-					const refreshIntervalMs = 10_000;
-					const refresh = async () => {
-						if (refreshInFlight) return;
-						refreshInFlight = true;
-						try {
-							const nextIds = await loadConversationIds();
-							const unchanged =
-								nextIds.length === allowed.size && nextIds.every((id) => allowed.has(id));
-							if (unchanged) return;
-							cleanup();
-							conversationIds = nextIds;
-							allowed = new Set(conversationIds);
-							cleanup = pubsub.trackConversations(conversationIds);
-						} finally {
-							refreshInFlight = false;
-						}
-					};
-					const refreshTimer = setInterval(() => {
-						void refresh();
-					}, refreshIntervalMs);
-
-					return withCleanup(
-						filterAsyncIterator(
-							pubsub.subscribe("conversationUpdated") as AsyncIterable<ConversationUpdatedPayload>,
-							(payload) => allowed.has(payload.conversationId)
-						),
-						() => {
-							clearInterval(refreshTimer);
-							cleanup();
-						}
-					);
-				},
-				resolve: async (
-					payload: ConversationUpdatedPayload,
-					_args: unknown,
-					{ db, viewer }: Context
-				) => {
-					const participant = await db.query.conversationParticipantTable.findFirst({
+		},
+		conversationUpdated: {
+			subscribe: async (_parent, _args, { pubsub, db, viewer }) => {
+				const loadConversationIds = async () => {
+					const participantConversations = await db.query.conversationParticipantTable.findMany({
+						columns: { conversationId: true, state: true },
 						where: (t, { and, eq }) =>
-							and(
-								eq(t.conversationId, payload.conversationId),
-								eq(t.identityId, viewer.identity.id),
-								eq(t.state, DEFAULT_PARTICIPANT_STATE)
-							),
+							and(eq(t.identityId, viewer.identity.id), eq(t.state, DEFAULT_PARTICIPANT_STATE)),
 					});
-					if (!participant) throw new GraphQLError("Forbidden");
-					const conversation = await db.query.conversationTable.findFirst({
-						where: (t, { eq }) => eq(t.id, payload.conversationId),
-					});
+					return Array.from(new Set(participantConversations.map((p) => p.conversationId)));
+				};
+
+				let conversationIds = await loadConversationIds();
+				let allowed = new Set(conversationIds);
+				let cleanup = pubsub.trackConversations(conversationIds);
+				let refreshInFlight = false;
+				const refreshIntervalMs = 10_000;
+				const refresh = async () => {
+					if (refreshInFlight) return;
+					refreshInFlight = true;
+					try {
+						const nextIds = await loadConversationIds();
+						const unchanged =
+							nextIds.length === allowed.size && nextIds.every((id) => allowed.has(id));
+						if (unchanged) return;
+						cleanup();
+						conversationIds = nextIds;
+						allowed = new Set(conversationIds);
+						cleanup = pubsub.trackConversations(conversationIds);
+					} finally {
+						refreshInFlight = false;
+					}
+				};
+				const refreshTimer = setInterval(() => {
+					void refresh();
+				}, refreshIntervalMs);
+
+				return withCleanup(
+					filterAsyncIterator(
+						pubsub.subscribe("conversationUpdated") as AsyncIterable<ConversationUpdatedPayload>,
+						(payload) => allowed.has(payload.conversationId)
+					),
+					() => {
+						clearInterval(refreshTimer);
+						cleanup();
+					}
+				);
+			},
+			resolve: async (
+				payload: ConversationUpdatedPayload,
+				_args: unknown,
+				{ db, viewer }: Context
+			) => {
+				const participant = await db.query.conversationParticipantTable.findFirst({
+					where: (t, { and, eq }) =>
+						and(
+							eq(t.conversationId, payload.conversationId),
+							eq(t.identityId, viewer.identity.id),
+							eq(t.state, DEFAULT_PARTICIPANT_STATE)
+						),
+				});
+				if (!participant) throw new GraphQLError("Forbidden");
+				const conversation = await db.query.conversationTable.findFirst({
+					where: (t, { eq }) => eq(t.id, payload.conversationId),
+				});
 				if (!conversation) throw new Error("Conversation not found");
 				return conversation;
 			},
