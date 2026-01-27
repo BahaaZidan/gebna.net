@@ -1,7 +1,7 @@
 /* eslint-disable */
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
 import type { UserSelectModel, IdentitySelectModel, IdentityRelationshipSelectModel, ConversationSelectModel, ConversationParticipantSelectModel, MessageSelectModel, MessageDeliverySelectModel } from '$lib/db';
-import type { Context } from '$lib/graphql/context';
+import type { GraphQLResolverContext } from 'src/worker-handlers/fetch';
 export type Maybe<T> = T | null | undefined;
 export type InputMaybe<T> = T | null | undefined;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -105,6 +105,11 @@ export type Edge = {
   node: Node;
 };
 
+export type Greeting = {
+  __typename?: 'Greeting';
+  greeting?: Maybe<Scalars['String']['output']>;
+};
+
 export type Identity = Node & {
   __typename?: 'Identity';
   /**
@@ -204,6 +209,7 @@ export type MoveConversationInput = {
 export type Mutation = {
   __typename?: 'Mutation';
   addConversationParticipants?: Maybe<Conversation>;
+  greet?: Maybe<Scalars['String']['output']>;
   markConversationRead: Conversation;
   moveConversation?: Maybe<Conversation>;
   sendMessage: Message;
@@ -214,6 +220,11 @@ export type Mutation = {
 
 export type MutationAddConversationParticipantsArgs = {
   input: AddConversationParticipantsInput;
+};
+
+
+export type MutationGreetArgs = {
+  greeting: Scalars['String']['input'];
 };
 
 
@@ -293,14 +304,13 @@ export type SetContactStatusInput = {
 
 export type Subscription = {
   __typename?: 'Subscription';
-  conversationUpdated: Conversation;
-  deliveryUpdated: Array<DeliveryReceipt>;
+  greetings?: Maybe<Greeting>;
   messageAdded: Message;
 };
 
 
-export type SubscriptionDeliveryUpdatedArgs = {
-  messageId: Scalars['ID']['input'];
+export type SubscriptionGreetingsArgs = {
+  greeting?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -461,6 +471,7 @@ export type ResolversTypes = {
   DeliveryReceipt: ResolverTypeWrapper<MessageDeliverySelectModel>;
   DeliveryStatus: DeliveryStatus;
   Edge: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Edge']>;
+  Greeting: ResolverTypeWrapper<Greeting>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Identity: ResolverTypeWrapper<IdentitySelectModel>;
   IdentityConnection: ResolverTypeWrapper<Omit<IdentityConnection, 'edges'> & { edges: Array<ResolversTypes['IdentityEdge']> }>;
@@ -504,6 +515,7 @@ export type ResolversParentTypes = {
   DateTime: Scalars['DateTime']['output'];
   DeliveryReceipt: MessageDeliverySelectModel;
   Edge: ResolversInterfaceTypes<ResolversParentTypes>['Edge'];
+  Greeting: Greeting;
   ID: Scalars['ID']['output'];
   Identity: IdentitySelectModel;
   IdentityConnection: Omit<IdentityConnection, 'edges'> & { edges: Array<ResolversParentTypes['IdentityEdge']> };
@@ -529,11 +541,11 @@ export type ResolversParentTypes = {
   Viewer: UserSelectModel;
 };
 
-export type ConnectionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Connection'] = ResolversParentTypes['Connection']> = {
+export type ConnectionResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Connection'] = ResolversParentTypes['Connection']> = {
   __resolveType: TypeResolveFn<'ConversationConnection' | 'IdentityConnection' | 'MessageConnection', ParentType, ContextType>;
 };
 
-export type ConversationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Conversation'] = ResolversParentTypes['Conversation']> = {
+export type ConversationResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Conversation'] = ResolversParentTypes['Conversation']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['ConversationKind'], ParentType, ContextType>;
   lastMessage?: Resolver<ResolversTypes['Message'], ParentType, ContextType>;
@@ -545,19 +557,19 @@ export type ConversationResolvers<ContextType = Context, ParentType extends Reso
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type ConversationConnectionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ConversationConnection'] = ResolversParentTypes['ConversationConnection']> = {
+export type ConversationConnectionResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['ConversationConnection'] = ResolversParentTypes['ConversationConnection']> = {
   edges?: Resolver<Array<ResolversTypes['ConversationEdge']>, ParentType, ContextType>;
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type ConversationEdgeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ConversationEdge'] = ResolversParentTypes['ConversationEdge']> = {
+export type ConversationEdgeResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['ConversationEdge'] = ResolversParentTypes['ConversationEdge']> = {
   cursor?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   node?: Resolver<ResolversTypes['Conversation'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type ConversationParticipantResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ConversationParticipant'] = ResolversParentTypes['ConversationParticipant']> = {
+export type ConversationParticipantResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['ConversationParticipant'] = ResolversParentTypes['ConversationParticipant']> = {
   identity?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
   joinedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   lastReadMessageId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
@@ -565,7 +577,7 @@ export type ConversationParticipantResolvers<ContextType = Context, ParentType e
   state?: Resolver<ResolversTypes['ParticipantState'], ParentType, ContextType>;
 };
 
-export type ConversationViewerStateResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ConversationViewerState'] = ResolversParentTypes['ConversationViewerState']> = {
+export type ConversationViewerStateResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['ConversationViewerState'] = ResolversParentTypes['ConversationViewerState']> = {
   mailbox?: Resolver<ResolversTypes['Mailbox'], ParentType, ContextType>;
   unreadCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
@@ -574,7 +586,7 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
   name: 'DateTime';
 }
 
-export type DeliveryReceiptResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DeliveryReceipt'] = ResolversParentTypes['DeliveryReceipt']> = {
+export type DeliveryReceiptResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['DeliveryReceipt'] = ResolversParentTypes['DeliveryReceipt']> = {
   error?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   latestStatusChangeAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   recipient?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
@@ -582,11 +594,15 @@ export type DeliveryReceiptResolvers<ContextType = Context, ParentType extends R
   transport?: Resolver<ResolversTypes['Transport'], ParentType, ContextType>;
 };
 
-export type EdgeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Edge'] = ResolversParentTypes['Edge']> = {
+export type EdgeResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Edge'] = ResolversParentTypes['Edge']> = {
   __resolveType: TypeResolveFn<'ConversationEdge' | 'IdentityEdge' | 'MessageEdge', ParentType, ContextType>;
 };
 
-export type IdentityResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Identity'] = ResolversParentTypes['Identity']> = {
+export type GreetingResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Greeting'] = ResolversParentTypes['Greeting']> = {
+  greeting?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type IdentityResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Identity'] = ResolversParentTypes['Identity']> = {
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -596,19 +612,19 @@ export type IdentityResolvers<ContextType = Context, ParentType extends Resolver
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type IdentityConnectionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['IdentityConnection'] = ResolversParentTypes['IdentityConnection']> = {
+export type IdentityConnectionResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['IdentityConnection'] = ResolversParentTypes['IdentityConnection']> = {
   edges?: Resolver<Array<ResolversTypes['IdentityEdge']>, ParentType, ContextType>;
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type IdentityEdgeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['IdentityEdge'] = ResolversParentTypes['IdentityEdge']> = {
+export type IdentityEdgeResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['IdentityEdge'] = ResolversParentTypes['IdentityEdge']> = {
   cursor?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   node?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type IdentityRelationshipResolvers<ContextType = Context, ParentType extends ResolversParentTypes['IdentityRelationship'] = ResolversParentTypes['IdentityRelationship']> = {
+export type IdentityRelationshipResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['IdentityRelationship'] = ResolversParentTypes['IdentityRelationship']> = {
   avatarUrl?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   displayName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -616,7 +632,7 @@ export type IdentityRelationshipResolvers<ContextType = Context, ParentType exte
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type MessageResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Message'] = ResolversParentTypes['Message']> = {
+export type MessageResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Message'] = ResolversParentTypes['Message']> = {
   bodyHTML?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   bodyMD?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   bodyText?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -629,20 +645,21 @@ export type MessageResolvers<ContextType = Context, ParentType extends Resolvers
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type MessageConnectionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['MessageConnection'] = ResolversParentTypes['MessageConnection']> = {
+export type MessageConnectionResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['MessageConnection'] = ResolversParentTypes['MessageConnection']> = {
   edges?: Resolver<Array<ResolversTypes['MessageEdge']>, ParentType, ContextType>;
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type MessageEdgeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['MessageEdge'] = ResolversParentTypes['MessageEdge']> = {
+export type MessageEdgeResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['MessageEdge'] = ResolversParentTypes['MessageEdge']> = {
   cursor?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   node?: Resolver<ResolversTypes['Message'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+export type MutationResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addConversationParticipants?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationAddConversationParticipantsArgs, 'input'>>;
+  greet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType, RequireFields<MutationGreetArgs, 'greeting'>>;
   markConversationRead?: Resolver<ResolversTypes['Conversation'], ParentType, ContextType, RequireFields<MutationMarkConversationReadArgs, 'id'>>;
   moveConversation?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationMoveConversationArgs, 'input'>>;
   sendMessage?: Resolver<ResolversTypes['Message'], ParentType, ContextType, RequireFields<MutationSendMessageArgs, 'input'>>;
@@ -650,40 +667,39 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   upsertConversation?: Resolver<ResolversTypes['UpsertConversationPayload'], ParentType, ContextType, RequireFields<MutationUpsertConversationArgs, 'input'>>;
 };
 
-export type NodeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Node'] = ResolversParentTypes['Node']> = {
+export type NodeResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Node'] = ResolversParentTypes['Node']> = {
   __resolveType: TypeResolveFn<'Conversation' | 'Identity' | 'IdentityRelationship' | 'Message' | 'Viewer', ParentType, ContextType>;
 };
 
-export type PageInfoResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PageInfo'] = ResolversParentTypes['PageInfo']> = {
+export type PageInfoResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['PageInfo'] = ResolversParentTypes['PageInfo']> = {
   endCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   hasNextPage?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   hasPreviousPage?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   startCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
-export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+export type QueryResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   node?: Resolver<Maybe<ResolversTypes['Node']>, ParentType, ContextType, RequireFields<QueryNodeArgs, 'id'>>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
 };
 
-export type RecipientTransportDecisionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['RecipientTransportDecision'] = ResolversParentTypes['RecipientTransportDecision']> = {
+export type RecipientTransportDecisionResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['RecipientTransportDecision'] = ResolversParentTypes['RecipientTransportDecision']> = {
   chosen?: Resolver<ResolversTypes['Transport'], ParentType, ContextType>;
   reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   recipient?: Resolver<ResolversTypes['Identity'], ParentType, ContextType>;
 };
 
-export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
-  conversationUpdated?: SubscriptionResolver<ResolversTypes['Conversation'], "conversationUpdated", ParentType, ContextType>;
-  deliveryUpdated?: SubscriptionResolver<Array<ResolversTypes['DeliveryReceipt']>, "deliveryUpdated", ParentType, ContextType, RequireFields<SubscriptionDeliveryUpdatedArgs, 'messageId'>>;
+export type SubscriptionResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
+  greetings?: SubscriptionResolver<Maybe<ResolversTypes['Greeting']>, "greetings", ParentType, ContextType, Partial<SubscriptionGreetingsArgs>>;
   messageAdded?: SubscriptionResolver<ResolversTypes['Message'], "messageAdded", ParentType, ContextType, RequireFields<SubscriptionMessageAddedArgs, 'conversationId'>>;
 };
 
-export type UpsertConversationPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['UpsertConversationPayload'] = ResolversParentTypes['UpsertConversationPayload']> = {
+export type UpsertConversationPayloadResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['UpsertConversationPayload'] = ResolversParentTypes['UpsertConversationPayload']> = {
   conversation?: Resolver<ResolversTypes['Conversation'], ParentType, ContextType>;
   created?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
-export type ViewerResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Viewer'] = ResolversParentTypes['Viewer']> = {
+export type ViewerResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Viewer'] = ResolversParentTypes['Viewer']> = {
   avatar?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   contacts?: Resolver<ResolversTypes['IdentityConnection'], ParentType, ContextType, RequireFields<ViewerContactsArgs, 'first'>>;
   conversations?: Resolver<ResolversTypes['ConversationConnection'], ParentType, ContextType, RequireFields<ViewerConversationsArgs, 'first' | 'mailbox'>>;
@@ -694,7 +710,7 @@ export type ViewerResolvers<ContextType = Context, ParentType extends ResolversP
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type Resolvers<ContextType = Context> = {
+export type Resolvers<ContextType = GraphQLResolverContext> = {
   Connection?: ConnectionResolvers<ContextType>;
   Conversation?: ConversationResolvers<ContextType>;
   ConversationConnection?: ConversationConnectionResolvers<ContextType>;
@@ -704,6 +720,7 @@ export type Resolvers<ContextType = Context> = {
   DateTime?: GraphQLScalarType;
   DeliveryReceipt?: DeliveryReceiptResolvers<ContextType>;
   Edge?: EdgeResolvers<ContextType>;
+  Greeting?: GreetingResolvers<ContextType>;
   Identity?: IdentityResolvers<ContextType>;
   IdentityConnection?: IdentityConnectionResolvers<ContextType>;
   IdentityEdge?: IdentityEdgeResolvers<ContextType>;

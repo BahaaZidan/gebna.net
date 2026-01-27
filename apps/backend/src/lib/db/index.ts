@@ -5,8 +5,6 @@ import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 
 import * as schema from "./schema";
 
-export { searchMessages, type MessageSearchResult } from "./search";
-
 export { schema };
 
 export const getDB = (env: CloudflareBindings) =>
@@ -39,10 +37,13 @@ export type IdentityRelationshipInsertModel = typeof schema.identityRelationship
 export type ConversationSelectModel = typeof schema.conversationTable.$inferSelect;
 export type ConversationInsertModel = typeof schema.conversationTable.$inferInsert;
 
-export type ConversationParticipantSelectModel = typeof schema.conversationParticipantTable.$inferSelect;
-export type ConversationParticipantInsertModel = typeof schema.conversationParticipantTable.$inferInsert;
+export type ConversationParticipantSelectModel =
+	typeof schema.conversationParticipantTable.$inferSelect;
+export type ConversationParticipantInsertModel =
+	typeof schema.conversationParticipantTable.$inferInsert;
 
-export type ConversationViewerStateSelectModel = typeof schema.conversationViewerStateTable.$inferSelect;
+export type ConversationViewerStateSelectModel =
+	typeof schema.conversationViewerStateTable.$inferSelect;
 export type ConversationViewerStateInsertModel =
 	typeof schema.conversationViewerStateTable.$inferInsert;
 

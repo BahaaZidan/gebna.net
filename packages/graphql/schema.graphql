@@ -260,6 +260,10 @@ input AddConversationParticipantsInput {
 	participantAddresses: [String!]!
 }
 
+type Greeting {
+	greeting: String
+}
+
 type Mutation {
 	upsertConversation(input: UpsertConversationInput!): UpsertConversationPayload!
 	addConversationParticipants(input: AddConversationParticipantsInput!): Conversation
@@ -268,10 +272,12 @@ type Mutation {
 
 	setContactStatus(input: SetContactStatusInput!): Identity
 	moveConversation(input: MoveConversationInput!): Conversation
+
+	greet(greeting: String!): String
 }
 
 type Subscription {
 	messageAdded(conversationId: ID!): Message!
-	conversationUpdated: Conversation!
-	deliveryUpdated(messageId: ID!): [DeliveryReceipt!]!
+
+	greetings(greeting: String): Greeting
 }

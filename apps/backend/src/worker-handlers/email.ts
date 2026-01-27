@@ -18,7 +18,6 @@ import {
 	messageDeliveryTable,
 	messageTable,
 } from "$lib/db/schema";
-import { getConversationPubSub } from "$lib/graphql/pubsub";
 import { InferAddressAvatarQueueMessage } from "$lib/queue/types";
 import { extractLocalPart } from "$lib/utils/email";
 import { buildCidResolver } from "$lib/utils/email-attachments";
@@ -34,11 +33,9 @@ const DEFAULT_PARTICIPANT_STATE: ConversationParticipantInsertModel["state"] = "
 
 export async function emailHandler(
 	envelope: ForwardableEmailMessage,
-	bindings: CloudflareBindings,
-	executionCtx: ExecutionContext
+	bindings: CloudflareBindings
 ) {
 	const db = getDB(bindings);
-	const pubsub = getConversationPubSub(bindings, executionCtx);
 
 	const recipientLocal = extractLocalPart(envelope.to);
 	const recipientUser = await db.query.userTable.findFirst({
@@ -302,17 +299,17 @@ export async function emailHandler(
 	});
 
 	if (insertedMessage && conversationIdForPublish) {
-		await pubsub.publish("messageAdded", {
-			conversationId: conversationIdForPublish,
-			messageId: persistedMessageId,
-		});
-		await pubsub.publish("conversationUpdated", { conversationId: conversationIdForPublish });
+		// await pubsub.publish("messageAdded", {
+		// 	conversationId: conversationIdForPublish,
+		// 	messageId: persistedMessageId,
+		// });
+		// await pubsub.publish("conversationUpdated", { conversationId: conversationIdForPublish });
 	}
 	if ((insertedMessage || createdDeliveries) && conversationIdForPublish) {
-		await pubsub.publish("deliveryUpdated", {
-			conversationId: conversationIdForPublish,
-			messageId: persistedMessageId,
-		});
+		// await pubsub.publish("deliveryUpdated", {
+		// 	conversationId: conversationIdForPublish,
+		// 	messageId: persistedMessageId,
+		// });
 	}
 
 	await bindings.QUEUE.sendBatch(
