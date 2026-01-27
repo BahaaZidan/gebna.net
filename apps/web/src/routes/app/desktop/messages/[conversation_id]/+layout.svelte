@@ -1,21 +1,16 @@
 <script lang="ts">
 	import { type IconProps } from "@lucide/svelte";
-	import CheckCheckIcon from "@lucide/svelte/icons/check-check";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
-	import FileCodeIcon from "@lucide/svelte/icons/file-code";
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import SearchIcon from "@lucide/svelte/icons/search";
-	import SendIcon from "@lucide/svelte/icons/send";
 	import SendHorizontalIcon from "@lucide/svelte/icons/send-horizontal";
 	import { type Component, type Snippet } from "svelte";
 
-	import { resolve } from "$app/paths";
 	import { graphql } from "$houdini";
 
-	import { floatingDropdown } from "$lib/actions/floating-dropdown";
 	import ConversationAvatar from "$lib/components/mail/ConversationAvatar.svelte";
 	import ConversationTitle from "$lib/components/mail/ConversationTitle.svelte";
-	import { formatInboxDate } from "$lib/format";
+	import MessageBubble from "$lib/components/mail/MessageBubble.svelte";
 
 	import type { LayoutData } from "./$houdini";
 
@@ -76,6 +71,24 @@
 		});
 		messageVal = "";
 	}
+
+	let MessageAddedSubscription = graphql(`
+		subscription MessageAddedSubscription($conversationId: ID!) {
+			messageAdded(conversationId: $conversationId) {
+				...Conversation_Messages_insert @prepend
+				id
+				...MessageBubble
+			}
+		}
+	`);
+	$effect(() => {
+		if (!conversation) return;
+		MessageAddedSubscription.listen({ conversationId: conversation.id });
+
+		return () => {
+			MessageAddedSubscription.unlisten();
+		};
+	});
 </script>
 
 {#if conversation && viewer}
@@ -92,66 +105,7 @@
 		</div>
 		<div class="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto p-3">
 			{#each conversation.messages.edges as { node } (node.id)}
-				{@const bySelf = node.sender.id === viewer.identity.id}
-				<div class={["chat", bySelf ? "chat-end" : "chat-start"]}>
-					{#if !bySelf}
-						<div class="avatar chat-image">
-							<div class="w-10">
-								<img
-									alt="{node.sender.name || node.sender.address} avatar"
-									src={node.sender.avatar}
-								/>
-							</div>
-						</div>
-					{/if}
-					<div class={["chat-header", bySelf && "flex-row-reverse"]}>
-						{#if !bySelf}
-							{node.sender.name || node.sender.address}
-						{/if}
-						<time class="text-xs opacity-50">{formatInboxDate(node.createdAt)}</time>
-					</div>
-					<div class="group chat-bubble">
-						<details
-							class={["dropdown absolute dropdown-start top-0", bySelf ? "-left-11" : "-right-11"]}
-							use:floatingDropdown={{ placement: "bottom-start", offsetPx: 0 }}
-						>
-							<summary
-								class="btn invisible size-11 list-none border-0 bg-base-300 p-0 group-focus-within:visible group-hover:visible group-has-[details[open]]:visible"
-								aria-label="Open menu"
-							>
-								<EllipsisVerticalIcon class="size-4.5" />
-							</summary>
-							<ul class="dropdown-content menu z-1 w-52 rounded-box bg-base-200 p-2 shadow">
-								{#if node.hasHTML}
-									<li>
-										<a
-											href={resolve(
-												"/app/desktop/messages/[conversation_id]/details/[message_id]/html",
-												{ conversation_id: conversation.id, message_id: node.id }
-											)}
-										>
-											<FileCodeIcon class="size-5" /> HTML Version
-										</a>
-									</li>
-								{/if}
-								<li>
-									<a
-										href={resolve(
-											"/app/desktop/messages/[conversation_id]/details/[message_id]/delivery",
-											{ conversation_id: conversation.id, message_id: node.id }
-										)}
-									>
-										<SendIcon class="size-5" /> Delivery Report
-									</a>
-								</li>
-							</ul>
-						</details>
-						<div dir="auto" class="prose wrap-anywhere">{@html node.bodyMD}</div>
-					</div>
-					<div class="chat-footer">
-						<CheckCheckIcon class="size-4" /> Delivered
-					</div>
-				</div>
+				<MessageBubble message={node} conversationId={conversation.id} />
 			{/each}
 		</div>
 		<div class="flex shrink-0 flex-col gap-2 border-t p-3">

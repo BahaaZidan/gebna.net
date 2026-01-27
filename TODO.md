@@ -52,6 +52,7 @@
 - [ ] Integrations/apps ?
 - [ ] Use a scalar to automatically unwrap input IDs on the schema level so that you don't have to litter resolver code with `fromGlobalId(args.id).id`
 - [ ] The ability to select a substring from the email body and save it for later reference. (in Hey it's called Clips. I don't think it's useful enough in Hey. I think it would be really cool to have that as a continuity feature with gebna notes.)
+- [ ] Strip bodyMD from anything but the innerHTML of <body>
 
 ## Renames
 

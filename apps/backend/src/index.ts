@@ -1,13 +1,25 @@
 import { Container } from "@cloudflare/containers";
-import { WorkerEntrypoint } from "cloudflare:workers";
+import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 
 import type { QueueMessage } from "$lib/queue/types";
 
 import { emailHandler } from "./worker-handlers/email";
-import { fetchHandler } from "./worker-handlers/fetch";
+import { fetchHandler, WsConnectionPool as WsConnectionPoolImpl } from "./worker-handlers/fetch";
 import { queueHandler } from "./worker-handlers/queue";
 import { scheduledHandler } from "./worker-handlers/scheduled";
-export { ConversationEventsDurableObject } from "./lib/durable-objects/conversation-events";
+
+export class WsConnectionPool extends DurableObject {
+	#impl: InstanceType<typeof WsConnectionPoolImpl>;
+
+	constructor(state: DurableObjectState, env: CloudflareBindings) {
+		super(state, env);
+		this.#impl = new WsConnectionPoolImpl(state, env);
+	}
+
+	fetch(request: Request) {
+		return this.#impl.fetch(request);
+	}
+}
 
 export class BackgroundContainer extends Container<CloudflareBindings> {
 	defaultPort = 8787;
@@ -22,7 +34,7 @@ export default class extends WorkerEntrypoint<CloudflareBindings> {
 		return fetchHandler(req, this.env, this.ctx);
 	}
 	email(message: ForwardableEmailMessage) {
-		return emailHandler(message, this.env, this.ctx);
+		return emailHandler(message, this.env);
 	}
 	scheduled(controller: ScheduledController) {
 		return scheduledHandler(controller, this.env);

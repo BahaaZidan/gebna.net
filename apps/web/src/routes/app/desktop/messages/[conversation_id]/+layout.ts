@@ -17,16 +17,7 @@ export const _houdini_load = graphql(`
 					edges {
 						node {
 							id
-							bodyMD
-							createdAt
-							hasHTML
-							sender {
-								id
-								address
-								kind
-								avatar
-								name
-							}
+							...MessageBubble
 						}
 					}
 				}

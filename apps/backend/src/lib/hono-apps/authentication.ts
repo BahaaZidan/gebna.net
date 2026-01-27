@@ -236,6 +236,7 @@ export async function getViewerInfo(
 
 	return viewerInfo;
 }
+export type ViewerInfo = NonNullable<Awaited<ReturnType<typeof getViewerInfo>>>;
 
 export function getBearer(request: Request): string | null {
 	const header = request.headers.get("authorization") || request.headers.get("Authorization");

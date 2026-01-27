@@ -22,7 +22,7 @@ const config: IGraphQLConfig = {
 						enumsAsTypes: true,
 						maybeValue: "T | null | undefined",
 						useTypeImports: true,
-						contextType: "$lib/graphql/context#Context",
+						contextType: "src/worker-handlers/fetch#GraphQLResolverContext",
 						scalars: {
 							ID: "string",
 							DateTime: "Date",

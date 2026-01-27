@@ -38,6 +38,7 @@
 		"@lucide/svelte": "^0.556.0",
 		"date-fns": "^4.1.0",
 		"graphql": "^16.12.0",
+		"graphql-ws": "^6.0.7",
 		"runed": "^0.37.1"
 	}
 }
