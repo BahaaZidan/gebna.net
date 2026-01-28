@@ -423,10 +423,12 @@ export const resolvers: Resolvers = {
 	Subscription: {
 		greetings: {
 			subscribe: subscribe("GREETINGS", {
-				filter: (root, args, context) => {
+				filter: (_root, args, context) => {
+					console.log(context.viewer);
 					return args.greeting ? { greetings: { greeting: args.greeting } } : {};
 				},
 			}),
+			resolve: () => {},
 		},
 	},
 	Node: {
