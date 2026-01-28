@@ -7,6 +7,9 @@ const config: IGraphQLConfig = {
 	schema: ["../../packages/graphql/schema.graphql"],
 	extensions: {
 		codegen: {
+			hooks: {
+				afterAllFileWrite: ["node ./scripts/patch-resolvers-types.mjs"],
+			},
 			generates: {
 				"./src/lib/graphql/resolvers.types.ts": {
 					plugins: [
