@@ -2,6 +2,7 @@ import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { GraphQLError } from "graphql";
 import { DateTimeResolver } from "graphql-scalars";
 import { subscribe } from "graphql-workers-subscriptions";
+import { GraphQLResolverContext } from "src/worker-handlers/fetch";
 import { ulid } from "ulid";
 
 import {
@@ -44,7 +45,8 @@ function transportForIdentity(identity: {
 	return identity.kind === "GEBNA_USER" ? "GEBNA_DM" : "EMAIL";
 }
 
-// type MessageAddedPayload = { conversationId: string; messageId: string };
+type MessageAddedPayload = { conversationId: string; messageId: string };
+const MESSAGE_ADDED_TOPIC = "messageAdded";
 
 async function upsertViewerState({
 	tx,
@@ -283,7 +285,7 @@ export const resolvers: Resolvers = {
 
 			return conversation;
 		},
-		sendMessage: async (_parent, { input }, { viewer, db }) => {
+		sendMessage: async (_parent, { input }, { viewer, db, publish }) => {
 			const rawConversationId = fromGlobalId(input.conversationId).id;
 			const conversation = await db.query.conversationTable.findFirst({
 				where: (t, { eq }) => eq(t.id, rawConversationId),
@@ -346,7 +348,10 @@ export const resolvers: Resolvers = {
 
 			if (!message) throw new Error("Failed to create message");
 
-			// await pubsub.publish("messageAdded", { conversationId: rawConversationId, messageId });
+			await publish(MESSAGE_ADDED_TOPIC, {
+				conversationId: rawConversationId,
+				messageId,
+			} satisfies MessageAddedPayload);
 
 			return message;
 		},
@@ -413,22 +418,32 @@ export const resolvers: Resolvers = {
 
 			return conversation;
 		},
-		greet: async (root, args, context) => {
-			context.publish("GREETINGS", {
-				greetings: { greeting: args.greeting },
-			});
-			return "ok";
-		},
 	},
 	Subscription: {
-		greetings: {
-			subscribe: subscribe("GREETINGS", {
-				filter: (_root, args, context) => {
-					console.log(context.viewer);
-					return args.greeting ? { greetings: { greeting: args.greeting } } : {};
-				},
+		messageAdded: {
+			subscribe: subscribe(MESSAGE_ADDED_TOPIC, {
+				filter: (_root, args) => ({ conversationId: fromGlobalId(args.conversationId).id }),
 			}),
-			resolve: () => {},
+			resolve: async (
+				payload: MessageAddedPayload,
+				_args: unknown,
+				{ db, viewer }: GraphQLResolverContext
+			) => {
+				const message = await db.query.messageTable.findFirst({
+					where: (t, { eq }) => eq(t.id, payload.messageId),
+				});
+				if (!message) throw new GraphQLError("Message not found");
+				const participant = await db.query.conversationParticipantTable.findFirst({
+					where: (t, { and, eq }) =>
+						and(
+							eq(t.conversationId, message.conversationId),
+							eq(t.identityId, viewer.identity.id),
+							eq(t.state, DEFAULT_PARTICIPANT_STATE)
+						),
+				});
+				if (!participant) throw new GraphQLError("Forbidden");
+				return message;
+			},
 		},
 	},
 	Node: {

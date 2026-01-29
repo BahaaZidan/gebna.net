@@ -272,12 +272,8 @@ type Mutation {
 
 	setContactStatus(input: SetContactStatusInput!): Identity
 	moveConversation(input: MoveConversationInput!): Conversation
-
-	greet(greeting: String!): String
 }
 
 type Subscription {
 	messageAdded(conversationId: ID!): Message!
-
-	greetings(greeting: String): Greeting
 }
