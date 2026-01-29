@@ -209,7 +209,6 @@ export type MoveConversationInput = {
 export type Mutation = {
   __typename?: 'Mutation';
   addConversationParticipants?: Maybe<Conversation>;
-  greet?: Maybe<Scalars['String']['output']>;
   markConversationRead: Conversation;
   moveConversation?: Maybe<Conversation>;
   sendMessage: Message;
@@ -220,11 +219,6 @@ export type Mutation = {
 
 export type MutationAddConversationParticipantsArgs = {
   input: AddConversationParticipantsInput;
-};
-
-
-export type MutationGreetArgs = {
-  greeting: Scalars['String']['input'];
 };
 
 
@@ -304,13 +298,7 @@ export type SetContactStatusInput = {
 
 export type Subscription = {
   __typename?: 'Subscription';
-  greetings?: Maybe<Greeting>;
   messageAdded: Message;
-};
-
-
-export type SubscriptionGreetingsArgs = {
-  greeting?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -659,7 +647,6 @@ export type MessageEdgeResolvers<ContextType = GraphQLResolverContext, ParentTyp
 
 export type MutationResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addConversationParticipants?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationAddConversationParticipantsArgs, 'input'>>;
-  greet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType, RequireFields<MutationGreetArgs, 'greeting'>>;
   markConversationRead?: Resolver<ResolversTypes['Conversation'], ParentType, ContextType, RequireFields<MutationMarkConversationReadArgs, 'id'>>;
   moveConversation?: Resolver<Maybe<ResolversTypes['Conversation']>, ParentType, ContextType, RequireFields<MutationMoveConversationArgs, 'input'>>;
   sendMessage?: Resolver<ResolversTypes['Message'], ParentType, ContextType, RequireFields<MutationSendMessageArgs, 'input'>>;
@@ -690,7 +677,6 @@ export type RecipientTransportDecisionResolvers<ContextType = GraphQLResolverCon
 };
 
 export type SubscriptionResolvers<ContextType = GraphQLResolverContext, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
-  greetings?: SubscriptionResolver<Maybe<ResolversTypes['Greeting']>, "greetings", ParentType, ContextType, Partial<SubscriptionGreetingsArgs>>;
   messageAdded?: SubscriptionResolver<ResolversTypes['Message'], "messageAdded", ParentType, ContextType, RequireFields<SubscriptionMessageAddedArgs, 'conversationId'>>;
 };
 

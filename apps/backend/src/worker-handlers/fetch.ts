@@ -31,6 +31,70 @@ type GraphQLServerContext = DefaultPublishableContext<
 
 const UNAUTHORIZED = createGraphQLError("UNAUTHORIZED");
 
+function getBearerFromConnectionParams(connectionParams: unknown): string | null {
+	if (!connectionParams || typeof connectionParams !== "object") return null;
+	const p = connectionParams as Record<string, unknown>;
+	const token =
+		p.token ?? p.accessToken ?? p.bearer ?? p.authorization ?? p.Authorization ?? p.authToken;
+	if (typeof token !== "string") return null;
+	const raw = token.trim();
+	if (!raw) return null;
+	return raw.toLowerCase().startsWith("bearer ") ? raw.slice(7).trim() : raw;
+}
+
+async function subscriptionsContext(
+	request: Request,
+	env: CloudflareBindings,
+	executionCtx: ExecutionContext<unknown> | undefined,
+	_requestBody?: unknown
+): Promise<GraphQLResolverContext> {
+	const isWebSocketUpgrade = request.headers.get("Upgrade")?.toLowerCase() === "websocket";
+	if (isWebSocketUpgrade) {
+		let cached: Promise<GraphQLResolverContext> | null = null;
+		return (async (ctx: { connectionParams?: unknown; extra?: { env?: CloudflareBindings } }) => {
+			cached ??= (async () => {
+				const wsEnv = ctx.extra?.env ?? env;
+				const publishableCtx = createDefaultPublishableContext({
+					env: wsEnv,
+					executionCtx,
+					...settings,
+				});
+
+				const db = getDB(wsEnv);
+				(publishableCtx as unknown as Partial<GraphQLUserContext>).db = db;
+
+				const bearer = getBearerFromConnectionParams(ctx.connectionParams);
+				if (!bearer) throw UNAUTHORIZED;
+
+				const viewer = await getViewerInfo(wsEnv, db, bearer);
+				if (!viewer) throw UNAUTHORIZED;
+				(publishableCtx as unknown as Partial<GraphQLUserContext>).viewer = viewer;
+
+				return publishableCtx as unknown as GraphQLResolverContext;
+			})();
+			return cached;
+		}) as unknown as GraphQLResolverContext;
+	}
+
+	const publishableCtx = createDefaultPublishableContext({
+		env,
+		executionCtx,
+		...settings,
+	});
+
+	const db = getDB(env);
+	(publishableCtx as unknown as Partial<GraphQLUserContext>).db = db;
+
+	const bearer = getBearer(request);
+	if (!bearer) throw UNAUTHORIZED;
+
+	const viewer = await getViewerInfo(env, db, bearer);
+	if (!viewer) throw UNAUTHORIZED;
+	(publishableCtx as unknown as Partial<GraphQLUserContext>).viewer = viewer;
+
+	return publishableCtx as unknown as GraphQLResolverContext;
+}
+
 async function context(
 	initialContext: YogaInitialContext & GraphQLServerContext
 ): Promise<GraphQLUserContext> {
@@ -46,6 +110,9 @@ async function context(
 
 	const viewer = await getViewerInfo(initialContext.env, db, bearer);
 	if (!viewer) throw UNAUTHORIZED;
+
+	(initialContext as unknown as Partial<GraphQLUserContext>).db = db;
+	(initialContext as unknown as Partial<GraphQLUserContext>).viewer = viewer;
 
 	return {
 		db,
@@ -81,14 +148,12 @@ const yoga = createYoga<GraphQLServerContext, GraphQLUserContext>({
 	},
 });
 app.use("/graphql", async (c) => {
-	return yoga.handleRequest(
+	const initialContext = await subscriptionsContext(
 		c.req.raw,
-		createDefaultPublishableContext({
-			env: c.env,
-			executionCtx: c.executionCtx as ExecutionContext,
-			...settings,
-		})
+		c.env,
+		c.executionCtx as ExecutionContext
 	);
+	return yoga.handleRequest(c.req.raw, initialContext);
 });
 
 const baseFetch = app.fetch;
@@ -96,5 +161,9 @@ const baseFetch = app.fetch;
 export const fetchHandler = handleSubscriptions({
 	fetch: baseFetch,
 	...settings,
+	context: subscriptionsContext,
 });
-export const WsConnectionPool = createWsConnectionPoolClass(settings);
+export const WsConnectionPool = createWsConnectionPoolClass({
+	...settings,
+	context: subscriptionsContext,
+});
