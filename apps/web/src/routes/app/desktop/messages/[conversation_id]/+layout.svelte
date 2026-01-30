@@ -53,7 +53,6 @@
 	let SendMessageMutation = graphql(`
 		mutation SendMessageMutation($input: SendMessageInput!) {
 			sendMessage(input: $input) {
-				...Conversation_Messages_insert @prepend
 				id
 				createdAt
 				bodyMD
@@ -75,9 +74,9 @@
 	let MessageAddedSubscription = graphql(`
 		subscription MessageAddedSubscription($conversationId: ID!) {
 			messageAdded(conversationId: $conversationId) {
-				...Conversation_Messages_insert @prepend
 				id
 				...MessageBubble
+				...Conversation_Messages_insert @parentID(value: $conversationId) @prepend
 			}
 		}
 	`);
