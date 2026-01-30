@@ -57,3 +57,8 @@
 ## Renames
 
 - [ ] read/unread -> seen/unseen
+
+## BUGS
+
+- [ ] probably houdini: in MessageAddedSubscription even though the backend socket is working fine, the store only ever appends messages to the conversation it subscribed to first.
+- [ ] probably houdini: in MessageAddedSubscription if you have a mutation and a subscription that are both trying to append on response to the same list/pagination, you'll run into some weird behaviour where things from subscription are often never appended and the ordering of the list is messed up.
