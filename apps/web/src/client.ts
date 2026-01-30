@@ -1,6 +1,6 @@
 import { createClient } from "graphql-ws";
 
-import { PUBLIC_API_URL } from "$env/static/public";
+import { PUBLIC_API_URL, PUBLIC_GQL_SUBSCRIPTIONS_URL } from "$env/static/public";
 import { HoudiniClient } from "$houdini";
 import { subscription } from "$houdini/plugins";
 
@@ -10,7 +10,21 @@ const url = new URL("/graphql", PUBLIC_API_URL).toString();
 
 export default new HoudiniClient({
 	url,
-	plugins: [subscription(() => createClient({ url }))],
+	plugins: [
+		subscription(() =>
+			createClient({
+				url: PUBLIC_GQL_SUBSCRIPTIONS_URL,
+				connectionParams() {
+					const token = SessionToken.value;
+					return {
+						headers: {
+							Authorization: token ? `Bearer ${token}` : "",
+						},
+					};
+				},
+			})
+		),
+	],
 	fetchParams() {
 		const token = SessionToken.value;
 		return {
