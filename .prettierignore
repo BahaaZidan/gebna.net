@@ -1,7 +1,8 @@
+/dist
+/coverage
+/.nx/cache
+/.nx/workspace-data
 pnpm-lock.yaml
-
-# Miscellaneous
 /static/
 /drizzle/
-
 worker-configuration.d.ts
