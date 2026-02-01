@@ -1,31 +1,102 @@
-# What is this?
+# New Nx Repository
 
-Gebna is a super-app that provides all the common software an average person needs. This includes (but not limited to): wallet, email, direct-messaging, cloud storage, notes, calendar, documents, slides, sheets, news feed (newsletters + RSS), and more.
+<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
-# Why?
+✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
 
-**A certain level of power must never be allowed to exist**. I wholeheartedly believe that. Google, Apple, and Microsoft have so much hold over your digital life. So much so that you can't imagine using your laptop/phone or accessing the internet without depending on at least one of their services. The insight and the hold they have over our digital life (which usually co-insides with our physical life) is unfathomable. The insight is being sold to companies that are actively (and very quickly) developing dystopian surveillance systems. The hold is being used so that we get to a point where we can't make a simple transaction without being approved by some institution. From the information you consume to the currency you use, No matter where you live in the world: You are enslaved.
+[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!## Generate a library
 
-We can do better. I'm not saying this in a hollow-motivational manner. I actually mean it. It's actually not that hard and it won't take 10 years. We already have a truly global currency that is not and cannot be controlled by anyone: Bitcoin. We already have the world wide web as a software distribution platform that is not and cannot be controlled by anyone (government harassment non-withstanding). We just need to build the software we need on top of these two and we might wake up one day not scared to write a blog expressing our opinion or else all transactions going into our online store will be blocked by the central bank of our country because cash is dead and they control the flow of money now.
+```sh
+npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
+```
 
-# But XYZ already exists
+## Run tasks
 
-Yes. NextCloud, Stalwart, Immich, and many more truly awesome projects already exist. If you possess the technical know-how and the time required to run and maintain your own email server, file server, etc, by all means feel free to do so. But for the vast majority of the human population on this planet, we need a hyper-accessible, super easy offering. and that offering is Gebna.
+To build the library use:
 
-# Selfhosting?
+```sh
+npx nx build pkg1
+```
 
-The focus of Gebna is providing quality software for the average person. That means a cloud-first approach makes the most sense for us. And by us, I mean me. And since it's just me for now, I'm only going to focus on the cloud. I simply don't have time to work on this and provide documentation and support for self-hosters. For anyone interested in running their own digital infrastructure, I recommend reading: [Introduction to a Self Managed Life: a 13 hour & 28 minute presentation by FUTO software] (https://wiki.futo.org/index.php/Introduction_to_a_Self_Managed_Life:_a_13_hour_%26_28_minute_presentation_by_FUTO_software)
+To run any task with Nx use:
 
-# How will this make money?
+```sh
+npx nx <target> <project-name>
+```
 
-Very simple, a user is a customer. They wanna use this, they have to pay for it. This is how software was distributed before the deformed ad-centric web arrived by the hands of companies like Google and Facebook.
+These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
 
-> How much exactly?
+[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-I don't know at the moment. But I'll try to make it as affordable as possible while enabling Gebna to grow and improve.
+## Versioning and releasing
 
-> But Google offers 15GB for free. No one will pay for this.
+To version and release the library use
 
-You're right. We can't compete with any free-tier. But the goal is to make it sustainable for us to be able to have competitive pricing compared to their paid tiers.
+```
+npx nx release
+```
 
-Keep in mind that we might go for a usage-based model instead of tiered subscriptions. As I think the way subscriptions are implemented today is predatory.
+Pass `--dry-run` to see what would happen without actually releasing the library.
+
+[Learn more about Nx release &raquo;](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+
+## Keep TypeScript project references up to date
+
+Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
+
+To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
+
+```sh
+npx nx sync
+```
+
+You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
+
+```sh
+npx nx sync:check
+```
+
+[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
+
+## Nx Cloud
+
+Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+
+- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+
+### Set up CI (non-Github Actions CI)
+
+**Note:** This is only required if your CI provider is not GitHub Actions.
+
+Use the following command to configure a CI workflow for your workspace:
+
+```sh
+npx nx g ci-workflow
+```
+
+[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+
+## Install Nx Console
+
+Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+
+[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+
+## Useful links
+
+Learn more:
+
+- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+
+And join the Nx community:
+
+- [Discord](https://go.nx.dev/community)
+- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
+- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
+- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
