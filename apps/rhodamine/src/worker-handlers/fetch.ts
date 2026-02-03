@@ -144,7 +144,7 @@ const yoga = createYoga<GraphQLServerContext, GraphQLUserContext>({
 		Headers,
 	},
 	graphiql: {
-		// subscriptionsProtocol: "WS",
+		subscriptionsProtocol: "WS",
 	},
 });
 app.use("/graphql", async (c) => {
