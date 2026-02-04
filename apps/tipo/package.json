@@ -21,6 +21,7 @@
 		"react-native-svg-transformer": "*",
 		"react-native-web": "*",
 		"tailwindcss": "*",
-		"uniwind": "*"
+		"uniwind": "*",
+		"@gebna/ui-components": "workspace:*"
 	}
 }
