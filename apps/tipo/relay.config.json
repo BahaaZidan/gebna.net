@@ -1,5 +1,0 @@
-{
-	"src": "./src",
-	"schema": "../rhodamine/src/lib/graphql/schema.graphql",
-	"language": "typescript"
-}
