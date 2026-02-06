@@ -1,3 +1,3 @@
 # types
 
-This library was generated with [Nx](https://nx.dev).
+Shared TypeScript types for the Gebna pnpm workspace.

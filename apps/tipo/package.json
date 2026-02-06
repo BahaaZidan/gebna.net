@@ -3,9 +3,6 @@
 	"version": "0.0.1",
 	"private": true,
 	"main": "expo-router/entry",
-	"scripts": {
-		"eas-build-post-install": "cd ../../ && node tools/scripts/eas-build-post-install.mjs . apps/tipo"
-	},
 	"dependencies": {
 		"@expo/metro-config": "*",
 		"@gebna/ui-components": "workspace:*",
