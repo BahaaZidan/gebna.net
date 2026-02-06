@@ -3,6 +3,9 @@
 	"version": "0.0.1",
 	"private": true,
 	"main": "expo-router/entry",
+	"scripts": {
+		"dev": "expo start"
+	},
 	"dependencies": {
 		"@expo/metro-config": "*",
 		"@gebna/ui-components": "workspace:*",
