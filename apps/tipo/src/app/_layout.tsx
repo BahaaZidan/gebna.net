@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/accessible-emoji */
 import { Suspense } from "react";
 
-import "../../../../global.css";
+import "../../global.css";
 
 import { Slot } from "expo-router";
 import { RelayEnvironmentProvider } from "react-relay";
