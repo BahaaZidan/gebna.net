@@ -1,3 +1,0 @@
-# Fonts
-
-- Application UI: Inter
