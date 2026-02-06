@@ -1,7 +1,3 @@
 # @gebna/ui-components
 
-This library was generated with [Nx](https://nx.dev).
-
-## Running unit tests
-
-Run `nx test @gebna/ui-components` to execute the unit tests via [Jest](https://jestjs.io).
+Shared React components for the Gebna pnpm workspace.

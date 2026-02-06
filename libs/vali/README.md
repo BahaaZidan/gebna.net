@@ -1,3 +1,3 @@
 # vali
 
-This library was generated with [Nx](https://nx.dev).
+Shared validation helpers for the Gebna pnpm workspace.

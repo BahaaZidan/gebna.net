@@ -1,42 +1,46 @@
-import nx from '@nx/eslint-plugin';
+import js from "@eslint/js";
+import importPlugin from "eslint-plugin-import";
+import jsxA11y from "eslint-plugin-jsx-a11y";
+import reactPlugin from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 
-export default [
-  ...nx.configs['flat/base'],
-  ...nx.configs['flat/typescript'],
-  ...nx.configs['flat/javascript'],
-  {
-    ignores: ['**/dist', '**/out-tsc', '**/vite.config.*.timestamp*'],
-  },
-  {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
-    rules: {
-      '@nx/enforce-module-boundaries': [
-        'error',
-        {
-          enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
-          depConstraints: [
-            {
-              sourceTag: '*',
-              onlyDependOnLibsWithTags: ['*'],
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: [
-      '**/*.ts',
-      '**/*.tsx',
-      '**/*.cts',
-      '**/*.mts',
-      '**/*.js',
-      '**/*.jsx',
-      '**/*.cjs',
-      '**/*.mjs',
-    ],
-    // Override or add rules here
-    rules: {},
-  },
-];
+export default tseslint.config(
+	{
+		ignores: ["**/dist", "**/out-tsc", "**/web-build", "**/.expo", "**/cache", "**/.cache", "**/node_modules", "**/tmp", "**/vite.config.*.timestamp*"],
+	},
+	js.configs.recommended,
+	...tseslint.configs.recommendedTypeChecked,
+	{
+		files: ["**/*.{ts,tsx,js,jsx}"],
+		languageOptions: {
+			parserOptions: {
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname,
+			},
+		},
+		plugins: {
+			import: importPlugin,
+			"jsx-a11y": jsxA11y,
+			react: reactPlugin,
+			"react-hooks": reactHooks,
+		},
+		settings: {
+			react: { version: "detect" },
+		},
+		rules: {
+			"react/jsx-uses-react": "off",
+			"react/react-in-jsx-scope": "off",
+			"react-hooks/rules-of-hooks": "error",
+			"react-hooks/exhaustive-deps": "warn",
+			"import/order": [
+				"warn",
+				{
+					alphabetize: { order: "asc", caseInsensitive: true },
+					"newlines-between": "always",
+					groups: [["builtin", "external"], "internal", ["parent", "sibling", "index", "object"]],
+				},
+			],
+		},
+	}
+);
