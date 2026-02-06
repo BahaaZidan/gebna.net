@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "ESNext",
+    "lib": ["ES2021", "DOM"],
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "baseUrl": ".",
+    "paths": {
+      "@repo/ui-components": ["packages/ui-components/src"],
+      "@repo/ui-components/*": ["packages/ui-components/src/*"],
+      "@repo/data-components": ["packages/data-components/src"],
+      "@repo/data-components/*": ["packages/data-components/src/*"]
+    },
+    "types": ["node"]
+  },
+  "exclude": ["node_modules", "dist", "build", ".turbo"]
+}

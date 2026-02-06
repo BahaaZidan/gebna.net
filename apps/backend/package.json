@@ -1,0 +1,22 @@
+{
+  "name": "@repo/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/vite-plugin": "1.23.1",
+    "graphql": "*",
+    "graphql-yoga": "5.18.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260206.0",
+    "tailwindcss": "*",
+    "typescript": "*",
+    "vite": "7.3.1"
+  }
+}

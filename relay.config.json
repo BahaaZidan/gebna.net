@@ -1,0 +1,14 @@
+{
+  "language": "typescript",
+  "schema": "./schema.graphql",
+  "src": "./",
+  "extensions": ["ts", "tsx", "js", "jsx", "graphql"],
+  "exclude": [
+    "**/node_modules/**",
+    "**/__generated__/**",
+    "**/dist/**",
+    "**/.expo/**",
+    "**/.turbo/**",
+    "**/.output/**"
+  ]
+}
