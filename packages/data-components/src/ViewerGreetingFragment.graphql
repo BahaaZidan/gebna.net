@@ -1,5 +1,0 @@
-fragment ViewerGreetingFragment on Viewer {
-  id
-  name
-  username
-}
