@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { MyCounterButton } from '@repo/ui';
+	import { MyCounterButton } from '@gebna/ui';
 </script>
 
 <h1>Desktop</h1>
