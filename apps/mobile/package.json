@@ -17,7 +17,8 @@
 	},
 	"dependencies": {
 		"@gebna/ui": "workspace:*",
-		"@gebna/functions": "workspace:*"
+		"@gebna/functions": "workspace:*",
+		"@gebna/db": "workspace:*"
 	},
 	"devDependencies": {
 		"@fontsource/inter": "^5.2.8",
