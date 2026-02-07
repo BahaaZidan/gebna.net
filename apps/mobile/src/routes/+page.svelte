@@ -2,9 +2,9 @@
 	import { MyCounterButton } from "@gebna/ui";
 </script>
 
-<h1>Mobile</h1>
+<h1 class="text-3xl">Mobile</h1>
 <MyCounterButton />
 <p>
 	Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a>
-	 to read the documentation
+	to read the documentation
 </p>

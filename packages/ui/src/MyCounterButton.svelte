@@ -6,6 +6,6 @@
 	}
 </script>
 
-<button class="btn" onclick={handleClick}>
+<button class="btn text-2xl" onclick={handleClick}>
 	clickssddddd: {count}
 </button>
