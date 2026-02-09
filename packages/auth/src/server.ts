@@ -90,9 +90,9 @@ export function getAuthServer({
 		},
 	});
 }
+export type AuthServerInstance = ReturnType<typeof getAuthServer>;
 
 type BaseSession = ReturnType<typeof getAuthServer>["$Infer"]["Session"];
-
 export type Session = BaseSession & {
 	user: BaseSession["user"] & {
 		username: string;

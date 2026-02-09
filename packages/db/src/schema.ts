@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+	AnySQLiteColumn,
 	check,
 	customType,
 	index,
@@ -216,6 +217,9 @@ export const conversationTable = sqliteTable(
 	"conversation",
 	{
 		id: text().primaryKey(),
+		lastMessageId: text().references((): AnySQLiteColumn => messageTable.id, {
+			onDelete: "set null",
+		}),
 		kind: text({ enum: ConversationKind }).notNull(),
 		title: text(),
 		/**
@@ -249,8 +253,14 @@ export const conversationTable = sqliteTable(
 	]
 );
 
-export const conversationRelations = relations(conversationTable, ({ many }) => ({
+export const conversationRelations = relations(conversationTable, ({ many, one }) => ({
 	participants: many(conversationParticipantTable),
+	messages: many(messageTable),
+	viewerStates: many(conversationViewerStateTable),
+	lastMessage: one(messageTable, {
+		fields: [conversationTable.lastMessageId],
+		references: [messageTable.id],
+	}),
 }));
 
 const ParticipantRole = ["MEMBER", "ADMIN"] as const;
@@ -303,7 +313,7 @@ export const conversationParticipantRelations = relations(
 	})
 );
 
-const Mailbox = ["IMPORTANT", "TRASH"] as const;
+export const Mailbox = ["IMPORTANT", "TRASH"] as const;
 type Mailbox = (typeof Mailbox)[number];
 export const conversationViewerStateTable = sqliteTable(
 	"conversation_viewer_state",
@@ -368,7 +378,7 @@ export const messageTable = sqliteTable(
 		id: text().primaryKey(),
 		conversationId: text()
 			.notNull()
-			.references(() => conversationTable.id, { onDelete: "cascade" }),
+			.references((): AnySQLiteColumn => conversationTable.id, { onDelete: "cascade" }),
 		senderIdentityId: text()
 			.notNull()
 			.references(() => identityTable.id, { onDelete: "restrict" }),
@@ -379,7 +389,9 @@ export const messageTable = sqliteTable(
 		externalMessageId: text(),
 		bodyText: text(),
 		bodyHTML: text(),
+		hasHTML: integer({ mode: "boolean" }).default(false),
 		bodyMD: text(),
+		bodySnippet: text(),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.default(sql`(strftime('%s','now'))`),

@@ -33,7 +33,8 @@
 	},
 	"dependencies": {
 		"@gebna/db": "workspace:*",
-		"@gebna/auth": "workspace:*"
+		"@gebna/auth": "workspace:*",
+		"@gebna/vali": "workspace:*"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
