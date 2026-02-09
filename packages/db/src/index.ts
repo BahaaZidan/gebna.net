@@ -3,7 +3,7 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import type { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 
-import * as schema from "./schema";
+import * as schema from "./schema.js";
 
 export { schema as dbSchema };
 

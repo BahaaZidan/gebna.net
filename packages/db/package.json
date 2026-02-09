@@ -1,25 +1,22 @@
 {
 	"name": "@gebna/db",
-	"version": "0.0.1",
-	"private": true,
+	"version": "0.0.0",
 	"type": "module",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
 	"exports": {
 		".": {
 			"types": "./src/index.ts",
-			"import": "./src/index.ts",
-			"default": "./src/index.ts"
-		},
-		"./package.json": "./package.json"
+			"default": "./dist/index.js"
+		}
 	},
 	"scripts": {
-		"db:push": "drizzle-kit push",
-		"db:generate": "drizzle-kit generate",
-		"db:migrate:dev": "dotenv -e .env.dev -- drizzle-kit migrate",
-		"db:migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
-		"db:studio:dev": "dotenv -e .env.dev -- drizzle-kit studio",
-		"db:studio:prod": "dotenv -e .env.prod -- drizzle-kit studio"
+		"dev": "tsc --watch",
+		"build": "tsc",
+		"push": "drizzle-kit push",
+		"generate": "drizzle-kit generate",
+		"migrate:dev": "dotenv -e .env.dev -- drizzle-kit migrate",
+		"migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
+		"studio:dev": "dotenv -e .env.dev -- drizzle-kit studio",
+		"studio:prod": "dotenv -e .env.prod -- drizzle-kit studio"
 	},
 	"dependencies": {
 		"drizzle-orm": "^0.45.1"
@@ -27,6 +24,8 @@
 	"devDependencies": {
 		"@libsql/client": "^0.17.0",
 		"dotenv-cli": "^11.0.0",
-		"drizzle-kit": "^0.31.8"
+		"drizzle-kit": "^0.31.8",
+		"@repo/typescript-config": "workspace:*",
+		"typescript": "latest"
 	}
 }

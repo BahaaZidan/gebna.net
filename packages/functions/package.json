@@ -32,7 +32,8 @@
 		"@sveltejs/kit": "^2.50.2"
 	},
 	"dependencies": {
-		"@gebna/db": "workspace:*"
+		"@gebna/db": "workspace:*",
+		"@gebna/auth": "workspace:*"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
