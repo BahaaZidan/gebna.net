@@ -93,6 +93,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@gebna/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@gebna/db':
         specifier: workspace:*
         version: link:../../packages/db

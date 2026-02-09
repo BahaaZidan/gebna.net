@@ -18,7 +18,8 @@
 	"dependencies": {
 		"@gebna/ui": "workspace:*",
 		"@gebna/functions": "workspace:*",
-		"@gebna/db": "workspace:*"
+		"@gebna/db": "workspace:*",
+		"@gebna/auth": "workspace:*"
 	},
 	"devDependencies": {
 		"@fontsource/inter": "^5.2.8",
