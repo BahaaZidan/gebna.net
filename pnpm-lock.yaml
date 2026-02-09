@@ -237,6 +237,9 @@ importers:
       '@gebna/db':
         specifier: workspace:*
         version: link:../db
+      '@gebna/vali':
+        specifier: workspace:*
+        version: link:../vali
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^7.0.0
