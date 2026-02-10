@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { generateImagePlaceholder, ulid } from "@gebna/utils";
+import { hashPassword } from "better-auth/crypto";
 
 import { dbSchema, getDB, type DBInstance } from "../src/index.js";
 
@@ -42,6 +43,7 @@ type SeedContext = {
 
 async function seedDatabase(db: DBInstance) {
 	const baseNow = Date.now();
+	const passwordHash = await hashPassword("password");
 	const ctx: SeedContext = {
 		now: new Date(),
 		secondsAgo: (seconds: number) => new Date(baseNow - seconds * 1000),
@@ -136,24 +138,25 @@ async function seedDatabase(db: DBInstance) {
 	const accounts = [
 		{
 			id: ulid(),
-			accountId: aliceUser.email,
-			providerId: "email",
+			accountId: aliceUser.username,
+			providerId: "credential",
 			userId: aliceUserId,
-			password: "$2b$10$CwTycUXWue0Thq9StjUM0uJ8i1/1.gI.WjYyqo4Z1Zq9N7GVkPeW", // bcrypt hash for "password"
+			// Stored with Better Auth's scrypt-based hashing to match the username sign-in flow.
+			password: passwordHash,
 		},
 		{
 			id: ulid(),
-			accountId: bobUser.email,
-			providerId: "email",
+			accountId: bobUser.username,
+			providerId: "credential",
 			userId: bobUserId,
-			password: "$2b$10$CwTycUXWue0Thq9StjUM0uJ8i1/1.gI.WjYyqo4Z1Zq9N7GVkPeW",
+			password: passwordHash,
 		},
 		{
 			id: ulid(),
-			accountId: carolUser.email,
-			providerId: "email",
+			accountId: carolUser.username,
+			providerId: "credential",
 			userId: carolUserId,
-			password: "$2b$10$CwTycUXWue0Thq9StjUM0uJ8i1/1.gI.WjYyqo4Z1Zq9N7GVkPeW",
+			password: passwordHash,
 		},
 	];
 
