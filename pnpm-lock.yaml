@@ -270,6 +270,9 @@ importers:
       '@gebna/vali':
         specifier: workspace:*
         version: link:../vali
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.1(@libsql/client@0.17.0)(kysely@0.28.11)
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^7.0.0
@@ -302,7 +305,20 @@ importers:
   packages/typescript-config: {}
 
   packages/ui:
+    dependencies:
+      '@gebna/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@lucide/svelte':
+        specifier: ^0.563.1
+        version: 0.563.1(svelte@5.50.0)
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
     devDependencies:
+      '@formisch/svelte':
+        specifier: ^0.7.1
+        version: 0.7.1(svelte@5.50.0)(typescript@5.9.2)(valibot@1.2.0(typescript@5.9.2))
       '@repo/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config

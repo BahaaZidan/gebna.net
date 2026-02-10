@@ -1,11 +1,12 @@
+import type { IdentityRelationshipSelectModel } from "@gebna/db";
 import {
-	conversationTable,
+	conversationParticipantTable,
 	conversationViewerStateTable,
 	Mailbox,
-	messageTable,
 } from "@gebna/db/schema";
 import { v } from "@gebna/vali";
 import { error } from "@sveltejs/kit";
+import { sql } from "drizzle-orm";
 
 import { getRequestEvent, query } from "$app/server";
 
@@ -70,7 +71,7 @@ export const getConversations = query(
 		const viewer = locals.user;
 		if (!viewer) error(400, "NOT_AUTHORIZED");
 
-		const participations = await db.query.conversationParticipantTable.findMany({
+		const participations = (await db.query.conversationParticipantTable.findMany({
 			with: {
 				conversation: {
 					with: {
@@ -108,14 +109,27 @@ export const getConversations = query(
 				},
 			},
 			limit: input.first + 1,
-			where: (t, { and, eq, lt }) =>
+			where: (t, { and, eq, exists, lt }) =>
 				and(
 					eq(t.ownerId, viewer.id),
-					eq(conversationViewerStateTable.mailbox, input.mailbox),
-					input.after ? lt(conversationTable.id, input.after) : undefined
+					exists(
+						db
+							.select({ one: sql`1` })
+							.from(conversationViewerStateTable)
+							.where(
+								and(
+									eq(conversationViewerStateTable.conversationId, t.conversationId),
+									eq(conversationViewerStateTable.ownerId, viewer.id),
+									eq(conversationViewerStateTable.mailbox, input.mailbox)
+								)
+							)
+					),
+					input.after ? lt(t.conversationId, input.after) : undefined
 				),
-			orderBy: (t, { desc }) => desc(messageTable.createdAt),
-		});
+			orderBy: (t, { desc }) => desc(t.joinedAt),
+		})) satisfies Awaited<
+			ReturnType<(typeof db)["query"]["conversationParticipantTable"]["findMany"]>
+		>;
 
 		const conversations = participations.slice(0, input.first).map((p) => p.conversation);
 		const hasNextPage = participations.length > conversations.length;
@@ -124,7 +138,7 @@ export const getConversations = query(
 			data: { conversations },
 			pageInfo: {
 				hasNextPage,
-				endCursor: hasNextPage ? conversations[conversations.length] : null,
+				endCursor: hasNextPage ? conversations[conversations.length - 1] : null,
 			},
 		};
 	}
