@@ -16,10 +16,16 @@
 		"test:unit": "vitest"
 	},
 	"dependencies": {
-		"@gebna/ui": "workspace:*",
-		"@gebna/functions": "workspace:*",
+		"@floating-ui/dom": "^1.7.5",
+		"@formisch/svelte": "^0.7.1",
+		"@gebna/auth": "workspace:*",
 		"@gebna/db": "workspace:*",
-		"@gebna/auth": "workspace:*"
+		"@gebna/functions": "workspace:*",
+		"@gebna/ui": "workspace:*",
+		"@gebna/vali": "workspace:*",
+		"@lucide/svelte": "^0.563.1",
+		"date-fns": "^4.1.0",
+		"runed": "^0.37.1"
 	},
 	"devDependencies": {
 		"@fontsource/inter": "^5.2.8",
