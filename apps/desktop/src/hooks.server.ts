@@ -9,9 +9,13 @@ import { env } from "$env/dynamic/private";
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const db = getDB({ authToken: env.TURSO_AUTH_TOKEN, url: env.TURSO_DATABASE_URL });
+	const baseURL = env.BASE_URL === event.url.origin ? env.BASE_URL : event.url.origin;
+
 	const auth = getAuthServer({
 		db,
-		baseURL: env.BASE_URL,
+		// Ensure the Better Auth server matches the incoming origin; a mismatched BASE_URL
+		// causes svelteKitHandler to skip auth routes and return 404.
+		baseURL,
 		getRequestEvent,
 		secret: env.BETTER_AUTH_SECRET,
 	});
