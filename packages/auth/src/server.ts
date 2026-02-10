@@ -27,6 +27,12 @@ export function getAuthServer({
 		baseURL,
 		database: drizzleAdapter(db, {
 			provider: "sqlite",
+			schema: {
+				user: dbSchema.userTable,
+				account: dbSchema.accountTable,
+				session: dbSchema.sessionTable,
+				verification: dbSchema.verificationTable,
+			},
 		}),
 		emailAndPassword: {
 			enabled: true,
@@ -87,6 +93,14 @@ export function getAuthServer({
 					});
 				}
 			}),
+		},
+
+		logger: {
+			disabled: false,
+			disableColors: false,
+			log(level, message, ...args) {
+				console.log(`[${level}] ${message}`, ...args);
+			},
 		},
 	});
 }
