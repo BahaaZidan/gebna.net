@@ -34,8 +34,8 @@
 
 	const handleLogin: SubmitHandler<typeof loginSchema> = async ({ username, password }) => {
 		const result = await getAuthClient().signIn.username({ username, password });
-		console.log({ result });
-		// location.reload();
+		if (result.error) return;
+		location.reload();
 	};
 </script>
 
