@@ -26,7 +26,7 @@
 
 	let { children, data }: { children: Snippet; data: LayoutData } = $props();
 
-	let viewer = $derived(data.user);
+	let viewer = $derived(data.viewer);
 
 	let loginForm = createForm({
 		schema: loginSchema,
