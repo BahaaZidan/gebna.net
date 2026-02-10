@@ -28,13 +28,14 @@
 		}
 	},
 	"peerDependencies": {
-		"svelte": "^5.0.0",
-		"@sveltejs/kit": "^2.50.2"
+		"@sveltejs/kit": "^2.50.2",
+		"svelte": "^5.0.0"
 	},
 	"dependencies": {
-		"@gebna/db": "workspace:*",
 		"@gebna/auth": "workspace:*",
-		"@gebna/vali": "workspace:*"
+		"@gebna/db": "workspace:*",
+		"@gebna/vali": "workspace:*",
+		"drizzle-orm": "^0.45.1"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",

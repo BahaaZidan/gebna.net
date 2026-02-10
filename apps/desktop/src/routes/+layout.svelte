@@ -10,6 +10,7 @@
 
 	import { createForm, Field, Form, type SubmitHandler } from "@formisch/svelte";
 	import { getAuthClient } from "@gebna/auth/client";
+	import { TextInput } from "@gebna/ui";
 	import { loginSchema } from "@gebna/vali";
 	import type { IconProps } from "@lucide/svelte";
 	import CogIcon from "@lucide/svelte/icons/cog";
@@ -18,9 +19,7 @@
 	import { type Component, type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
-	import { type Pathname } from "$app/types";
-
-	import TextInput from "$lib/components/forms/TextInput.svelte";
+	import type { Pathname } from "$app/types";
 
 	import type { LayoutData } from "./$types";
 

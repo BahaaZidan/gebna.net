@@ -2,3 +2,4 @@
 import type { RemoteQueryFunction } from "@sveltejs/kit";
 
 export { getViewer } from "./get-viewer.remote.js";
+export * from "./messaging.remote.js";
