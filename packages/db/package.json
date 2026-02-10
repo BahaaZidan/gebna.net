@@ -15,8 +15,10 @@
 	"scripts": {
 		"dev": "tsc --watch",
 		"build": "tsc",
+		"typecheck": "tsc --noEmit",
 		"push": "drizzle-kit push",
 		"generate": "drizzle-kit generate",
+		"seed": "dotenv -e .env.dev -- tsx scripts/seed.ts",
 		"migrate:dev": "dotenv -e .env.dev -- drizzle-kit migrate",
 		"migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
 		"studio:dev": "dotenv -e .env.dev -- drizzle-kit studio",
@@ -26,10 +28,13 @@
 		"drizzle-orm": "^0.45.1"
 	},
 	"devDependencies": {
+		"tsx": "^4.19.1",
 		"@libsql/client": "^0.17.0",
 		"dotenv-cli": "^11.0.0",
 		"drizzle-kit": "^0.31.8",
+		"@types/node": "^22.13.1",
 		"@repo/typescript-config": "workspace:*",
-		"typescript": "latest"
+		"typescript": "latest",
+		"@gebna/utils": "workspace:*"
 	}
 }
