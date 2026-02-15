@@ -1,1 +1,0 @@
-ALTER TABLE `conversation` ADD `lastMessageId` text REFERENCES message(id);

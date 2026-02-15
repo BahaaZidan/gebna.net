@@ -20,7 +20,6 @@
 		"@formisch/svelte": "^0.7.1",
 		"@gebna/auth": "workspace:*",
 		"@gebna/db": "workspace:*",
-		"@gebna/functions": "workspace:*",
 		"@gebna/ui": "workspace:*",
 		"@gebna/vali": "workspace:*",
 		"@lucide/svelte": "^0.563.1",

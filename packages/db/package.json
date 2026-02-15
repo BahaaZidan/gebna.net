@@ -16,8 +16,9 @@
 		"dev": "tsc --watch",
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
-		"push": "drizzle-kit push",
 		"generate": "drizzle-kit generate",
+		"push": "dotenv -e .env.dev -- drizzle-kit push",
+		"pull": "dotenv -e .env.dev -- drizzle-kit pull",
 		"seed": "dotenv -e .env.dev -- tsx scripts/seed.ts",
 		"migrate:dev": "dotenv -e .env.dev -- drizzle-kit migrate",
 		"migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
@@ -25,7 +26,7 @@
 		"studio:prod": "dotenv -e .env.prod -- drizzle-kit studio"
 	},
 	"dependencies": {
-		"drizzle-orm": "^0.45.1"
+		"drizzle-orm": "1.0.0-beta.15-859cf75"
 	},
 	"devDependencies": {
 		"@gebna/utils": "workspace:*",
@@ -34,7 +35,7 @@
 		"@types/node": "^22.13.1",
 		"better-auth": "^1.4.18",
 		"dotenv-cli": "^11.0.0",
-		"drizzle-kit": "^0.31.8",
+		"drizzle-kit": "1.0.0-beta.15-859cf75",
 		"tsx": "^4.19.1",
 		"typescript": "latest"
 	}
