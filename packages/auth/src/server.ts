@@ -1,9 +1,9 @@
+import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import { dbSchema, type DBInstance } from "@gebna/db";
 import { generateImagePlaceholder, ulid } from "@gebna/utils";
 import { usernameSchema, v } from "@gebna/vali";
 import { type RequestEvent } from "@sveltejs/kit";
 import { APIError, betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware, username } from "better-auth/plugins";
 import { sveltekitCookies } from "better-auth/svelte-kit";
 
@@ -27,12 +27,10 @@ export function getAuthServer({
 		baseURL,
 		database: drizzleAdapter(db, {
 			provider: "sqlite",
-			schema: {
-				user: dbSchema.userTable,
-				account: dbSchema.accountTable,
-				session: dbSchema.sessionTable,
-				verification: dbSchema.verificationTable,
-			},
+			usePlural: true,
+			camelCase: true,
+			transaction: true,
+			schema: dbSchema,
 		}),
 		emailAndPassword: {
 			enabled: true,
@@ -70,10 +68,10 @@ export function getAuthServer({
 			user: {
 				create: {
 					async after(user) {
-						await db.insert(dbSchema.identityTable).values({
+						await db.insert(dbSchema.identities).values({
 							id: ulid(),
 							avatarPlaceholder: generateImagePlaceholder(user.name || user.email),
-							kind: "GEBNA_USER",
+							kind: "INTERNAL",
 							ownerId: user.id,
 							address: user.email,
 							name: user.name,

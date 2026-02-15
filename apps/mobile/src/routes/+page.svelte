@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { getViewer } from "@gebna/functions";
+	// import { getViewer } from "@gebna/functions";
 	import { MyCounterButton } from "@gebna/ui";
 
-	const viewer = await getViewer();
+	const viewer = {};
 
 	$effect(() => {
 		console.log({ viewer });

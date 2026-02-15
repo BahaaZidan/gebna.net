@@ -1,6 +1,5 @@
-import { relations, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
-	AnySQLiteColumn,
 	check,
 	customType,
 	index,
@@ -8,6 +7,7 @@ import {
 	sqliteTable,
 	text,
 	uniqueIndex,
+	type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core";
 
 const citext = customType<{
@@ -21,176 +21,150 @@ const citext = customType<{
 	},
 });
 
-export const userTable = sqliteTable("user", {
-	id: text("id").primaryKey(),
-	name: text("name").notNull(),
-	email: text("email").notNull().unique(),
-	emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
-	image: text("image"),
-	createdAt: integer("created_at", { mode: "timestamp_ms" })
+export const users = sqliteTable("users", {
+	id: text().primaryKey(),
+	name: text().notNull(),
+	email: citext().notNull().unique(),
+	emailVerified: integer({ mode: "boolean" }).default(true).notNull(),
+	image: text(),
+	createdAt: integer({ mode: "timestamp_ms" })
 		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 		.notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+	updatedAt: integer({ mode: "timestamp_ms" })
 		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 		.$onUpdate(() => /* @__PURE__ */ new Date())
 		.notNull(),
-	username: citext("username").unique().notNull(),
-	displayUsername: text("display_username"),
+	username: citext().unique().notNull(),
+	displayUsername: text(),
 	uploadedAvatar: text(),
 	avatarPlaceholder: text().notNull(),
 });
 
-export const userRelations = relations(userTable, ({ one, many }) => ({
-	sessions: many(sessionTable),
-	accounts: many(accountTable),
-	relations: many(identityRelationshipTable),
-	identity: one(identityTable, {
-		fields: [userTable.id],
-		references: [identityTable.ownerId],
-	}),
-}));
-
-export const sessionTable = sqliteTable(
-	"session",
+export const sessions = sqliteTable(
+	"sessions",
 	{
-		id: text("id").primaryKey(),
-		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-		token: text("token").notNull().unique(),
-		createdAt: integer("created_at", { mode: "timestamp_ms" })
+		id: text().primaryKey(),
+		expiresAt: integer({ mode: "timestamp_ms" }).notNull(),
+		token: text().notNull().unique(),
+		createdAt: integer({ mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.notNull(),
-		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		updatedAt: integer({ mode: "timestamp_ms" })
 			.$onUpdate(() => /* @__PURE__ */ new Date())
 			.notNull(),
-		ipAddress: text("ip_address"),
-		userAgent: text("user_agent"),
-		userId: text("user_id")
+		ipAddress: text(),
+		userAgent: text(),
+		userId: text()
 			.notNull()
-			.references(() => userTable.id, { onDelete: "cascade" }),
+			.references(() => users.id, { onDelete: "cascade" }),
 	},
-	(self) => [index("session_userId_idx").on(self.userId)]
+	(table) => [index("sessions_userId_idx").on(table.userId)]
 );
 
-export const sessionRelations = relations(sessionTable, ({ one }) => ({
-	user: one(userTable, {
-		fields: [sessionTable.userId],
-		references: [userTable.id],
-	}),
-}));
-
-export const accountTable = sqliteTable(
-	"account",
+export const accounts = sqliteTable(
+	"accounts",
 	{
-		id: text("id").primaryKey(),
-		accountId: text("account_id").notNull(),
-		providerId: text("provider_id").notNull(),
-		userId: text("user_id")
+		id: text().primaryKey(),
+		accountId: text().notNull(),
+		providerId: text().notNull(),
+		userId: text()
 			.notNull()
-			.references(() => userTable.id, { onDelete: "cascade" }),
-		accessToken: text("access_token"),
-		refreshToken: text("refresh_token"),
-		idToken: text("id_token"),
-		accessTokenExpiresAt: integer("access_token_expires_at", {
+			.references(() => users.id, { onDelete: "cascade" }),
+		accessToken: text(),
+		refreshToken: text(),
+		idToken: text(),
+		accessTokenExpiresAt: integer({
 			mode: "timestamp_ms",
 		}),
-		refreshTokenExpiresAt: integer("refresh_token_expires_at", {
+		refreshTokenExpiresAt: integer({
 			mode: "timestamp_ms",
 		}),
-		scope: text("scope"),
-		password: text("password"),
-		createdAt: integer("created_at", { mode: "timestamp_ms" })
+		scope: text(),
+		password: text(),
+		createdAt: integer({ mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.notNull(),
-		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		updatedAt: integer({ mode: "timestamp_ms" })
 			.$onUpdate(() => /* @__PURE__ */ new Date())
 			.notNull(),
 	},
-	(self) => [index("account_userId_idx").on(self.userId)]
+	(table) => [index("accounts_userId_idx").on(table.userId)]
 );
 
-export const accountRelations = relations(accountTable, ({ one }) => ({
-	user: one(userTable, {
-		fields: [accountTable.userId],
-		references: [userTable.id],
-	}),
-}));
-
-export const verificationTable = sqliteTable(
-	"verification",
+export const verifications = sqliteTable(
+	"verifications",
 	{
-		id: text("id").primaryKey(),
-		identifier: text("identifier").notNull(),
-		value: text("value").notNull(),
-		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-		createdAt: integer("created_at", { mode: "timestamp_ms" })
+		id: text().primaryKey(),
+		identifier: text().notNull(),
+		value: text().notNull(),
+		expiresAt: integer({ mode: "timestamp_ms" }).notNull(),
+		createdAt: integer({ mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.notNull(),
-		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		updatedAt: integer({ mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.$onUpdate(() => /* @__PURE__ */ new Date())
 			.notNull(),
 	},
-	(self) => [index("verification_identifier_idx").on(self.identifier)]
+	(table) => [index("verifications_identifier_idx").on(table.identifier)]
 );
 
-const IdentityKind = ["GEBNA_USER", "EXTERNAL_EMAIL"] as const;
+const IdentityKind = ["INTERNAL", "EXTERNAL"] as const;
 type IdentityKind = (typeof IdentityKind)[number];
 /** Identity (a global endpoint-like entity; today email-ish, later can grow handles) */
-export const identityTable = sqliteTable(
-	"identity",
+export const identities = sqliteTable(
+	"identities",
 	{
 		id: text().primaryKey(),
 		ownerId: text()
 			.unique()
-			.references(() => userTable.id, { onDelete: "cascade" }),
+			.references(() => users.id, { onDelete: "cascade" }),
 		kind: text({ enum: IdentityKind }).notNull(),
 		/** Canonical handle (currently email address). Case-insensitive via CITEXT. */
 		address: citext().notNull().unique(),
-		createdAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`),
-		updatedAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`)
-			.$onUpdate(() => sql`(strftime('%s','now'))`),
+		createdAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+		updatedAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
 		name: text(),
 		inferredAvatar: text(),
 		avatarPlaceholder: text().notNull(),
 	},
 	(self) => [
-		index("idx_identity_address").on(self.address),
-		index("idx_identity_kind").on(self.kind),
+		index("idx_identities_address").on(self.address),
+		check(
+			"chk_identities_ownerId_matches_kind",
+			sql`(
+        (${self.kind} = 'INTERNAL' AND ${self.ownerId} IS NOT NULL)
+        OR
+        (${self.kind} = 'EXTERNAL' AND ${self.ownerId} IS NULL)
+      )`
+		),
 	]
 );
 
-export const identityRelations = relations(identityTable, ({ one, many }) => ({
-	owner: one(userTable, {
-		fields: [identityTable.ownerId],
-		references: [userTable.id],
-	}),
-	relations: many(identityRelationshipTable),
-	participations: many(conversationParticipantTable),
-}));
-
 /** Viewer-scoped relationship (contacts) */
-export const identityRelationshipTable = sqliteTable(
-	"identity_relationship",
+export const identityRelationships = sqliteTable(
+	"identityRelationships",
 	{
 		id: text().primaryKey(),
 		ownerId: text()
 			.notNull()
-			.references(() => userTable.id, { onDelete: "cascade" }),
+			.references(() => users.id, { onDelete: "cascade" }),
 		identityId: text()
 			.notNull()
-			.references(() => identityTable.id, { onDelete: "cascade" }),
+			.references(() => identities.id, { onDelete: "cascade" }),
 		isContact: integer({ mode: "boolean" }).notNull().default(false),
-		updatedAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`)
-			.$onUpdate(() => sql`(strftime('%s','now'))`),
-		createdAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`),
+		createdAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+		updatedAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
 		givenName: text(),
 		uploadedAvatar: text(),
 	},
@@ -200,26 +174,12 @@ export const identityRelationshipTable = sqliteTable(
 	]
 );
 
-export const identityRelationshipRelations = relations(identityRelationshipTable, ({ one }) => ({
-	owner: one(userTable, {
-		fields: [identityRelationshipTable.ownerId],
-		references: [userTable.id],
-	}),
-	identity: one(identityTable, {
-		fields: [identityRelationshipTable.identityId],
-		references: [identityTable.id],
-	}),
-}));
-
 const ConversationKind = ["PRIVATE", "GROUP"] as const;
 type ConversationKind = (typeof ConversationKind)[number];
-export const conversationTable = sqliteTable(
-	"conversation",
+export const conversations = sqliteTable(
+	"conversations",
 	{
 		id: text().primaryKey(),
-		lastMessageId: text().references((): AnySQLiteColumn => messageTable.id, {
-			onDelete: "set null",
-		}),
 		kind: text({ enum: ConversationKind }).notNull(),
 		title: text(),
 		/**
@@ -227,21 +187,25 @@ export const conversationTable = sqliteTable(
 		 * Must be NULL for GROUP conversations.
 		 */
 		dmKey: text(),
-		createdAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`),
-		updatedAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`)
-			.$onUpdate(() => sql`(strftime('%s','now'))`),
-		lastMessageAt: integer({ mode: "timestamp" }).default(sql`(strftime('%s','now'))`),
+		createdAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+		updatedAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
+		lastMessageId: text().references((): AnySQLiteColumn => messages.id, {
+			onDelete: "set null",
+		}),
+		lastMessageAt: integer({ mode: "timestamp_ms" }).default(
+			sql`(cast(unixepoch('subsecond') * 1000 as integer))`
+		),
 		uploadedAvatar: text(),
 	},
 	(self) => [
 		uniqueIndex("uniq_conversation_dm_key").on(self.dmKey),
 		index("idx_conversation_kind_updated").on(self.kind, self.updatedAt),
 		index("idx_conversation_last_message_at").on(self.lastMessageAt),
-
 		check(
 			"chk_conversation_dmkey_kind",
 			sql`(
@@ -253,40 +217,30 @@ export const conversationTable = sqliteTable(
 	]
 );
 
-export const conversationRelations = relations(conversationTable, ({ many, one }) => ({
-	participants: many(conversationParticipantTable),
-	messages: many(messageTable),
-	viewerStates: many(conversationViewerStateTable),
-	lastMessage: one(messageTable, {
-		fields: [conversationTable.lastMessageId],
-		references: [messageTable.id],
-	}),
-}));
-
 const ParticipantRole = ["MEMBER", "ADMIN"] as const;
 type ParticipantRole = (typeof ParticipantRole)[number];
 const ParticipantState = ["ACTIVE", "LEFT"] as const;
 type ParticipantState = (typeof ParticipantState)[number];
-export const conversationParticipantTable = sqliteTable(
-	"conversation_participant",
+export const conversationParticipants = sqliteTable(
+	"conversationParticipants",
 	{
 		id: text().primaryKey(),
 		conversationId: text()
 			.notNull()
-			.references(() => conversationTable.id, { onDelete: "cascade" }),
+			.references(() => conversations.id, { onDelete: "cascade" }),
 		identityId: text()
 			.notNull()
-			.references(() => identityTable.id, { onDelete: "cascade" }),
-		ownerId: text().references(() => userTable.id, { onDelete: "cascade" }),
+			.references(() => identities.id, { onDelete: "cascade" }),
+		ownerId: text().references(() => users.id, { onDelete: "cascade" }),
 		role: text({ enum: ParticipantRole }).notNull(),
 		state: text({ enum: ParticipantState }).notNull(),
-		joinedAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`),
+		joinedAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
 		/**
-		 * Per-participant read pointer. You can use a sentinel ID (e.g. "0") in app code.
+		 * Per-participant seen pointer. You can use a sentinel ID (e.g. "0") in app code.
 		 */
-		lastReadMessageId: text().references(() => messageTable.id, { onDelete: "set null" }),
+		lastSeenMessageId: text().references(() => messages.id, { onDelete: "set null" }),
 	},
 	(self) => [
 		uniqueIndex("uniq_conversation_participant").on(self.conversationId, self.identityId),
@@ -295,65 +249,33 @@ export const conversationParticipantTable = sqliteTable(
 	]
 );
 
-export const conversationParticipantRelations = relations(
-	conversationParticipantTable,
-	({ one }) => ({
-		conversation: one(conversationTable, {
-			fields: [conversationParticipantTable.conversationId],
-			references: [conversationTable.id],
-		}),
-		identity: one(identityTable, {
-			fields: [conversationParticipantTable.identityId],
-			references: [identityTable.id],
-		}),
-		owner: one(userTable, {
-			fields: [conversationParticipantTable.ownerId],
-			references: [userTable.id],
-		}),
-	})
-);
-
 export const Mailbox = ["IMPORTANT", "TRASH"] as const;
 type Mailbox = (typeof Mailbox)[number];
-export const conversationViewerStateTable = sqliteTable(
-	"conversation_viewer_state",
+export const conversationViewerStates = sqliteTable(
+	"conversationViewerStates",
 	{
 		id: text().primaryKey(),
 		ownerId: text()
 			.notNull()
-			.references(() => userTable.id, { onDelete: "cascade" }),
+			.references(() => users.id, { onDelete: "cascade" }),
 		conversationId: text()
 			.notNull()
-			.references(() => conversationTable.id, { onDelete: "cascade" }),
-		createdAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`),
-		updatedAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`)
-			.$onUpdate(() => sql`(strftime('%s','now'))`),
+			.references(() => conversations.id, { onDelete: "cascade" }),
+		createdAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+		updatedAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
 		mailbox: text({ enum: Mailbox }).notNull(),
-		unreadCount: integer().notNull(),
+		unseenCount: integer().notNull(),
 	},
 	(self) => [
 		uniqueIndex("uniq_conversation_viewer_state").on(self.ownerId, self.conversationId),
 		index("idx_conversation_viewer_state_owner_mailbox").on(self.ownerId, self.mailbox),
 		index("idx_conversation_viewer_state_owner_updated").on(self.ownerId, self.updatedAt),
 	]
-);
-
-export const conversationViewerStateRelations = relations(
-	conversationViewerStateTable,
-	({ one }) => ({
-		owner: one(userTable, {
-			fields: [conversationViewerStateTable.ownerId],
-			references: [userTable.id],
-		}),
-		conversation: one(conversationTable, {
-			fields: [conversationViewerStateTable.conversationId],
-			references: [conversationTable.id],
-		}),
-	})
 );
 
 type EmailMetadata = {
@@ -372,29 +294,37 @@ type EmailMetadata = {
 	/** Headers.references ==> It lists the entire ancestry of the conversation — all the Message-IDs leading up to this email. used for threading */
 	references?: string;
 };
-export const messageTable = sqliteTable(
-	"message",
+export const messages = sqliteTable(
+	"messages",
 	{
 		id: text().primaryKey(),
 		conversationId: text()
 			.notNull()
-			.references((): AnySQLiteColumn => conversationTable.id, { onDelete: "cascade" }),
+			.references((): AnySQLiteColumn => conversations.id, { onDelete: "cascade" }),
 		senderIdentityId: text()
 			.notNull()
-			.references(() => identityTable.id, { onDelete: "restrict" }),
+			.references(() => identities.id, { onDelete: "restrict" }),
 		/**
 		 * Normalized RFC5322 Message-Id for inbound email de-duping and threading.
 		 * For non-email messages, this is NULL.
 		 */
 		externalMessageId: text(),
-		bodyText: text(),
-		bodyHTML: text(),
-		hasHTML: integer({ mode: "boolean" }).default(false),
+		bodyPlainText: text(),
+		bodyPlainTextSnippet: text(),
+		/** From the email envelope. only available from external inbound email messages */
+		bodyRawHTML: text(),
+		hasBodyRawHTML: integer({ mode: "boolean" }).default(false),
+		/** Can be sourced from the rawHTML in case of external inbound or straight from input for internal outbound */
 		bodyMD: text(),
-		bodySnippet: text(),
-		createdAt: integer({ mode: "timestamp" })
-			.notNull()
-			.default(sql`(strftime('%s','now'))`),
+		/** `self.bodyMD` transformed into HTML to facilatate rendering */
+		bodyHTMLFromMD: text(),
+		createdAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+		updatedAt: integer({ mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
 		emailMetadata: text({ mode: "json" }).$type<EmailMetadata>(),
 	},
 	(self) => [
@@ -404,36 +334,25 @@ export const messageTable = sqliteTable(
 	]
 );
 
-export const messageRelations = relations(messageTable, ({ one }) => ({
-	conversation: one(conversationTable, {
-		fields: [messageTable.conversationId],
-		references: [conversationTable.id],
-	}),
-	senderIdentity: one(identityTable, {
-		fields: [messageTable.senderIdentityId],
-		references: [identityTable.id],
-	}),
-}));
-
-const DeliveryStatus = ["QUEUED", "SENT", "DELIVERED", "READ", "FAILED"] as const;
+const DeliveryStatus = ["QUEUED", "SENT", "DELIVERED", "SEEN", "FAILED"] as const;
 type DeliveryStatus = (typeof DeliveryStatus)[number];
-const Transport = ["EMAIL", "GEBNA_DM"] as const;
+const Transport = ["EMAIL", "DIRECT"] as const;
 type Transport = (typeof Transport)[number];
-export const messageDeliveryTable = sqliteTable(
-	"message_delivery",
+export const messageDeliveries = sqliteTable(
+	"messageDeliveries",
 	{
 		id: text().primaryKey(),
 		messageId: text()
 			.notNull()
-			.references(() => messageTable.id, { onDelete: "cascade" }),
+			.references(() => messages.id, { onDelete: "cascade" }),
 		recipientIdentityId: text()
 			.notNull()
-			.references(() => identityTable.id, { onDelete: "cascade" }),
-		status: text({ enum: DeliveryStatus }).notNull(),
+			.references(() => identities.id, { onDelete: "cascade" }),
 		transport: text({ enum: Transport }).notNull(),
-		latestStatusChangeAt: integer({ mode: "timestamp" })
+		status: text({ enum: DeliveryStatus }).notNull(),
+		latestStatusChangeAt: integer({ mode: "timestamp_ms" })
 			.notNull()
-			.default(sql`(strftime('%s','now'))`),
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`),
 		error: text(),
 	},
 	(self) => [
@@ -445,14 +364,3 @@ export const messageDeliveryTable = sqliteTable(
 		index("idx_message_delivery_recipient_status").on(self.recipientIdentityId, self.status),
 	]
 );
-
-export const messageDeliveryRelations = relations(messageDeliveryTable, ({ one }) => ({
-	message: one(messageTable, {
-		fields: [messageDeliveryTable.messageId],
-		references: [messageTable.id],
-	}),
-	recipientIdentity: one(identityTable, {
-		fields: [messageDeliveryTable.recipientIdentityId],
-		references: [identityTable.id],
-	}),
-}));

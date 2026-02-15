@@ -20,10 +20,11 @@
 		"@sveltejs/kit": "^2.50.2"
 	},
 	"dependencies": {
-		"better-auth": "^1.4.18",
+		"@better-auth/drizzle-adapter": "https://pkg.pr.new/better-auth/better-auth/@better-auth/drizzle-adapter@6913",
 		"@gebna/db": "workspace:*",
 		"@gebna/utils": "workspace:*",
-		"@gebna/vali": "workspace:*"
+		"@gebna/vali": "workspace:*",
+		"better-auth": "^1.4.18"
 	},
 	"devDependencies": {
 		"@repo/typescript-config": "workspace:*",

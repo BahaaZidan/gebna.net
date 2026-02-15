@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getConversations } from "@gebna/functions";
+	// import { getConversations } from "@gebna/functions";
 	import { ConversationAvatar, ConversationTitle, formatInboxDate } from "@gebna/ui";
 	import type { IconProps } from "@lucide/svelte";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
@@ -10,8 +10,8 @@
 	import { resolve } from "$app/paths";
 
 	let props: { children: Snippet } = $props();
-	let conversationsResult = await getConversations({});
-	let conversations = conversationsResult.data.conversations;
+	let conversationsResult = {};
+	// let conversations = conversationsResult.data.conversations;
 
 	$effect(() => {
 		console.log({ conversations });
