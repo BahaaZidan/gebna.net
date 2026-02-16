@@ -1,6 +1,6 @@
 import SchemaBuilder from "@pothos/core";
 
-import type { GraphQLResolverContext } from "./types.js";
+import type { GraphQLResolverContext } from "../types.js";
 
 const builder = new SchemaBuilder<{ Context: GraphQLResolverContext }>({});
 
@@ -12,7 +12,7 @@ builder.queryType({
 			},
 			resolve: (parent, { name }) => `hello, ${name || "World"}`,
 		}),
-		hello2: t.string({
+		34534532: t.string({
 			args: {
 				name: t.arg.string(),
 			},
