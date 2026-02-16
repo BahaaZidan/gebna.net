@@ -2,15 +2,16 @@ import type { CodegenConfig } from "@graphql-codegen/cli";
 import type { IGraphQLConfig } from "graphql-config";
 
 const config: IGraphQLConfig = {
-	schema: ["./schema.ts"],
+	schema: "http://localhost:5190/api/graphql",
+
 	documents: [
-		"./src/**/*.{svelte,ts}",
 		"../ui/src/components/**/*.{svelte}",
 		"../../apps/desktop/src/**/*.{svelte,ts}",
 		"../../apps/mobile/src/**/*.{svelte,ts}",
 	],
 	extensions: {
 		codegen: {
+			importExtension: ".js",
 			ignoreNoDocuments: true,
 			pluckConfig: {
 				modules: [
