@@ -12,7 +12,15 @@ builder.queryType({
 			},
 			resolve: (parent, { name }) => `hello, ${name || "World"}`,
 		}),
+		hello2: t.string({
+			args: {
+				name: t.arg.string(),
+			},
+			resolve: (parent, { name }) => `hello, ${name || "World"}`,
+		}),
 	}),
 });
 
 export const executableSchema = builder.toSchema();
+
+export default executableSchema;
