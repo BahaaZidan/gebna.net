@@ -1,62 +1,64 @@
 {
-  "dialect": "sqlite",
-  "id": "00000000-0000-0000-0000-000000000000",
-  "prevIds": [],
   "version": "7",
+  "dialect": "sqlite",
+  "id": "916ebc17-d176-49cf-91cd-364c40bc516a",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
   "ddl": [
     {
-      "name": "account",
+      "name": "accounts",
       "entityType": "tables"
     },
     {
-      "name": "conversation_participant",
+      "name": "conversationParticipants",
       "entityType": "tables"
     },
     {
-      "name": "conversation",
+      "name": "conversationViewerStates",
       "entityType": "tables"
     },
     {
-      "name": "conversation_viewer_state",
+      "name": "conversations",
       "entityType": "tables"
     },
     {
-      "name": "identity_relationship",
+      "name": "identities",
       "entityType": "tables"
     },
     {
-      "name": "identity",
+      "name": "identityRelationships",
       "entityType": "tables"
     },
     {
-      "name": "message_delivery",
+      "name": "messageDeliveries",
       "entityType": "tables"
     },
     {
-      "name": "message",
+      "name": "messages",
       "entityType": "tables"
     },
     {
-      "name": "session",
+      "name": "sessions",
       "entityType": "tables"
     },
     {
-      "name": "user",
+      "name": "users",
       "entityType": "tables"
     },
     {
-      "name": "verification",
+      "name": "verifications",
       "entityType": "tables"
     },
     {
       "type": "text",
-      "notNull": true,
+      "notNull": false,
       "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "id",
       "entityType": "columns",
-      "table": "account"
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -64,9 +66,9 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "id",
+      "name": "accountId",
       "entityType": "columns",
-      "table": "conversation_participant"
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -74,9 +76,9 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "id",
+      "name": "providerId",
       "entityType": "columns",
-      "table": "conversation"
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -84,129 +86,9 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "id",
+      "name": "userId",
       "entityType": "columns",
-      "table": "conversation_viewer_state"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "identity_relationship"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "message_delivery"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "session"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "user"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "verification"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "account_id",
-      "entityType": "columns",
-      "table": "account"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "conversationId",
-      "entityType": "columns",
-      "table": "conversation_participant"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "kind",
-      "entityType": "columns",
-      "table": "conversation"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "ownerId",
-      "entityType": "columns",
-      "table": "conversation_viewer_state"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "ownerId",
-      "entityType": "columns",
-      "table": "identity_relationship"
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -214,79 +96,9 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "ownerId",
+      "name": "accessToken",
       "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "messageId",
-      "entityType": "columns",
-      "table": "message_delivery"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "conversationId",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "expires_at",
-      "entityType": "columns",
-      "table": "session"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "name",
-      "entityType": "columns",
-      "table": "user"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "identifier",
-      "entityType": "columns",
-      "table": "verification"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "provider_id",
-      "entityType": "columns",
-      "table": "account"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "identityId",
-      "entityType": "columns",
-      "table": "conversation_participant"
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -294,99 +106,9 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "title",
+      "name": "refreshToken",
       "entityType": "columns",
-      "table": "conversation"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "conversationId",
-      "entityType": "columns",
-      "table": "conversation_viewer_state"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "identityId",
-      "entityType": "columns",
-      "table": "identity_relationship"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "kind",
-      "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "recipientIdentityId",
-      "entityType": "columns",
-      "table": "message_delivery"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "senderIdentityId",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "token",
-      "entityType": "columns",
-      "table": "session"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "email",
-      "entityType": "columns",
-      "table": "user"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "value",
-      "entityType": "columns",
-      "table": "verification"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "user_id",
-      "entityType": "columns",
-      "table": "account"
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -394,419 +116,9 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "ownerId",
+      "name": "idToken",
       "entityType": "columns",
-      "table": "conversation_participant"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "dmKey",
-      "entityType": "columns",
-      "table": "conversation"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "createdAt",
-      "entityType": "columns",
-      "table": "conversation_viewer_state"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "false",
-      "generated": null,
-      "name": "isContact",
-      "entityType": "columns",
-      "table": "identity_relationship"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "address",
-      "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "status",
-      "entityType": "columns",
-      "table": "message_delivery"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "externalMessageId",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "cast(unixepoch('subsecond') * 1000 as integer)",
-      "generated": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "table": "session"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "false",
-      "generated": null,
-      "name": "email_verified",
-      "entityType": "columns",
-      "table": "user"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "expires_at",
-      "entityType": "columns",
-      "table": "verification"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "access_token",
-      "entityType": "columns",
-      "table": "account"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "role",
-      "entityType": "columns",
-      "table": "conversation_participant"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "createdAt",
-      "entityType": "columns",
-      "table": "conversation"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "updatedAt",
-      "entityType": "columns",
-      "table": "conversation_viewer_state"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "updatedAt",
-      "entityType": "columns",
-      "table": "identity_relationship"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "createdAt",
-      "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "transport",
-      "entityType": "columns",
-      "table": "message_delivery"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "bodyText",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "table": "session"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "image",
-      "entityType": "columns",
-      "table": "user"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "cast(unixepoch('subsecond') * 1000 as integer)",
-      "generated": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "table": "verification"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "refresh_token",
-      "entityType": "columns",
-      "table": "account"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "state",
-      "entityType": "columns",
-      "table": "conversation_participant"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "updatedAt",
-      "entityType": "columns",
-      "table": "conversation"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "mailbox",
-      "entityType": "columns",
-      "table": "conversation_viewer_state"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "createdAt",
-      "entityType": "columns",
-      "table": "identity_relationship"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "updatedAt",
-      "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "latestStatusChangeAt",
-      "entityType": "columns",
-      "table": "message_delivery"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "bodyHTML",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "ip_address",
-      "entityType": "columns",
-      "table": "session"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "cast(unixepoch('subsecond') * 1000 as integer)",
-      "generated": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "table": "user"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "cast(unixepoch('subsecond') * 1000 as integer)",
-      "generated": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "table": "verification"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id_token",
-      "entityType": "columns",
-      "table": "account"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "joinedAt",
-      "entityType": "columns",
-      "table": "conversation_participant"
-    },
-    {
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "lastMessageAt",
-      "entityType": "columns",
-      "table": "conversation"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "unreadCount",
-      "entityType": "columns",
-      "table": "conversation_viewer_state"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "givenName",
-      "entityType": "columns",
-      "table": "identity_relationship"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "name",
-      "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "error",
-      "entityType": "columns",
-      "table": "message_delivery"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "bodyMD",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "user_agent",
-      "entityType": "columns",
-      "table": "session"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "cast(unixepoch('subsecond') * 1000 as integer)",
-      "generated": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "table": "user"
+      "table": "accounts"
     },
     {
       "type": "integer",
@@ -814,79 +126,9 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "access_token_expires_at",
+      "name": "accessTokenExpiresAt",
       "entityType": "columns",
-      "table": "account"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "lastReadMessageId",
-      "entityType": "columns",
-      "table": "conversation_participant"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "uploadedAvatar",
-      "entityType": "columns",
-      "table": "conversation"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "uploadedAvatar",
-      "entityType": "columns",
-      "table": "identity_relationship"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "inferredAvatar",
-      "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "strftime('%s','now')",
-      "generated": null,
-      "name": "createdAt",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "user_id",
-      "entityType": "columns",
-      "table": "session"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "username",
-      "entityType": "columns",
-      "table": "user"
+      "table": "accounts"
     },
     {
       "type": "integer",
@@ -894,49 +136,9 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "refresh_token_expires_at",
+      "name": "refreshTokenExpiresAt",
       "entityType": "columns",
-      "table": "account"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "lastMessageId",
-      "entityType": "columns",
-      "table": "conversation"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "avatarPlaceholder",
-      "entityType": "columns",
-      "table": "identity"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "emailMetadata",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "display_username",
-      "entityType": "columns",
-      "table": "user"
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -946,27 +148,7 @@
       "generated": null,
       "name": "scope",
       "entityType": "columns",
-      "table": "account"
-    },
-    {
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": "false",
-      "generated": null,
-      "name": "hasHTML",
-      "entityType": "columns",
-      "table": "message"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "uploadedAvatar",
-      "entityType": "columns",
-      "table": "user"
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -976,7 +158,27 @@
       "generated": null,
       "name": "password",
       "entityType": "columns",
-      "table": "account"
+      "table": "accounts"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "accounts"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "accounts"
     },
     {
       "type": "text",
@@ -984,9 +186,319 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "bodySnippet",
+      "name": "id",
       "entityType": "columns",
-      "table": "message"
+      "table": "conversationParticipants"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "conversationId",
+      "entityType": "columns",
+      "table": "conversationParticipants"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "identityId",
+      "entityType": "columns",
+      "table": "conversationParticipants"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "ownerId",
+      "entityType": "columns",
+      "table": "conversationParticipants"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "role",
+      "entityType": "columns",
+      "table": "conversationParticipants"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "state",
+      "entityType": "columns",
+      "table": "conversationParticipants"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "joinedAt",
+      "entityType": "columns",
+      "table": "conversationParticipants"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "lastSeenMessageId",
+      "entityType": "columns",
+      "table": "conversationParticipants"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "conversationViewerStates"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "ownerId",
+      "entityType": "columns",
+      "table": "conversationViewerStates"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "conversationId",
+      "entityType": "columns",
+      "table": "conversationViewerStates"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "conversationViewerStates"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "conversationViewerStates"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "mailbox",
+      "entityType": "columns",
+      "table": "conversationViewerStates"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "unseenCount",
+      "entityType": "columns",
+      "table": "conversationViewerStates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "title",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "dmKey",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "lastMessageId",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "lastMessageAt",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "uploadedAvatar",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "identities"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "ownerId",
+      "entityType": "columns",
+      "table": "identities"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "identities"
+    },
+    {
+      "type": "text COLLATE NOCASE",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "address",
+      "entityType": "columns",
+      "table": "identities"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "identities"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "identities"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "identities"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "inferredAvatar",
+      "entityType": "columns",
+      "table": "identities"
     },
     {
       "type": "text",
@@ -996,17 +508,297 @@
       "generated": null,
       "name": "avatarPlaceholder",
       "entityType": "columns",
-      "table": "user"
+      "table": "identities"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "identityRelationships"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "ownerId",
+      "entityType": "columns",
+      "table": "identityRelationships"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "identityId",
+      "entityType": "columns",
+      "table": "identityRelationships"
     },
     {
       "type": "integer",
       "notNull": true,
       "autoincrement": false,
-      "default": "cast(unixepoch('subsecond') * 1000 as integer)",
+      "default": "false",
       "generated": null,
-      "name": "created_at",
+      "name": "isContact",
       "entityType": "columns",
-      "table": "account"
+      "table": "identityRelationships"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "identityRelationships"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "identityRelationships"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "givenName",
+      "entityType": "columns",
+      "table": "identityRelationships"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "uploadedAvatar",
+      "entityType": "columns",
+      "table": "identityRelationships"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "messageDeliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "messageId",
+      "entityType": "columns",
+      "table": "messageDeliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "recipientIdentityId",
+      "entityType": "columns",
+      "table": "messageDeliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "transport",
+      "entityType": "columns",
+      "table": "messageDeliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "messageDeliveries"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "latestStatusChangeAt",
+      "entityType": "columns",
+      "table": "messageDeliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "error",
+      "entityType": "columns",
+      "table": "messageDeliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "conversationId",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "senderIdentityId",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "externalMessageId",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "bodyPlainText",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "bodyPlainTextSnippet",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "bodyRawHTML",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": "false",
+      "generated": null,
+      "name": "hasBodyRawHTML",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "bodyMD",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "bodyHTMLFromMD",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "emailMetadata",
+      "entityType": "columns",
+      "table": "messages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "sessions"
     },
     {
       "type": "integer",
@@ -1014,436 +806,592 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "updated_at",
+      "name": "expiresAt",
       "entityType": "columns",
-      "table": "account"
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "token",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "ipAddress",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "userAgent",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "userId",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "text COLLATE NOCASE",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "email",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "true",
+      "generated": null,
+      "name": "emailVerified",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "image",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "text COLLATE NOCASE",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "username",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "displayUsername",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "uploadedAvatar",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "avatarPlaceholder",
+      "entityType": "columns",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "verifications"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "identifier",
+      "entityType": "columns",
+      "table": "verifications"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "value",
+      "entityType": "columns",
+      "table": "verifications"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "expiresAt",
+      "entityType": "columns",
+      "table": "verifications"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "verifications"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "verifications"
     },
     {
       "columns": [
-        "user_id"
+        "userId"
       ],
-      "tableTo": "user",
+      "tableTo": "users",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_account_user_id_user_id_fk",
+      "nameExplicit": false,
+      "name": "fk_accounts_userId_users_id_fk",
       "entityType": "fks",
-      "table": "account"
+      "table": "accounts"
     },
     {
       "columns": [
-        "lastReadMessageId"
+        "conversationId"
       ],
-      "tableTo": "message",
+      "tableTo": "conversations",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_conversationParticipants_conversationId_conversations_id_fk",
+      "entityType": "fks",
+      "table": "conversationParticipants"
+    },
+    {
+      "columns": [
+        "identityId"
+      ],
+      "tableTo": "identities",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_conversationParticipants_identityId_identities_id_fk",
+      "entityType": "fks",
+      "table": "conversationParticipants"
+    },
+    {
+      "columns": [
+        "ownerId"
+      ],
+      "tableTo": "users",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_conversationParticipants_ownerId_users_id_fk",
+      "entityType": "fks",
+      "table": "conversationParticipants"
+    },
+    {
+      "columns": [
+        "lastSeenMessageId"
+      ],
+      "tableTo": "messages",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
-      "nameExplicit": true,
-      "name": "fk_conversation_participant_lastReadMessageId_message_id_fk",
+      "nameExplicit": false,
+      "name": "fk_conversationParticipants_lastSeenMessageId_messages_id_fk",
       "entityType": "fks",
-      "table": "conversation_participant"
+      "table": "conversationParticipants"
     },
     {
       "columns": [
         "ownerId"
       ],
-      "tableTo": "user",
+      "tableTo": "users",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_conversation_participant_ownerId_user_id_fk",
+      "nameExplicit": false,
+      "name": "fk_conversationViewerStates_ownerId_users_id_fk",
       "entityType": "fks",
-      "table": "conversation_participant"
-    },
-    {
-      "columns": [
-        "identityId"
-      ],
-      "tableTo": "identity",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_conversation_participant_identityId_identity_id_fk",
-      "entityType": "fks",
-      "table": "conversation_participant"
+      "table": "conversationViewerStates"
     },
     {
       "columns": [
         "conversationId"
       ],
-      "tableTo": "conversation",
+      "tableTo": "conversations",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_conversation_participant_conversationId_conversation_id_fk",
+      "nameExplicit": false,
+      "name": "fk_conversationViewerStates_conversationId_conversations_id_fk",
       "entityType": "fks",
-      "table": "conversation_participant"
+      "table": "conversationViewerStates"
     },
     {
       "columns": [
         "lastMessageId"
       ],
-      "tableTo": "message",
+      "tableTo": "messages",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
-      "nameExplicit": true,
-      "name": "fk_conversation_lastMessageId_message_id_fk",
+      "onDelete": "SET NULL",
+      "nameExplicit": false,
+      "name": "fk_conversations_lastMessageId_messages_id_fk",
       "entityType": "fks",
-      "table": "conversation"
-    },
-    {
-      "columns": [
-        "conversationId"
-      ],
-      "tableTo": "conversation",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_conversation_viewer_state_conversationId_conversation_id_fk",
-      "entityType": "fks",
-      "table": "conversation_viewer_state"
+      "table": "conversations"
     },
     {
       "columns": [
         "ownerId"
       ],
-      "tableTo": "user",
+      "tableTo": "users",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_conversation_viewer_state_ownerId_user_id_fk",
+      "nameExplicit": false,
+      "name": "fk_identities_ownerId_users_id_fk",
       "entityType": "fks",
-      "table": "conversation_viewer_state"
+      "table": "identities"
+    },
+    {
+      "columns": [
+        "ownerId"
+      ],
+      "tableTo": "users",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_identityRelationships_ownerId_users_id_fk",
+      "entityType": "fks",
+      "table": "identityRelationships"
     },
     {
       "columns": [
         "identityId"
       ],
-      "tableTo": "identity",
+      "tableTo": "identities",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_identity_relationship_identityId_identity_id_fk",
+      "nameExplicit": false,
+      "name": "fk_identityRelationships_identityId_identities_id_fk",
       "entityType": "fks",
-      "table": "identity_relationship"
-    },
-    {
-      "columns": [
-        "ownerId"
-      ],
-      "tableTo": "user",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_identity_relationship_ownerId_user_id_fk",
-      "entityType": "fks",
-      "table": "identity_relationship"
-    },
-    {
-      "columns": [
-        "ownerId"
-      ],
-      "tableTo": "user",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_identity_ownerId_user_id_fk",
-      "entityType": "fks",
-      "table": "identity"
-    },
-    {
-      "columns": [
-        "recipientIdentityId"
-      ],
-      "tableTo": "identity",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_message_delivery_recipientIdentityId_identity_id_fk",
-      "entityType": "fks",
-      "table": "message_delivery"
+      "table": "identityRelationships"
     },
     {
       "columns": [
         "messageId"
       ],
-      "tableTo": "message",
+      "tableTo": "messages",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_message_delivery_messageId_message_id_fk",
+      "nameExplicit": false,
+      "name": "fk_messageDeliveries_messageId_messages_id_fk",
       "entityType": "fks",
-      "table": "message_delivery"
+      "table": "messageDeliveries"
     },
     {
       "columns": [
-        "senderIdentityId"
+        "recipientIdentityId"
       ],
-      "tableTo": "identity",
+      "tableTo": "identities",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
-      "nameExplicit": true,
-      "name": "fk_message_senderIdentityId_identity_id_fk",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_messageDeliveries_recipientIdentityId_identities_id_fk",
       "entityType": "fks",
-      "table": "message"
+      "table": "messageDeliveries"
     },
     {
       "columns": [
         "conversationId"
       ],
-      "tableTo": "conversation",
+      "tableTo": "conversations",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_message_conversationId_conversation_id_fk",
+      "nameExplicit": false,
+      "name": "fk_messages_conversationId_conversations_id_fk",
       "entityType": "fks",
-      "table": "message"
+      "table": "messages"
     },
     {
       "columns": [
-        "user_id"
+        "senderIdentityId"
       ],
-      "tableTo": "user",
+      "tableTo": "identities",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "nameExplicit": false,
+      "name": "fk_messages_senderIdentityId_identities_id_fk",
+      "entityType": "fks",
+      "table": "messages"
+    },
+    {
+      "columns": [
+        "userId"
+      ],
+      "tableTo": "users",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": true,
-      "name": "fk_session_user_id_user_id_fk",
+      "nameExplicit": false,
+      "name": "fk_sessions_userId_users_id_fk",
       "entityType": "fks",
-      "table": "session"
+      "table": "sessions"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "account_pk",
-      "table": "account",
+      "nameExplicit": false,
+      "name": "accounts_pk",
+      "table": "accounts",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "conversation_participant_pk",
-      "table": "conversation_participant",
+      "nameExplicit": false,
+      "name": "conversationParticipants_pk",
+      "table": "conversationParticipants",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "conversation_pk",
-      "table": "conversation",
+      "nameExplicit": false,
+      "name": "conversationViewerStates_pk",
+      "table": "conversationViewerStates",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "conversation_viewer_state_pk",
-      "table": "conversation_viewer_state",
+      "nameExplicit": false,
+      "name": "conversations_pk",
+      "table": "conversations",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "identity_relationship_pk",
-      "table": "identity_relationship",
+      "nameExplicit": false,
+      "name": "identities_pk",
+      "table": "identities",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "identity_pk",
-      "table": "identity",
+      "nameExplicit": false,
+      "name": "identityRelationships_pk",
+      "table": "identityRelationships",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "message_delivery_pk",
-      "table": "message_delivery",
+      "nameExplicit": false,
+      "name": "messageDeliveries_pk",
+      "table": "messageDeliveries",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "message_pk",
-      "table": "message",
+      "nameExplicit": false,
+      "name": "messages_pk",
+      "table": "messages",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "session_pk",
-      "table": "session",
+      "nameExplicit": false,
+      "name": "sessions_pk",
+      "table": "sessions",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "user_pk",
-      "table": "user",
+      "nameExplicit": false,
+      "name": "users_pk",
+      "table": "users",
       "entityType": "pks"
     },
     {
       "columns": [
         "id"
       ],
-      "nameExplicit": true,
-      "name": "verification_pk",
-      "table": "verification",
+      "nameExplicit": false,
+      "name": "verifications_pk",
+      "table": "verifications",
       "entityType": "pks"
     },
     {
       "columns": [
         {
-          "value": "user_id",
+          "value": "userId",
           "isExpression": false
         }
       ],
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "account_userId_idx",
+      "name": "accounts_userId_idx",
       "entityType": "indexes",
-      "table": "account"
-    },
-    {
-      "columns": [
-        {
-          "value": "lastMessageAt",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_conversation_last_message_at",
-      "entityType": "indexes",
-      "table": "conversation"
-    },
-    {
-      "columns": [
-        {
-          "value": "kind",
-          "isExpression": false
-        },
-        {
-          "value": "updatedAt",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_conversation_kind_updated",
-      "entityType": "indexes",
-      "table": "conversation"
-    },
-    {
-      "columns": [
-        {
-          "value": "dmKey",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "uniq_conversation_dm_key",
-      "entityType": "indexes",
-      "table": "conversation"
-    },
-    {
-      "columns": [
-        {
-          "value": "identityId",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_conversation_participant_identity",
-      "entityType": "indexes",
-      "table": "conversation_participant"
-    },
-    {
-      "columns": [
-        {
-          "value": "conversationId",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_conversation_participant_conversation",
-      "entityType": "indexes",
-      "table": "conversation_participant"
+      "table": "accounts"
     },
     {
       "columns": [
@@ -1461,43 +1409,35 @@
       "origin": "manual",
       "name": "uniq_conversation_participant",
       "entityType": "indexes",
-      "table": "conversation_participant"
+      "table": "conversationParticipants"
     },
     {
       "columns": [
         {
-          "value": "ownerId",
-          "isExpression": false
-        },
-        {
-          "value": "updatedAt",
+          "value": "conversationId",
           "isExpression": false
         }
       ],
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "idx_conversation_viewer_state_owner_updated",
+      "name": "idx_conversation_participant_conversation",
       "entityType": "indexes",
-      "table": "conversation_viewer_state"
+      "table": "conversationParticipants"
     },
     {
       "columns": [
         {
-          "value": "ownerId",
-          "isExpression": false
-        },
-        {
-          "value": "mailbox",
+          "value": "identityId",
           "isExpression": false
         }
       ],
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "idx_conversation_viewer_state_owner_mailbox",
+      "name": "idx_conversation_participant_identity",
       "entityType": "indexes",
-      "table": "conversation_viewer_state"
+      "table": "conversationParticipants"
     },
     {
       "columns": [
@@ -1515,63 +1455,7 @@
       "origin": "manual",
       "name": "uniq_conversation_viewer_state",
       "entityType": "indexes",
-      "table": "conversation_viewer_state"
-    },
-    {
-      "columns": [
-        {
-          "value": "kind",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_identity_kind",
-      "entityType": "indexes",
-      "table": "identity"
-    },
-    {
-      "columns": [
-        {
-          "value": "address",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_identity_address",
-      "entityType": "indexes",
-      "table": "identity"
-    },
-    {
-      "columns": [
-        {
-          "value": "address",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "identity_address_unique",
-      "entityType": "indexes",
-      "table": "identity"
-    },
-    {
-      "columns": [
-        {
-          "value": "ownerId",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "identity_ownerId_unique",
-      "entityType": "indexes",
-      "table": "identity"
+      "table": "conversationViewerStates"
     },
     {
       "columns": [
@@ -1580,16 +1464,94 @@
           "isExpression": false
         },
         {
-          "value": "isContact",
+          "value": "mailbox",
           "isExpression": false
         }
       ],
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "idx_identity_relationship_owner_contact",
+      "name": "idx_conversation_viewer_state_owner_mailbox",
       "entityType": "indexes",
-      "table": "identity_relationship"
+      "table": "conversationViewerStates"
+    },
+    {
+      "columns": [
+        {
+          "value": "ownerId",
+          "isExpression": false
+        },
+        {
+          "value": "updatedAt",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_conversation_viewer_state_owner_updated",
+      "entityType": "indexes",
+      "table": "conversationViewerStates"
+    },
+    {
+      "columns": [
+        {
+          "value": "dmKey",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "uniq_conversation_dm_key",
+      "entityType": "indexes",
+      "table": "conversations"
+    },
+    {
+      "columns": [
+        {
+          "value": "kind",
+          "isExpression": false
+        },
+        {
+          "value": "updatedAt",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_conversation_kind_updated",
+      "entityType": "indexes",
+      "table": "conversations"
+    },
+    {
+      "columns": [
+        {
+          "value": "lastMessageAt",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_conversation_last_message_at",
+      "entityType": "indexes",
+      "table": "conversations"
+    },
+    {
+      "columns": [
+        {
+          "value": "address",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_identities_address",
+      "entityType": "indexes",
+      "table": "identities"
     },
     {
       "columns": [
@@ -1607,89 +1569,25 @@
       "origin": "manual",
       "name": "uniq_identity_relationship_owner_identity",
       "entityType": "indexes",
-      "table": "identity_relationship"
+      "table": "identityRelationships"
     },
     {
       "columns": [
         {
-          "value": "senderIdentityId",
+          "value": "ownerId",
           "isExpression": false
         },
         {
-          "value": "createdAt",
+          "value": "isContact",
           "isExpression": false
         }
       ],
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "idx_message_sender_created",
+      "name": "idx_identity_relationship_owner_contact",
       "entityType": "indexes",
-      "table": "message"
-    },
-    {
-      "columns": [
-        {
-          "value": "conversationId",
-          "isExpression": false
-        },
-        {
-          "value": "createdAt",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_message_conversation_created",
-      "entityType": "indexes",
-      "table": "message"
-    },
-    {
-      "columns": [
-        {
-          "value": "externalMessageId",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "uniq_message_external_message_id",
-      "entityType": "indexes",
-      "table": "message"
-    },
-    {
-      "columns": [
-        {
-          "value": "recipientIdentityId",
-          "isExpression": false
-        },
-        {
-          "value": "status",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_message_delivery_recipient_status",
-      "entityType": "indexes",
-      "table": "message_delivery"
-    },
-    {
-      "columns": [
-        {
-          "value": "messageId",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_message_delivery_message",
-      "entityType": "indexes",
-      "table": "message_delivery"
+      "table": "identityRelationships"
     },
     {
       "columns": [
@@ -1707,63 +1605,103 @@
       "origin": "manual",
       "name": "uniq_message_delivery_message_recipient",
       "entityType": "indexes",
-      "table": "message_delivery"
+      "table": "messageDeliveries"
     },
     {
       "columns": [
         {
-          "value": "user_id",
+          "value": "messageId",
           "isExpression": false
         }
       ],
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "session_userId_idx",
+      "name": "idx_message_delivery_message",
       "entityType": "indexes",
-      "table": "session"
+      "table": "messageDeliveries"
     },
     {
       "columns": [
         {
-          "value": "token",
+          "value": "recipientIdentityId",
+          "isExpression": false
+        },
+        {
+          "value": "status",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_message_delivery_recipient_status",
+      "entityType": "indexes",
+      "table": "messageDeliveries"
+    },
+    {
+      "columns": [
+        {
+          "value": "externalMessageId",
           "isExpression": false
         }
       ],
       "isUnique": true,
       "where": null,
       "origin": "manual",
-      "name": "session_token_unique",
+      "name": "uniq_message_external_message_id",
       "entityType": "indexes",
-      "table": "session"
+      "table": "messages"
     },
     {
       "columns": [
         {
-          "value": "username",
+          "value": "conversationId",
+          "isExpression": false
+        },
+        {
+          "value": "createdAt",
           "isExpression": false
         }
       ],
-      "isUnique": true,
+      "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "user_username_unique",
+      "name": "idx_message_conversation_created",
       "entityType": "indexes",
-      "table": "user"
+      "table": "messages"
     },
     {
       "columns": [
         {
-          "value": "email",
+          "value": "senderIdentityId",
+          "isExpression": false
+        },
+        {
+          "value": "createdAt",
           "isExpression": false
         }
       ],
-      "isUnique": true,
+      "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "user_email_unique",
+      "name": "idx_message_sender_created",
       "entityType": "indexes",
-      "table": "user"
+      "table": "messages"
+    },
+    {
+      "columns": [
+        {
+          "value": "userId",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "sessions_userId_idx",
+      "entityType": "indexes",
+      "table": "sessions"
     },
     {
       "columns": [
@@ -1775,9 +1713,57 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "verification_identifier_idx",
+      "name": "verifications_identifier_idx",
       "entityType": "indexes",
-      "table": "verification"
+      "table": "verifications"
+    },
+    {
+      "columns": [
+        "ownerId"
+      ],
+      "nameExplicit": false,
+      "name": "identities_ownerId_unique",
+      "entityType": "uniques",
+      "table": "identities"
+    },
+    {
+      "columns": [
+        "token"
+      ],
+      "nameExplicit": false,
+      "name": "sessions_token_unique",
+      "entityType": "uniques",
+      "table": "sessions"
+    },
+    {
+      "columns": [
+        "email"
+      ],
+      "nameExplicit": false,
+      "name": "users_email_unique",
+      "entityType": "uniques",
+      "table": "users"
+    },
+    {
+      "columns": [
+        "username"
+      ],
+      "nameExplicit": false,
+      "name": "users_username_unique",
+      "entityType": "uniques",
+      "table": "users"
+    },
+    {
+      "value": "(\n\t\t\t\t(\"kind\" = 'PRIVATE' AND \"dmKey\" IS NOT NULL AND length(\"dmKey\") > 0)\n\t\t\t\tOR\n\t\t\t\t(\"kind\" = 'GROUP' AND \"dmKey\" IS NULL)\n\t\t\t)",
+      "name": "chk_conversation_dmkey_kind",
+      "entityType": "checks",
+      "table": "conversations"
+    },
+    {
+      "value": "(\n        (\"kind\" = 'INTERNAL' AND \"ownerId\" IS NOT NULL)\n        OR\n        (\"kind\" = 'EXTERNAL' AND \"ownerId\" IS NULL)\n      )",
+      "name": "chk_identities_ownerId_matches_kind",
+      "entityType": "checks",
+      "table": "identities"
     }
   ],
   "renames": []
