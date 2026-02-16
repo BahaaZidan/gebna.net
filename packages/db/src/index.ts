@@ -10,7 +10,7 @@ export { schema as dbSchema };
 export const getDB = ({ url, authToken }: { url: string; authToken: string }) =>
 	drizzle({
 		relations,
-		schema,
+		// schema,
 		connection: { url, authToken },
 	});
 
