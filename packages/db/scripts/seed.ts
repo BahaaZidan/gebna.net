@@ -22,17 +22,17 @@ async function resetDatabase(db: DBInstance) {
 	console.log("⚠️  Resetting database (deleting all rows)...");
 
 	await db.transaction(async (tx) => {
-		await tx.delete(dbSchema.messageDeliveryTable);
-		await tx.delete(dbSchema.messageTable);
-		await tx.delete(dbSchema.conversationViewerStateTable);
-		await tx.delete(dbSchema.conversationParticipantTable);
-		await tx.delete(dbSchema.conversationTable);
-		await tx.delete(dbSchema.identityRelationshipTable);
-		await tx.delete(dbSchema.identityTable);
-		await tx.delete(dbSchema.sessionTable);
-		await tx.delete(dbSchema.accountTable);
-		await tx.delete(dbSchema.verificationTable);
-		await tx.delete(dbSchema.userTable);
+		await tx.delete(dbSchema.messageDeliveries);
+		await tx.delete(dbSchema.messages);
+		await tx.delete(dbSchema.conversationViewerStates);
+		await tx.delete(dbSchema.conversationParticipants);
+		await tx.delete(dbSchema.conversations);
+		await tx.delete(dbSchema.identityRelationships);
+		await tx.delete(dbSchema.identities);
+		await tx.delete(dbSchema.sessions);
+		await tx.delete(dbSchema.accounts);
+		await tx.delete(dbSchema.verifications);
+		await tx.delete(dbSchema.users);
 	});
 }
 
@@ -106,7 +106,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: aliceIdentityId,
 			ownerId: aliceUserId,
-			kind: "GEBNA_USER" as const,
+			kind: "INTERNAL" as const,
 			address: aliceUser.email,
 			name: aliceUser.name,
 			avatarPlaceholder: aliceUser.avatarPlaceholder,
@@ -116,7 +116,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: bobIdentityId,
 			ownerId: bobUserId,
-			kind: "GEBNA_USER" as const,
+			kind: "INTERNAL" as const,
 			address: bobUser.email,
 			name: bobUser.name,
 			avatarPlaceholder: bobUser.avatarPlaceholder,
@@ -126,7 +126,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: carolIdentityId,
 			ownerId: carolUserId,
-			kind: "GEBNA_USER" as const,
+			kind: "INTERNAL" as const,
 			address: carolUser.email,
 			name: carolUser.name,
 			avatarPlaceholder: carolUser.avatarPlaceholder,
@@ -199,7 +199,7 @@ async function seedDatabase(db: DBInstance) {
 			role: "ADMIN" as const,
 			state: "ACTIVE" as const,
 			joinedAt: ctx.secondsAgo(1800),
-			lastReadMessageId: null,
+			lastSeenMessageId: null,
 		},
 		{
 			id: bobParticipantId,
@@ -209,7 +209,7 @@ async function seedDatabase(db: DBInstance) {
 			role: "MEMBER" as const,
 			state: "ACTIVE" as const,
 			joinedAt: ctx.secondsAgo(1750),
-			lastReadMessageId: null,
+			lastSeenMessageId: null,
 		},
 	];
 
@@ -217,25 +217,28 @@ async function seedDatabase(db: DBInstance) {
 		id: messageOneId,
 		conversationId,
 		senderIdentityId: aliceIdentityId,
-		bodyText: "Hey Bob, sharing the latest launch checklist. Let me know what we’re missing.",
-		bodySnippet: "Hey Bob, sharing the latest launch checklist...",
+		bodyPlainText: "Hey Bob, sharing the latest launch checklist. Let me know what we’re missing.",
+		bodyPlainTextSnippet: "Hey Bob, sharing the latest launch checklist...",
 		createdAt: ctx.secondsAgo(1200),
+		updatedAt: ctx.secondsAgo(1200),
 	};
 	const messageTwo = {
 		id: messageTwoId,
 		conversationId,
 		senderIdentityId: bobIdentityId,
-		bodyText: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
-		bodySnippet: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
+		bodyPlainText: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
+		bodyPlainTextSnippet: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
 		createdAt: ctx.secondsAgo(900),
+		updatedAt: ctx.secondsAgo(900),
 	};
 	const messageThree = {
 		id: messageThreeId,
 		conversationId,
 		senderIdentityId: aliceIdentityId,
-		bodyText: "Perfect. Carol, can you verify the onboarding flow by tomorrow?",
-		bodySnippet: "Perfect. Carol, can you verify the onboarding flow by tomorrow?",
+		bodyPlainText: "Perfect. Carol, can you verify the onboarding flow by tomorrow?",
+		bodyPlainTextSnippet: "Perfect. Carol, can you verify the onboarding flow by tomorrow?",
 		createdAt: ctx.secondsAgo(400),
+		updatedAt: ctx.secondsAgo(400),
 	};
 
 	const messages = [messageOne, messageTwo, messageThree];
@@ -256,7 +259,7 @@ async function seedDatabase(db: DBInstance) {
 			ownerId: aliceUserId,
 			conversationId,
 			mailbox: "IMPORTANT" as const,
-			unreadCount: 0,
+			unseenCount: 0,
 			createdAt: ctx.secondsAgo(1700),
 			updatedAt: ctx.secondsAgo(200),
 		},
@@ -265,7 +268,7 @@ async function seedDatabase(db: DBInstance) {
 			ownerId: bobUserId,
 			conversationId,
 			mailbox: "IMPORTANT" as const,
-			unreadCount: 1,
+			unseenCount: 1,
 			createdAt: ctx.secondsAgo(1700),
 			updatedAt: ctx.secondsAgo(400),
 		},
@@ -277,15 +280,15 @@ async function seedDatabase(db: DBInstance) {
 			messageId: messageOneId,
 			recipientIdentityId: bobIdentityId,
 			status: "DELIVERED" as const,
-			transport: "GEBNA_DM" as const,
+			transport: "DIRECT" as const,
 			latestStatusChangeAt: ctx.secondsAgo(1100),
 		},
 		{
 			id: ulid(),
 			messageId: messageTwoId,
 			recipientIdentityId: aliceIdentityId,
-			status: "READ" as const,
-			transport: "GEBNA_DM" as const,
+			status: "SEEN" as const,
+			transport: "DIRECT" as const,
 			latestStatusChangeAt: ctx.secondsAgo(850),
 		},
 		{
@@ -293,48 +296,48 @@ async function seedDatabase(db: DBInstance) {
 			messageId: messageThreeId,
 			recipientIdentityId: bobIdentityId,
 			status: "QUEUED" as const,
-			transport: "GEBNA_DM" as const,
+			transport: "DIRECT" as const,
 			latestStatusChangeAt: ctx.secondsAgo(390),
 		},
 	];
 
 	await db.transaction(async (tx) => {
-		await tx.insert(dbSchema.userTable).values(users);
-		await tx.insert(dbSchema.accountTable).values(accounts);
-		await tx.insert(dbSchema.identityTable).values(identities);
-		await tx.insert(dbSchema.identityRelationshipTable).values(identityRelationships);
+		await tx.insert(dbSchema.users).values(users);
+		await tx.insert(dbSchema.accounts).values(accounts);
+		await tx.insert(dbSchema.identities).values(identities);
+		await tx.insert(dbSchema.identityRelationships).values(identityRelationships);
 
-		await tx.insert(dbSchema.conversationTable).values(conversation);
-		await tx.insert(dbSchema.messageTable).values(messages);
-		await tx.insert(dbSchema.conversationParticipantTable).values(participants);
-		await tx.insert(dbSchema.messageDeliveryTable).values(deliveries);
-		await tx.insert(dbSchema.conversationViewerStateTable).values(viewerStates);
+		await tx.insert(dbSchema.conversations).values(conversation);
+		await tx.insert(dbSchema.messages).values(messages);
+		await tx.insert(dbSchema.conversationParticipants).values(participants);
+		await tx.insert(dbSchema.messageDeliveries).values(deliveries);
+		await tx.insert(dbSchema.conversationViewerStates).values(viewerStates);
 
 		await tx
-			.update(dbSchema.conversationTable)
+			.update(dbSchema.conversations)
 			.set({
 				lastMessageId: messageThreeId,
 				lastMessageAt: messageThree.createdAt,
 				updatedAt: ctx.now,
 			})
-			.where(eq(dbSchema.conversationTable.id, conversationId));
+			.where(eq(dbSchema.conversations.id, conversationId));
 
 		await tx
-			.update(dbSchema.conversationParticipantTable)
-			.set({ lastReadMessageId: messageThreeId })
-			.where(eq(dbSchema.conversationParticipantTable.id, aliceParticipantId));
+			.update(dbSchema.conversationParticipants)
+			.set({ lastSeenMessageId: messageThreeId })
+			.where(eq(dbSchema.conversationParticipants.id, aliceParticipantId));
 
 		await tx
-			.update(dbSchema.conversationParticipantTable)
-			.set({ lastReadMessageId: messageTwoId })
-			.where(eq(dbSchema.conversationParticipantTable.id, bobParticipantId));
+			.update(dbSchema.conversationParticipants)
+			.set({ lastSeenMessageId: messageTwoId })
+			.where(eq(dbSchema.conversationParticipants.id, bobParticipantId));
 	});
 }
 
 async function ensureEmptyOrFail(db: DBInstance, shouldReset: boolean) {
 	if (shouldReset) return;
 
-	const existingUsers = await db.select({ value: dbSchema.userTable.id }).from(dbSchema.userTable).limit(1);
+	const existingUsers = await db.select({ value: dbSchema.users.id }).from(dbSchema.users).limit(1);
 
 	if (existingUsers.length > 0) {
 		throw new Error(
