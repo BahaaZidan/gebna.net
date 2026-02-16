@@ -22,6 +22,7 @@
 		"@gebna/db": "workspace:*",
 		"@gebna/ui": "workspace:*",
 		"@gebna/vali": "workspace:*",
+		"@gebna/graphql-server": "workspace:*",
 		"@lucide/svelte": "^0.563.1",
 		"date-fns": "^4.1.0",
 		"runed": "^0.37.1"

@@ -12,7 +12,7 @@ builder.queryType({
 			},
 			resolve: (parent, { name }) => `hello, ${name || "World"}`,
 		}),
-		34534532: t.string({
+		dasdas: t.string({
 			args: {
 				name: t.arg.string(),
 			},

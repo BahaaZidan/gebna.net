@@ -38,6 +38,9 @@ importers:
       '@gebna/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@gebna/graphql-server':
+        specifier: workspace:*
+        version: link:../../packages/graphql-server
       '@gebna/ui':
         specifier: workspace:*
         version: link:../../packages/ui
