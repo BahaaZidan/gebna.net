@@ -38,6 +38,9 @@ importers:
       '@gebna/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@gebna/graphql-client':
+        specifier: workspace:*
+        version: link:../../packages/graphql-client
       '@gebna/graphql-server':
         specifier: workspace:*
         version: link:../../packages/graphql-server
@@ -50,6 +53,9 @@ importers:
       '@lucide/svelte':
         specifier: ^0.563.1
         version: 0.563.1(svelte@5.50.0)
+      '@urql/svelte':
+        specifier: ^5.0.0
+        version: 5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.50.0)
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -270,9 +276,6 @@ importers:
       '@urql/exchange-retry':
         specifier: ^2.0.0
         version: 2.0.0(@urql/core@6.0.1(graphql@16.12.0))
-      '@urql/svelte':
-        specifier: ^5.0.0
-        version: 5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.50.0)
       graphql:
         specifier: ^16.12.0
         version: 16.12.0
@@ -298,6 +301,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@urql/svelte':
+        specifier: ^5.0.0
+        version: 5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.50.0)
       chokidar-cli:
         specifier: ^3.0.0
         version: 3.0.0
