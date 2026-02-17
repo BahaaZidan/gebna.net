@@ -1,0 +1,4 @@
+type Query {
+  dasdas544444(name: String): String
+  hello(name: String): String
+}

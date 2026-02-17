@@ -19,6 +19,8 @@
 		"dev": {
 			"cache": false,
 			"persistent": true
-		}
+		},
+		"schema:watch": { "persistent": true, "cache": false },
+		"codegen:watch": { "persistent": true, "cache": false, "dependsOn": ["^schema:watch"] }
 	}
 }

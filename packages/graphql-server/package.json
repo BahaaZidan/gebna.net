@@ -10,18 +10,22 @@
 	},
 	"scripts": {
 		"dev": "tsc --watch",
-		"build": "tsc"
+		"build": "tsc",
+		"schema:export": "tsx scripts/export-schema.ts",
+		"schema:watch": "chokidar \"src/**/*.{ts,tsx}\" -c \"pnpm schema:export\""
 	},
 	"dependencies": {
+		"@gebna/db": "workspace:*",
+		"@gebna/utils": "workspace:*",
 		"@pothos/core": "^4.12.0",
 		"graphql": "^16.12.0",
-		"graphql-yoga": "^5.18.0",
-		"@gebna/utils": "workspace:*",
-		"@gebna/db": "workspace:*"
+		"graphql-yoga": "^5.18.0"
 	},
 	"devDependencies": {
+		"@gebna/auth": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
-		"typescript": "latest",
-		"@gebna/auth": "workspace:*"
+		"chokidar-cli": "^3.0.0",
+		"tsx": "^4.19.1",
+		"typescript": "latest"
 	}
 }
