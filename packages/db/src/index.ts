@@ -1,11 +1,11 @@
 import type { ResultSet } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
-import type { SQLiteTransaction } from "drizzle-orm/sqlite-core";
+import { getTableConfig, type SQLiteTransaction } from "drizzle-orm/sqlite-core";
 
 import { relations } from "./relations.js";
 import * as schema from "./schema.js";
 
-export { schema as dbSchema };
+export { schema as dbSchema, relations, getTableConfig };
 
 export const getDB = ({ url, authToken }: { url: string; authToken: string }) =>
 	drizzle({

@@ -17,16 +17,12 @@ export type Scalars = {
 
 export type Query = {
   __typename?: 'Query';
-  dasdas544444?: Maybe<Scalars['String']['output']>;
-  hello?: Maybe<Scalars['String']['output']>;
+  viewer?: Maybe<Viewer>;
 };
 
-
-export type QueryDasdas544444Args = {
-  name?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryHelloArgs = {
-  name?: InputMaybe<Scalars['String']['input']>;
+export type Viewer = {
+  __typename?: 'Viewer';
+  avatar?: Maybe<Scalars['String']['output']>;
+  id?: Maybe<Scalars['ID']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
 };
