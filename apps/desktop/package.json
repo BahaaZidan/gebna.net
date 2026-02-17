@@ -20,10 +20,12 @@
 		"@formisch/svelte": "^0.7.1",
 		"@gebna/auth": "workspace:*",
 		"@gebna/db": "workspace:*",
+		"@gebna/graphql-client": "workspace:*",
+		"@gebna/graphql-server": "workspace:*",
 		"@gebna/ui": "workspace:*",
 		"@gebna/vali": "workspace:*",
-		"@gebna/graphql-server": "workspace:*",
 		"@lucide/svelte": "^0.563.1",
+		"@urql/svelte": "^5.0.0",
 		"date-fns": "^4.1.0",
 		"runed": "^0.37.1"
 	},

@@ -7,4 +7,5 @@ export default defineConfig({
 	server: {
 		port: 5190,
 	},
+	optimizeDeps: { exclude: ["@urql/svelte"] },
 });

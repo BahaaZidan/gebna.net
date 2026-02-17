@@ -1,1 +1,2 @@
-export const lolo = "";
+export * from "./generated/index.js";
+export * from "./urql.js";

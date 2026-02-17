@@ -10,12 +10,14 @@
 
 	import { createForm, Field, Form, type SubmitHandler } from "@formisch/svelte";
 	import { getAuthClient } from "@gebna/auth/client";
+	import { clientOptions } from "@gebna/graphql-client";
 	import { TextInput } from "@gebna/ui";
 	import { loginSchema } from "@gebna/vali";
 	import type { IconProps } from "@lucide/svelte";
 	import CogIcon from "@lucide/svelte/icons/cog";
 	import LayoutDashboardIcon from "@lucide/svelte/icons/layout-dashboard";
 	import MessagesSquareIcon from "@lucide/svelte/icons/messages-square";
+	import { initContextClient } from "@urql/svelte";
 	import { type Component, type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
@@ -23,6 +25,7 @@
 
 	import type { LayoutData } from "./$types";
 
+	initContextClient(clientOptions);
 	let { children, data }: { children: Snippet; data: LayoutData } = $props();
 
 	let viewer = $derived(data.viewer);

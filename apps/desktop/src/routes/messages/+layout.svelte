@@ -1,5 +1,6 @@
 <script lang="ts">
 	// import { getConversations } from "@gebna/functions";
+	import { graphql } from "@gebna/graphql-client";
 	import { ConversationAvatar, ConversationTitle, formatInboxDate } from "@gebna/ui";
 	import type { IconProps } from "@lucide/svelte";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
