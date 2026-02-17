@@ -1,22 +1,49 @@
+import { getTableConfig, relations } from "@gebna/db";
 import SchemaBuilder from "@pothos/core";
+import DrizzlePlugin from "@pothos/plugin-drizzle";
+import RelayPlugin from "@pothos/plugin-relay";
+import WithInputPlugin from "@pothos/plugin-with-input";
 
 import type { GraphQLResolverContext } from "../types.js";
 
-const builder = new SchemaBuilder<{ Context: GraphQLResolverContext }>({});
+export interface PothosTypes {
+	DrizzleRelations: typeof relations;
+	Context: GraphQLResolverContext;
+}
+
+const builder = new SchemaBuilder<PothosTypes>({
+	plugins: [RelayPlugin, WithInputPlugin, DrizzlePlugin],
+	drizzle: {
+		client: (ctx) => ctx.db,
+		getTableConfig,
+		relations,
+	},
+});
+
+const ViewerRef = builder.drizzleObject("users", {
+	name: "Viewer",
+	// select: {
+
+	// 	with: {
+	// 		identity: true
+	// 	}
+	// },
+	fields: (t) => ({
+		id: t.exposeID("id"),
+		name: t.exposeString("name"),
+		avatar: t.string({
+			resolve: (user) => user.uploadedAvatar || user.avatarPlaceholder,
+		}),
+	}),
+});
 
 builder.queryType({
 	fields: (t) => ({
-		hello: t.string({
-			args: {
-				name: t.arg.string(),
+		viewer: t.drizzleField({
+			type: ViewerRef,
+			resolve(query, parent, args, ctx, info) {
+				return ctx.viewer;
 			},
-			resolve: (parent, { name }) => `hello, ${name || "World"}`,
-		}),
-		dasdas544444: t.string({
-			args: {
-				name: t.arg.string(),
-			},
-			resolve: (parent, { name }) => `hello, ${name || "World"}`,
 		}),
 	}),
 });
