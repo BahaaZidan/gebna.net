@@ -20,13 +20,15 @@ const builder = new SchemaBuilder<PothosTypes>({
 	},
 });
 
-const IdentityRef = builder.drizzleObject("identities", {
+const IdentityRef = builder.drizzleNode("identities", {
 	name: "Identity",
+	id: {
+		column: (t) => t.id,
+	},
 	select: {
 		columns: {},
 	},
 	fields: (t) => ({
-		id: t.exposeID("id", { nullable: false }),
 		name: t.exposeString("name"),
 		avatar: t.string({
 			nullable: false,
@@ -42,13 +44,15 @@ const IdentityRef = builder.drizzleObject("identities", {
 	}),
 });
 
-const ViewerRef = builder.drizzleObject("users", {
+const ViewerRef = builder.drizzleNode("users", {
 	name: "Viewer",
+	id: {
+		column: (t) => t.id,
+	},
 	select: {
 		columns: {},
 	},
 	fields: (t) => ({
-		id: t.exposeID("id", { nullable: false }),
 		name: t.exposeString("name", { nullable: false }),
 		avatar: t.string({
 			nullable: false,

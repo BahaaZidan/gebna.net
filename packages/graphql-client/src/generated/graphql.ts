@@ -15,7 +15,7 @@ export type Scalars = {
   Float: { input: number; output: number; }
 };
 
-export type Identity = {
+export type Identity = Node & {
   __typename?: 'Identity';
   address: Scalars['String']['output'];
   avatar: Scalars['String']['output'];
@@ -23,12 +23,28 @@ export type Identity = {
   name?: Maybe<Scalars['String']['output']>;
 };
 
+export type Node = {
+  id: Scalars['ID']['output'];
+};
+
 export type Query = {
   __typename?: 'Query';
+  node?: Maybe<Node>;
+  nodes: Array<Maybe<Node>>;
   viewer?: Maybe<Viewer>;
 };
 
-export type Viewer = {
+
+export type QueryNodeArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryNodesArgs = {
+  ids: Array<Scalars['ID']['input']>;
+};
+
+export type Viewer = Node & {
   __typename?: 'Viewer';
   avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
