@@ -1,15 +1,21 @@
-type Identity {
+type Identity implements Node {
   address: String!
   avatar: String!
   id: ID!
   name: String
 }
 
+interface Node {
+  id: ID!
+}
+
 type Query {
+  node(id: ID!): Node
+  nodes(ids: [ID!]!): [Node]!
   viewer: Viewer
 }
 
-type Viewer {
+type Viewer implements Node {
   avatar: String!
   id: ID!
   identity: Identity!
