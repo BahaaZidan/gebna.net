@@ -15,6 +15,14 @@ export type Scalars = {
   Float: { input: number; output: number; }
 };
 
+export type Identity = {
+  __typename?: 'Identity';
+  address: Scalars['String']['output'];
+  avatar: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+};
+
 export type Query = {
   __typename?: 'Query';
   viewer?: Maybe<Viewer>;
@@ -22,7 +30,8 @@ export type Query = {
 
 export type Viewer = {
   __typename?: 'Viewer';
-  avatar?: Maybe<Scalars['String']['output']>;
-  id?: Maybe<Scalars['ID']['output']>;
-  name?: Maybe<Scalars['String']['output']>;
+  avatar: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  identity: Identity;
+  name: Scalars['String']['output'];
 };

@@ -4,7 +4,7 @@ import { initContextCache } from "@pothos/core";
 import { createYoga as createBaseYoga, createGraphQLError } from "graphql-yoga";
 
 import { executableSchema } from "./schema/index.js";
-import type { GraphQLResolverContext, PropsToNullable, Simplify } from "./types.js";
+import type { GraphQLResolverContext } from "./types.js";
 
 export function createYoga<CTX extends Record<string, any>>({
 	db,
@@ -12,7 +12,7 @@ export function createYoga<CTX extends Record<string, any>>({
 	introspection,
 }: {
 	db: DBInstance;
-	viewer?: Simplify<PropsToNullable<Session["user"]>>;
+	viewer?: Session["user"];
 	introspection: boolean;
 }) {
 	return createBaseYoga<CTX>({

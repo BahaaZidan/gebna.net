@@ -20,19 +20,48 @@ const builder = new SchemaBuilder<PothosTypes>({
 	},
 });
 
-const ViewerRef = builder.drizzleObject("users", {
-	name: "Viewer",
-	// select: {
-
-	// 	with: {
-	// 		identity: true
-	// 	}
-	// },
+const IdentityRef = builder.drizzleObject("identities", {
+	name: "Identity",
+	select: {
+		columns: {},
+	},
 	fields: (t) => ({
-		id: t.exposeID("id"),
+		id: t.exposeID("id", { nullable: false }),
 		name: t.exposeString("name"),
 		avatar: t.string({
+			nullable: false,
+			select: {
+				columns: {
+					avatarPlaceholder: true,
+					inferredAvatar: true,
+				},
+			},
+			resolve: (user) => user.inferredAvatar || user.avatarPlaceholder,
+		}),
+		address: t.exposeString("address", { nullable: false }),
+	}),
+});
+
+const ViewerRef = builder.drizzleObject("users", {
+	name: "Viewer",
+	select: {
+		columns: {},
+	},
+	fields: (t) => ({
+		id: t.exposeID("id", { nullable: false }),
+		name: t.exposeString("name", { nullable: false }),
+		avatar: t.string({
+			nullable: false,
+			select: {
+				columns: {
+					avatarPlaceholder: true,
+					uploadedAvatar: true,
+				},
+			},
 			resolve: (user) => user.uploadedAvatar || user.avatarPlaceholder,
+		}),
+		identity: t.relation("identity", {
+			nullable: false,
 		}),
 	}),
 });
@@ -42,7 +71,7 @@ builder.queryType({
 		viewer: t.drizzleField({
 			type: ViewerRef,
 			resolve(query, parent, args, ctx, info) {
-				return ctx.viewer;
+				return ctx.db.query.users.findFirst(query({ where: { id: ctx.viewer.id } }));
 			},
 		}),
 	}),

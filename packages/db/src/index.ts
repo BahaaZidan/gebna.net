@@ -12,6 +12,7 @@ export const getDB = ({ url, authToken }: { url: string; authToken: string }) =>
 		relations,
 		// schema,
 		connection: { url, authToken },
+		logger: true,
 	});
 
 export type DBInstance = ReturnType<typeof getDB>;
