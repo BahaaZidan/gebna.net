@@ -9,10 +9,10 @@
 		}
 	},
 	"scripts": {
-		"dev": "concurrently -n \"codegen,tsc\" -c \"blue,green\" \"pnpm watch\" \"pnpm tsc --watch\"",
+		"dev": "tsc --watch",
 		"build": "graphql-codegen-esm && tsc",
-		"generate": "graphql-codegen-esm",
-		"watch": "graphql-codegen-esm --watch"
+		"codegen": "graphql-codegen-esm",
+		"codegen:watch": "chokidar \"../graphql-server/schema.graphql\" \"src/**/*\" \"../../apps/desktop/src/**/*\" \"../../apps/mobile/src/**/*\" \"../ui/src/**/*\" -c \"pnpm codegen\""
 	},
 	"dependencies": {
 		"@urql/exchange-graphcache": "^9.0.0",
@@ -29,9 +29,11 @@
 		"@graphql-typed-document-node/core": "^3.2.0",
 		"@parcel/watcher": "^2.5.6",
 		"@repo/typescript-config": "workspace:*",
+		"chokidar-cli": "^3.0.0",
 		"concurrently": "^9.2.1",
 		"graphql-config": "^5.1.5",
 		"svelte": "^5.50.0",
+		"svelte2tsx": "^0.7.48",
 		"typescript": "latest"
 	}
 }

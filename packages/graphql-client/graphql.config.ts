@@ -1,10 +1,8 @@
-import { executableSchema } from "@gebna/graphql-server";
 import type { CodegenConfig } from "@graphql-codegen/cli";
-import { printSchema } from "graphql";
 import type { IGraphQLConfig } from "graphql-config";
 
 const config: IGraphQLConfig = {
-	schema: printSchema(executableSchema),
+	schema: "../graphql-server/schema.graphql",
 	documents: [
 		"../ui/src/components/**/*.{svelte}",
 		"../../apps/desktop/src/**/*.{svelte,ts}",
