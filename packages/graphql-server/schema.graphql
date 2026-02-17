@@ -1,9 +1,17 @@
+type Identity {
+  address: String!
+  avatar: String!
+  id: ID!
+  name: String
+}
+
 type Query {
   viewer: Viewer
 }
 
 type Viewer {
-  avatar: String
-  id: ID
-  name: String
+  avatar: String!
+  id: ID!
+  identity: Identity!
+  name: String!
 }
