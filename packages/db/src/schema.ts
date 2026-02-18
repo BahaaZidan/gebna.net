@@ -174,7 +174,7 @@ export const identityRelationships = sqliteTable(
 	]
 );
 
-const ConversationKind = ["PRIVATE", "GROUP"] as const;
+export const ConversationKind = ["PRIVATE", "GROUP"] as const;
 type ConversationKind = (typeof ConversationKind)[number];
 export const conversations = sqliteTable(
 	"conversations",
@@ -217,9 +217,9 @@ export const conversations = sqliteTable(
 	]
 );
 
-const ParticipantRole = ["MEMBER", "ADMIN"] as const;
+export const ParticipantRole = ["MEMBER", "ADMIN"] as const;
 type ParticipantRole = (typeof ParticipantRole)[number];
-const ParticipantState = ["ACTIVE", "LEFT"] as const;
+export const ParticipantState = ["ACTIVE", "LEFT"] as const;
 type ParticipantState = (typeof ParticipantState)[number];
 export const conversationParticipants = sqliteTable(
 	"conversationParticipants",
@@ -336,7 +336,7 @@ export const messages = sqliteTable(
 
 const DeliveryStatus = ["QUEUED", "SENT", "DELIVERED", "SEEN", "FAILED"] as const;
 type DeliveryStatus = (typeof DeliveryStatus)[number];
-const Transport = ["EMAIL", "DIRECT"] as const;
+export const Transport = ["EMAIL", "DIRECT"] as const;
 type Transport = (typeof Transport)[number];
 export const messageDeliveries = sqliteTable(
 	"messageDeliveries",
