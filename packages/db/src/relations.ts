@@ -108,6 +108,10 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.messages.senderIdentityId,
 			to: r.identities.id,
 		}),
+		deliveries: r.many.messageDeliveries({
+			from: r.messages.id,
+			to: r.messageDeliveries.messageId,
+		}),
 	},
 	messageDeliveries: {
 		message: r.one.messages({
