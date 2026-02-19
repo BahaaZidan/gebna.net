@@ -27,6 +27,7 @@ export type Conversation = Node & {
   /** A list of all past and present participations in this conversation. */
   participations: Array<ConversationParticipation>;
   title?: Maybe<Scalars['String']['output']>;
+  viewerState?: Maybe<Array<ConversationViewerState>>;
 };
 
 
@@ -53,7 +54,7 @@ export type ConversationMessagesConnectionEdge = {
   node?: Maybe<Message>;
 };
 
-export type ConversationParticipation = Node & {
+export type ConversationParticipation = {
   __typename?: 'ConversationParticipation';
   conversation: Conversation;
   id: Scalars['ID']['output'];
@@ -71,7 +72,18 @@ export type ConversationParticipationState =
   | 'ACTIVE'
   | 'LEFT';
 
-export type Identity = Node & {
+export type ConversationViewerState = {
+  __typename?: 'ConversationViewerState';
+  id: Scalars['ID']['output'];
+  mailbox: ConversationViewerStateMailbox;
+  unseenCount: Scalars['Int']['output'];
+};
+
+export type ConversationViewerStateMailbox =
+  | 'IMPORTANT'
+  | 'TRASH';
+
+export type Identity = {
   __typename?: 'Identity';
   address: Scalars['String']['output'];
   avatar: Scalars['String']['output'];
@@ -115,7 +127,7 @@ export type Message = Node & {
   snippet?: Maybe<Scalars['String']['output']>;
 };
 
-export type MessageDelivery = Node & {
+export type MessageDelivery = {
   __typename?: 'MessageDelivery';
   id: Scalars['ID']['output'];
   recipient: Identity;

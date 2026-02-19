@@ -1,14 +1,25 @@
 import { getTableConfig, relations } from "@gebna/db";
-import { ConversationKind, ParticipantRole, ParticipantState, Transport } from "@gebna/db/schema";
+import {
+	ConversationKind,
+	conversationParticipants,
+	Mailbox,
+	ParticipantRole,
+	ParticipantState,
+	Transport,
+} from "@gebna/db/schema";
 import SchemaBuilder from "@pothos/core";
 import DrizzlePlugin from "@pothos/plugin-drizzle";
 import RelayPlugin from "@pothos/plugin-relay";
+import ScopeAuthPlugin from "@pothos/plugin-scope-auth";
 import WithInputPlugin from "@pothos/plugin-with-input";
 import { DateTimeResolver } from "graphql-scalars";
 
 import type { GraphQLResolverContext } from "../types.js";
 
-export interface PothosTypes {
+type ViewerActiveParticipations = Array<
+	Pick<typeof conversationParticipants.$inferSelect, "ownerId" | "state">
+>;
+const builder = new SchemaBuilder<{
 	DrizzleRelations: typeof relations;
 	Context: GraphQLResolverContext;
 	Scalars: {
@@ -17,30 +28,77 @@ export interface PothosTypes {
 			Output: Date;
 		};
 	};
-}
-
-const builder = new SchemaBuilder<PothosTypes>({
-	plugins: [RelayPlugin, WithInputPlugin, DrizzlePlugin],
+	AuthScopes: {
+		ownedByViewer: string;
+		viewerActiveParticipant: ViewerActiveParticipations;
+	};
+}>({
+	plugins: [RelayPlugin, ScopeAuthPlugin, WithInputPlugin, DrizzlePlugin],
 	drizzle: {
 		client: (ctx) => ctx.db,
 		getTableConfig,
 		relations,
 	},
+	scopeAuth: {
+		authScopes: async (context) => {
+			return {
+				ownedByViewer: (userId) => userId === context.viewer.id,
+				viewerActiveParticipant: (
+					participations: Array<
+						Pick<typeof conversationParticipants.$inferSelect, "ownerId" | "state">
+					>
+				) =>
+					participations
+						.filter((p) => p.state === "ACTIVE" && !!p.ownerId)
+						.map((p) => p.ownerId)
+						.includes(context.viewer.id),
+			};
+		},
+	},
 });
+
 builder.addScalarType("DateTime", DateTimeResolver);
+
+const ConversationViewerStateMailboxEnum = builder.enumType("ConversationViewerStateMailbox", {
+	values: Mailbox,
+});
+const ConversationViewerStateRef = builder.drizzleObject("conversationViewerStates", {
+	name: "ConversationViewerState",
+	select: {
+		columns: {
+			id: true,
+		},
+	},
+	fields: (t) => ({
+		id: t.globalID({
+			nullable: false,
+			resolve: (parent) => {
+				return { id: parent.id, type: "ConversationViewerState" };
+			},
+		}),
+		unseenCount: t.exposeInt("unseenCount", { nullable: false }),
+		mailbox: t.expose("mailbox", {
+			type: ConversationViewerStateMailboxEnum,
+			nullable: false,
+		}),
+	}),
+});
 
 const MessageDeliveryTransportEnum = builder.enumType("MessageDeliveryTransport", {
 	values: Transport,
 });
-const MessageDeliveryRef = builder.drizzleNode("messageDeliveries", {
+const MessageDeliveryRef = builder.drizzleObject("messageDeliveries", {
 	name: "MessageDelivery",
-	id: {
-		column: (t) => t.id,
-	},
 	select: {
-		columns: {},
+		columns: { id: true },
 	},
 	fields: (t) => ({
+		id: t.globalID({
+			nullable: false,
+			resolve: (parent) => {
+				return { id: parent.id, type: "MessageDelivery" };
+			},
+		}),
 		recipient: t.relation("recipientIdentity", { nullable: false }),
 		transport: t.expose("transport", {
 			type: MessageDeliveryTransportEnum,
@@ -56,7 +114,21 @@ const MessageRef = builder.drizzleNode("messages", {
 	},
 	select: {
 		columns: {},
+		with: {
+			conversation: {
+				columns: {},
+				with: {
+					participants: {
+						columns: {
+							ownerId: true,
+							state: true,
+						},
+					},
+				},
+			},
+		},
 	},
+	authScopes: (m) => ({ viewerActiveParticipant: m.conversation?.participants }),
 	fields: (t) => ({
 		conversation: t.relation("conversation", { nullable: false }),
 		sender: t.relation("senderIdentity", { nullable: false }),
@@ -79,15 +151,18 @@ const ConversationParticipationRoleEnum = builder.enumType("ConversationParticip
 const ConversationParticipationStateEnum = builder.enumType("ConversationParticipationState", {
 	values: ParticipantState,
 });
-const ConversationParticipationRef = builder.drizzleNode("conversationParticipants", {
+const ConversationParticipationRef = builder.drizzleObject("conversationParticipants", {
 	name: "ConversationParticipation",
-	id: {
-		column: (t) => t.id,
-	},
 	select: {
-		columns: {},
+		columns: { id: true },
 	},
 	fields: (t) => ({
+		id: t.globalID({
+			nullable: false,
+			resolve: (parent) => {
+				return { id: parent.id, type: "ConversationParticipation" };
+			},
+		}),
 		conversation: t.relation("conversation", { nullable: false }),
 		identity: t.relation("identity", { nullable: false }),
 		joinedAt: t.expose("joinedAt", {
@@ -113,7 +188,16 @@ const ConversationRef = builder.drizzleNode("conversations", {
 	},
 	select: {
 		columns: {},
+		with: {
+			participants: {
+				columns: {
+					ownerId: true,
+					state: true,
+				},
+			},
+		},
 	},
+	authScopes: (c) => ({ viewerActiveParticipant: c.participants }),
 	fields: (t) => ({
 		title: t.exposeString("title"),
 		kind: t.expose("kind", {
@@ -127,18 +211,29 @@ const ConversationRef = builder.drizzleNode("conversations", {
 		}),
 		lastMessage: t.relation("lastMessage"),
 		messages: t.relatedConnection("messages", { nullable: false }),
+		viewerState: t.relation("viewerStates", {
+			query: (args, context, pathInfo) => ({
+				where: {
+					ownerId: context.viewer.id,
+				},
+				limit: 1,
+			}),
+		}),
 	}),
 });
 
-const IdentityRef = builder.drizzleNode("identities", {
+const IdentityRef = builder.drizzleObject("identities", {
 	name: "Identity",
-	id: {
-		column: (t) => t.id,
-	},
 	select: {
-		columns: {},
+		columns: { id: true },
 	},
 	fields: (t) => ({
+		id: t.globalID({
+			nullable: false,
+			resolve: (parent) => {
+				return { id: parent.id, type: "Identity" };
+			},
+		}),
 		name: t.exposeString("name"),
 		avatar: t.string({
 			nullable: false,
@@ -164,8 +259,11 @@ const ViewerRef = builder.drizzleNode("users", {
 		column: (t) => t.id,
 	},
 	select: {
-		columns: {},
+		columns: {
+			id: true,
+		},
 	},
+	authScopes: (v) => ({ ownedByViewer: v.id }),
 	fields: (t) => ({
 		name: t.exposeString("name", { nullable: false }),
 		avatar: t.string({
