@@ -69,7 +69,7 @@ type Identity {
 
   """The conversation participations done by this identity"""
   participations(after: String, before: String, first: Int, last: Int): IdentityParticipationsConnection!
-  viewerRelationsShip: [IdentityRelationship!]
+  viewerRelationship: [IdentityRelationship!]
 }
 
 type IdentityParticipationsConnection {
@@ -129,7 +129,7 @@ type Query {
   viewer: Viewer
 }
 
-type Viewer implements Node {
+type Viewer {
   avatar: String!
   id: ID!
   identity: Identity!
