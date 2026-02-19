@@ -69,6 +69,7 @@ type Identity {
 
   """The conversation participations done by this identity"""
   participations(after: String, before: String, first: Int, last: Int): IdentityParticipationsConnection!
+  viewerRelationsShip: [IdentityRelationship!]
 }
 
 type IdentityParticipationsConnection {
@@ -79,6 +80,12 @@ type IdentityParticipationsConnection {
 type IdentityParticipationsConnectionEdge {
   cursor: String!
   node: ConversationParticipation
+}
+
+type IdentityRelationship {
+  avatar: String
+  givenName: String
+  id: ID!
 }
 
 type Message implements Node {

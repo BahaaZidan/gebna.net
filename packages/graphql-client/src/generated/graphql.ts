@@ -91,6 +91,7 @@ export type Identity = {
   name?: Maybe<Scalars['String']['output']>;
   /** The conversation participations done by this identity */
   participations: IdentityParticipationsConnection;
+  viewerRelationsShip?: Maybe<Array<IdentityRelationship>>;
 };
 
 
@@ -111,6 +112,13 @@ export type IdentityParticipationsConnectionEdge = {
   __typename?: 'IdentityParticipationsConnectionEdge';
   cursor: Scalars['String']['output'];
   node?: Maybe<ConversationParticipation>;
+};
+
+export type IdentityRelationship = {
+  __typename?: 'IdentityRelationship';
+  avatar?: Maybe<Scalars['String']['output']>;
+  givenName?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
 };
 
 export type Message = Node & {

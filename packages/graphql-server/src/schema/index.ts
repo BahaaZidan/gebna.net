@@ -222,6 +222,23 @@ const ConversationRef = builder.drizzleNode("conversations", {
 	}),
 });
 
+const IdentityRelationship = builder.drizzleObject("identityRelationships", {
+	name: "IdentityRelationship",
+	select: {
+		columns: { id: true },
+	},
+	fields: (t) => ({
+		id: t.globalID({
+			nullable: false,
+			resolve: (parent) => {
+				return { id: parent.id, type: "IdentityRelationship" };
+			},
+		}),
+		givenName: t.exposeString("givenName"),
+		avatar: t.exposeString("uploadedAvatar"),
+	}),
+});
+
 const IdentityRef = builder.drizzleObject("identities", {
 	name: "Identity",
 	select: {
@@ -249,6 +266,14 @@ const IdentityRef = builder.drizzleObject("identities", {
 		participations: t.relatedConnection("participations", {
 			nullable: false,
 			description: "The conversation participations done by this identity",
+		}),
+		viewerRelationsShip: t.relation("relationships", {
+			query: (args, context, pathInfo) => ({
+				where: {
+					ownerId: context.viewer.id,
+				},
+				limit: 1,
+			}),
 		}),
 	}),
 });
