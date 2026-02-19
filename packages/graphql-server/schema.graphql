@@ -8,6 +8,7 @@ type Conversation implements Node {
   """A list of all past and present participations in this conversation."""
   participations: [ConversationParticipation!]!
   title: String
+  viewerState: [ConversationViewerState!]
 }
 
 enum ConversationKind {
@@ -25,7 +26,7 @@ type ConversationMessagesConnectionEdge {
   node: Message
 }
 
-type ConversationParticipation implements Node {
+type ConversationParticipation {
   conversation: Conversation!
   id: ID!
   identity: Identity!
@@ -44,12 +45,23 @@ enum ConversationParticipationState {
   LEFT
 }
 
+type ConversationViewerState {
+  id: ID!
+  mailbox: ConversationViewerStateMailbox!
+  unseenCount: Int!
+}
+
+enum ConversationViewerStateMailbox {
+  IMPORTANT
+  TRASH
+}
+
 """
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
 """
 scalar DateTime
 
-type Identity implements Node {
+type Identity {
   address: String!
   avatar: String!
   id: ID!
@@ -82,7 +94,7 @@ type Message implements Node {
   snippet: String
 }
 
-type MessageDelivery implements Node {
+type MessageDelivery {
   id: ID!
   recipient: Identity!
   transport: MessageDeliveryTransport!
