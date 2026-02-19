@@ -267,7 +267,7 @@ const IdentityRef = builder.drizzleObject("identities", {
 			nullable: false,
 			description: "The conversation participations done by this identity",
 		}),
-		viewerRelationsShip: t.relation("relationships", {
+		viewerRelationship: t.relation("relationships", {
 			query: (args, context, pathInfo) => ({
 				where: {
 					ownerId: context.viewer.id,
@@ -278,18 +278,20 @@ const IdentityRef = builder.drizzleObject("identities", {
 	}),
 });
 
-const ViewerRef = builder.drizzleNode("users", {
+const ViewerRef = builder.drizzleObject("users", {
 	name: "Viewer",
-	id: {
-		column: (t) => t.id,
-	},
 	select: {
 		columns: {
 			id: true,
 		},
 	},
-	authScopes: (v) => ({ ownedByViewer: v.id }),
 	fields: (t) => ({
+		id: t.globalID({
+			nullable: false,
+			resolve: (parent) => {
+				return { id: parent.id, type: "Viewer" };
+			},
+		}),
 		name: t.exposeString("name", { nullable: false }),
 		avatar: t.string({
 			nullable: false,
