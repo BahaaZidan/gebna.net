@@ -53,9 +53,6 @@ importers:
       '@lucide/svelte':
         specifier: ^0.563.1
         version: 0.563.1(svelte@5.50.0)
-      '@urql/svelte':
-        specifier: ^5.0.0
-        version: 5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.50.0)
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -267,15 +264,6 @@ importers:
 
   packages/graphql-client:
     dependencies:
-      '@urql/exchange-graphcache':
-        specifier: ^9.0.0
-        version: 9.0.0(@urql/core@6.0.1(graphql@16.12.0))(graphql@16.12.0)
-      '@urql/exchange-refocus':
-        specifier: ^2.1.0
-        version: 2.1.0(@urql/core@6.0.1(graphql@16.12.0))
-      '@urql/exchange-retry':
-        specifier: ^2.0.0
-        version: 2.0.0(@urql/core@6.0.1(graphql@16.12.0))
       graphql:
         specifier: ^16.12.0
         version: 16.12.0
@@ -301,9 +289,6 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@urql/svelte':
-        specifier: ^5.0.0
-        version: 5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.50.0)
       chokidar-cli:
         specifier: ^3.0.0
         version: 3.0.0
@@ -450,14 +435,6 @@ importers:
         version: 5.9.3
 
 packages:
-
-  '@0no-co/graphql.web@1.2.0':
-    resolution: {integrity: sha512-/1iHy9TTr63gE1YcR5idjx8UREz1s0kFhydf3bBLCXyqjhkIc6igAzTOx3zPifCwFR87tsh/4Pa9cNts6d2otw==}
-    peerDependencies:
-      graphql: ^14.0.0 || ^15.0.0 || ^16.0.0
-    peerDependenciesMeta:
-      graphql:
-        optional: true
 
   '@ardatan/relay-compiler@12.0.3':
     resolution: {integrity: sha512-mBDFOGvAoVlWaWqs3hm1AciGHSQE1rqFc/liZTyYz/Oek9yZdT5H26pH2zAFuEiTiBVPPyMuqf5VjOFPI2DGsQ==}
@@ -2268,30 +2245,6 @@ packages:
     resolution: {integrity: sha512-91fp6CAAJSRtH5ja95T1FHSKa8aPW9/Zw6cta81jlZTUw/+Vq8jM/AfF/14h2b71wwR84JUTW/3Y8QPhDAawFA==}
     engines: {node: '>=20.0.0'}
 
-  '@urql/core@6.0.1':
-    resolution: {integrity: sha512-FZDiQk6jxbj5hixf2rEPv0jI+IZz0EqqGW8mJBEug68/zHTtT+f34guZDmyjJZyiWbj0vL165LoMr/TkeDHaug==}
-
-  '@urql/exchange-graphcache@9.0.0':
-    resolution: {integrity: sha512-5ACktvMFdnD5JC6DaSUrlj345c1JIUi7PwgvmnkwVOWsCRt/Vo9946UaG+sg69ku8seESMBK4xkeI41M39Dd5A==}
-    peerDependencies:
-      '@urql/core': ^6.0.0
-
-  '@urql/exchange-refocus@2.1.0':
-    resolution: {integrity: sha512-PqNqfK0cDtRpt/+fpXp4svUAGzQ0/HlgRN2W7QqQ3XNijkPTlqNUjnW8amj74YQhNPDtvinovJOXxJ/XnUCA0A==}
-    peerDependencies:
-      '@urql/core': ^6.0.0
-
-  '@urql/exchange-retry@2.0.0':
-    resolution: {integrity: sha512-VdSMCiOptd6Ah6g5Bo+MzrNMAGzgRMC775W86strLRQN7lvvNlhx1LwU0gzb2h/z0atcJFAmDJEbMyvupkT+7A==}
-    peerDependencies:
-      '@urql/core': ^6.0.0
-
-  '@urql/svelte@5.0.0':
-    resolution: {integrity: sha512-tHYEyFZwWsBW9GfpXbK+GImWhyZO1TJkhHsquosza0D0qOZyL+wGp/qT74WPUBJaF4gkUSXOQtUidDI7uvnuoQ==}
-    peerDependencies:
-      '@urql/core': ^6.0.0
-      svelte: ^3.0.0 || ^4.0.0 || ^5.0.0
-
   '@vitest/expect@3.2.4':
     resolution: {integrity: sha512-Io0yyORnB6sikFlt8QW5K7slY4OjqNX9jmJQ02QDda8lyM6B5oNgVWoSoKPac8/kgnCUzuHQKrSLtu/uOqqrig==}
 
@@ -3502,7 +3455,6 @@ packages:
 
   libsql@0.5.22:
     resolution: {integrity: sha512-NscWthMQt7fpU8lqd7LXMvT9pi+KhhmTHAJWUB/Lj6MWa0MKFv0F2V4C6WKKpjCVZl0VwcDz4nOI3CyaT1DDiA==}
-    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lightningcss-android-arm64@1.30.2:
@@ -4601,9 +4553,6 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
-  wonka@6.3.5:
-    resolution: {integrity: sha512-SSil+ecw6B4/Dm7Pf2sAshKQ5hWFvfyGlfPbEd6A14dOH6VDjrmbY86u6nZvy9omGwwIPFR8V41+of1EezgoUw==}
-
   word-wrap@1.2.5:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
@@ -4692,10 +4641,6 @@ packages:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
-
-  '@0no-co/graphql.web@1.2.0(graphql@16.12.0)':
-    optionalDependencies:
-      graphql: 16.12.0
 
   '@ardatan/relay-compiler@12.0.3(graphql@16.12.0)':
     dependencies:
@@ -6639,37 +6584,6 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
-
-  '@urql/core@6.0.1(graphql@16.12.0)':
-    dependencies:
-      '@0no-co/graphql.web': 1.2.0(graphql@16.12.0)
-      wonka: 6.3.5
-    transitivePeerDependencies:
-      - graphql
-
-  '@urql/exchange-graphcache@9.0.0(@urql/core@6.0.1(graphql@16.12.0))(graphql@16.12.0)':
-    dependencies:
-      '@0no-co/graphql.web': 1.2.0(graphql@16.12.0)
-      '@urql/core': 6.0.1(graphql@16.12.0)
-      wonka: 6.3.5
-    transitivePeerDependencies:
-      - graphql
-
-  '@urql/exchange-refocus@2.1.0(@urql/core@6.0.1(graphql@16.12.0))':
-    dependencies:
-      '@urql/core': 6.0.1(graphql@16.12.0)
-      wonka: 6.3.5
-
-  '@urql/exchange-retry@2.0.0(@urql/core@6.0.1(graphql@16.12.0))':
-    dependencies:
-      '@urql/core': 6.0.1(graphql@16.12.0)
-      wonka: 6.3.5
-
-  '@urql/svelte@5.0.0(@urql/core@6.0.1(graphql@16.12.0))(svelte@5.50.0)':
-    dependencies:
-      '@urql/core': 6.0.1(graphql@16.12.0)
-      svelte: 5.50.0
-      wonka: 6.3.5
 
   '@vitest/expect@3.2.4':
     dependencies:
@@ -8935,8 +8849,6 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
-
-  wonka@6.3.5: {}
 
   word-wrap@1.2.5: {}
 

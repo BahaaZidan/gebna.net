@@ -12,16 +12,11 @@ const config: IGraphQLConfig = {
 		codegen: {
 			importExtension: ".js",
 			ignoreNoDocuments: true,
-			pluckConfig: {
-				modules: [
-					{ name: "@urql/core", identifier: "gql" },
-					{ name: "@urql/svelte", identifier: "gql" },
-				],
-			},
 			generates: {
 				"./src/generated/": {
 					preset: "client",
 					config: {
+						documentMode: "string",
 						enumsAsTypes: true,
 						useTypeImports: true,
 						scalars: {
