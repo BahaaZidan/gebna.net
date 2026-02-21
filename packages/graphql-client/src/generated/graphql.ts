@@ -34,7 +34,7 @@ export type EmailConversation = Node & {
   kind: EmailConversationKind;
   lastMessage: EmailMessage;
   messages: EmailConversationMessagesConnection;
-  participations: Array<EmailConversationParticipation>;
+  participants: Array<EmailAddressRef>;
   title?: Maybe<Scalars['String']['output']>;
   unseenCount: Scalars['Int']['output'];
 };
@@ -61,12 +61,6 @@ export type EmailConversationMessagesConnectionEdge = {
   __typename?: 'EmailConversationMessagesConnectionEdge';
   cursor: Scalars['String']['output'];
   node: EmailMessage;
-};
-
-export type EmailConversationParticipation = {
-  __typename?: 'EmailConversationParticipation';
-  conversation: EmailConversation;
-  emailAddressRef: EmailAddressRef;
 };
 
 export type EmailMessage = Node & {
@@ -140,7 +134,14 @@ export type ViewerEmailConversationsConnectionEdge = {
 export type ViewerEmailConversationsListQueryQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ViewerEmailConversationsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailConversations: { __typename?: 'ViewerEmailConversationsConnection', edges: Array<{ __typename?: 'ViewerEmailConversationsConnectionEdge', node: { __typename?: 'EmailConversation', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } } }> } } | null };
+export type ViewerEmailConversationsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailConversations: { __typename?: 'ViewerEmailConversationsConnection', edges: Array<{ __typename?: 'ViewerEmailConversationsConnectionEdge', node: (
+          { __typename?: 'EmailConversation', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } }
+          & { ' $fragmentRefs'?: { 'EmailConversationTitleFragment': EmailConversationTitleFragment;'EmailConversationAvatarFragment': EmailConversationAvatarFragment } }
+        ) }> } } | null };
+
+export type EmailConversationAvatarFragment = { __typename?: 'EmailConversation', id: string, kind: EmailConversationKind, avatar?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, avatar: string, isSelf: boolean, name: string, address: string }> } & { ' $fragmentName'?: 'EmailConversationAvatarFragment' };
+
+export type EmailConversationTitleFragment = { __typename?: 'EmailConversation', id: string, kind: EmailConversationKind, title?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string }> } & { ' $fragmentName'?: 'EmailConversationTitleFragment' };
 
 export class TypedDocumentString<TResult, TVariables>
   extends String
@@ -160,7 +161,32 @@ export class TypedDocumentString<TResult, TVariables>
     return this.value;
   }
 }
-
+export const EmailConversationAvatarFragmentDoc = new TypedDocumentString(`
+    fragment EmailConversationAvatar on EmailConversation {
+  id
+  kind
+  avatar
+  participants {
+    id
+    avatar
+    isSelf
+    name
+    address
+  }
+}
+    `, {"fragmentName":"EmailConversationAvatar"}) as unknown as TypedDocumentString<EmailConversationAvatarFragment, unknown>;
+export const EmailConversationTitleFragmentDoc = new TypedDocumentString(`
+    fragment EmailConversationTitle on EmailConversation {
+  id
+  kind
+  title
+  participants {
+    id
+    isSelf
+    name
+  }
+}
+    `, {"fragmentName":"EmailConversationTitle"}) as unknown as TypedDocumentString<EmailConversationTitleFragment, unknown>;
 export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString(`
     query ViewerEmailConversationsListQuery {
   viewer {
@@ -168,6 +194,8 @@ export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString
     emailConversations {
       edges {
         node {
+          ...EmailConversationTitle
+          ...EmailConversationAvatar
           id
           title
           unseenCount
@@ -181,4 +209,25 @@ export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString
     }
   }
 }
-    `) as unknown as TypedDocumentString<ViewerEmailConversationsListQueryQuery, ViewerEmailConversationsListQueryQueryVariables>;
+    fragment EmailConversationAvatar on EmailConversation {
+  id
+  kind
+  avatar
+  participants {
+    id
+    avatar
+    isSelf
+    name
+    address
+  }
+}
+fragment EmailConversationTitle on EmailConversation {
+  id
+  kind
+  title
+  participants {
+    id
+    isSelf
+    name
+  }
+}`) as unknown as TypedDocumentString<ViewerEmailConversationsListQueryQuery, ViewerEmailConversationsListQueryQueryVariables>;

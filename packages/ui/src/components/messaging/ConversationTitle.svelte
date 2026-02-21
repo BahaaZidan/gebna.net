@@ -1,40 +1,31 @@
 <script lang="ts">
-	interface Props {
-		viewerIdentityId?: string;
-		conversation: {
-			title: string | null;
-			kind: "PRIVATE" | "GROUP";
-			participants: {
-				identity: {
-					id: string;
-					address: string;
-					name: string | null;
-					relations: {
-						isContact: boolean;
-						givenName?: string;
-					}[];
-				};
-			}[];
-		};
-	}
-	let { conversation, viewerIdentityId }: Props = $props();
+	import { graphql, useFragment, type FragmentType } from "@gebna/graphql-client";
 
-	let otherParticipants = $derived(
-		conversation.participants.filter((p) => p.identity.id !== viewerIdentityId)
-	);
+	const EmailConversationTitle = graphql(`
+		fragment EmailConversationTitle on EmailConversation {
+			id
+			kind
+			title
+			participants {
+				id
+				isSelf
+				name
+			}
+		}
+	`);
+	interface Props {
+		conversation: FragmentType<typeof EmailConversationTitle>;
+	}
+	let props: Props = $props();
+	let conversation = $derived(useFragment(EmailConversationTitle, props.conversation));
+
+	let otherParticipants = $derived(conversation.participants.filter((p) => !p.isSelf));
 </script>
 
 <span class="wrap-anywhere">
 	{#if conversation.kind === "PRIVATE"}
-		{#if otherParticipants[0].identity.relations[0].isContact}
-			{otherParticipants[0].identity.relations[0].givenName ||
-				otherParticipants[0].identity.name ||
-				otherParticipants[0].identity.address}
-		{:else}
-			{otherParticipants[0].identity.name || otherParticipants[0].identity.address}
-		{/if}
+		{otherParticipants[0].name}
 	{:else}
-		{conversation.title ||
-			otherParticipants.map((p) => p.identity.name || p.identity.address).join(", ")}
+		{conversation.title || otherParticipants.map((p) => p.name).join(", ")}
 	{/if}
 </span>

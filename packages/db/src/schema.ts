@@ -6,6 +6,7 @@ import {
 	foreignKey,
 	index,
 	integer,
+	primaryKey,
 	sqliteTable,
 	text,
 	uniqueIndex,
@@ -204,7 +205,7 @@ export const emailConversationParticipants = sqliteTable(
 			.references(() => emailAddressRefs.id, { onDelete: "cascade" }),
 	},
 	(self) => [
-		uniqueIndex("uniq_conversation_participant").on(self.conversationId, self.emailAddressRefId),
+		primaryKey({ columns: [self.conversationId, self.emailAddressRefId] }),
 		index("idx_conversation_participant_conversation").on(self.conversationId),
 		index("idx_conversation_participant_identity").on(self.emailAddressRefId),
 	]

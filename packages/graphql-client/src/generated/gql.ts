@@ -15,16 +15,28 @@ import * as types from './graphql.js';
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
-    "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.ViewerEmailConversationsListQueryDocument,
+    "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t...EmailConversationTitle\n\t\t\t\t\t\t\t...EmailConversationAvatar\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.ViewerEmailConversationsListQueryDocument,
+    "\n\t\tfragment EmailConversationAvatar on EmailConversation {\n\t\t\tid\n\t\t\tkind\n\t\t\tavatar\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t": typeof types.EmailConversationAvatarFragmentDoc,
+    "\n\t\tfragment EmailConversationTitle on EmailConversation {\n\t\t\tid\n\t\t\tkind\n\t\t\ttitle\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t}\n\t\t}\n\t": typeof types.EmailConversationTitleFragmentDoc,
 };
 const documents: Documents = {
-    "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.ViewerEmailConversationsListQueryDocument,
+    "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t...EmailConversationTitle\n\t\t\t\t\t\t\t...EmailConversationAvatar\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.ViewerEmailConversationsListQueryDocument,
+    "\n\t\tfragment EmailConversationAvatar on EmailConversation {\n\t\t\tid\n\t\t\tkind\n\t\t\tavatar\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t": types.EmailConversationAvatarFragmentDoc,
+    "\n\t\tfragment EmailConversationTitle on EmailConversation {\n\t\t\tid\n\t\t\tkind\n\t\t\ttitle\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t}\n\t\t}\n\t": types.EmailConversationTitleFragmentDoc,
 };
 
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t"): typeof import('./graphql.js').ViewerEmailConversationsListQueryDocument;
+export function graphql(source: "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t...EmailConversationTitle\n\t\t\t\t\t\t\t...EmailConversationAvatar\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t"): typeof import('./graphql.js').ViewerEmailConversationsListQueryDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\tfragment EmailConversationAvatar on EmailConversation {\n\t\t\tid\n\t\t\tkind\n\t\t\tavatar\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t"): typeof import('./graphql.js').EmailConversationAvatarFragmentDoc;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\tfragment EmailConversationTitle on EmailConversation {\n\t\t\tid\n\t\t\tkind\n\t\t\ttitle\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t}\n\t\t}\n\t"): typeof import('./graphql.js').EmailConversationTitleFragmentDoc;
 
 
 export function graphql(source: string) {

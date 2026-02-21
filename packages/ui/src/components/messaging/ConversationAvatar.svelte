@@ -1,37 +1,37 @@
 <script lang="ts">
+	import { graphql, useFragment, type FragmentType } from "@gebna/graphql-client";
 	import UsersIcon from "@lucide/svelte/icons/users";
 	import type { ClassValue } from "svelte/elements";
 
+	const EmailConversationAvatar = graphql(`
+		fragment EmailConversationAvatar on EmailConversation {
+			id
+			kind
+			avatar
+			participants {
+				id
+				avatar
+				isSelf
+				name
+				address
+			}
+		}
+	`);
+
 	interface Props {
 		class: ClassValue;
-		viewerIdentityId?: string;
-		conversation: {
-			kind: "PRIVATE" | "GROUP";
-			participants: {
-				identity: {
-					kind: "GEBNA_USER" | "EXTERNAL_EMAIL";
-					id: string;
-					address: string;
-					name: string | null;
-					inferredAvatar: string | null;
-					avatarPlaceholder: string;
-				};
-			}[];
-		};
+		conversation: FragmentType<typeof EmailConversationAvatar>;
 	}
 
 	let props: Props = $props();
-
-	let otherParticipants = $derived(
-		props.conversation.participants.filter((p) => p.identity.id !== props.viewerIdentityId)
-	);
+	let conversation = $derived(useFragment(EmailConversationAvatar, props.conversation));
+	let otherParticipant = $derived(conversation.participants.filter((p) => !p.isSelf)[0]);
 </script>
 
-{#if props.conversation.kind === "PRIVATE"}
+{#if conversation.kind === "PRIVATE"}
 	<img
-		src={otherParticipants[0].identity.inferredAvatar ||
-			otherParticipants[0].identity.avatarPlaceholder}
-		alt="{otherParticipants[0].identity.name || otherParticipants[0].identity.address} avatar"
+		src={otherParticipant.avatar}
+		alt="{otherParticipant.name || otherParticipant.address} avatar"
 		class={["object-contain", props.class]}
 	/>
 {:else}

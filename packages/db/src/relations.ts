@@ -39,6 +39,10 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.emailAddressRefs.ownerId,
 			to: r.users.id,
 		}),
+		emailConversations: r.many.emailConversations({
+			from: r.emailAddressRefs.id.through(r.emailConversationParticipants.emailAddressRefId),
+			to: r.emailConversations.id.through(r.emailConversationParticipants.conversationId),
+		}),
 	},
 	emailConversations: {
 		owner: r.one.users({
@@ -53,20 +57,7 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.emailConversations.lastMessageId,
 			to: r.emailMessages.id,
 		}),
-		participants: r.many.emailConversationParticipants({
-			from: r.emailConversations.id,
-			to: r.emailConversationParticipants.conversationId,
-		}),
-	},
-	emailConversationParticipants: {
-		emailAddressRef: r.one.emailAddressRefs({
-			from: r.emailConversationParticipants.emailAddressRefId,
-			to: r.emailAddressRefs.id,
-		}),
-		conversation: r.one.emailConversations({
-			from: r.emailConversationParticipants.conversationId,
-			to: r.emailConversations.id,
-		}),
+		participants: r.many.emailAddressRefs(),
 	},
 	emailMessages: {
 		owner: r.one.users({
