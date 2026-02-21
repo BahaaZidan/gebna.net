@@ -1,18 +1,18 @@
 <script lang="ts">
-	// import { getConversations } from "@gebna/functions";
-	import { graphql } from "@gebna/graphql-client";
 	import { ConversationAvatar, ConversationTitle, formatInboxDate } from "@gebna/ui";
 	import type { IconProps } from "@lucide/svelte";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
 	import MessageSquarePlusIcon from "@lucide/svelte/icons/message-square-plus";
-	import { type Component, type Snippet } from "svelte";
+	import { type Component } from "svelte";
 
 	import { resolve } from "$app/paths";
 
-	let props: { children: Snippet } = $props();
-	let conversationsResult = {};
-	// let conversations = conversationsResult.data.conversations;
+	import { getEmailConvoList } from "$lib/email.remote";
+
+	let { children } = $props();
+
+	let conversations = await getEmailConvoList();
 </script>
 
 {#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconProps> })}
@@ -32,6 +32,9 @@
 				{@render iconButton({ label: "Menu", Icon: EllipsisVerticalIcon })}
 			</div>
 		</div>
+		<pre>
+			{JSON.stringify(conversations, null, 4)}
+		</pre>
 		<!-- <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
 			{#if conversations}
 				{#each conversations as node (node.id)}
@@ -74,6 +77,6 @@
 		</div> -->
 	</div>
 	<div class="flex h-full min-h-0 w-full flex-col overflow-hidden">
-		{@render props.children()}
+		{@render children()}
 	</div>
 </div>

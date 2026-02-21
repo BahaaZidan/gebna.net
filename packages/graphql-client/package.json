@@ -15,13 +15,9 @@
 		"codegen:watch": "chokidar \"../graphql-server/schema.graphql\" \"src/**/*\" \"../../apps/desktop/src/**/*\" \"../../apps/mobile/src/**/*\" \"../ui/src/**/*\" -c \"pnpm codegen\""
 	},
 	"peerDependencies": {
-		"@urql/svelte": "^5.0.0",
 		"svelte": "^5.50.0"
 	},
 	"dependencies": {
-		"@urql/exchange-graphcache": "^9.0.0",
-		"@urql/exchange-refocus": "^2.1.0",
-		"@urql/exchange-retry": "^2.0.0",
 		"graphql": "^16.12.0"
 	},
 	"devDependencies": {
@@ -37,7 +33,6 @@
 		"graphql-config": "^5.1.5",
 		"svelte": "^5.50.0",
 		"svelte2tsx": "^0.7.48",
-		"@urql/svelte": "^5.0.0",
 		"typescript": "latest"
 	}
 }

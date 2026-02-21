@@ -1,4 +1,5 @@
 /* eslint-disable */
+import type { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = T | null | undefined;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -135,3 +136,49 @@ export type ViewerEmailConversationsConnectionEdge = {
   cursor: Scalars['String']['output'];
   node: EmailConversation;
 };
+
+export type ViewerEmailConversationsListQueryQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ViewerEmailConversationsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailConversations: { __typename?: 'ViewerEmailConversationsConnection', edges: Array<{ __typename?: 'ViewerEmailConversationsConnectionEdge', node: { __typename?: 'EmailConversation', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } } }> } } | null };
+
+export class TypedDocumentString<TResult, TVariables>
+  extends String
+  implements DocumentTypeDecoration<TResult, TVariables>
+{
+  __apiType?: NonNullable<DocumentTypeDecoration<TResult, TVariables>['__apiType']>;
+  private value: string;
+  public __meta__?: Record<string, any> | undefined;
+
+  constructor(value: string, __meta__?: Record<string, any> | undefined) {
+    super(value);
+    this.value = value;
+    this.__meta__ = __meta__;
+  }
+
+  override toString(): string & DocumentTypeDecoration<TResult, TVariables> {
+    return this.value;
+  }
+}
+
+export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString(`
+    query ViewerEmailConversationsListQuery {
+  viewer {
+    id
+    emailConversations {
+      edges {
+        node {
+          id
+          title
+          unseenCount
+          lastMessage {
+            id
+            snippet
+            createdAt
+          }
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ViewerEmailConversationsListQueryQuery, ViewerEmailConversationsListQueryQueryVariables>;
