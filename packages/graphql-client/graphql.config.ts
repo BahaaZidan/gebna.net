@@ -4,7 +4,7 @@ import type { IGraphQLConfig } from "graphql-config";
 const config: IGraphQLConfig = {
 	schema: "../graphql-server/schema.graphql",
 	documents: [
-		"../ui/src/components/**/*.{svelte}",
+		"../ui/src/**/*.{svelte,ts}",
 		"../../apps/desktop/src/**/*.{svelte,ts}",
 		"../../apps/mobile/src/**/*.{svelte,ts}",
 	],

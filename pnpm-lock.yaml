@@ -361,9 +361,9 @@ importers:
 
   packages/ui:
     dependencies:
-      '@gebna/auth':
+      '@gebna/graphql-client':
         specifier: workspace:*
-        version: link:../auth
+        version: link:../graphql-client
       '@lucide/svelte':
         specifier: ^0.563.1
         version: 0.563.1(svelte@5.50.0)

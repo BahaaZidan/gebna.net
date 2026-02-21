@@ -12,7 +12,8 @@
 
 	let { children } = $props();
 
-	let conversations = await getEmailConvoList();
+	let response = await getEmailConvoList();
+	let conversations = $derived(response.data?.viewer?.emailConversations.edges);
 </script>
 
 {#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconProps> })}
@@ -32,12 +33,9 @@
 				{@render iconButton({ label: "Menu", Icon: EllipsisVerticalIcon })}
 			</div>
 		</div>
-		<pre>
-			{JSON.stringify(conversations, null, 4)}
-		</pre>
-		<!-- <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
 			{#if conversations}
-				{#each conversations as node (node.id)}
+				{#each conversations as { node } (node.id)}
 					<a
 						href={resolve("/messages/[conversation_id]", { conversation_id: node.id })}
 						class="group flex w-full items-center gap-3 p-3 hover:bg-base-200"
@@ -51,19 +49,19 @@
 								<div
 									class={[
 										"mx-px text-xs whitespace-nowrap",
-										node.viewerStates[0].unreadCount ? "text-primary-content" : "text-gray-400",
+										node.unseenCount ? "text-primary-content" : "text-gray-400",
 									]}
 								>
-									{formatInboxDate(node.updatedAt)}
+									{formatInboxDate(node.lastMessage.createdAt)}
 								</div>
 							</div>
 							<div class="flex min-h-6 justify-between">
 								<div class="line-clamp-1 min-w-0 text-sm wrap-anywhere text-gray-400">
-									{node.lastMessage?.bodySnippet}
+									{node.lastMessage.snippet}
 								</div>
 								<div class="flex gap-1">
-									{#if node.viewerStates[0].unreadCount}
-										<div class="badge badge-primary">{node.viewerStates[0].unreadCount}</div>
+									{#if node.unseenCount}
+										<div class="badge badge-primary">{node.unseenCount}</div>
 									{/if}
 									<button class="btn hidden btn-ghost btn-xs group-hover:inline-flex">
 										<ChevronDownIcon class="size-5.5" />
@@ -74,7 +72,7 @@
 					</a>
 				{/each}
 			{/if}
-		</div> -->
+		</div>
 	</div>
 	<div class="flex h-full min-h-0 w-full flex-col overflow-hidden">
 		{@render children()}

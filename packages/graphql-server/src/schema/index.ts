@@ -94,17 +94,6 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 	}),
 });
 
-const EmailConversationParticipationRef = builder.drizzleObject("emailConversationParticipants", {
-	name: "EmailConversationParticipation",
-	select: {
-		columns: {},
-	},
-	fields: (t) => ({
-		conversation: t.relation("conversation", { nullable: false }),
-		emailAddressRef: t.relation("emailAddressRef", { nullable: false }),
-	}),
-});
-
 const EmailConversationKindEnum = builder.enumType("EmailConversationKind", {
 	values: EmailConversationKind,
 });
@@ -124,7 +113,7 @@ const EmailConversationRef = builder.drizzleNode("emailConversations", {
 			nullable: false,
 		}),
 		avatar: t.exposeString("uploadedAvatar"),
-		participations: t.relation("participants", {
+		participants: t.relation("participants", {
 			nullable: false,
 		}),
 		lastMessage: t.relation("lastMessage", { nullable: false }),

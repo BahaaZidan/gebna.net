@@ -17,7 +17,7 @@ type EmailConversation implements Node {
   kind: EmailConversationKind!
   lastMessage: EmailMessage!
   messages(after: String, before: String, first: Int, last: Int): EmailConversationMessagesConnection!
-  participations: [EmailConversationParticipation!]!
+  participants: [EmailAddressRef!]!
   title: String
   unseenCount: Int!
 }
@@ -35,11 +35,6 @@ type EmailConversationMessagesConnection {
 type EmailConversationMessagesConnectionEdge {
   cursor: String!
   node: EmailMessage!
-}
-
-type EmailConversationParticipation {
-  conversation: EmailConversation!
-  emailAddressRef: EmailAddressRef!
 }
 
 type EmailMessage implements Node {

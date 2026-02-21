@@ -11,6 +11,8 @@ export const getEmailConvoList = query(async () => {
 				emailConversations {
 					edges {
 						node {
+							...EmailConversationTitle
+							...EmailConversationAvatar
 							id
 							title
 							unseenCount
