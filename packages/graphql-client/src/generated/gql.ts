@@ -15,16 +15,16 @@ import * as types from './graphql.js';
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
-    "\n\t\t\tquery ViewerEmailConversationsListQuery {\n\t\t\t\tviewer {\n\t\t\t\t\tid\n\t\t\t\t\temailConversations {\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": typeof types.ViewerEmailConversationsListQueryDocument,
+    "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.ViewerEmailConversationsListQueryDocument,
 };
 const documents: Documents = {
-    "\n\t\t\tquery ViewerEmailConversationsListQuery {\n\t\t\t\tviewer {\n\t\t\t\t\tid\n\t\t\t\t\temailConversations {\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": types.ViewerEmailConversationsListQueryDocument,
+    "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.ViewerEmailConversationsListQueryDocument,
 };
 
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n\t\t\tquery ViewerEmailConversationsListQuery {\n\t\t\t\tviewer {\n\t\t\t\t\tid\n\t\t\t\t\temailConversations {\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t"): typeof import('./graphql.js').ViewerEmailConversationsListQueryDocument;
+export function graphql(source: "\n\t\tquery ViewerEmailConversationsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailConversations {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t"): typeof import('./graphql.js').ViewerEmailConversationsListQueryDocument;
 
 
 export function graphql(source: string) {

@@ -4,11 +4,18 @@ import { TypedDocumentString } from "./generated/graphql.js";
 
 export * from "./generated/index.js";
 
-export async function graphqlRequest<TResult, TVariables>(
-	fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
-	query: TypedDocumentString<TResult, TVariables>,
-	...[variables]: TVariables extends Record<string, never> ? [] : [TVariables]
-) {
+type GraphQLRequestArgs<TResult, TVariables> = {
+	fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+	query: TypedDocumentString<TResult, TVariables>;
+} & (TVariables extends Record<string, never>
+	? { variables?: undefined }
+	: { variables: TVariables });
+
+export async function graphqlRequest<TResult, TVariables>({
+	fetch,
+	query,
+	variables,
+}: GraphQLRequestArgs<TResult, TVariables>) {
 	const response = await fetch("/api/graphql", {
 		method: "POST",
 		headers: {
