@@ -13,10 +13,6 @@
 	let props: { children: Snippet } = $props();
 	let conversationsResult = {};
 	// let conversations = conversationsResult.data.conversations;
-
-	$effect(() => {
-		console.log({ conversations });
-	});
 </script>
 
 {#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconProps> })}
@@ -36,7 +32,7 @@
 				{@render iconButton({ label: "Menu", Icon: EllipsisVerticalIcon })}
 			</div>
 		</div>
-		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+		<!-- <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
 			{#if conversations}
 				{#each conversations as node (node.id)}
 					<a
@@ -75,7 +71,7 @@
 					</a>
 				{/each}
 			{/if}
-		</div>
+		</div> -->
 	</div>
 	<div class="flex h-full min-h-0 w-full flex-col overflow-hidden">
 		{@render props.children()}
