@@ -22,13 +22,11 @@ async function resetDatabase(db: DBInstance) {
 	console.log("⚠️  Resetting database (deleting all rows)...");
 
 	await db.transaction(async (tx) => {
-		await tx.delete(dbSchema.messageDeliveries);
-		await tx.delete(dbSchema.messages);
-		await tx.delete(dbSchema.conversationViewerStates);
-		await tx.delete(dbSchema.conversationParticipants);
-		await tx.delete(dbSchema.conversations);
-		await tx.delete(dbSchema.identityRelationships);
-		await tx.delete(dbSchema.identities);
+		await tx.delete(dbSchema.emailMessages);
+		await tx.delete(dbSchema.emailConversationParticipants);
+		await tx.delete(dbSchema.emailConversations);
+		await tx.delete(dbSchema.emailAddressRefs);
+		await tx.delete(dbSchema.emailAddresses);
 		await tx.delete(dbSchema.sessions);
 		await tx.delete(dbSchema.accounts);
 		await tx.delete(dbSchema.verifications);
@@ -45,31 +43,14 @@ async function seedDatabase(db: DBInstance) {
 	const baseNow = Date.now();
 	const passwordHash = await hashPassword("password");
 	const ctx: SeedContext = {
-		now: new Date(),
+		now: new Date(baseNow),
 		secondsAgo: (seconds: number) => new Date(baseNow - seconds * 1000),
 	};
 
-	const aliceUserId = "seed-user-alice";
-	const bobUserId = "seed-user-bob";
-	const carolUserId = "seed-user-carol";
-
-	const aliceIdentityId = "seed-identity-alice";
-	const bobIdentityId = "seed-identity-bob";
-	const carolIdentityId = "seed-identity-carol";
-
-	const conversationId = "seed-conversation-alice-bob";
-	const dmKey = [aliceIdentityId, bobIdentityId].sort().join(":");
-
-	const messageOneId = "seed-message-1";
-	const messageTwoId = "seed-message-2";
-	const messageThreeId = "seed-message-3";
-	const aliceParticipantId = ulid();
-	const bobParticipantId = ulid();
-
 	const aliceUser = {
-		id: aliceUserId,
+		id: "seed-user-alice",
 		name: "Alice Johnson",
-		email: "alice@example.com",
+		email: "alice@gebna.test",
 		username: "alice",
 		displayUsername: "alice",
 		avatarPlaceholder: generateImagePlaceholder("Alice Johnson"),
@@ -78,9 +59,9 @@ async function seedDatabase(db: DBInstance) {
 		updatedAt: ctx.now,
 	};
 	const bobUser = {
-		id: bobUserId,
+		id: "seed-user-bob",
 		name: "Bob Rivers",
-		email: "bob@example.com",
+		email: "bob@gebna.test",
 		username: "bob",
 		displayUsername: "bob",
 		avatarPlaceholder: generateImagePlaceholder("Bob Rivers"),
@@ -89,9 +70,9 @@ async function seedDatabase(db: DBInstance) {
 		updatedAt: ctx.now,
 	};
 	const carolUser = {
-		id: carolUserId,
+		id: "seed-user-carol",
 		name: "Carol Diaz",
-		email: "carol@example.com",
+		email: "carol@gebna.test",
 		username: "carol",
 		displayUsername: "carol",
 		avatarPlaceholder: generateImagePlaceholder("Carol Diaz"),
@@ -102,235 +83,348 @@ async function seedDatabase(db: DBInstance) {
 
 	const users = [aliceUser, bobUser, carolUser];
 
-	const identities = [
-		{
-			id: aliceIdentityId,
-			ownerId: aliceUserId,
-			kind: "INTERNAL" as const,
-			address: aliceUser.email,
-			name: aliceUser.name,
-			avatarPlaceholder: aliceUser.avatarPlaceholder,
-			createdAt: ctx.now,
-			updatedAt: ctx.now,
-		},
-		{
-			id: bobIdentityId,
-			ownerId: bobUserId,
-			kind: "INTERNAL" as const,
-			address: bobUser.email,
-			name: bobUser.name,
-			avatarPlaceholder: bobUser.avatarPlaceholder,
-			createdAt: ctx.now,
-			updatedAt: ctx.now,
-		},
-		{
-			id: carolIdentityId,
-			ownerId: carolUserId,
-			kind: "INTERNAL" as const,
-			address: carolUser.email,
-			name: carolUser.name,
-			avatarPlaceholder: carolUser.avatarPlaceholder,
-			createdAt: ctx.now,
-			updatedAt: ctx.now,
-		},
-	];
-
 	const accounts = [
 		{
 			id: ulid(),
 			accountId: aliceUser.username,
 			providerId: "credential",
-			userId: aliceUserId,
-			// Stored with Better Auth's scrypt-based hashing to match the username sign-in flow.
+			userId: aliceUser.id,
 			password: passwordHash,
 		},
 		{
 			id: ulid(),
 			accountId: bobUser.username,
 			providerId: "credential",
-			userId: bobUserId,
+			userId: bobUser.id,
 			password: passwordHash,
 		},
 		{
 			id: ulid(),
 			accountId: carolUser.username,
 			providerId: "credential",
-			userId: carolUserId,
+			userId: carolUser.id,
 			password: passwordHash,
 		},
 	];
 
-	const identityRelationships = [
+	const emailAddresses = [
 		{
-			id: ulid(),
-			ownerId: aliceUserId,
-			identityId: bobIdentityId,
-			isContact: true,
+			address: aliceUser.email,
+			name: aliceUser.name,
+			inferredAvatar: null,
+			avatarPlaceholder: aliceUser.avatarPlaceholder,
+		},
+		{
+			address: bobUser.email,
+			name: bobUser.name,
+			inferredAvatar: null,
+			avatarPlaceholder: bobUser.avatarPlaceholder,
+		},
+		{
+			address: carolUser.email,
+			name: carolUser.name,
+			inferredAvatar: null,
+			avatarPlaceholder: carolUser.avatarPlaceholder,
+		},
+	];
+
+	const aliceSelfRefId = ulid();
+	const aliceBobRefId = ulid();
+	const aliceCarolRefId = ulid();
+
+	const bobSelfRefId = ulid();
+	const bobAliceRefId = ulid();
+	const bobCarolRefId = ulid();
+
+	const carolSelfRefId = ulid();
+	const carolAliceRefId = ulid();
+
+	const emailAddressRefs = [
+		{
+			id: aliceSelfRefId,
+			ownerId: aliceUser.id,
+			address: aliceUser.email,
+			givenName: aliceUser.name,
+			givenAvatar: null,
+			createdAt: ctx.now,
+			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
+		},
+		{
+			id: aliceBobRefId,
+			ownerId: aliceUser.id,
+			address: bobUser.email,
 			givenName: "Bob",
+			givenAvatar: null,
 			createdAt: ctx.now,
 			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
 		},
 		{
-			id: ulid(),
-			ownerId: aliceUserId,
-			identityId: carolIdentityId,
-			isContact: true,
+			id: aliceCarolRefId,
+			ownerId: aliceUser.id,
+			address: carolUser.email,
 			givenName: "Carol",
+			givenAvatar: null,
 			createdAt: ctx.now,
 			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
 		},
 		{
-			id: ulid(),
-			ownerId: bobUserId,
-			identityId: aliceIdentityId,
-			isContact: true,
+			id: bobSelfRefId,
+			ownerId: bobUser.id,
+			address: bobUser.email,
+			givenName: bobUser.name,
+			givenAvatar: null,
+			createdAt: ctx.now,
+			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
+		},
+		{
+			id: bobAliceRefId,
+			ownerId: bobUser.id,
+			address: aliceUser.email,
 			givenName: "Alice",
+			givenAvatar: null,
 			createdAt: ctx.now,
 			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
+		},
+		{
+			id: bobCarolRefId,
+			ownerId: bobUser.id,
+			address: carolUser.email,
+			givenName: "Carol",
+			givenAvatar: null,
+			createdAt: ctx.now,
+			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
+		},
+		{
+			id: carolSelfRefId,
+			ownerId: carolUser.id,
+			address: carolUser.email,
+			givenName: carolUser.name,
+			givenAvatar: null,
+			createdAt: ctx.now,
+			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
+		},
+		{
+			id: carolAliceRefId,
+			ownerId: carolUser.id,
+			address: aliceUser.email,
+			givenName: "Alice",
+			givenAvatar: null,
+			createdAt: ctx.now,
+			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
 		},
 	];
 
-	const participants = [
-		{
-			id: aliceParticipantId,
-			conversationId,
-			identityId: aliceIdentityId,
-			ownerId: aliceUserId,
-			role: "ADMIN" as const,
-			state: "ACTIVE" as const,
-			joinedAt: ctx.secondsAgo(1800),
-			lastSeenMessageId: null,
-		},
-		{
-			id: bobParticipantId,
-			conversationId,
-			identityId: bobIdentityId,
-			ownerId: bobUserId,
-			role: "MEMBER" as const,
-			state: "ACTIVE" as const,
-			joinedAt: ctx.secondsAgo(1750),
-			lastSeenMessageId: null,
-		},
-	];
+	const aliceBobConversationId = "seed-conversation-alice-bob";
+	const bobTeamConversationId = "seed-conversation-bob-team";
 
-	const messageOne = {
-		id: messageOneId,
-		conversationId,
-		senderIdentityId: aliceIdentityId,
-		bodyPlainText: "Hey Bob, sharing the latest launch checklist. Let me know what we’re missing.",
-		bodyPlainTextSnippet: "Hey Bob, sharing the latest launch checklist...",
-		createdAt: ctx.secondsAgo(1200),
-		updatedAt: ctx.secondsAgo(1200),
-	};
-	const messageTwo = {
-		id: messageTwoId,
-		conversationId,
-		senderIdentityId: bobIdentityId,
-		bodyPlainText: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
-		bodyPlainTextSnippet: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
-		createdAt: ctx.secondsAgo(900),
-		updatedAt: ctx.secondsAgo(900),
-	};
-	const messageThree = {
-		id: messageThreeId,
-		conversationId,
-		senderIdentityId: aliceIdentityId,
-		bodyPlainText: "Perfect. Carol, can you verify the onboarding flow by tomorrow?",
-		bodyPlainTextSnippet: "Perfect. Carol, can you verify the onboarding flow by tomorrow?",
-		createdAt: ctx.secondsAgo(400),
-		updatedAt: ctx.secondsAgo(400),
-	};
-
-	const messages = [messageOne, messageTwo, messageThree];
-
-	const conversation = {
-		id: conversationId,
-		kind: "PRIVATE" as const,
-		title: "Product launch prep",
-		dmKey,
-		lastMessageAt: messageThree.createdAt,
-		createdAt: ctx.secondsAgo(1800),
-		updatedAt: ctx.now,
-	};
-
-	const viewerStates = [
+	const emailConversations = [
 		{
-			id: ulid(),
-			ownerId: aliceUserId,
-			conversationId,
-			mailbox: "IMPORTANT" as const,
-			unseenCount: 0,
-			createdAt: ctx.secondsAgo(1700),
-			updatedAt: ctx.secondsAgo(200),
-		},
-		{
-			id: ulid(),
-			ownerId: bobUserId,
-			conversationId,
-			mailbox: "IMPORTANT" as const,
+			id: aliceBobConversationId,
+			ownerId: aliceUser.id,
+			kind: "PRIVATE" as const,
+			dmKey: [aliceUser.email, bobUser.email].sort().join(":"),
+			title: "Product launch prep",
+			createdAt: ctx.secondsAgo(3600),
+			updatedAt: ctx.now,
+			lastMessageId: null,
+			lastMessageAt: ctx.secondsAgo(120),
+			uploadedAvatar: null,
 			unseenCount: 1,
-			createdAt: ctx.secondsAgo(1700),
-			updatedAt: ctx.secondsAgo(400),
+		},
+		{
+			id: bobTeamConversationId,
+			ownerId: bobUser.id,
+			kind: "GROUP" as const,
+			dmKey: null,
+			title: "Beta feedback thread",
+			createdAt: ctx.secondsAgo(5400),
+			updatedAt: ctx.now,
+			lastMessageId: null,
+			lastMessageAt: ctx.secondsAgo(300),
+			uploadedAvatar: null,
+			unseenCount: 2,
 		},
 	];
 
-	const deliveries = [
+	const emailConversationParticipants = [
 		{
-			id: ulid(),
-			messageId: messageOneId,
-			recipientIdentityId: bobIdentityId,
-			status: "DELIVERED" as const,
-			transport: "DIRECT" as const,
-			latestStatusChangeAt: ctx.secondsAgo(1100),
+			conversationId: aliceBobConversationId,
+			emailAddressRefId: aliceSelfRefId,
 		},
 		{
-			id: ulid(),
-			messageId: messageTwoId,
-			recipientIdentityId: aliceIdentityId,
-			status: "SEEN" as const,
-			transport: "DIRECT" as const,
-			latestStatusChangeAt: ctx.secondsAgo(850),
+			conversationId: aliceBobConversationId,
+			emailAddressRefId: aliceBobRefId,
 		},
 		{
-			id: ulid(),
-			messageId: messageThreeId,
-			recipientIdentityId: bobIdentityId,
-			status: "QUEUED" as const,
-			transport: "DIRECT" as const,
-			latestStatusChangeAt: ctx.secondsAgo(390),
+			conversationId: bobTeamConversationId,
+			emailAddressRefId: bobSelfRefId,
+		},
+		{
+			conversationId: bobTeamConversationId,
+			emailAddressRefId: bobAliceRefId,
+		},
+		{
+			conversationId: bobTeamConversationId,
+			emailAddressRefId: bobCarolRefId,
 		},
 	];
+
+	const emailMessages = [
+		{
+			id: "seed-message-1",
+			ownerId: aliceUser.id,
+			conversationId: aliceBobConversationId,
+			canonicalMessageId: "<seed-message-1@gebna.test>",
+			from: aliceUser.email,
+			to: bobUser.email,
+			bodySnippet: "Hey Bob, sharing the latest launch checklist.",
+			bodyHTML: "<p>Hey Bob, sharing the latest launch checklist. Let me know what we are missing.</p>",
+			createdAt: ctx.secondsAgo(3200),
+			emailMetadata: {
+				to: [bobUser.email],
+				cc: [],
+				bcc: [],
+				replyTo: [],
+				messageId: "<seed-message-1@gebna.test>",
+			},
+			sizeInBytes: 2048,
+			unseen: false,
+		},
+		{
+			id: "seed-message-2",
+			ownerId: aliceUser.id,
+			conversationId: aliceBobConversationId,
+			canonicalMessageId: "<seed-message-2@gebna.test>",
+			from: bobUser.email,
+			to: aliceUser.email,
+			bodySnippet: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
+			bodyHTML:
+				"<p>Looks solid! I’ll finalize the press brief and loop in Carol for QA.</p>",
+			createdAt: ctx.secondsAgo(1800),
+			emailMetadata: {
+				to: [aliceUser.email],
+				cc: [],
+				bcc: [],
+				replyTo: [bobUser.email],
+				inReplyTo: "<seed-message-1@gebna.test>",
+				messageId: "<seed-message-2@gebna.test>",
+			},
+			sizeInBytes: 1980,
+			unseen: false,
+		},
+		{
+			id: "seed-message-3",
+			ownerId: aliceUser.id,
+			conversationId: aliceBobConversationId,
+			canonicalMessageId: "<seed-message-3@gebna.test>",
+			from: bobUser.email,
+			to: aliceUser.email,
+			bodySnippet: "Sharing the QA checklist—can you verify the onboarding flow by tomorrow?",
+			bodyHTML:
+				"<p>Sharing the QA checklist—can you verify the onboarding flow by tomorrow?</p>",
+			createdAt: ctx.secondsAgo(300),
+			emailMetadata: {
+				to: [aliceUser.email],
+				cc: [carolUser.email],
+				bcc: [],
+				replyTo: [bobUser.email],
+				inReplyTo: "<seed-message-2@gebna.test>",
+				messageId: "<seed-message-3@gebna.test>",
+			},
+			sizeInBytes: 2150,
+			unseen: true,
+		},
+		{
+			id: "seed-message-4",
+			ownerId: bobUser.id,
+			conversationId: bobTeamConversationId,
+			canonicalMessageId: "<seed-message-4@gebna.test>",
+			from: aliceUser.email,
+			to: bobUser.email,
+			bodySnippet: "Here’s the latest beta feedback summary.",
+			bodyHTML: "<p>Here’s the latest beta feedback summary. Thoughts?</p>",
+			createdAt: ctx.secondsAgo(2200),
+			emailMetadata: {
+				to: [bobUser.email],
+				cc: [carolUser.email],
+				bcc: [],
+				replyTo: [aliceUser.email],
+				messageId: "<seed-message-4@gebna.test>",
+			},
+			sizeInBytes: 1750,
+			unseen: true,
+		},
+		{
+			id: "seed-message-5",
+			ownerId: bobUser.id,
+			conversationId: bobTeamConversationId,
+			canonicalMessageId: "<seed-message-5@gebna.test>",
+			from: carolUser.email,
+			to: bobUser.email,
+			bodySnippet: "Logged two UI bugs in the QA sheet.",
+			bodyHTML: "<p>Logged two UI bugs in the QA sheet. Screenshots attached.</p>",
+			createdAt: ctx.secondsAgo(600),
+			emailMetadata: {
+				to: [bobUser.email],
+				cc: [aliceUser.email],
+				bcc: [],
+				replyTo: [carolUser.email],
+				inReplyTo: "<seed-message-4@gebna.test>",
+				messageId: "<seed-message-5@gebna.test>",
+			},
+			sizeInBytes: 1890,
+			unseen: true,
+		},
+	];
+
+	const lastMessageByConversation = emailMessages.reduce<Record<
+		string,
+		{ id: string; createdAt: Date }
+	>>((acc, message) => {
+		const current = acc[message.conversationId];
+		if (!current || current.createdAt < message.createdAt) {
+			acc[message.conversationId] = { id: message.id, createdAt: message.createdAt };
+		}
+		return acc;
+	}, {});
 
 	await db.transaction(async (tx) => {
 		await tx.insert(dbSchema.users).values(users);
 		await tx.insert(dbSchema.accounts).values(accounts);
-		await tx.insert(dbSchema.identities).values(identities);
-		await tx.insert(dbSchema.identityRelationships).values(identityRelationships);
+		await tx.insert(dbSchema.emailAddresses).values(emailAddresses);
+		await tx.insert(dbSchema.emailAddressRefs).values(emailAddressRefs);
+		await tx.insert(dbSchema.emailConversations).values(emailConversations);
+		await tx.insert(dbSchema.emailConversationParticipants).values(emailConversationParticipants);
+		await tx.insert(dbSchema.emailMessages).values(emailMessages);
 
-		await tx.insert(dbSchema.conversations).values(conversation);
-		await tx.insert(dbSchema.messages).values(messages);
-		await tx.insert(dbSchema.conversationParticipants).values(participants);
-		await tx.insert(dbSchema.messageDeliveries).values(deliveries);
-		await tx.insert(dbSchema.conversationViewerStates).values(viewerStates);
-
-		await tx
-			.update(dbSchema.conversations)
-			.set({
-				lastMessageId: messageThreeId,
-				lastMessageAt: messageThree.createdAt,
-				updatedAt: ctx.now,
-			})
-			.where(eq(dbSchema.conversations.id, conversationId));
-
-		await tx
-			.update(dbSchema.conversationParticipants)
-			.set({ lastSeenMessageId: messageThreeId })
-			.where(eq(dbSchema.conversationParticipants.id, aliceParticipantId));
-
-		await tx
-			.update(dbSchema.conversationParticipants)
-			.set({ lastSeenMessageId: messageTwoId })
-			.where(eq(dbSchema.conversationParticipants.id, bobParticipantId));
+		await Promise.all(
+			Object.entries(lastMessageByConversation).map(([conversationId, last]) =>
+				tx
+					.update(dbSchema.emailConversations)
+					.set({
+						lastMessageId: last.id,
+						lastMessageAt: last.createdAt,
+						updatedAt: ctx.now,
+					})
+					.where(eq(dbSchema.emailConversations.id, conversationId))
+			)
+		);
 	});
 }
 
@@ -341,7 +435,7 @@ async function ensureEmptyOrFail(db: DBInstance, shouldReset: boolean) {
 
 	if (existingUsers.length > 0) {
 		throw new Error(
-			"Database already has data. Re-run with `pnpm --filter @gebna/db seed -- - reset` to wipe and reseed."
+			"Database already has data. Re-run with `pnpm --filter @gebna/db seed -- reset` to wipe and reseed."
 		);
 	}
 }
