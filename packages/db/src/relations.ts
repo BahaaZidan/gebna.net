@@ -12,13 +12,9 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.users.id,
 			to: r.accounts.userId,
 		}),
-		relationships: r.many.identityRelationships({
+		emailConversations: r.many.emailConversations({
 			from: r.users.id,
-			to: r.identityRelationships.ownerId,
-		}),
-		identity: r.one.identities({
-			from: r.users.id,
-			to: r.identities.ownerId,
+			to: r.emailConversations.ownerId,
 		}),
 	},
 	sessions: {
@@ -33,94 +29,61 @@ export const relations = defineRelations(schema, (r) => ({
 			to: r.users.id,
 		}),
 	},
-	identities: {
-		owner: r.one.users({
-			from: r.identities.ownerId,
-			to: r.users.id,
-		}),
-		relationships: r.many.identityRelationships({
-			from: r.identities.id,
-			to: r.identityRelationships.identityId,
-		}),
-		participations: r.many.conversationParticipants({
-			from: r.identities.id,
-			to: r.conversationParticipants.identityId,
-		}),
-	},
-	identityRelationships: {
-		owner: r.one.users({
-			from: r.identityRelationships.ownerId,
-			to: r.users.id,
-		}),
-		identity: r.one.identities({
-			from: r.identityRelationships.identityId,
-			to: r.identities.id,
-		}),
-	},
-	conversations: {
-		participants: r.many.conversationParticipants({
-			from: r.conversations.id,
-			to: r.conversationParticipants.conversationId,
-		}),
-		messages: r.many.messages({
-			from: r.conversations.id,
-			to: r.messages.conversationId,
-		}),
-		viewerStates: r.many.conversationViewerStates({
-			from: r.conversations.id,
-			to: r.conversationViewerStates.conversationId,
-		}),
-		lastMessage: r.one.messages({
-			from: r.conversations.lastMessageId,
-			to: r.messages.id,
-		}),
-	},
-	conversationParticipants: {
-		conversation: r.one.conversations({
-			from: r.conversationParticipants.conversationId,
-			to: r.conversations.id,
-		}),
-		identity: r.one.identities({
-			from: r.conversationParticipants.identityId,
-			to: r.identities.id,
+	emailAddresses: {},
+	emailAddressRefs: {
+		address_: r.one.emailAddresses({
+			from: r.emailAddressRefs.address,
+			to: r.emailAddresses.address,
 		}),
 		owner: r.one.users({
-			from: r.conversationParticipants.ownerId,
+			from: r.emailAddressRefs.ownerId,
 			to: r.users.id,
 		}),
 	},
-	conversationViewerStates: {
-		conversation: r.one.conversations({
-			from: r.conversationViewerStates.conversationId,
-			to: r.conversations.id,
-		}),
+	emailConversations: {
 		owner: r.one.users({
-			from: r.conversationViewerStates.ownerId,
+			from: r.emailConversations.ownerId,
 			to: r.users.id,
 		}),
-	},
-	messages: {
-		conversation: r.one.conversations({
-			from: r.messages.conversationId,
-			to: r.conversations.id,
+		messages: r.many.emailMessages({
+			from: r.emailConversations.id,
+			to: r.emailMessages.conversationId,
 		}),
-		senderIdentity: r.one.identities({
-			from: r.messages.senderIdentityId,
-			to: r.identities.id,
+		lastMessage: r.one.emailMessages({
+			from: r.emailConversations.lastMessageId,
+			to: r.emailMessages.id,
 		}),
-		deliveries: r.many.messageDeliveries({
-			from: r.messages.id,
-			to: r.messageDeliveries.messageId,
+		participants: r.many.emailConversationParticipants({
+			from: r.emailConversations.id,
+			to: r.emailConversationParticipants.conversationId,
 		}),
 	},
-	messageDeliveries: {
-		message: r.one.messages({
-			from: r.messageDeliveries.messageId,
-			to: r.messages.id,
+	emailConversationParticipants: {
+		emailAddressRef: r.one.emailAddressRefs({
+			from: r.emailConversationParticipants.emailAddressRefId,
+			to: r.emailAddressRefs.id,
 		}),
-		recipientIdentity: r.one.identities({
-			from: r.messageDeliveries.recipientIdentityId,
-			to: r.identities.id,
+		conversation: r.one.emailConversations({
+			from: r.emailConversationParticipants.conversationId,
+			to: r.emailConversations.id,
+		}),
+	},
+	emailMessages: {
+		owner: r.one.users({
+			from: r.emailMessages.ownerId,
+			to: r.users.id,
+		}),
+		conversation: r.one.emailConversations({
+			from: r.emailMessages.conversationId,
+			to: r.emailConversations.id,
+		}),
+		fromRef: r.one.emailAddressRefs({
+			from: [r.emailMessages.ownerId, r.emailMessages.from],
+			to: [r.emailAddressRefs.ownerId, r.emailAddressRefs.address],
+		}),
+		toRef: r.one.emailAddressRefs({
+			from: [r.emailMessages.ownerId, r.emailMessages.to],
+			to: [r.emailAddressRefs.ownerId, r.emailAddressRefs.address],
 		}),
 	},
 }));

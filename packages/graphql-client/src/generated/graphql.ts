@@ -17,134 +17,66 @@ export type Scalars = {
   DateTime: { input: string; output: string; }
 };
 
-export type Conversation = Node & {
-  __typename?: 'Conversation';
-  avatar?: Maybe<Scalars['String']['output']>;
-  id: Scalars['ID']['output'];
-  kind: ConversationKind;
-  lastMessage?: Maybe<Message>;
-  messages: ConversationMessagesConnection;
-  /** A list of all past and present participations in this conversation. */
-  participations: Array<ConversationParticipation>;
-  title?: Maybe<Scalars['String']['output']>;
-  viewerState?: Maybe<Array<ConversationViewerState>>;
-};
-
-
-export type ConversationMessagesArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  before?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
-};
-
-export type ConversationKind =
-  | 'GROUP'
-  | 'PRIVATE';
-
-export type ConversationMessagesConnection = {
-  __typename?: 'ConversationMessagesConnection';
-  edges?: Maybe<Array<Maybe<ConversationMessagesConnectionEdge>>>;
-  pageInfo: PageInfo;
-};
-
-export type ConversationMessagesConnectionEdge = {
-  __typename?: 'ConversationMessagesConnectionEdge';
-  cursor: Scalars['String']['output'];
-  node?: Maybe<Message>;
-};
-
-export type ConversationParticipation = {
-  __typename?: 'ConversationParticipation';
-  conversation: Conversation;
-  id: Scalars['ID']['output'];
-  identity: Identity;
-  joinedAt: Scalars['DateTime']['output'];
-  role: ConversationParticipationRole;
-  state: ConversationParticipationState;
-};
-
-export type ConversationParticipationRole =
-  | 'ADMIN'
-  | 'MEMBER';
-
-export type ConversationParticipationState =
-  | 'ACTIVE'
-  | 'LEFT';
-
-export type ConversationViewerState = {
-  __typename?: 'ConversationViewerState';
-  id: Scalars['ID']['output'];
-  mailbox: ConversationViewerStateMailbox;
-  unseenCount: Scalars['Int']['output'];
-};
-
-export type ConversationViewerStateMailbox =
-  | 'IMPORTANT'
-  | 'TRASH';
-
-export type Identity = {
-  __typename?: 'Identity';
+export type EmailAddressRef = Node & {
+  __typename?: 'EmailAddressRef';
   address: Scalars['String']['output'];
   avatar: Scalars['String']['output'];
   id: Scalars['ID']['output'];
-  name?: Maybe<Scalars['String']['output']>;
-  /** The conversation participations done by this identity */
-  participations: IdentityParticipationsConnection;
-  viewerRelationship?: Maybe<Array<IdentityRelationship>>;
+  isSelf: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+};
+
+export type EmailConversation = Node & {
+  __typename?: 'EmailConversation';
+  avatar?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  kind: EmailConversationKind;
+  lastMessage: EmailMessage;
+  messages: EmailConversationMessagesConnection;
+  participations: Array<EmailConversationParticipation>;
+  title?: Maybe<Scalars['String']['output']>;
+  unseenCount: Scalars['Int']['output'];
 };
 
 
-export type IdentityParticipationsArgs = {
+export type EmailConversationMessagesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   before?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   last?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type IdentityParticipationsConnection = {
-  __typename?: 'IdentityParticipationsConnection';
-  edges?: Maybe<Array<Maybe<IdentityParticipationsConnectionEdge>>>;
+export type EmailConversationKind =
+  | 'GROUP'
+  | 'PRIVATE';
+
+export type EmailConversationMessagesConnection = {
+  __typename?: 'EmailConversationMessagesConnection';
+  edges: Array<EmailConversationMessagesConnectionEdge>;
   pageInfo: PageInfo;
 };
 
-export type IdentityParticipationsConnectionEdge = {
-  __typename?: 'IdentityParticipationsConnectionEdge';
+export type EmailConversationMessagesConnectionEdge = {
+  __typename?: 'EmailConversationMessagesConnectionEdge';
   cursor: Scalars['String']['output'];
-  node?: Maybe<ConversationParticipation>;
+  node: EmailMessage;
 };
 
-export type IdentityRelationship = {
-  __typename?: 'IdentityRelationship';
-  avatar?: Maybe<Scalars['String']['output']>;
-  givenName?: Maybe<Scalars['String']['output']>;
-  id: Scalars['ID']['output'];
+export type EmailConversationParticipation = {
+  __typename?: 'EmailConversationParticipation';
+  conversation: EmailConversation;
+  emailAddressRef: EmailAddressRef;
 };
 
-export type Message = Node & {
-  __typename?: 'Message';
-  conversation: Conversation;
+export type EmailMessage = Node & {
+  __typename?: 'EmailMessage';
   createdAt: Scalars['DateTime']['output'];
-  deliveries: Array<MessageDelivery>;
-  hasRawHTML?: Maybe<Scalars['Boolean']['output']>;
+  from: EmailAddressRef;
   html?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
-  plainText?: Maybe<Scalars['String']['output']>;
-  rawHTML?: Maybe<Scalars['String']['output']>;
-  sender: Identity;
   snippet?: Maybe<Scalars['String']['output']>;
+  to: EmailAddressRef;
 };
-
-export type MessageDelivery = {
-  __typename?: 'MessageDelivery';
-  id: Scalars['ID']['output'];
-  recipient: Identity;
-  transport: MessageDeliveryTransport;
-};
-
-export type MessageDeliveryTransport =
-  | 'DIRECT'
-  | 'EMAIL';
 
 export type Node = {
   id: Scalars['ID']['output'];
@@ -178,7 +110,28 @@ export type QueryNodesArgs = {
 export type Viewer = {
   __typename?: 'Viewer';
   avatar: Scalars['String']['output'];
+  emailAddress: Scalars['String']['output'];
+  emailConversations: ViewerEmailConversationsConnection;
   id: Scalars['ID']['output'];
-  identity: Identity;
   name: Scalars['String']['output'];
+};
+
+
+export type ViewerEmailConversationsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type ViewerEmailConversationsConnection = {
+  __typename?: 'ViewerEmailConversationsConnection';
+  edges: Array<ViewerEmailConversationsConnectionEdge>;
+  pageInfo: PageInfo;
+};
+
+export type ViewerEmailConversationsConnectionEdge = {
+  __typename?: 'ViewerEmailConversationsConnectionEdge';
+  cursor: Scalars['String']['output'];
+  node: EmailConversation;
 };
