@@ -4,30 +4,31 @@ import { getRequestEvent, query } from "$app/server";
 
 export const getEmailConvoList = query(async () => {
 	const { fetch } = getRequestEvent();
-	const result = await graphqlRequest(
-		fetch,
-		graphql(`
-			query ViewerEmailConversationsListQuery {
-				viewer {
-					id
-					emailConversations {
-						edges {
-							node {
+	const query = graphql(`
+		query ViewerEmailConversationsListQuery {
+			viewer {
+				id
+				emailConversations {
+					edges {
+						node {
+							id
+							title
+							unseenCount
+							lastMessage {
 								id
-								title
-								unseenCount
-								lastMessage {
-									id
-									snippet
-									createdAt
-								}
+								snippet
+								createdAt
 							}
 						}
 					}
 				}
 			}
-		`)
-	);
+		}
+	`);
+	const result = await graphqlRequest({
+		query,
+		fetch,
+	});
 
 	return result;
 });
