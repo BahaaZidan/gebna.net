@@ -68,13 +68,21 @@ export function getAuthServer({
 			user: {
 				create: {
 					async after(user) {
-						await db.insert(dbSchema.identities).values({
-							id: ulid(),
-							avatarPlaceholder: generateImagePlaceholder(user.name || user.email),
-							kind: "INTERNAL",
-							ownerId: user.id,
-							address: user.email,
-							name: user.name,
+						await db.transaction(async (tx) => {
+							const [addressRecord] = await tx
+								.insert(dbSchema.emailAddresses)
+								.values({
+									name: user.name,
+									address: user.email,
+									avatarPlaceholder: generateImagePlaceholder(user.name || user.email),
+								})
+								.returning();
+							if (!addressRecord) throw new Error("something_went_wrong");
+
+							await tx.insert(dbSchema.emailAddressRefs).values({
+								ownerId: user.id,
+								address: addressRecord.address,
+							});
 						});
 					},
 				},

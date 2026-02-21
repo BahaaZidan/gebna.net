@@ -1,12 +1,5 @@
 import { getTableConfig, relations } from "@gebna/db";
-import {
-	ConversationKind,
-	conversationParticipants,
-	Mailbox,
-	ParticipantRole,
-	ParticipantState,
-	Transport,
-} from "@gebna/db/schema";
+import { EmailConversationKind } from "@gebna/db/schema";
 import SchemaBuilder from "@pothos/core";
 import DrizzlePlugin from "@pothos/plugin-drizzle";
 import RelayPlugin from "@pothos/plugin-relay";
@@ -16,9 +9,6 @@ import { DateTimeResolver } from "graphql-scalars";
 
 import type { GraphQLResolverContext } from "../types.js";
 
-type ViewerActiveParticipations = Array<
-	Pick<typeof conversationParticipants.$inferSelect, "ownerId" | "state">
->;
 const builder = new SchemaBuilder<{
 	DrizzleRelations: typeof relations;
 	Context: GraphQLResolverContext;
@@ -30,7 +20,6 @@ const builder = new SchemaBuilder<{
 	};
 	AuthScopes: {
 		ownedByViewer: string;
-		viewerActiveParticipant: ViewerActiveParticipations;
 	};
 }>({
 	plugins: [RelayPlugin, ScopeAuthPlugin, WithInputPlugin, DrizzlePlugin],
@@ -43,15 +32,6 @@ const builder = new SchemaBuilder<{
 		authScopes: async (context) => {
 			return {
 				ownedByViewer: (userId) => userId === context.viewer.id,
-				viewerActiveParticipant: (
-					participations: Array<
-						Pick<typeof conversationParticipants.$inferSelect, "ownerId" | "state">
-					>
-				) =>
-					participations
-						.filter((p) => p.state === "ACTIVE" && !!p.ownerId)
-						.map((p) => p.ownerId)
-						.includes(context.viewer.id),
 			};
 		},
 	},
@@ -59,222 +39,101 @@ const builder = new SchemaBuilder<{
 
 builder.addScalarType("DateTime", DateTimeResolver);
 
-const ConversationViewerStateMailboxEnum = builder.enumType("ConversationViewerStateMailbox", {
-	values: Mailbox,
-});
-const ConversationViewerStateRef = builder.drizzleObject("conversationViewerStates", {
-	name: "ConversationViewerState",
-	select: {
-		columns: {
-			id: true,
-		},
-	},
-	fields: (t) => ({
-		id: t.globalID({
-			nullable: false,
-			resolve: (parent) => {
-				return { id: parent.id, type: "ConversationViewerState" };
-			},
-		}),
-		unseenCount: t.exposeInt("unseenCount", { nullable: false }),
-		mailbox: t.expose("mailbox", {
-			type: ConversationViewerStateMailboxEnum,
-			nullable: false,
-		}),
-	}),
-});
-
-const MessageDeliveryTransportEnum = builder.enumType("MessageDeliveryTransport", {
-	values: Transport,
-});
-const MessageDeliveryRef = builder.drizzleObject("messageDeliveries", {
-	name: "MessageDelivery",
-	select: {
-		columns: { id: true },
-	},
-	fields: (t) => ({
-		id: t.globalID({
-			nullable: false,
-			resolve: (parent) => {
-				return { id: parent.id, type: "MessageDelivery" };
-			},
-		}),
-		recipient: t.relation("recipientIdentity", { nullable: false }),
-		transport: t.expose("transport", {
-			type: MessageDeliveryTransportEnum,
-			nullable: false,
-		}),
-	}),
-});
-
-const MessageRef = builder.drizzleNode("messages", {
-	name: "Message",
+const EmailAddressRefRef = builder.drizzleNode("emailAddressRefs", {
+	name: "EmailAddressRef",
 	id: {
 		column: (t) => t.id,
 	},
 	select: {
-		columns: {},
-		with: {
-			conversation: {
-				columns: {},
-				with: {
-					participants: {
-						columns: {
-							ownerId: true,
-							state: true,
-						},
-					},
-				},
-			},
+		columns: {
+			ownerId: true,
+			givenName: true,
+			givenAvatar: true,
+		},
+		with: { address_: true },
+	},
+	authScopes: (m) => ({ ownedByViewer: m.ownerId }),
+	fields: (t) => ({
+		address: t.exposeString("address", { nullable: false }),
+		name: t.string({
+			nullable: false,
+			resolve: (ref) => ref.givenName || ref.address_?.name || ref.address_?.address!,
+		}),
+		avatar: t.string({
+			nullable: false,
+			resolve: (ref) =>
+				ref.givenAvatar || ref.address_?.inferredAvatar || ref.address_?.avatarPlaceholder!,
+		}),
+		isSelf: t.boolean({
+			nullable: false,
+			resolve: (ref, args, ctx) => ctx.viewer.email === ref.address_?.address,
+		}),
+	}),
+});
+
+const EmailMessageRef = builder.drizzleNode("emailMessages", {
+	name: "EmailMessage",
+	id: {
+		column: (t) => t.id,
+	},
+	select: {
+		columns: {
+			ownerId: true,
 		},
 	},
-	authScopes: (m) => ({ viewerActiveParticipant: m.conversation?.participants }),
+	authScopes: (m) => ({ ownedByViewer: m.ownerId }),
 	fields: (t) => ({
-		conversation: t.relation("conversation", { nullable: false }),
-		sender: t.relation("senderIdentity", { nullable: false }),
+		from: t.relation("fromRef", { nullable: false }),
+		to: t.relation("toRef", { nullable: false }),
 		createdAt: t.expose("createdAt", {
 			type: "DateTime",
 			nullable: false,
 		}),
-		deliveries: t.relation("deliveries", { nullable: false }),
-		snippet: t.exposeString("bodyPlainTextSnippet"),
-		plainText: t.exposeString("bodyPlainText"),
-		hasRawHTML: t.exposeBoolean("hasBodyRawHTML"),
-		rawHTML: t.exposeString("bodyRawHTML"),
-		html: t.exposeString("bodyHTMLFromMD"),
+		snippet: t.exposeString("bodySnippet"),
+		html: t.exposeString("bodyHTML"),
 	}),
 });
 
-const ConversationParticipationRoleEnum = builder.enumType("ConversationParticipationRole", {
-	values: ParticipantRole,
-});
-const ConversationParticipationStateEnum = builder.enumType("ConversationParticipationState", {
-	values: ParticipantState,
-});
-const ConversationParticipationRef = builder.drizzleObject("conversationParticipants", {
-	name: "ConversationParticipation",
+const EmailConversationParticipationRef = builder.drizzleObject("emailConversationParticipants", {
+	name: "EmailConversationParticipation",
 	select: {
-		columns: { id: true },
+		columns: {},
 	},
 	fields: (t) => ({
-		id: t.globalID({
-			nullable: false,
-			resolve: (parent) => {
-				return { id: parent.id, type: "ConversationParticipation" };
-			},
-		}),
 		conversation: t.relation("conversation", { nullable: false }),
-		identity: t.relation("identity", { nullable: false }),
-		joinedAt: t.expose("joinedAt", {
-			type: "DateTime",
-			nullable: false,
-		}),
-		role: t.expose("role", {
-			type: ConversationParticipationRoleEnum,
-			nullable: false,
-		}),
-		state: t.expose("state", {
-			type: ConversationParticipationStateEnum,
-			nullable: false,
-		}),
+		emailAddressRef: t.relation("emailAddressRef", { nullable: false }),
 	}),
 });
 
-const ConversationKindEnum = builder.enumType("ConversationKind", { values: ConversationKind });
-const ConversationRef = builder.drizzleNode("conversations", {
-	name: "Conversation",
+const EmailConversationKindEnum = builder.enumType("EmailConversationKind", {
+	values: EmailConversationKind,
+});
+const EmailConversationRef = builder.drizzleNode("emailConversations", {
+	name: "EmailConversation",
 	id: {
 		column: (t) => t.id,
 	},
 	select: {
-		columns: {},
-		with: {
-			participants: {
-				columns: {
-					ownerId: true,
-					state: true,
-				},
-			},
-		},
+		columns: { ownerId: true },
 	},
-	authScopes: (c) => ({ viewerActiveParticipant: c.participants }),
+	authScopes: (c) => ({ ownedByViewer: c.ownerId }),
 	fields: (t) => ({
 		title: t.exposeString("title"),
 		kind: t.expose("kind", {
-			type: ConversationKindEnum,
+			type: EmailConversationKindEnum,
 			nullable: false,
 		}),
 		avatar: t.exposeString("uploadedAvatar"),
 		participations: t.relation("participants", {
 			nullable: false,
-			description: "A list of all past and present participations in this conversation.",
 		}),
-		lastMessage: t.relation("lastMessage"),
-		messages: t.relatedConnection("messages", { nullable: false }),
-		viewerState: t.relation("viewerStates", {
-			query: (args, context, pathInfo) => ({
-				where: {
-					ownerId: context.viewer.id,
-				},
-				limit: 1,
-			}),
-		}),
-	}),
-});
-
-const IdentityRelationship = builder.drizzleObject("identityRelationships", {
-	name: "IdentityRelationship",
-	select: {
-		columns: { id: true },
-	},
-	fields: (t) => ({
-		id: t.globalID({
+		lastMessage: t.relation("lastMessage", { nullable: false }),
+		messages: t.relatedConnection("messages", {
 			nullable: false,
-			resolve: (parent) => {
-				return { id: parent.id, type: "IdentityRelationship" };
-			},
+			edgesNullable: false,
+			nodeNullable: false,
 		}),
-		givenName: t.exposeString("givenName"),
-		avatar: t.exposeString("uploadedAvatar"),
-	}),
-});
-
-const IdentityRef = builder.drizzleObject("identities", {
-	name: "Identity",
-	select: {
-		columns: { id: true },
-	},
-	fields: (t) => ({
-		id: t.globalID({
-			nullable: false,
-			resolve: (parent) => {
-				return { id: parent.id, type: "Identity" };
-			},
-		}),
-		name: t.exposeString("name"),
-		avatar: t.string({
-			nullable: false,
-			select: {
-				columns: {
-					avatarPlaceholder: true,
-					inferredAvatar: true,
-				},
-			},
-			resolve: (user) => user.inferredAvatar || user.avatarPlaceholder,
-		}),
-		address: t.exposeString("address", { nullable: false }),
-		participations: t.relatedConnection("participations", {
-			nullable: false,
-			description: "The conversation participations done by this identity",
-		}),
-		viewerRelationship: t.relation("relationships", {
-			query: (args, context, pathInfo) => ({
-				where: {
-					ownerId: context.viewer.id,
-				},
-				limit: 1,
-			}),
-		}),
+		unseenCount: t.exposeInt("unseenCount", { nullable: false }),
 	}),
 });
 
@@ -283,6 +142,8 @@ const ViewerRef = builder.drizzleObject("users", {
 	select: {
 		columns: {
 			id: true,
+			avatarPlaceholder: true,
+			uploadedAvatar: true,
 		},
 	},
 	fields: (t) => ({
@@ -295,16 +156,13 @@ const ViewerRef = builder.drizzleObject("users", {
 		name: t.exposeString("name", { nullable: false }),
 		avatar: t.string({
 			nullable: false,
-			select: {
-				columns: {
-					avatarPlaceholder: true,
-					uploadedAvatar: true,
-				},
-			},
 			resolve: (user) => user.uploadedAvatar || user.avatarPlaceholder,
 		}),
-		identity: t.relation("identity", {
+		emailAddress: t.exposeString("email", { nullable: false }),
+		emailConversations: t.relatedConnection("emailConversations", {
 			nullable: false,
+			edgesNullable: false,
+			nodeNullable: false,
 		}),
 	}),
 });

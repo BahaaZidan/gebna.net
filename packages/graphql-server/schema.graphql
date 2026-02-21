@@ -1,115 +1,54 @@
-type Conversation implements Node {
-  avatar: String
-  id: ID!
-  kind: ConversationKind!
-  lastMessage: Message
-  messages(after: String, before: String, first: Int, last: Int): ConversationMessagesConnection!
-
-  """A list of all past and present participations in this conversation."""
-  participations: [ConversationParticipation!]!
-  title: String
-  viewerState: [ConversationViewerState!]
-}
-
-enum ConversationKind {
-  GROUP
-  PRIVATE
-}
-
-type ConversationMessagesConnection {
-  edges: [ConversationMessagesConnectionEdge]
-  pageInfo: PageInfo!
-}
-
-type ConversationMessagesConnectionEdge {
-  cursor: String!
-  node: Message
-}
-
-type ConversationParticipation {
-  conversation: Conversation!
-  id: ID!
-  identity: Identity!
-  joinedAt: DateTime!
-  role: ConversationParticipationRole!
-  state: ConversationParticipationState!
-}
-
-enum ConversationParticipationRole {
-  ADMIN
-  MEMBER
-}
-
-enum ConversationParticipationState {
-  ACTIVE
-  LEFT
-}
-
-type ConversationViewerState {
-  id: ID!
-  mailbox: ConversationViewerStateMailbox!
-  unseenCount: Int!
-}
-
-enum ConversationViewerStateMailbox {
-  IMPORTANT
-  TRASH
-}
-
 """
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
 """
 scalar DateTime
 
-type Identity {
+type EmailAddressRef implements Node {
   address: String!
   avatar: String!
   id: ID!
-  name: String
-
-  """The conversation participations done by this identity"""
-  participations(after: String, before: String, first: Int, last: Int): IdentityParticipationsConnection!
-  viewerRelationship: [IdentityRelationship!]
+  isSelf: Boolean!
+  name: String!
 }
 
-type IdentityParticipationsConnection {
-  edges: [IdentityParticipationsConnectionEdge]
+type EmailConversation implements Node {
+  avatar: String
+  id: ID!
+  kind: EmailConversationKind!
+  lastMessage: EmailMessage!
+  messages(after: String, before: String, first: Int, last: Int): EmailConversationMessagesConnection!
+  participations: [EmailConversationParticipation!]!
+  title: String
+  unseenCount: Int!
+}
+
+enum EmailConversationKind {
+  GROUP
+  PRIVATE
+}
+
+type EmailConversationMessagesConnection {
+  edges: [EmailConversationMessagesConnectionEdge!]!
   pageInfo: PageInfo!
 }
 
-type IdentityParticipationsConnectionEdge {
+type EmailConversationMessagesConnectionEdge {
   cursor: String!
-  node: ConversationParticipation
+  node: EmailMessage!
 }
 
-type IdentityRelationship {
-  avatar: String
-  givenName: String
-  id: ID!
+type EmailConversationParticipation {
+  conversation: EmailConversation!
+  emailAddressRef: EmailAddressRef!
 }
 
-type Message implements Node {
-  conversation: Conversation!
+type EmailMessage implements Node {
   createdAt: DateTime!
-  deliveries: [MessageDelivery!]!
-  hasRawHTML: Boolean
+  from: EmailAddressRef!
   html: String
   id: ID!
-  plainText: String
-  rawHTML: String
-  sender: Identity!
   snippet: String
-}
-
-type MessageDelivery {
-  id: ID!
-  recipient: Identity!
-  transport: MessageDeliveryTransport!
-}
-
-enum MessageDeliveryTransport {
-  DIRECT
-  EMAIL
+  to: EmailAddressRef!
 }
 
 interface Node {
@@ -131,7 +70,18 @@ type Query {
 
 type Viewer {
   avatar: String!
+  emailAddress: String!
+  emailConversations(after: String, before: String, first: Int, last: Int): ViewerEmailConversationsConnection!
   id: ID!
-  identity: Identity!
   name: String!
+}
+
+type ViewerEmailConversationsConnection {
+  edges: [ViewerEmailConversationsConnectionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ViewerEmailConversationsConnectionEdge {
+  cursor: String!
+  node: EmailConversation!
 }
