@@ -138,6 +138,7 @@ async function seedDatabase(db: DBInstance) {
 
 	const carolSelfRefId = ulid();
 	const carolAliceRefId = ulid();
+	const carolBobRefId = ulid();
 
 	const emailAddressRefs = [
 		{
@@ -228,10 +229,24 @@ async function seedDatabase(db: DBInstance) {
 			isBlocked: false,
 			isSpam: false,
 		},
+		{
+			id: carolBobRefId,
+			ownerId: carolUser.id,
+			address: bobUser.email,
+			givenName: "Bob",
+			givenAvatar: null,
+			createdAt: ctx.now,
+			updatedAt: ctx.now,
+			isBlocked: false,
+			isSpam: false,
+		},
 	];
 
 	const aliceBobConversationId = "seed-conversation-alice-bob";
+	const bobAliceConversationId = "seed-conversation-bob-alice";
 	const bobTeamConversationId = "seed-conversation-bob-team";
+	const aliceTeamConversationId = "seed-conversation-alice-team";
+	const carolTeamConversationId = "seed-conversation-carol-team";
 
 	const emailConversations = [
 		{
@@ -248,6 +263,19 @@ async function seedDatabase(db: DBInstance) {
 			unseenCount: 1,
 		},
 		{
+			id: bobAliceConversationId,
+			ownerId: bobUser.id,
+			kind: "PRIVATE" as const,
+			dmKey: [aliceUser.email, bobUser.email].sort().join(":"),
+			title: "Product launch prep",
+			createdAt: ctx.secondsAgo(3600),
+			updatedAt: ctx.now,
+			lastMessageId: null,
+			lastMessageAt: ctx.secondsAgo(120),
+			uploadedAvatar: null,
+			unseenCount: 0,
+		},
+		{
 			id: bobTeamConversationId,
 			ownerId: bobUser.id,
 			kind: "GROUP" as const,
@@ -259,6 +287,32 @@ async function seedDatabase(db: DBInstance) {
 			lastMessageAt: ctx.secondsAgo(300),
 			uploadedAvatar: null,
 			unseenCount: 2,
+		},
+		{
+			id: aliceTeamConversationId,
+			ownerId: aliceUser.id,
+			kind: "GROUP" as const,
+			dmKey: null,
+			title: "Beta feedback thread",
+			createdAt: ctx.secondsAgo(5400),
+			updatedAt: ctx.now,
+			lastMessageId: null,
+			lastMessageAt: ctx.secondsAgo(300),
+			uploadedAvatar: null,
+			unseenCount: 2,
+		},
+		{
+			id: carolTeamConversationId,
+			ownerId: carolUser.id,
+			kind: "GROUP" as const,
+			dmKey: null,
+			title: "Beta feedback thread",
+			createdAt: ctx.secondsAgo(5400),
+			updatedAt: ctx.now,
+			lastMessageId: null,
+			lastMessageAt: ctx.secondsAgo(300),
+			uploadedAvatar: null,
+			unseenCount: 1,
 		},
 	];
 
@@ -272,6 +326,14 @@ async function seedDatabase(db: DBInstance) {
 			emailAddressRefId: aliceBobRefId,
 		},
 		{
+			conversationId: bobAliceConversationId,
+			emailAddressRefId: bobSelfRefId,
+		},
+		{
+			conversationId: bobAliceConversationId,
+			emailAddressRefId: bobAliceRefId,
+		},
+		{
 			conversationId: bobTeamConversationId,
 			emailAddressRefId: bobSelfRefId,
 		},
@@ -282,6 +344,30 @@ async function seedDatabase(db: DBInstance) {
 		{
 			conversationId: bobTeamConversationId,
 			emailAddressRefId: bobCarolRefId,
+		},
+		{
+			conversationId: aliceTeamConversationId,
+			emailAddressRefId: aliceSelfRefId,
+		},
+		{
+			conversationId: aliceTeamConversationId,
+			emailAddressRefId: aliceBobRefId,
+		},
+		{
+			conversationId: aliceTeamConversationId,
+			emailAddressRefId: aliceCarolRefId,
+		},
+		{
+			conversationId: carolTeamConversationId,
+			emailAddressRefId: carolSelfRefId,
+		},
+		{
+			conversationId: carolTeamConversationId,
+			emailAddressRefId: carolAliceRefId,
+		},
+		{
+			conversationId: carolTeamConversationId,
+			emailAddressRefId: carolBobRefId,
 		},
 	];
 
@@ -351,6 +437,70 @@ async function seedDatabase(db: DBInstance) {
 			unseen: true,
 		},
 		{
+			id: "seed-message-1-bob",
+			ownerId: bobUser.id,
+			conversationId: bobAliceConversationId,
+			canonicalMessageId: "<seed-message-1@gebna.test>",
+			from: aliceUser.email,
+			to: bobUser.email,
+			bodySnippet: "Hey Bob, sharing the latest launch checklist.",
+			bodyHTML: "<p>Hey Bob, sharing the latest launch checklist. Let me know what we are missing.</p>",
+			createdAt: ctx.secondsAgo(3200),
+			emailMetadata: {
+				to: [bobUser.email],
+				cc: [],
+				bcc: [],
+				replyTo: [],
+				messageId: "<seed-message-1@gebna.test>",
+			},
+			sizeInBytes: 2048,
+			unseen: false,
+		},
+		{
+			id: "seed-message-2-bob",
+			ownerId: bobUser.id,
+			conversationId: bobAliceConversationId,
+			canonicalMessageId: "<seed-message-2@gebna.test>",
+			from: bobUser.email,
+			to: aliceUser.email,
+			bodySnippet: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
+			bodyHTML:
+				"<p>Looks solid! I’ll finalize the press brief and loop in Carol for QA.</p>",
+			createdAt: ctx.secondsAgo(1800),
+			emailMetadata: {
+				to: [aliceUser.email],
+				cc: [],
+				bcc: [],
+				replyTo: [bobUser.email],
+				inReplyTo: "<seed-message-1@gebna.test>",
+				messageId: "<seed-message-2@gebna.test>",
+			},
+			sizeInBytes: 1980,
+			unseen: false,
+		},
+		{
+			id: "seed-message-3-bob",
+			ownerId: bobUser.id,
+			conversationId: bobAliceConversationId,
+			canonicalMessageId: "<seed-message-3@gebna.test>",
+			from: bobUser.email,
+			to: aliceUser.email,
+			bodySnippet: "Sharing the QA checklist—can you verify the onboarding flow by tomorrow?",
+			bodyHTML:
+				"<p>Sharing the QA checklist—can you verify the onboarding flow by tomorrow?</p>",
+			createdAt: ctx.secondsAgo(300),
+			emailMetadata: {
+				to: [aliceUser.email],
+				cc: [carolUser.email],
+				bcc: [],
+				replyTo: [bobUser.email],
+				inReplyTo: "<seed-message-2@gebna.test>",
+				messageId: "<seed-message-3@gebna.test>",
+			},
+			sizeInBytes: 2150,
+			unseen: true,
+		},
+		{
 			id: "seed-message-4",
 			ownerId: bobUser.id,
 			conversationId: bobTeamConversationId,
@@ -374,6 +524,88 @@ async function seedDatabase(db: DBInstance) {
 			id: "seed-message-5",
 			ownerId: bobUser.id,
 			conversationId: bobTeamConversationId,
+			canonicalMessageId: "<seed-message-5@gebna.test>",
+			from: carolUser.email,
+			to: bobUser.email,
+			bodySnippet: "Logged two UI bugs in the QA sheet.",
+			bodyHTML: "<p>Logged two UI bugs in the QA sheet. Screenshots attached.</p>",
+			createdAt: ctx.secondsAgo(600),
+			emailMetadata: {
+				to: [bobUser.email],
+				cc: [aliceUser.email],
+				bcc: [],
+				replyTo: [carolUser.email],
+				inReplyTo: "<seed-message-4@gebna.test>",
+				messageId: "<seed-message-5@gebna.test>",
+			},
+			sizeInBytes: 1890,
+			unseen: true,
+		},
+		{
+			id: "seed-message-4-alice",
+			ownerId: aliceUser.id,
+			conversationId: aliceTeamConversationId,
+			canonicalMessageId: "<seed-message-4@gebna.test>",
+			from: aliceUser.email,
+			to: bobUser.email,
+			bodySnippet: "Here’s the latest beta feedback summary.",
+			bodyHTML: "<p>Here’s the latest beta feedback summary. Thoughts?</p>",
+			createdAt: ctx.secondsAgo(2200),
+			emailMetadata: {
+				to: [bobUser.email],
+				cc: [carolUser.email],
+				bcc: [],
+				replyTo: [aliceUser.email],
+				messageId: "<seed-message-4@gebna.test>",
+			},
+			sizeInBytes: 1750,
+			unseen: true,
+		},
+		{
+			id: "seed-message-5-alice",
+			ownerId: aliceUser.id,
+			conversationId: aliceTeamConversationId,
+			canonicalMessageId: "<seed-message-5@gebna.test>",
+			from: carolUser.email,
+			to: bobUser.email,
+			bodySnippet: "Logged two UI bugs in the QA sheet.",
+			bodyHTML: "<p>Logged two UI bugs in the QA sheet. Screenshots attached.</p>",
+			createdAt: ctx.secondsAgo(600),
+			emailMetadata: {
+				to: [bobUser.email],
+				cc: [aliceUser.email],
+				bcc: [],
+				replyTo: [carolUser.email],
+				inReplyTo: "<seed-message-4@gebna.test>",
+				messageId: "<seed-message-5@gebna.test>",
+			},
+			sizeInBytes: 1890,
+			unseen: true,
+		},
+		{
+			id: "seed-message-4-carol",
+			ownerId: carolUser.id,
+			conversationId: carolTeamConversationId,
+			canonicalMessageId: "<seed-message-4@gebna.test>",
+			from: aliceUser.email,
+			to: bobUser.email,
+			bodySnippet: "Here’s the latest beta feedback summary.",
+			bodyHTML: "<p>Here’s the latest beta feedback summary. Thoughts?</p>",
+			createdAt: ctx.secondsAgo(2200),
+			emailMetadata: {
+				to: [bobUser.email],
+				cc: [carolUser.email],
+				bcc: [],
+				replyTo: [aliceUser.email],
+				messageId: "<seed-message-4@gebna.test>",
+			},
+			sizeInBytes: 1750,
+			unseen: false,
+		},
+		{
+			id: "seed-message-5-carol",
+			ownerId: carolUser.id,
+			conversationId: carolTeamConversationId,
 			canonicalMessageId: "<seed-message-5@gebna.test>",
 			from: carolUser.email,
 			to: bobUser.email,
