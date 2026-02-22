@@ -3,6 +3,7 @@ import { type ExecutionResult } from "graphql";
 import { TypedDocumentString } from "./generated/graphql.js";
 
 export * from "./generated/index.js";
+export * from "./generated/graphql.js";
 
 type GraphQLRequestArgs<TResult, TVariables> = {
 	fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

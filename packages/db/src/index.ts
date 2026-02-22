@@ -1,5 +1,5 @@
-import type { ResultSet } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import type { ResultSet } from "@libsql/client/web";
+import { drizzle } from "drizzle-orm/libsql/web";
 import { getTableConfig, type SQLiteTransaction } from "drizzle-orm/sqlite-core";
 
 import { relations } from "./relations.js";
