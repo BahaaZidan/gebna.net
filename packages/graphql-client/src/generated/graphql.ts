@@ -139,9 +139,28 @@ export type ViewerEmailConversationsListQueryQuery = { __typename?: 'Query', vie
           & { ' $fragmentRefs'?: { 'EmailConversationTitleFragment': EmailConversationTitleFragment;'EmailConversationAvatarFragment': EmailConversationAvatarFragment } }
         ) }> } } | null };
 
+export type EmailConversationDetailsQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type EmailConversationDetailsQuery = { __typename?: 'Query', node?:
+    | { __typename: 'EmailAddressRef' }
+    | (
+      { __typename: 'EmailConversation', id: string, messages: { __typename?: 'EmailConversationMessagesConnection', edges: Array<{ __typename?: 'EmailConversationMessagesConnectionEdge', node: (
+            { __typename?: 'EmailMessage', id: string }
+            & { ' $fragmentRefs'?: { 'EmailMessageBubbleFragment': EmailMessageBubbleFragment } }
+          ) }> } }
+      & { ' $fragmentRefs'?: { 'EmailConversationTitleFragment': EmailConversationTitleFragment;'EmailConversationAvatarFragment': EmailConversationAvatarFragment } }
+    )
+    | { __typename: 'EmailMessage' }
+   | null };
+
 export type EmailConversationAvatarFragment = { __typename?: 'EmailConversation', id: string, kind: EmailConversationKind, avatar?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, avatar: string, isSelf: boolean, name: string, address: string }> } & { ' $fragmentName'?: 'EmailConversationAvatarFragment' };
 
 export type EmailConversationTitleFragment = { __typename?: 'EmailConversation', id: string, kind: EmailConversationKind, title?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string }> } & { ' $fragmentName'?: 'EmailConversationTitleFragment' };
+
+export type EmailMessageBubbleFragment = { __typename?: 'EmailMessage', id: string, html?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string, avatar: string, address: string } } & { ' $fragmentName'?: 'EmailMessageBubbleFragment' };
 
 export class TypedDocumentString<TResult, TVariables>
   extends String
@@ -187,6 +206,20 @@ export const EmailConversationTitleFragmentDoc = new TypedDocumentString(`
   }
 }
     `, {"fragmentName":"EmailConversationTitle"}) as unknown as TypedDocumentString<EmailConversationTitleFragment, unknown>;
+export const EmailMessageBubbleFragmentDoc = new TypedDocumentString(`
+    fragment EmailMessageBubble on EmailMessage {
+  id
+  html
+  createdAt
+  from {
+    id
+    isSelf
+    name
+    avatar
+    address
+  }
+}
+    `, {"fragmentName":"EmailMessageBubble"}) as unknown as TypedDocumentString<EmailMessageBubbleFragment, unknown>;
 export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString(`
     query ViewerEmailConversationsListQuery {
   viewer {
@@ -231,3 +264,56 @@ fragment EmailConversationTitle on EmailConversation {
     name
   }
 }`) as unknown as TypedDocumentString<ViewerEmailConversationsListQueryQuery, ViewerEmailConversationsListQueryQueryVariables>;
+export const EmailConversationDetailsDocument = new TypedDocumentString(`
+    query EmailConversationDetails($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on EmailConversation {
+      ...EmailConversationTitle
+      ...EmailConversationAvatar
+      id
+      messages {
+        edges {
+          node {
+            ...EmailMessageBubble
+            id
+          }
+        }
+      }
+    }
+  }
+}
+    fragment EmailConversationAvatar on EmailConversation {
+  id
+  kind
+  avatar
+  participants {
+    id
+    avatar
+    isSelf
+    name
+    address
+  }
+}
+fragment EmailConversationTitle on EmailConversation {
+  id
+  kind
+  title
+  participants {
+    id
+    isSelf
+    name
+  }
+}
+fragment EmailMessageBubble on EmailMessage {
+  id
+  html
+  createdAt
+  from {
+    id
+    isSelf
+    name
+    avatar
+    address
+  }
+}`) as unknown as TypedDocumentString<EmailConversationDetailsQuery, EmailConversationDetailsQueryVariables>;
