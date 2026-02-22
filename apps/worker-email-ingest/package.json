@@ -10,6 +10,10 @@
 		"deploy": "npm run build && wrangler deploy",
 		"typegen": "wrangler types"
 	},
+	"dependencies": {
+		"@gebna/db": "workspace:*",
+		"@gebna/utils": "workspace:*"
+	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.25.2",
 		"typescript": "^5.9.3",
