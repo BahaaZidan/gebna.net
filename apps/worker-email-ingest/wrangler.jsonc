@@ -3,4 +3,5 @@
 	"name": "worker-email-ingest",
 	"compatibility_date": "2026-02-22",
 	"main": "./src/index.ts",
+	"compatibility_flags": ["nodejs_compat"],
 }

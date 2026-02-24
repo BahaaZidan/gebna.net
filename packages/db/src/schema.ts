@@ -1,6 +1,7 @@
 import { ulid } from "@gebna/utils";
-import { sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import {
+	blob,
 	check,
 	customType,
 	foreignKey,
@@ -117,6 +118,13 @@ export const emailAddresses = sqliteTable("emailAddresses", {
 	name: text(),
 	inferredAvatar: text(),
 	avatarPlaceholder: text().notNull(),
+	createdAt: integer({ mode: "timestamp_ms" })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.notNull(),
+	updatedAt: integer({ mode: "timestamp_ms" })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull(),
 });
 
 export const emailAddressRefs = sqliteTable(
@@ -147,7 +155,7 @@ export const emailAddressRefs = sqliteTable(
 );
 
 export const EmailConversationKind = ["PRIVATE", "GROUP"] as const;
-type EmailConversationKind = (typeof EmailConversationKind)[number];
+export type EmailConversationKind = (typeof EmailConversationKind)[number];
 export const emailConversations = sqliteTable(
 	"emailConversations",
 	{
@@ -158,11 +166,8 @@ export const emailConversations = sqliteTable(
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
 		kind: text({ enum: EmailConversationKind }).notNull(),
-		/**
-		 * * Deterministic key for PRIVATE conversations: "minEmailAddress:maxEmailAddress"
-		 * * Must be NULL for GROUP conversations.
-		 */
-		dmKey: text(),
+		/** Deterministic key for PRIVATE conversations: "minEmailAddress:maxEmailAddress" */
+		privateConvoKey: citext(),
 		title: text(),
 		createdAt: integer({ mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -178,17 +183,17 @@ export const emailConversations = sqliteTable(
 			sql`(cast(unixepoch('subsecond') * 1000 as integer))`
 		),
 		uploadedAvatar: text(),
-		unseenCount: integer().notNull(),
+		unseenCount: integer().notNull().default(0),
 	},
 	(self) => [
-		uniqueIndex("uniq_idx_ownerId_dmKey").on(self.ownerId, self.dmKey),
+		uniqueIndex("uniq_idx_ownerId_dmKey").on(self.ownerId, self.privateConvoKey),
 		index("idx_conversation_ownerId_last_message_at").on(self.ownerId, self.lastMessageAt),
 		check(
 			"chk_conversation_dmkey_kind",
 			sql`(
-				(${self.kind} = 'PRIVATE' AND ${self.dmKey} IS NOT NULL AND length(${self.dmKey}) > 0)
+				(${self.kind} = 'PRIVATE' AND ${self.privateConvoKey} IS NOT NULL AND length(${self.privateConvoKey}) > 0)
 				OR
-				(${self.kind} = 'GROUP' AND ${self.dmKey} IS NULL)
+				(${self.kind} = 'GROUP' AND ${self.privateConvoKey} IS NULL)
 			)`
 		),
 	]
@@ -211,19 +216,21 @@ export const emailConversationParticipants = sqliteTable(
 	]
 );
 
-type EmailMetadata = {
+export type EmailMessageMetadataAddress = {
+	address: string;
+	name: string;
+};
+export type EmailMessageMetadata = {
 	/** Headers.to */
-	to: string[];
+	to: EmailMessageMetadataAddress[];
 	/** Headers.cc */
-	cc: string[];
+	cc: EmailMessageMetadataAddress[];
 	/** Headers.bcc */
-	bcc: string[];
+	bcc: EmailMessageMetadataAddress[];
 	/** Headers.replyTo ==> indicates the addresses to send the reply to that's possibly different from Envelope.from */
-	replyTo: string[];
+	replyTo: EmailMessageMetadataAddress[];
 	/** Headers.inReplyTo ==> indicates the Email.messageId that this message is replying to */
 	inReplyTo?: string;
-	/** Headers.messageId ==> a unique identifier for the message. provided by the vendor */
-	messageId?: string;
 	/** Headers.references ==> It lists the entire ancestry of the conversation — all the Message-IDs leading up to this email. used for threading */
 	references?: string;
 };
@@ -247,12 +254,12 @@ export const emailMessages = sqliteTable(
 			.references((): AnySQLiteColumn => emailConversations.id, { onDelete: "cascade" }),
 		from: citext().notNull(),
 		to: citext().notNull(),
-		bodySnippet: text(),
+		bodyPlaintext: text(),
 		bodyHTML: text(),
 		createdAt: integer({ mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.notNull(),
-		emailMetadata: text({ mode: "json" }).$type<EmailMetadata>(),
+		metadata: text({ mode: "json" }).$type<EmailMessageMetadata>(),
 		/** Size of the whole Envelope */
 		sizeInBytes: integer().notNull(),
 		unseen: integer({ mode: "boolean" }).notNull().default(true),
@@ -269,6 +276,34 @@ export const emailMessages = sqliteTable(
 			foreignColumns: [emailAddressRefs.ownerId, emailAddressRefs.address],
 		}).onDelete("cascade"),
 		uniqueIndex("uniq_idx_message_canonical_message_id").on(self.ownerId, self.canonicalMessageId),
-		index("idx_message_conversation_created").on(self.conversationId, self.createdAt),
+		index("idx_message_conversation_created").on(self.conversationId, desc(self.createdAt)),
 	]
 );
+
+export const EmailAttachmentDisposition = ["attachment", "inline"] as const;
+type EmailAttachmentDisposition = (typeof EmailAttachmentDisposition)[number];
+export const emailAttachments = sqliteTable("emailAttachments", {
+	id: text()
+		.primaryKey()
+		.$defaultFn(() => ulid()),
+	ownerId: text()
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	messageId: text()
+		.notNull()
+		.references(() => emailMessages.id, { onDelete: "cascade" }),
+	conversationId: text()
+		.notNull()
+		.references(() => emailConversations.id, { onDelete: "cascade" }),
+	fromRef: text()
+		.notNull()
+		.references(() => emailAddressRefs.id, { onDelete: "cascade" }),
+	filename: text(),
+	mimeType: text(),
+	disposition: text({ enum: EmailAttachmentDisposition }),
+	related: integer({ mode: "boolean" }),
+	description: text(),
+	contentId: text(),
+	method: text(),
+	content: blob().notNull(),
+});

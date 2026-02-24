@@ -89,7 +89,14 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 			type: "DateTime",
 			nullable: false,
 		}),
-		snippet: t.exposeString("bodySnippet"),
+		snippet: t.string({
+			select: {
+				columns: {
+					bodyPlaintext: true,
+				},
+			},
+			resolve: (message) => message.bodyPlaintext?.slice(0, 100),
+		}),
 		html: t.exposeString("bodyHTML"),
 	}),
 });
