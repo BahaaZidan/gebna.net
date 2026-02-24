@@ -152,6 +152,9 @@ async function findOrCreateConversation({
 				where: {
 					ownerId,
 					canonicalMessageId: { in: targetMessageIds },
+					conversation: {
+						kind: "GROUP",
+					},
 				},
 				columns: {},
 				with: { conversation: true },
