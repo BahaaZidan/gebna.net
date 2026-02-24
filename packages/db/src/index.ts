@@ -6,6 +6,7 @@ import { relations } from "./relations.js";
 import * as schema from "./schema.js";
 
 export { schema as dbSchema, relations, getTableConfig };
+export * from "./utils.js";
 
 export const getDB = ({ url, authToken }: { url: string; authToken: string }) =>
 	drizzle({
