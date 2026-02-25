@@ -1,3 +1,6 @@
+import type { EmailMessageMetadata, EmailMessageMetadataAddress } from "@gebna/db/schema";
+import type { Email } from "postal-mime";
+
 const MAX_ID_COUNT = 100;
 
 export function extractMessageIdsFromPostalMimeValue(value?: string | null): string[] {
@@ -22,4 +25,22 @@ export function extractMessageIdsFromPostalMimeValue(value?: string | null): str
 	}
 
 	return out;
+}
+
+export function getEmailMessageMetadata(parsedEnvelope: Email): EmailMessageMetadata {
+	const to = (parsedEnvelope.to?.filter((a) => !!a.address) ?? []) as EmailMessageMetadataAddress[];
+	const cc = (parsedEnvelope.cc?.filter((a) => !!a.address) ?? []) as EmailMessageMetadataAddress[];
+	const bcc = (parsedEnvelope.bcc?.filter((a) => !!a.address) ??
+		[]) as EmailMessageMetadataAddress[];
+	const replyTo = (parsedEnvelope.replyTo?.filter((a) => !!a.address) ??
+		[]) as EmailMessageMetadataAddress[];
+
+	return {
+		to,
+		bcc,
+		cc,
+		replyTo,
+		inReplyTo: parsedEnvelope.inReplyTo,
+		references: parsedEnvelope.references,
+	};
 }
