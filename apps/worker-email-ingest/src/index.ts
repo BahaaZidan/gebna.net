@@ -1,14 +1,13 @@
-import { dbSchema, eq, getDB, increment, type TransactionInstance } from "@gebna/db";
-import type {
-	EmailConversationKind,
-	EmailMessageMetadata,
-	EmailMessageMetadataAddress,
-} from "@gebna/db/schema";
+import { dbSchema, eq, getDB, increment } from "@gebna/db";
 import { generateImagePlaceholder, R } from "@gebna/utils";
-import PostalMime, { Email } from "postal-mime";
+import PostalMime from "postal-mime";
 
+import { findOrCreateConversation } from "$lib/find-or-create-conversation";
 import { processEmailBody } from "$lib/process-email-body";
-import { extractMessageIdsFromPostalMimeValue } from "$lib/process-email-headers";
+import {
+	extractMessageIdsFromPostalMimeValue,
+	getEmailMessageMetadata,
+} from "$lib/process-email-headers";
 
 export default {
 	fetch() {
@@ -191,97 +190,3 @@ export default {
 		 */
 	},
 } satisfies ExportedHandler<Env>;
-
-function getEmailMessageMetadata(parsedEnvelope: Email): EmailMessageMetadata {
-	const to = (parsedEnvelope.to?.filter((a) => !!a.address) ?? []) as EmailMessageMetadataAddress[];
-	const cc = (parsedEnvelope.cc?.filter((a) => !!a.address) ?? []) as EmailMessageMetadataAddress[];
-	const bcc = (parsedEnvelope.bcc?.filter((a) => !!a.address) ??
-		[]) as EmailMessageMetadataAddress[];
-	const replyTo = (parsedEnvelope.replyTo?.filter((a) => !!a.address) ??
-		[]) as EmailMessageMetadataAddress[];
-
-	return {
-		to,
-		bcc,
-		cc,
-		replyTo,
-		inReplyTo: parsedEnvelope.inReplyTo,
-		references: parsedEnvelope.references,
-	};
-}
-
-/**
- * * This encapsulates the threading.
- * * Conversational for 1-1 messages. Classical email threading otherwise.
- * *
- * * This does not consider plus addressing. (Can be added later).
- * * It also does not consider Gmail dot stripping. (Can be added partially later. There's no way of doing it with workspace address.)
- * * This disregards aliases. A weird behaviour can arise when a user recieves a message from "support@example.com" only to reply to/get a reply from another address which creates another conversation. Which aligns with DMing UX but not with Emailing UX.
- */
-async function findOrCreateConversation({
-	tx,
-	ownerId,
-	parsedEnvelope,
-	uniqueParticipants,
-}: {
-	tx: TransactionInstance;
-	ownerId: string;
-	parsedEnvelope: Email;
-	uniqueParticipants: dbSchema.EmailMessageMetadataAddress[];
-}): Promise<typeof dbSchema.emailConversations.$inferSelect> {
-	const kind: EmailConversationKind = uniqueParticipants.length === 2 ? "PRIVATE" : "GROUP";
-
-	if (kind === "PRIVATE") {
-		const privateConvoKey = uniqueParticipants
-			.map((p) => p.address)
-			.sort()
-			.join(":");
-		const pastConvo = await tx.query.emailConversations.findFirst({
-			where: {
-				ownerId,
-				privateConvoKey,
-			},
-		});
-		if (pastConvo) return pastConvo;
-
-		const [newConvo] = await tx
-			.insert(dbSchema.emailConversations)
-			.values({
-				ownerId,
-				kind,
-				privateConvoKey,
-				title: parsedEnvelope.subject,
-			})
-			.returning();
-		return newConvo;
-	}
-
-	const targetMessageIds = extractMessageIdsFromPostalMimeValue(
-		`${parsedEnvelope.inReplyTo || ""} ${parsedEnvelope.references || ""}`
-	);
-	let pastMessage = targetMessageIds.length
-		? await tx.query.emailMessages.findFirst({
-				where: {
-					ownerId,
-					canonicalMessageId: { in: targetMessageIds },
-					conversation: {
-						kind: "GROUP",
-					},
-				},
-				columns: {},
-				with: { conversation: true },
-			})
-		: null;
-	if (pastMessage?.conversation) return pastMessage.conversation;
-
-	const [newConvo] = await tx
-		.insert(dbSchema.emailConversations)
-		.values({
-			ownerId,
-			kind,
-			title: parsedEnvelope.subject,
-		})
-		.returning();
-
-	return newConvo;
-}
