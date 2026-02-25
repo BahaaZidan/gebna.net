@@ -2,12 +2,13 @@ import { dbSchema, eq, getDB, increment } from "@gebna/db";
 import { generateImagePlaceholder, R } from "@gebna/utils";
 import PostalMime from "postal-mime";
 
-import { findOrCreateConversation } from "$lib/find-or-create-conversation";
-import { processEmailBody } from "$lib/process-email-body";
+import { findOrCreateConversation } from "./lib/find-or-create-conversation";
+import { processEmailBody } from "./lib/process-email-body";
 import {
 	extractMessageIdsFromPostalMimeValue,
 	getEmailMessageMetadata,
-} from "$lib/process-email-headers";
+} from "./lib/process-email-headers";
+import { workAroundFetch } from "./lib/workaround-fetch";
 
 export default {
 	fetch() {
@@ -20,7 +21,11 @@ export default {
 			attachmentEncoding: "arraybuffer",
 		});
 		if (!parsedEnvelope.from || !parsedEnvelope.from.address) return envelope.setReject("INVALID");
-		const db = getDB({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
+		const db = getDB({
+			url: env.TURSO_DATABASE_URL,
+			authToken: env.TURSO_AUTH_TOKEN,
+			fetch: workAroundFetch,
+		});
 		const recipientUser = await db.query.users.findFirst({
 			with: {
 				ownAddressRef: true,
@@ -38,9 +43,9 @@ export default {
 				email: envelope.to,
 			},
 		});
+		console.log(recipientUser?.email);
 		if (!recipientUser || !recipientUser.ownAddressRef) return envelope.setReject("NOT_FOUND");
 		const participantsRefs = [recipientUser.ownAddressRef];
-
 		let [fromAddressRef] = recipientUser.emailAddressRefs;
 		if (fromAddressRef) {
 			if (fromAddressRef.isSpam) return envelope.setReject("SPAM");
