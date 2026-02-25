@@ -16,6 +16,10 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.users.id,
 			to: r.emailConversations.ownerId,
 		}),
+		ownAddressRef: r.one.emailAddressRefs({
+			from: [r.users.id, r.users.email],
+			to: [r.emailAddressRefs.ownerId, r.emailAddressRefs.address],
+		}),
 		emailAddressRefs: r.many.emailAddressRefs({
 			from: r.users.id,
 			to: r.emailAddressRefs.ownerId,

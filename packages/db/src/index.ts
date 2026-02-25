@@ -7,6 +7,7 @@ import * as schema from "./schema.js";
 
 export { schema as dbSchema, relations, getTableConfig };
 export * from "./utils.js";
+export { eq } from "drizzle-orm";
 
 export const getDB = ({ url, authToken }: { url: string; authToken: string }) =>
 	drizzle({
@@ -21,6 +22,6 @@ export type DBInstance = ReturnType<typeof getDB>;
 export type TransactionInstance = SQLiteTransaction<
 	"async",
 	ResultSet,
-	typeof schema,
+	Record<string, never>,
 	typeof relations
 >;
