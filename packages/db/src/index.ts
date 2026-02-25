@@ -9,13 +9,20 @@ export { schema as dbSchema, relations, getTableConfig };
 export * from "./utils.js";
 export { eq } from "drizzle-orm";
 
-export const getDB = ({ url, authToken }: { url: string; authToken: string }) =>
-	drizzle({
+export const getDB = ({
+	url,
+	authToken,
+	fetch,
+}: {
+	url: string;
+	authToken: string;
+	fetch?: typeof globalThis.fetch;
+}) => {
+	return drizzle({
 		relations,
-		// schema,
-		connection: { url, authToken },
-		logger: true,
+		connection: { url, authToken, fetch },
 	});
+};
 
 export type DBInstance = ReturnType<typeof getDB>;
 

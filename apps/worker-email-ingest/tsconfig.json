@@ -7,10 +7,6 @@
 		"skipLibCheck": true,
 		"lib": ["ESNext"],
 		"types": ["vite/client"],
-		"baseUrl": ".",
-		"paths": {
-			"$lib": ["src/lib"],
-			"$lib/*": ["src/lib/*"]
-		}
+		"baseUrl": "."
 	}
 }

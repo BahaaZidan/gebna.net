@@ -20,6 +20,7 @@
 		"push": "dotenv -e .env.dev -- drizzle-kit push",
 		"pull": "dotenv -e .env.dev -- drizzle-kit pull",
 		"seed": "dotenv -e .env.dev -- tsx scripts/seed.ts",
+		"seed:raw": "dotenv -e .env.dev -- tsx scripts/seed-raw.ts",
 		"migrate:dev": "dotenv -e .env.dev -- drizzle-kit migrate",
 		"migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
 		"studio:dev": "dotenv -e .env.dev -- drizzle-kit studio",
