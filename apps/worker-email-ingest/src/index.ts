@@ -1,11 +1,11 @@
-import { dbSchema, getDB, increment, type TransactionInstance } from "@gebna/db";
+import { dbSchema, eq, getDB, increment, type TransactionInstance } from "@gebna/db";
 import type {
 	EmailConversationKind,
 	EmailMessageMetadata,
 	EmailMessageMetadataAddress,
 } from "@gebna/db/schema";
 import { generateImagePlaceholder, R } from "@gebna/utils";
-import PostalMime, { Address, Email } from "postal-mime";
+import PostalMime, { Email } from "postal-mime";
 
 import { processEmailBody } from "$lib/process-email-body";
 import { extractMessageIdsFromPostalMimeValue } from "$lib/process-email-headers";
@@ -24,6 +24,7 @@ export default {
 		const db = getDB({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
 		const recipientUser = await db.query.users.findFirst({
 			with: {
+				ownAddressRef: true,
 				emailAddressRefs: {
 					limit: 1,
 					where: {
@@ -38,9 +39,10 @@ export default {
 				email: envelope.to,
 			},
 		});
-		if (!recipientUser) return envelope.setReject("NOT_FOUND");
+		if (!recipientUser || !recipientUser.ownAddressRef) return envelope.setReject("NOT_FOUND");
+		const participantsRefs = [recipientUser.ownAddressRef];
 
-		let fromAddressRef = recipientUser.emailAddressRefs[0];
+		let [fromAddressRef] = recipientUser.emailAddressRefs;
 		if (fromAddressRef) {
 			if (fromAddressRef.isSpam) return envelope.setReject("SPAM");
 			if (fromAddressRef.isBlocked) return;
@@ -64,11 +66,129 @@ export default {
 					})
 					.returning();
 
+				participantsRefs.push(addressRef);
+
 				return { ...addressRef, address_ };
 			});
 			// TODO: enqueue address avatar inference here based on emailAddresses.updatedAt and createdAt
 		}
+
 		const processedBody = await processEmailBody({ email: parsedEnvelope });
+		const [canonicalMessageId] = extractMessageIdsFromPostalMimeValue(parsedEnvelope.messageId);
+		const messageMetadata = getEmailMessageMetadata(parsedEnvelope);
+		const participants = [
+			...messageMetadata.to,
+			...messageMetadata.cc,
+			{ address: envelope.to, name: "" },
+			{ address: envelope.from, name: "" },
+		];
+		const uniqueParticipants = R.uniqBy((p) => p.address, participants);
+		await db.transaction(async (tx) => {
+			const ownerId = recipientUser.id;
+			const conversation = await findOrCreateConversation({
+				tx,
+				ownerId,
+				uniqueParticipants,
+				parsedEnvelope,
+			});
+
+			const [message] = await tx
+				.insert(dbSchema.emailMessages)
+				.values({
+					ownerId,
+					conversationId: conversation.id,
+					sizeInBytes: envelope.rawSize,
+					canonicalMessageId,
+					bodyHTML: processedBody?.html,
+					bodyPlaintext: processedBody?.plaintext,
+					metadata: messageMetadata,
+					from: envelope.from,
+					to: envelope.to,
+				})
+				.returning();
+
+			await tx
+				.update(dbSchema.emailConversations)
+				.set({
+					unseenCount: increment(dbSchema.emailConversations.unseenCount),
+					lastMessageAt: new Date(),
+					lastMessageId: message.id,
+				})
+				.where(eq(dbSchema.emailConversations.id, conversation.id));
+
+			if (parsedEnvelope.attachments.length) {
+				await tx.insert(dbSchema.emailAttachments).values(
+					parsedEnvelope.attachments.map(
+						(a) =>
+							({
+								ownerId,
+								conversationId: conversation.id,
+								messageId: message.id,
+								fromRef: fromAddressRef.id,
+								content: a.content,
+								contentId: a.contentId,
+								description: a.description,
+								disposition: a.disposition,
+								method: a.method,
+								// TODO: don't trust the provided mimeType. check magic bytes instead
+								mimeType: a.mimeType,
+								filename: a.filename,
+								related: a.related,
+							}) satisfies typeof dbSchema.emailAttachments.$inferInsert
+					)
+				);
+			}
+
+			const secondaryUniqueParticipants = uniqueParticipants.filter(
+				(p) => ![envelope.from, envelope.to].includes(p.address)
+			);
+			if (secondaryUniqueParticipants.length) {
+				await tx
+					.insert(dbSchema.emailAddresses)
+					.values(
+						secondaryUniqueParticipants.map(
+							(p) =>
+								({
+									address: p.address,
+									name: p.name,
+									avatarPlaceholder: generateImagePlaceholder(p.name || p.address),
+								}) satisfies typeof dbSchema.emailAddresses.$inferInsert
+						)
+					)
+					.onConflictDoNothing();
+				const secondaryRefs = await tx
+					.insert(dbSchema.emailAddressRefs)
+					.values(
+						secondaryUniqueParticipants.map(
+							(p) =>
+								({
+									ownerId,
+									address: p.address,
+								}) satisfies typeof dbSchema.emailAddressRefs.$inferInsert
+						)
+					)
+					.returning()
+					.onConflictDoNothing();
+
+				participantsRefs.push(...secondaryRefs);
+			}
+
+			await tx.insert(dbSchema.emailConversationParticipants).values(
+				participantsRefs.map(
+					(ref) =>
+						({
+							conversationId: conversation.id,
+							emailAddressRefId: ref.id,
+						}) satisfies typeof dbSchema.emailConversationParticipants.$inferInsert
+				)
+			);
+		});
+
+		/**
+		 * TODOs after transaction:
+		 * * enqueue address avatar inference
+		 * * [?] enqueue attachment thumbnail generation
+		 */
 	},
 } satisfies ExportedHandler<Env>;
 
@@ -101,22 +221,14 @@ function getEmailMessageMetadata(parsedEnvelope: Email): EmailMessageMetadata {
 async function findOrCreateConversation({
 	tx,
 	ownerId,
-	envelope,
 	parsedEnvelope,
+	uniqueParticipants,
 }: {
 	tx: TransactionInstance;
 	ownerId: string;
-	envelope: ForwardableEmailMessage;
 	parsedEnvelope: Email;
+	uniqueParticipants: dbSchema.EmailMessageMetadataAddress[];
 }): Promise<typeof dbSchema.emailConversations.$inferSelect> {
-	const { to, cc } = getEmailMessageMetadata(parsedEnvelope);
-	const participants = [
-		...to,
-		...cc,
-		{ address: envelope.to, name: "" },
-		{ address: envelope.from, name: "" },
-	];
-	const uniqueParticipants = R.uniqBy((p) => p.address, participants);
 	const kind: EmailConversationKind = uniqueParticipants.length === 2 ? "PRIVATE" : "GROUP";
 
 	if (kind === "PRIVATE") {
