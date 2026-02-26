@@ -22,7 +22,9 @@ function parseArgs() {
 }
 
 function extractHeaderValue(header: string, raw: string): string | undefined {
-	const match = raw.match(new RegExp(`^${header}:\\s*([^\\r\\n]*(?:\\r?\\n[ \\t]+[^\\r\\n]*)*)`, "im"));
+	const match = raw.match(
+		new RegExp(`^${header}:\\s*([^\\r\\n]*(?:\\r?\\n[ \\t]+[^\\r\\n]*)*)`, "im")
+	);
 	if (!match) return;
 	return match[1]?.replace(/\r?\n[ \t]+/g, " ").trim();
 }
@@ -93,13 +95,16 @@ async function sendEmail(payload: string, filename: string, envelope: EnvelopeAd
 
 		curl.on("exit", (code) => {
 			if (code === 0) return resolve();
-			reject(new Error(`curl exited with code ${code ?? "unknown"} for ${filename}`));
+			reject(new Error(`curl exited with code ${code ?? "unknown"} for ${filename} \n`));
 		});
 		curl.on("error", reject);
 	});
 }
 
-async function resetSeededEmails(db: DBInstance, payloads: Array<{ file: string; payload: string }>) {
+async function resetSeededEmails(
+	db: DBInstance,
+	payloads: Array<{ file: string; payload: string }>
+) {
 	const messageIds = new Set<string>();
 	const missingIds: string[] = [];
 
@@ -113,9 +118,9 @@ async function resetSeededEmails(db: DBInstance, payloads: Array<{ file: string;
 	}
 
 	if (!messageIds.size) {
-		console.log("No Message-ID headers found in raw emails. Skipping reset.");
+		console.log("No Message-ID headers found in raw emails. Skipping reset. \n");
 		if (missingIds.length) {
-			console.log(`Missing Message-ID in: ${missingIds.join(", ")}`);
+			console.log(`Missing Message-ID in: ${missingIds.join(", ")} \n`);
 		}
 		return;
 	}
@@ -130,13 +135,13 @@ async function resetSeededEmails(db: DBInstance, payloads: Array<{ file: string;
 		.where(inArray(dbSchema.emailMessages.canonicalMessageId, ids));
 
 	if (!existing.length) {
-		console.log("No matching seeded emails found to reset.");
+		console.log("No matching seeded emails found to reset. \n");
 		return;
 	}
 
 	const conversationIds = Array.from(new Set(existing.map((row) => row.conversationId)));
 
-	console.log(`Resetting ${existing.length} seeded emails...`);
+	console.log(`Resetting ${existing.length} seeded emails... \n`);
 
 	await db.transaction(async (tx) => {
 		await tx
@@ -182,7 +187,7 @@ async function resetSeededEmails(db: DBInstance, payloads: Array<{ file: string;
 	});
 
 	if (missingIds.length) {
-		console.log(`Skipped reset for files missing Message-ID: ${missingIds.join(", ")}`);
+		console.log(`Skipped reset for files missing Message-ID: ${missingIds.join(", ")} \n`);
 	}
 }
 
@@ -192,7 +197,7 @@ async function main() {
 	const files = entries.filter((name) => name.endsWith(".eml")).sort();
 
 	if (!files.length) {
-		console.log("No .eml files found to seed.");
+		console.log("No .eml files found to seed. \n");
 		return;
 	}
 
@@ -209,7 +214,7 @@ async function main() {
 		const authToken = process.env.TURSO_AUTH_TOKEN;
 
 		if (!url || !authToken) {
-			throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN for reset.");
+			throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN for reset. \n");
 		}
 
 		const db = getDB({ url, authToken });
@@ -220,14 +225,15 @@ async function main() {
 		const from = extractAddress("From", payload) ?? "seed@gebna.test";
 		const to = extractAddress("To", payload) ?? EMAIL_REPLACEMENT;
 
-		console.log(`Seeding ${file}...`);
+		console.log(`\n Seeding ${file}...`);
 		await sendEmail(payload, file, { from, to });
 	}
 
-	console.log("✅ Done seeding raw emails.");
+	console.log("\n ✅ Done seeding raw emails.");
 }
 
 main().catch((error) => {
 	console.error(error);
+	console.log("\n");
 	process.exit(1);
 });
