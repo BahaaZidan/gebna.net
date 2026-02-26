@@ -1,4 +1,3 @@
-import { htmlToText } from "html-to-text";
 import type { Email } from "postal-mime";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
@@ -16,7 +15,6 @@ export async function processEmailBody({
 }: ProcessEmailBodyArguments): Promise<{ html: string; plaintext: string } | null> {
 	const body = email.html || email.text;
 	if (!body) return null;
-	if (email.text && !email.html) return { html: body, plaintext: body };
 
 	// TODO: strip layout tables and nested anchor tags
 	let sanitizedBody = xss(body, {
@@ -26,7 +24,9 @@ export async function processEmailBody({
 	let plainTextBody = xss(body, {
 		allowList: {},
 		stripIgnoreTag: true,
-		stripIgnoreTagBody: ["script"],
+		stripIgnoreTagBody: ["script", "style"],
+		stripBlankChar: true,
+		allowCommentTag: false,
 	});
 	let markdownHTML = await htmlToMarkdownHTML(sanitizedBody);
 

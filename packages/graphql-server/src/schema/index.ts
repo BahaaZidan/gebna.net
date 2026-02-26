@@ -6,6 +6,7 @@ import RelayPlugin from "@pothos/plugin-relay";
 import ScopeAuthPlugin from "@pothos/plugin-scope-auth";
 import WithInputPlugin from "@pothos/plugin-with-input";
 import { DateTimeResolver } from "graphql-scalars";
+import he from "he";
 
 import type { GraphQLResolverContext } from "../types.js";
 
@@ -95,7 +96,15 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 					bodyPlaintext: true,
 				},
 			},
-			resolve: (message) => message.bodyPlaintext?.slice(0, 100),
+			resolve: ({ bodyPlaintext }) => {
+				if (!bodyPlaintext) return;
+				// Treat spacing entities as whitespace noise
+				const normalized = bodyPlaintext.replace(/&nbsp;|&#160;|&#x0*a0;/gi, " ");
+				// Decode the rest: &#x27; -> ', &amp; -> &, etc.
+				const decoded = he.decode(normalized);
+				// Collapse/trim spacing noise
+				return decoded.replace(/\s+/g, " ").trim().slice(0, 100);
+			},
 		}),
 		html: t.exposeString("bodyHTML"),
 	}),
