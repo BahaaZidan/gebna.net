@@ -3,6 +3,7 @@ import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
+import sanitizeHtml from "sanitize-html";
 import TurndownService from "turndown";
 import { unified } from "unified";
 import xss, { type IWhiteList } from "xss";
@@ -21,18 +22,18 @@ export async function processEmailBody({
 		allowList,
 		allowCommentTag: false,
 	});
-	let plainTextBody = xss(body, {
-		allowList: {},
-		stripIgnoreTag: true,
-		stripIgnoreTagBody: ["script", "style"],
-		stripBlankChar: true,
-		allowCommentTag: false,
+	let plaintext = sanitizeHtml(body, {
+		allowedTags: [],
+		allowedAttributes: {},
+		textFilter(text) {
+			return text.trim();
+		},
 	});
 	let markdownHTML = await htmlToMarkdownHTML(sanitizedBody);
 
 	return {
 		html: markdownHTML,
-		plaintext: plainTextBody,
+		plaintext,
 	};
 }
 

@@ -19,6 +19,7 @@
 		"remark-gfm": "^4.0.1",
 		"remark-parse": "^11.0.0",
 		"remark-rehype": "^11.1.2",
+		"sanitize-html": "^2.17.1",
 		"tldts": "^7.0.23",
 		"turndown": "^7.2.2",
 		"unified": "^11.0.5",
@@ -27,6 +28,7 @@
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.25.2",
 		"@total-typescript/ts-reset": "^0.6.1",
+		"@types/sanitize-html": "^2.16.0",
 		"@types/turndown": "^5.0.6",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",
