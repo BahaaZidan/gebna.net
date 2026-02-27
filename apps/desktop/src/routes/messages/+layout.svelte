@@ -52,12 +52,12 @@
 										node.unseenCount ? "text-primary-content" : "text-gray-400",
 									]}
 								>
-									{formatInboxDate(node.lastMessage.createdAt)}
+									{node.lastMessage && formatInboxDate(node.lastMessage.createdAt)}
 								</div>
 							</div>
 							<div class="flex min-h-6 justify-between">
 								<div class="line-clamp-1 min-w-0 text-sm wrap-anywhere text-gray-400">
-									{node.lastMessage.snippet}
+									{node.lastMessage?.snippet}
 								</div>
 								<div class="flex gap-1">
 									{#if node.unseenCount}

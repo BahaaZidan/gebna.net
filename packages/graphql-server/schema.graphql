@@ -15,7 +15,7 @@ type EmailConversation implements Node {
   avatar: String
   id: ID!
   kind: EmailConversationKind!
-  lastMessage: EmailMessage!
+  lastMessage: EmailMessage
   messages(after: String, before: String, first: Int, last: Int): EmailConversationMessagesConnection!
   participants: [EmailAddressRef!]!
   title: String

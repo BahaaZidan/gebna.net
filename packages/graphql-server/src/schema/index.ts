@@ -125,7 +125,7 @@ const EmailConversationRef = builder.drizzleNode("emailConversations", {
 		participants: t.relation("participants", {
 			nullable: false,
 		}),
-		lastMessage: t.relation("lastMessage", { nullable: false }),
+		lastMessage: t.relation("lastMessage"),
 		messages: t.relatedConnection("messages", {
 			nullable: false,
 			edgesNullable: false,
