@@ -125,7 +125,9 @@ const EmailConversationRef = builder.drizzleNode("emailConversations", {
 		participants: t.relation("participants", {
 			nullable: false,
 		}),
-		lastMessage: t.relation("lastMessage"),
+		lastMessage: t.relation("lastMessage", {
+			nullable: false,
+		}),
 		messages: t.relatedConnection("messages", {
 			nullable: false,
 			edgesNullable: false,
@@ -161,6 +163,13 @@ const ViewerRef = builder.drizzleObject("users", {
 			nullable: false,
 			edgesNullable: false,
 			nodeNullable: false,
+			query: () => ({
+				where: {
+					lastMessageId: {
+						isNotNull: true,
+					},
+				},
+			}),
 		}),
 	}),
 });
