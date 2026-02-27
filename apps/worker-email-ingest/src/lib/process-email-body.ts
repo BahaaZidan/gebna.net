@@ -523,9 +523,29 @@ async function markdownToHtml(md: string): Promise<string> {
 			.use(remarkParse)
 			.use(remarkGfm)
 			.use(remarkRehype)
+			.use(rehypeAddTargetBlank)
 			.use(rehypeStringify)
 			.process(md)
 	);
+}
+
+const rehypeAddTargetBlank: Plugin<[], Root> = () => {
+	return (tree) => {
+		addTargetBlank(tree);
+	};
+};
+
+function addTargetBlank(node: Root | Element) {
+	for (const child of node.children) {
+		if (child.type === "element") {
+			if (child.tagName === "a") {
+				child.properties = child.properties ?? {};
+				child.properties.target = "_blank";
+				child.properties.rel = "noopener noreferrer";
+			}
+			addTargetBlank(child);
+		}
+	}
 }
 
 function mdToPlaintext(md: string): string {
