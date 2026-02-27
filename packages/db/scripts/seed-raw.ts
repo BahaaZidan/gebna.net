@@ -10,15 +10,21 @@ const PORT = 5191;
 const EMAIL_TO_SWAP = "gebnatorky@gmail.com";
 const EMAIL_REPLACEMENT = "bob@gebna.test";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const RAW_EMAILS_DIR = path.join(__dirname, "data", "raw-emails");
+const RAW_EMAILS_DIR = path.join(__dirname, "data", "lolo");
+// const RAW_EMAILS_DIR = path.join(__dirname, "data", "raw-emails");
 
 type EnvelopeAddrs = { from: string; to: string };
 
 function parseArgs() {
 	const args = process.argv.slice(2).filter((arg) => arg !== "--" && arg !== "-");
 	const shouldReset = args.includes("reset") || args.includes("--reset") || args.includes("-r");
+	const shouldClear = args.includes("clear") || args.includes("--clear") || args.includes("-c");
 
-	return { shouldReset };
+	if (shouldReset && shouldClear) {
+		throw new Error("Use either reset or clear, not both. \n");
+	}
+
+	return { shouldReset, shouldClear };
 }
 
 function extractHeaderValue(header: string, raw: string): string | undefined {
@@ -105,19 +111,9 @@ async function resetSeededEmails(
 	db: DBInstance,
 	payloads: Array<{ file: string; payload: string }>
 ) {
-	const messageIds = new Set<string>();
-	const missingIds: string[] = [];
+	const { ids, missingIds } = collectSeededMessageIds(payloads);
 
-	for (const { file, payload } of payloads) {
-		const ids = extractMessageIds(payload);
-		if (!ids.length) {
-			missingIds.push(file);
-			continue;
-		}
-		for (const id of ids) messageIds.add(id);
-	}
-
-	if (!messageIds.size) {
+	if (!ids.length) {
 		console.log("No Message-ID headers found in raw emails. Skipping reset. \n");
 		if (missingIds.length) {
 			console.log(`Missing Message-ID in: ${missingIds.join(", ")} \n`);
@@ -125,7 +121,6 @@ async function resetSeededEmails(
 		return;
 	}
 
-	const ids = Array.from(messageIds);
 	const existing = await db
 		.select({
 			id: dbSchema.emailMessages.id,
@@ -191,8 +186,58 @@ async function resetSeededEmails(
 	}
 }
 
+function collectSeededMessageIds(payloads: Array<{ file: string; payload: string }>) {
+	const messageIds = new Set<string>();
+	const missingIds: string[] = [];
+
+	for (const { file, payload } of payloads) {
+		const ids = extractMessageIds(payload);
+		if (!ids.length) {
+			missingIds.push(file);
+			continue;
+		}
+		for (const id of ids) messageIds.add(id);
+	}
+
+	return { ids: Array.from(messageIds), missingIds };
+}
+
+async function clearSeededEmails(
+	db: DBInstance,
+	payloads: Array<{ file: string; payload: string }>
+) {
+	const { ids, missingIds } = collectSeededMessageIds(payloads);
+
+	if (!ids.length) {
+		console.log("No Message-ID headers found in raw emails. Skipping clear. \n");
+		if (missingIds.length) {
+			console.log(`Missing Message-ID in: ${missingIds.join(", ")} \n`);
+		}
+		return;
+	}
+
+	const existing = await db
+		.select({ id: dbSchema.emailMessages.id })
+		.from(dbSchema.emailMessages)
+		.where(inArray(dbSchema.emailMessages.canonicalMessageId, ids));
+
+	if (!existing.length) {
+		console.log("No matching seeded emails found to clear. \n");
+		return;
+	}
+
+	console.log(`Clearing ${existing.length} seeded emails... \n`);
+	await db
+		.delete(dbSchema.emailMessages)
+		.where(inArray(dbSchema.emailMessages.canonicalMessageId, ids));
+
+	if (missingIds.length) {
+		console.log(`Skipped clear for files missing Message-ID: ${missingIds.join(", ")} \n`);
+	}
+}
+
 async function main() {
-	const { shouldReset } = parseArgs();
+	const { shouldReset, shouldClear } = parseArgs();
 	const entries = await readdir(RAW_EMAILS_DIR);
 	const files = entries.filter((name) => name.endsWith(".eml")).sort();
 
@@ -209,16 +254,21 @@ async function main() {
 		})
 	);
 
-	if (shouldReset) {
+	if (shouldReset || shouldClear) {
 		const url = process.env.TURSO_DATABASE_URL;
 		const authToken = process.env.TURSO_AUTH_TOKEN;
 
 		if (!url || !authToken) {
-			throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN for reset. \n");
+			throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN. \n");
 		}
 
 		const db = getDB({ url, authToken });
-		await resetSeededEmails(db, payloads);
+		if (shouldReset) {
+			await resetSeededEmails(db, payloads);
+		} else {
+			await clearSeededEmails(db, payloads);
+			return;
+		}
 	}
 
 	for (const { file, payload } of payloads) {
