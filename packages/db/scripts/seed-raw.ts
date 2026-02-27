@@ -10,8 +10,8 @@ const PORT = 5191;
 const EMAIL_TO_SWAP = "gebnatorky@gmail.com";
 const EMAIL_REPLACEMENT = "bob@gebna.test";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const RAW_EMAILS_DIR = path.join(__dirname, "data", "lolo");
-// const RAW_EMAILS_DIR = path.join(__dirname, "data", "raw-emails");
+// const RAW_EMAILS_DIR = path.join(__dirname, "data", "lolo");
+const RAW_EMAILS_DIR = path.join(__dirname, "data", "raw-emails");
 
 type EnvelopeAddrs = { from: string; to: string };
 
