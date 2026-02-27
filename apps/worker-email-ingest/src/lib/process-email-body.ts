@@ -1,4 +1,5 @@
 import type { Element, Root, RootContent } from "hast";
+import { convert } from "html-to-text";
 import type { Email } from "postal-mime";
 import rehypeParse from "rehype-parse";
 import rehypeRemark from "rehype-remark";
@@ -42,7 +43,7 @@ export async function processEmailBody({
 	const html = await markdownToHtml(md);
 
 	// 3) Plaintext from Markdown (homogeneous)
-	const plaintext = mdToPlaintext(md);
+	const plaintext = convert(html);
 
 	return { html, plaintext, md };
 }
@@ -546,14 +547,4 @@ function addTargetBlank(node: Root | Element) {
 			addTargetBlank(child);
 		}
 	}
-}
-
-function mdToPlaintext(md: string): string {
-	// Keep it simple and predictable; tweak as needed.
-	return md
-		.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links -> text
-		.replace(/`{1,3}/g, "")
-		.replace(/[*_~]/g, "")
-		.replace(/\n{3,}/g, "\n\n")
-		.trim();
 }
