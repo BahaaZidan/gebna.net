@@ -32,7 +32,7 @@ export type EmailConversation = Node & {
   avatar?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   kind: EmailConversationKind;
-  lastMessage?: Maybe<EmailMessage>;
+  lastMessage: EmailMessage;
   messages: EmailConversationMessagesConnection;
   participants: Array<EmailAddressRef>;
   title?: Maybe<Scalars['String']['output']>;
@@ -135,7 +135,7 @@ export type ViewerEmailConversationsListQueryQueryVariables = Exact<{ [key: stri
 
 
 export type ViewerEmailConversationsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailConversations: { __typename?: 'ViewerEmailConversationsConnection', edges: Array<{ __typename?: 'ViewerEmailConversationsConnectionEdge', node: (
-          { __typename?: 'EmailConversation', id: string, title?: string | null, unseenCount: number, lastMessage?: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } | null }
+          { __typename?: 'EmailConversation', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } }
           & { ' $fragmentRefs'?: { 'EmailConversationTitleFragment': EmailConversationTitleFragment;'EmailConversationAvatarFragment': EmailConversationAvatarFragment } }
         ) }> } } | null };
 
