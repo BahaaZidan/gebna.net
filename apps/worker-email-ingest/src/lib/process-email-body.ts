@@ -1,196 +1,539 @@
-import * as cheerio from "cheerio";
-import he from "he";
+import type { Element, Root, RootContent } from "hast";
 import type { Email } from "postal-mime";
+import rehypeParse from "rehype-parse";
+import rehypeRemark from "rehype-remark";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
-import sanitizeHtml, { type IOptions } from "sanitize-html";
-import TurndownService from "turndown";
-import { unified } from "unified";
+import remarkStringify from "remark-stringify";
+import { unified, type Plugin } from "unified";
 
 interface ProcessEmailBodyArguments {
 	email: Email;
 }
+
 export async function processEmailBody({
 	email,
-}: ProcessEmailBodyArguments): Promise<{ html: string; plaintext: string } | null> {
-	const body = email.html || email.text;
+}: ProcessEmailBodyArguments): Promise<{ html: string; plaintext: string; md: string } | null> {
+	const body = email.html ?? email.text;
 	if (!body) return null;
 
-	// TODO: strip layout tables
-	let sanitizedBody = sanitizeHtml(body, {
-		allowedTags,
-		allowedAttributes,
-		enforceHtmlBoundary: true,
-	});
+	// 1) HTML -> (sanitize + normalize) -> Markdown
+	const md = (
+		await unified()
+			.use(rehypeParse, { fragment: true })
+			.use(rehypeSanitize, EMAIL_SANITIZE_SCHEMA)
+			.use(rehypeEmailNormalize) // plugin (no parentheses)
+			.use(rehypeRemark)
+			.use(remarkGfm)
+			.use(remarkStringify, {
+				bullet: "-",
+				fences: true,
+				listItemIndent: "one",
+			})
+			.process(body)
+	)
+		.toString()
+		.trim();
 
-	let plaintext = sanitizeHtml(body, {
-		allowedTags: [],
-		allowedAttributes: {},
-		textFilter(text) {
-			return text.trim();
-		},
-	});
-	let betterBody = makeItBetter(sanitizedBody);
-	let markdownHTML = await htmlToMarkdownHTML(betterBody);
-	let html = makeItEvenBetter(markdownHTML);
+	// 2) Markdown -> HTML (this gives you the “CMS markdown article” look)
+	const html = await markdownToHtml(md);
 
-	return {
-		html,
-		plaintext,
+	// 3) Plaintext from Markdown (homogeneous)
+	const plaintext = mdToPlaintext(md);
+
+	return { html, plaintext, md };
+}
+
+/**
+ * Tight schema: allow only “markdown-ish” HTML. No style/link/script/img/etc.
+ * Also: no style/class/id attributes are allowed at all.
+ */
+const EMAIL_SANITIZE_SCHEMA = (() => {
+	const schema = structuredClone(defaultSchema);
+
+	schema.tagNames = [
+		"p",
+		"br",
+		"hr",
+		"blockquote",
+		"pre",
+		"code",
+		"strong",
+		"em",
+		"b",
+		"i",
+		"u",
+		"s",
+		"del",
+		"h1",
+		"h2",
+		"h3",
+		"h4",
+		"h5",
+		"h6",
+		"ul",
+		"ol",
+		"li",
+		"a",
+		"table",
+		"thead",
+		"tbody",
+		"tfoot",
+		"tr",
+		"td",
+		"th",
+
+		// keep generic containers so we don’t lose text; we’ll unwrap them later
+		"div",
+		"span",
+		"section",
+		"article",
+		"header",
+		"footer",
+	];
+
+	schema.attributes = {
+		a: ["href", "title"],
 	};
+
+	schema.strip = ["style", "script", "head", "link", "meta", "title"];
+
+	schema.protocols = {
+		a: ["http", "https", "mailto", "tel"],
+	};
+
+	return schema;
+})();
+
+type ElementChildren = Element["children"];
+type ElementChild = ElementChildren[number];
+type NormalizeContext = "normal" | "table";
+
+/**
+ * Rehype plugin:
+ * - removes any remaining presentation attrs (belt + suspenders)
+ * - removes images/svgs if any slipped in (belt + suspenders)
+ * - unwraps container tags (div/span/section/...) to reduce clutter
+ * - flattens <a> children to plain text
+ * - drops empty/garbage blocks
+ * - drops unsafe hrefs (javascript:, data:, etc.)
+ */
+export const rehypeEmailNormalize: Plugin<[], Root> = () => {
+	return (tree) => {
+		normalizeChildren(tree, "normal");
+	};
+};
+
+const CONTAINER_TAGS = new Set(["div", "span", "section", "article", "header", "footer"]);
+
+const TABLE_CONTAINER_TAGS = new Set(["table", "thead", "tbody", "tfoot"]);
+const TABLE_CELL_TAGS = new Set(["td", "th"]);
+const INLINE_TRIM_TAGS = new Set(["strong", "em", "b", "i", "u", "s", "del", "a"]);
+
+const DROP_TAGS = new Set([
+	"img",
+	"svg",
+	"picture",
+	"source",
+	"video",
+	"audio",
+	"canvas",
+	"iframe",
+	"object",
+	"embed",
+]);
+
+const VOID_TAGS = new Set(["br", "hr"]);
+const BLOCK_TAGS = new Set([
+	"p",
+	"blockquote",
+	"pre",
+	"ul",
+	"ol",
+	"li",
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+	"hr",
+]);
+
+function normalizeChildren(parent: Root | Element, context: NormalizeContext): boolean {
+	const next: ElementChildren = [];
+	let hasContent = false;
+
+	for (const child of parent.children) {
+		if (child.type === "element") {
+			const normalized = normalizeElement(child, context);
+			if (!normalized) continue;
+
+			if (Array.isArray(normalized)) {
+				for (const item of normalized) {
+					next.push(item);
+					if (addsContent(item)) hasContent = true;
+				}
+			} else {
+				next.push(normalized);
+				if (addsContent(normalized)) hasContent = true;
+			}
+			continue;
+		}
+
+		if (child.type === "text") {
+			const cleaned = normalizeTextValue(child.value ?? "");
+			if (cleaned !== child.value) child.value = cleaned;
+			next.push(child);
+			if (isMeaningfulText(child.value)) hasContent = true;
+		}
+	}
+
+	parent.children = next;
+	return hasContent;
 }
-type AllowedAttributes = NonNullable<IOptions["allowedAttributes"]>;
-type AllowedTags = Exclude<NonNullable<IOptions["allowedTags"]>, false>;
 
-const allowedAttributes = {
-	a: ["href", "title"],
-	abbr: ["title"],
-	address: [],
-	article: [],
-	aside: [],
-	b: [],
-	bdi: ["dir"],
-	bdo: ["dir"],
-	big: [],
-	blockquote: ["cite"],
-	br: [],
-	caption: [],
-	center: [],
-	cite: [],
-	code: [],
-	col: ["align", "valign", "span", "width"],
-	colgroup: ["align", "valign", "span", "width"],
-	dd: [],
-	del: ["datetime"],
-	details: ["open"],
-	div: [],
-	dl: [],
-	dt: [],
-	em: [],
-	figcaption: [],
-	figure: [],
-	font: ["color", "size", "face"],
-	footer: [],
-	h1: [],
-	h2: [],
-	h3: [],
-	h4: [],
-	h5: [],
-	h6: [],
-	header: [],
-	hr: [],
-	i: [],
-	ins: ["datetime"],
-	kbd: [],
-	li: [],
-	mark: [],
-	nav: [],
-	ol: [],
-	p: [],
-	pre: [],
-	s: [],
-	section: [],
-	small: [],
-	span: [],
-	sub: [],
-	summary: [],
-	sup: [],
-	strong: [],
-	strike: [],
-	table: ["width", "border", "align", "valign"],
-	tbody: ["align", "valign"],
-	td: ["width", "rowspan", "colspan", "align", "valign"],
-	tfoot: ["align", "valign"],
-	th: ["width", "rowspan", "colspan", "align", "valign"],
-	thead: ["align", "valign"],
-	tr: ["rowspan", "align", "valign"],
-	tt: [],
-	u: [],
-	ul: [],
-} satisfies AllowedAttributes;
+function normalizeElement(
+	node: Element,
+	context: NormalizeContext
+): ElementChild | ElementChild[] | null {
+	stripPresentationAttrs(node);
 
-const allowedTags: AllowedTags = Object.keys(allowedAttributes);
+	if (DROP_TAGS.has(node.tagName)) return null;
 
-function makeItBetter(sanitizedBody: string): string {
-	const $ = cheerio.load(sanitizedBody);
+	if (VOID_TAGS.has(node.tagName)) {
+		node.children = [];
+		return node;
+	}
 
-	// Flatten anchor tags
-	$("a").each((_, anchor) => {
-		const $a = $(anchor);
-		const href = $a.attr("href");
-		const text = $a.text();
-		$a.text(text);
-		if (href) $a.attr("href", href);
-	});
+	if (context === "normal" && node.tagName === "table") {
+		return normalizeTable(node);
+	}
 
-	const result = $.html();
-	return result;
+	const hasContent = normalizeChildren(node, context);
+
+	if (INLINE_TRIM_TAGS.has(node.tagName)) {
+		normalizeInlineElement(node);
+		if (!hasInlineContent(node)) return null;
+	}
+
+	if (node.tagName === "a") {
+		const href = typeof node.properties?.href === "string" ? node.properties.href : "";
+		const rawText = normalizeTextValue(stripInvisibleChars(getText(node)));
+		if (!isMeaningfulText(rawText)) return null;
+
+		if (!href || !isSafeHref(href)) {
+			return { type: "text", value: rawText };
+		}
+
+		node.children = [{ type: "text", value: rawText }];
+		return node;
+	}
+
+	if (context === "table") {
+		if (
+			TABLE_CELL_TAGS.has(node.tagName) ||
+			TABLE_CONTAINER_TAGS.has(node.tagName) ||
+			node.tagName === "tr"
+		) {
+			return hasContent ? node : null;
+		}
+	} else {
+		if (TABLE_CELL_TAGS.has(node.tagName) || TABLE_CONTAINER_TAGS.has(node.tagName)) {
+			return hasContent ? node.children : null;
+		}
+
+		if (node.tagName === "tr") {
+			if (!hasContent) return null;
+			const children = node.children;
+			return hasBlockChild(children)
+				? children
+				: {
+						type: "element",
+						tagName: "p",
+						properties: {},
+						children,
+					};
+		}
+	}
+
+	if (CONTAINER_TAGS.has(node.tagName)) {
+		return hasContent ? node.children : null;
+	}
+
+	if (!hasContent) return null;
+
+	return node;
 }
 
-async function htmlToMarkdownHTML(body: string) {
-	const turndown = new TurndownService({});
-	const md = turndown.turndown(body);
+function normalizeTable(node: Element): ElementChild | ElementChild[] | null {
+	const isData = isDataTable(node);
+	if (!isData) {
+		const hasContent = normalizeChildren(node, "normal");
+		return hasContent ? node.children : null;
+	}
 
-	const resultHTML = (
+	const hasContent = normalizeChildren(node, "table");
+	return hasContent ? node : null;
+}
+
+function stripPresentationAttrs(node: Element) {
+	const props = node.properties;
+	if (!props) return;
+
+	// no styling hooks
+	delete props.style;
+	delete props.className;
+	delete props.id;
+
+	// common presentation attrs in emails
+	delete props.width;
+	delete props.height;
+	delete props.bgcolor;
+	delete props.align;
+	delete props.valign;
+	delete props.border;
+}
+
+function getText(node: RootContent): string {
+	if (node.type === "text") return node.value ?? "";
+	if (node.type === "element") {
+		let out = "";
+		for (const child of node.children) {
+			out += getText(child);
+		}
+		return out;
+	}
+	return "";
+}
+
+function addsContent(node: ElementChild): boolean {
+	if (node.type === "text") return isMeaningfulText(node.value);
+	return node.type === "element";
+}
+
+function hasBlockChild(children: ElementChildren): boolean {
+	for (const child of children) {
+		if (child.type === "element" && BLOCK_TAGS.has(child.tagName)) return true;
+	}
+	return false;
+}
+
+function isDataTable(table: Element): boolean {
+	let hasHeader = false;
+	let hasNumber = false;
+	let hasLabelAndNumberRow = false;
+	const rowCounts: number[] = [];
+
+	const rows: Element[] = [];
+	const stack: Element[] = [table];
+
+	while (stack.length) {
+		const current = stack.pop();
+		if (!current) break;
+
+		for (const child of current.children) {
+			if (child.type !== "element") continue;
+
+			if (child.tagName === "table" && current !== table) {
+				continue;
+			}
+
+			if (child.tagName === "thead") hasHeader = true;
+			if (child.tagName === "tr") rows.push(child);
+
+			stack.push(child);
+		}
+	}
+
+	for (const row of rows) {
+		let cellCount = 0;
+		let rowHasNumber = false;
+		let rowHasLabel = false;
+
+		for (const cell of row.children) {
+			if (cell.type !== "element") continue;
+			if (cell.tagName !== "td" && cell.tagName !== "th") continue;
+
+			if (cell.tagName === "th") hasHeader = true;
+
+			const text = normalizeInvisible(getTextExcludingTables(cell));
+			if (!text) continue;
+
+			cellCount += 1;
+			if (/\d/.test(text)) {
+				rowHasNumber = true;
+				hasNumber = true;
+			}
+			if (/[A-Za-z]/.test(text)) {
+				rowHasLabel = true;
+			}
+		}
+
+		if (cellCount > 0) {
+			rowCounts.push(cellCount);
+			if (cellCount >= 2 && rowHasNumber && rowHasLabel) hasLabelAndNumberRow = true;
+		}
+	}
+
+	const dataRowCounts = rowCounts.filter((count) => count >= 2);
+	if (dataRowCounts.length === 0) return false;
+
+	const countByColumns = new Map<number, number>();
+	for (const count of dataRowCounts) {
+		countByColumns.set(count, (countByColumns.get(count) ?? 0) + 1);
+	}
+
+	const hasConsistentColumns = Array.from(countByColumns.values()).some((value) => value >= 2);
+
+	if (hasHeader || hasLabelAndNumberRow) return true;
+	if (hasConsistentColumns && hasNumber) return true;
+
+	return false;
+}
+
+function getTextExcludingTables(node: RootContent): string {
+	if (node.type === "text") return node.value ?? "";
+	if (node.type === "element") {
+		if (node.tagName === "table") return "";
+		let out = "";
+		for (const child of node.children) {
+			out += getTextExcludingTables(child);
+		}
+		return out;
+	}
+	return "";
+}
+
+function isMeaningfulText(value: string): boolean {
+	return normalizeInvisible(value).length > 0;
+}
+
+function normalizeInvisible(input: string): string {
+	// remove zero-width & friends
+	const stripped = stripInvisibleChars(input).trim();
+
+	// treat “only hyphens/whitespace” as empty
+	return stripped.replace(/[-\s\u00ad\u2010-\u2015\u2212]+/g, "").length === 0 ? "" : stripped;
+}
+
+function stripInvisibleChars(input: string): string {
+	return input.replace(/[\u034f\u200b-\u200f\u2060\ufeff]/g, "");
+}
+
+function normalizeTextValue(input: string): string {
+	return normalizeLinebreakEntities(input);
+}
+
+function normalizeLinebreakEntities(input: string): string {
+	return input.replace(/&(?:amp;)?#x0*(?:a|d);?|&(?:amp;)?#0*(?:10|13);?/gi, " ");
+}
+
+function normalizeInlineElement(node: Element) {
+	const next: ElementChildren = [];
+
+	for (const child of node.children) {
+		if (child.type === "text") {
+			const normalized = normalizeInlineText(child.value ?? "");
+			if (normalized.length > 0) {
+				child.value = normalized;
+				next.push(child);
+			}
+			continue;
+		}
+
+		if (child.type === "element" && child.tagName === "br") {
+			next.push({ type: "text", value: " " });
+			continue;
+		}
+
+		next.push(child);
+	}
+
+	node.children = trimInlineEdges(next);
+}
+
+function normalizeInlineText(value: string): string {
+	return value.replace(/\u00a0/g, " ").replace(/[\t\r\n]+/g, " ");
+}
+
+function trimInlineEdges(children: ElementChildren): ElementChildren {
+	let start = 0;
+	let end = children.length - 1;
+
+	while (start <= end) {
+		const child = children[start];
+		if (child?.type !== "text") break;
+		const trimmed = child.value.replace(/^\s+/, "");
+		if (trimmed.length === 0) {
+			start += 1;
+			continue;
+		}
+		child.value = trimmed;
+		break;
+	}
+
+	while (end >= start) {
+		const child = children[end];
+		if (child?.type !== "text") break;
+		const trimmed = child.value.replace(/\s+$/, "");
+		if (trimmed.length === 0) {
+			end -= 1;
+			continue;
+		}
+		child.value = trimmed;
+		break;
+	}
+
+	return children.slice(start, end + 1);
+}
+
+function hasInlineContent(node: Element): boolean {
+	for (const child of node.children) {
+		if (child.type === "text" && isMeaningfulText(child.value)) return true;
+		if (child.type === "element") return true;
+	}
+	return false;
+}
+
+function isSafeHref(href: string): boolean {
+	// allow relative and in-page links
+	if (href.startsWith("/") || href.startsWith("#")) return true;
+
+	// allow mailto/tel/http/https only
+	try {
+		const u = new URL(href);
+		return (
+			u.protocol === "http:" ||
+			u.protocol === "https:" ||
+			u.protocol === "mailto:" ||
+			u.protocol === "tel:"
+		);
+	} catch {
+		return false;
+	}
+}
+
+async function markdownToHtml(md: string): Promise<string> {
+	return String(
 		await unified()
 			.use(remarkParse)
 			.use(remarkGfm)
 			.use(remarkRehype)
 			.use(rehypeStringify)
 			.process(md)
-	).toString();
-
-	return resultHTML;
+	);
 }
 
-function makeItEvenBetter(markdownHTML: string) {
-	const $ = cheerio.load(markdownHTML);
-
-	$("p, div").each((_, node) => {
-		const p = $(node);
-		const textContent = p.text();
-		if (isHyphenOrWhitespaceOnly(textContent)) p.remove();
-	});
-
-	const result = $.html();
-	return result;
+function mdToPlaintext(md: string): string {
+	// Keep it simple and predictable; tweak as needed.
+	return md
+		.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links -> text
+		.replace(/`{1,3}/g, "")
+		.replace(/[*_~]/g, "")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 }
-
-function isHyphenOrWhitespaceOnly(text: string): boolean {
-	const decoded = he.decode(text);
-	if (decoded.length === 0) return true;
-
-	for (const char of decoded) {
-		if (HYPHEN_CHARS.has(char)) continue;
-		if (INVISIBLE_CHARS.has(char)) continue;
-		if (char.trim().length === 0) continue;
-		return false;
-	}
-
-	return true;
-}
-
-const HYPHEN_CHARS = new Set([
-	"-",
-	"\u00ad",
-	"\u2010",
-	"\u2011",
-	"\u2012",
-	"\u2013",
-	"\u2014",
-	"\u2015",
-	"\u2212",
-]);
-
-const INVISIBLE_CHARS = new Set([
-	"\u034f", // combining grapheme joiner
-	"\u200b", // zero-width space
-	"\u200c", // zero-width non-joiner
-	"\u200d", // zero-width joiner
-	"\u200e", // left-to-right mark
-	"\u200f", // right-to-left mark
-	"\u2060", // word joiner
-	"\ufeff", // zero-width no-break space
-]);
