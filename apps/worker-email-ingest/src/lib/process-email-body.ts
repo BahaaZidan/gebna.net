@@ -1,17 +1,10 @@
 import * as cheerio from "cheerio";
-
-import type {} from "cheerio";
-
-import { gfmToMarkdown } from "mdast-util-gfm";
-import { NodeHtmlMarkdown, NodeHtmlMarkdownOptions } from "node-html-markdown";
+import he from "he";
 import type { Email } from "postal-mime";
-import rehypeParse from "rehype-parse";
-import rehypeRemark from "rehype-remark";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
-import remarkStringify from "remark-stringify";
 import sanitizeHtml, { type IOptions } from "sanitize-html";
 import TurndownService from "turndown";
 import { unified } from "unified";
@@ -25,7 +18,7 @@ export async function processEmailBody({
 	const body = email.html || email.text;
 	if (!body) return null;
 
-	// TODO: strip layout tables and nested anchor tags
+	// TODO: strip layout tables
 	let sanitizedBody = sanitizeHtml(body, {
 		allowedTags,
 		allowedAttributes,
@@ -41,9 +34,10 @@ export async function processEmailBody({
 	});
 	let betterBody = makeItBetter(sanitizedBody);
 	let markdownHTML = await htmlToMarkdownHTML(betterBody);
+	let html = makeItEvenBetter(markdownHTML);
 
 	return {
-		html: markdownHTML,
+		html,
 		plaintext,
 	};
 }
@@ -131,20 +125,6 @@ function makeItBetter(sanitizedBody: string): string {
 		if (href) $a.attr("href", href);
 	});
 
-	// Remove all whitespace-only or zero-width elements
-	const INVISIBLE_TEXT_RE = /[\u200B-\u200D\uFEFF]/g;
-	$("*").each((_, node) => {
-		if (node.type !== "tag") return;
-		const tag = node.name;
-		if (tag === "html" || tag === "body") return;
-		const rawText = $(node).text();
-		const cleaned = rawText
-			.replace(INVISIBLE_TEXT_RE, "")
-			.replace(/\u00A0/g, " ")
-			.trim();
-		if (!cleaned) $(node).remove();
-	});
-
 	const result = $.html();
 	return result;
 }
@@ -164,3 +144,53 @@ async function htmlToMarkdownHTML(body: string) {
 
 	return resultHTML;
 }
+
+function makeItEvenBetter(markdownHTML: string) {
+	const $ = cheerio.load(markdownHTML);
+
+	$("p, div").each((_, node) => {
+		const p = $(node);
+		const textContent = p.text();
+		if (isHyphenOrWhitespaceOnly(textContent)) p.remove();
+	});
+
+	const result = $.html();
+	return result;
+}
+
+function isHyphenOrWhitespaceOnly(text: string): boolean {
+	const decoded = he.decode(text);
+	if (decoded.length === 0) return true;
+
+	for (const char of decoded) {
+		if (HYPHEN_CHARS.has(char)) continue;
+		if (INVISIBLE_CHARS.has(char)) continue;
+		if (char.trim().length === 0) continue;
+		return false;
+	}
+
+	return true;
+}
+
+const HYPHEN_CHARS = new Set([
+	"-",
+	"\u00ad",
+	"\u2010",
+	"\u2011",
+	"\u2012",
+	"\u2013",
+	"\u2014",
+	"\u2015",
+	"\u2212",
+]);
+
+const INVISIBLE_CHARS = new Set([
+	"\u034f", // combining grapheme joiner
+	"\u200b", // zero-width space
+	"\u200c", // zero-width non-joiner
+	"\u200d", // zero-width joiner
+	"\u200e", // left-to-right mark
+	"\u200f", // right-to-left mark
+	"\u2060", // word joiner
+	"\ufeff", // zero-width no-break space
+]);
