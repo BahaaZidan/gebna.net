@@ -84,6 +84,8 @@ export default {
 			const participants = [
 				...messageMetadata.to,
 				...messageMetadata.cc,
+				...messageMetadata.bcc,
+				...messageMetadata.replyTo,
 				{ address: envelope.to, name: "" },
 				{ address: envelope.from, name: "" },
 			];

@@ -224,7 +224,7 @@ export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString
     query ViewerEmailConversationsListQuery {
   viewer {
     id
-    emailConversations {
+    emailConversations(first: 30) {
       edges {
         node {
           ...EmailConversationTitle
