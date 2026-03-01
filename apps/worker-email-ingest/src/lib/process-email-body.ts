@@ -7,7 +7,9 @@ import rehypeRemark from "rehype-remark";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
+import remarkStringify from "remark-stringify";
 import { unified, type Plugin } from "unified";
 
 interface ProcessEmailBodyArguments {
@@ -22,19 +24,28 @@ export async function processEmailBody({ email }: ProcessEmailBodyArguments): Pr
 	const body = email.html ?? email.text;
 	if (!body) return null;
 
-	const html = String(
+	// 1) HTML -> (sanitize + normalize) -> Markdown
+	const md = (
 		await unified()
 			.use(rehypeParse, { fragment: true })
 			.use(rehypeSanitize, EMAIL_SANITIZE_SCHEMA)
 			.use(rehypeEmailNormalize) // plugin (no parentheses)
 			.use(rehypeRemark)
 			.use(remarkGfm)
-			.use(remarkRehype)
-			.use(rehypeAddTargetBlank)
-			.use(rehypeStringify)
+			.use(remarkStringify, {
+				bullet: "-",
+				fences: true,
+				listItemIndent: "one",
+			})
 			.process(body)
-	);
+	)
+		.toString()
+		.trim();
 
+	// 2) Markdown -> HTML (this gives you the “CMS markdown article” look)
+	const html = await markdownToHtml(md);
+
+	// 3) Plaintext from Markdown (homogeneous)
 	const plaintext = convert(html);
 
 	return { html, plaintext, wordCount: count(plaintext, "words") };
@@ -120,11 +131,12 @@ export const rehypeEmailNormalize: Plugin<[], Root> = () => {
 	};
 };
 
-const CONTAINER_TAGS = new Set(["div", "span", "section", "article", "header", "footer"]);
+const BLOCK_CONTAINER_TAGS = new Set(["div", "section", "article", "header", "footer"]);
+const INLINE_CONTAINER_TAGS = new Set(["span"]);
 
 const TABLE_CONTAINER_TAGS = new Set(["table", "thead", "tbody", "tfoot"]);
 const TABLE_CELL_TAGS = new Set(["td", "th"]);
-const INLINE_TRIM_TAGS = new Set(["strong", "em", "b", "i", "u", "s", "del", "a"]);
+const INLINE_TRIM_TAGS = new Set(["strong", "em", "b", "i", "u", "s", "del"]);
 
 const DROP_TAGS = new Set([
 	"img",
@@ -159,6 +171,7 @@ const BLOCK_TAGS = new Set([
 function normalizeChildren(parent: Root | Element, context: NormalizeContext): boolean {
 	const next: ElementChildren = [];
 	let hasContent = false;
+	let lastWasBr = false;
 
 	for (const child of parent.children) {
 		if (child.type === "element") {
@@ -167,10 +180,26 @@ function normalizeChildren(parent: Root | Element, context: NormalizeContext): b
 
 			if (Array.isArray(normalized)) {
 				for (const item of normalized) {
+					if (item.type === "element" && item.tagName === "br") {
+						if (lastWasBr) continue;
+						lastWasBr = true;
+					} else if (item.type === "text" && !isMeaningfulText(item.value ?? "")) {
+						// keep whitespace, but don't reset br tracking
+					} else {
+						lastWasBr = false;
+					}
 					next.push(item);
 					if (addsContent(item)) hasContent = true;
 				}
 			} else {
+				if (normalized.type === "element" && normalized.tagName === "br") {
+					if (lastWasBr) continue;
+					lastWasBr = true;
+				} else if (normalized.type === "text" && !isMeaningfulText(normalized.value ?? "")) {
+					// keep whitespace, but don't reset br tracking
+				} else {
+					lastWasBr = false;
+				}
 				next.push(normalized);
 				if (addsContent(normalized)) hasContent = true;
 			}
@@ -181,7 +210,10 @@ function normalizeChildren(parent: Root | Element, context: NormalizeContext): b
 			const cleaned = normalizeTextValue(child.value ?? "");
 			if (cleaned !== child.value) child.value = cleaned;
 			next.push(child);
-			if (isMeaningfulText(child.value)) hasContent = true;
+			if (isMeaningfulText(child.value)) {
+				lastWasBr = false;
+				hasContent = true;
+			}
 		}
 	}
 
@@ -208,22 +240,25 @@ function normalizeElement(
 
 	const hasContent = normalizeChildren(node, context);
 
-	if (INLINE_TRIM_TAGS.has(node.tagName)) {
-		normalizeInlineElement(node);
-		if (!hasInlineContent(node)) return null;
-	}
-
 	if (node.tagName === "a") {
 		const href = typeof node.properties?.href === "string" ? node.properties.href : "";
 		const rawText = normalizeTextValue(stripInvisibleChars(getText(node)));
 		if (!isMeaningfulText(rawText)) return null;
 
-		if (!href || !isSafeHref(href)) {
+		const inferredHref = href || inferHrefFromText(rawText);
+		if (!inferredHref || !isSafeHref(inferredHref)) {
 			return { type: "text", value: rawText };
 		}
 
+		node.properties = node.properties ?? {};
+		node.properties.href = inferredHref;
 		node.children = [{ type: "text", value: rawText }];
 		return node;
+	}
+
+	if (INLINE_TRIM_TAGS.has(node.tagName)) {
+		normalizeInlineElement(node);
+		if (!hasInlineContent(node)) return null;
 	}
 
 	if (context === "table") {
@@ -253,7 +288,24 @@ function normalizeElement(
 		}
 	}
 
-	if (CONTAINER_TAGS.has(node.tagName)) {
+	if (node.tagName === "p") {
+		if (!hasParagraphContent(node)) return null;
+	}
+
+	if (BLOCK_CONTAINER_TAGS.has(node.tagName)) {
+		if (!hasContent) return null;
+		const children = node.children;
+		return hasBlockChild(children)
+			? children
+			: {
+					type: "element",
+					tagName: "p",
+					properties: {},
+					children,
+				};
+	}
+
+	if (INLINE_CONTAINER_TAGS.has(node.tagName)) {
 		return hasContent ? node.children : null;
 	}
 
@@ -431,10 +483,8 @@ function normalizeInlineElement(node: Element) {
 	for (const child of node.children) {
 		if (child.type === "text") {
 			const normalized = normalizeInlineText(child.value ?? "");
-			if (normalized.length > 0) {
-				child.value = normalized;
-				next.push(child);
-			}
+			child.value = normalized;
+			next.push(child);
 			continue;
 		}
 
@@ -446,48 +496,25 @@ function normalizeInlineElement(node: Element) {
 		next.push(child);
 	}
 
-	node.children = trimInlineEdges(next);
+	node.children = next;
 }
 
 function normalizeInlineText(value: string): string {
 	return value.replace(/\u00a0/g, " ").replace(/[\t\r\n]+/g, " ");
 }
 
-function trimInlineEdges(children: ElementChildren): ElementChildren {
-	let start = 0;
-	let end = children.length - 1;
-
-	while (start <= end) {
-		const child = children[start];
-		if (child?.type !== "text") break;
-		const trimmed = child.value.replace(/^\s+/, "");
-		if (trimmed.length === 0) {
-			start += 1;
-			continue;
-		}
-		child.value = trimmed;
-		break;
-	}
-
-	while (end >= start) {
-		const child = children[end];
-		if (child?.type !== "text") break;
-		const trimmed = child.value.replace(/\s+$/, "");
-		if (trimmed.length === 0) {
-			end -= 1;
-			continue;
-		}
-		child.value = trimmed;
-		break;
-	}
-
-	return children.slice(start, end + 1);
-}
-
 function hasInlineContent(node: Element): boolean {
 	for (const child of node.children) {
 		if (child.type === "text" && isMeaningfulText(child.value)) return true;
 		if (child.type === "element") return true;
+	}
+	return false;
+}
+
+function hasParagraphContent(node: Element): boolean {
+	for (const child of node.children) {
+		if (child.type === "text" && isMeaningfulText(child.value)) return true;
+		if (child.type === "element" && child.tagName !== "br") return true;
 	}
 	return false;
 }
@@ -508,6 +535,28 @@ function isSafeHref(href: string): boolean {
 	} catch {
 		return false;
 	}
+}
+
+function inferHrefFromText(text: string): string | null {
+	const match = text.match(/(https?:\/\/[^\s<>()]+|www\.[^\s<>()]+)/i);
+	if (!match) return null;
+
+	let url = match[0];
+	url = url.replace(/[),.;:!?]+$/g, "");
+	if (url.startsWith("www.")) url = `https://${url}`;
+	return url;
+}
+
+async function markdownToHtml(md: string): Promise<string> {
+	return String(
+		await unified()
+			.use(remarkParse)
+			.use(remarkGfm)
+			.use(remarkRehype)
+			.use(rehypeAddTargetBlank)
+			.use(rehypeStringify)
+			.process(md)
+	);
 }
 
 const rehypeAddTargetBlank: Plugin<[], Root> = () => {
