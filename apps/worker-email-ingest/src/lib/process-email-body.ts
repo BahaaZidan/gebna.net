@@ -1,3 +1,4 @@
+import { count } from "@wordpress/wordcount";
 import type { Element, Root, RootContent } from "hast";
 import { convert } from "html-to-text";
 import type { Email } from "postal-mime";
@@ -6,46 +7,37 @@ import rehypeRemark from "rehype-remark";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
-import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
-import remarkStringify from "remark-stringify";
 import { unified, type Plugin } from "unified";
 
 interface ProcessEmailBodyArguments {
 	email: Email;
 }
 
-export async function processEmailBody({
-	email,
-}: ProcessEmailBodyArguments): Promise<{ html: string; plaintext: string; md: string } | null> {
+export async function processEmailBody({ email }: ProcessEmailBodyArguments): Promise<{
+	html: string;
+	plaintext: string;
+	wordCount: number;
+} | null> {
 	const body = email.html ?? email.text;
 	if (!body) return null;
 
-	// 1) HTML -> (sanitize + normalize) -> Markdown
-	const md = (
+	const html = String(
 		await unified()
 			.use(rehypeParse, { fragment: true })
 			.use(rehypeSanitize, EMAIL_SANITIZE_SCHEMA)
 			.use(rehypeEmailNormalize) // plugin (no parentheses)
 			.use(rehypeRemark)
 			.use(remarkGfm)
-			.use(remarkStringify, {
-				bullet: "-",
-				fences: true,
-				listItemIndent: "one",
-			})
+			.use(remarkRehype)
+			.use(rehypeAddTargetBlank)
+			.use(rehypeStringify)
 			.process(body)
-	)
-		.toString()
-		.trim();
+	);
 
-	// 2) Markdown -> HTML (this gives you the “CMS markdown article” look)
-	const html = await markdownToHtml(md);
-
-	// 3) Plaintext from Markdown (homogeneous)
 	const plaintext = convert(html);
 
-	return { html, plaintext, md };
+	return { html, plaintext, wordCount: count(plaintext, "words") };
 }
 
 /**
@@ -516,18 +508,6 @@ function isSafeHref(href: string): boolean {
 	} catch {
 		return false;
 	}
-}
-
-async function markdownToHtml(md: string): Promise<string> {
-	return String(
-		await unified()
-			.use(remarkParse)
-			.use(remarkGfm)
-			.use(remarkRehype)
-			.use(rehypeAddTargetBlank)
-			.use(rehypeStringify)
-			.process(md)
-	);
 }
 
 const rehypeAddTargetBlank: Plugin<[], Root> = () => {
