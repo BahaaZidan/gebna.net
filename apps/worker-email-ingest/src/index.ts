@@ -59,7 +59,9 @@ export default {
 						.values({
 							address: envelope.from,
 							name: parsedEnvelope.from!.name,
-							avatarPlaceholder: generateImagePlaceholder(parsedEnvelope.from!.name),
+							avatarPlaceholder: generateImagePlaceholder(
+								parsedEnvelope.from!.name || parsedEnvelope.from!.address!
+							),
 						})
 						.returning()
 						.onConflictDoNothing();
