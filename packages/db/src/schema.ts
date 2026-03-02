@@ -2,7 +2,6 @@ import { ulid } from "@gebna/utils";
 import { desc, sql } from "drizzle-orm";
 import {
 	blob,
-	check,
 	customType,
 	foreignKey,
 	index,
@@ -154,10 +153,8 @@ export const emailAddressRefs = sqliteTable(
 	(self) => [uniqueIndex("uniq_idx_ownerId_address").on(self.ownerId, self.address)]
 );
 
-export const EmailConversationKind = ["PRIVATE", "GROUP"] as const;
-export type EmailConversationKind = (typeof EmailConversationKind)[number];
-export const emailConversations = sqliteTable(
-	"emailConversations",
+export const emailThreads = sqliteTable(
+	"emailThreads",
 	{
 		id: text()
 			.primaryKey()
@@ -165,9 +162,6 @@ export const emailConversations = sqliteTable(
 		ownerId: text()
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
-		kind: text({ enum: EmailConversationKind }).notNull(),
-		/** Deterministic key for PRIVATE conversations: "minEmailAddress:maxEmailAddress" */
-		privateConvoKey: citext(),
 		title: text(),
 		createdAt: integer({ mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -185,34 +179,23 @@ export const emailConversations = sqliteTable(
 		uploadedAvatar: text(),
 		unseenCount: integer().notNull().default(0),
 	},
-	(self) => [
-		uniqueIndex("uniq_idx_ownerId_dmKey").on(self.ownerId, self.privateConvoKey),
-		index("idx_conversation_ownerId_last_message_at").on(self.ownerId, self.lastMessageAt),
-		check(
-			"chk_conversation_dmkey_kind",
-			sql`(
-				(${self.kind} = 'PRIVATE' AND ${self.privateConvoKey} IS NOT NULL AND length(${self.privateConvoKey}) > 0)
-				OR
-				(${self.kind} = 'GROUP' AND ${self.privateConvoKey} IS NULL)
-			)`
-		),
-	]
+	(self) => [index("idx_thread_ownerId_last_message_at").on(self.ownerId, self.lastMessageAt)]
 );
 
-export const emailConversationParticipants = sqliteTable(
-	"emailConversationParticipants",
+export const emailThreadParticipants = sqliteTable(
+	"emailThreadParticipants",
 	{
-		conversationId: text()
+		threadId: text()
 			.notNull()
-			.references(() => emailConversations.id, { onDelete: "cascade" }),
+			.references(() => emailThreads.id, { onDelete: "cascade" }),
 		emailAddressRefId: text()
 			.notNull()
 			.references(() => emailAddressRefs.id, { onDelete: "cascade" }),
 	},
 	(self) => [
-		primaryKey({ columns: [self.conversationId, self.emailAddressRefId] }),
-		index("idx_conversation_participant_conversation").on(self.conversationId),
-		index("idx_conversation_participant_identity").on(self.emailAddressRefId),
+		primaryKey({ columns: [self.threadId, self.emailAddressRefId] }),
+		index("idx_thread_participant_thread").on(self.threadId),
+		index("idx_thread_participant_identity").on(self.emailAddressRefId),
 	]
 );
 
@@ -231,7 +214,7 @@ export type EmailMessageMetadata = {
 	replyTo: EmailMessageMetadataAddress[];
 	/** Headers.inReplyTo ==> indicates the Email.messageId that this message is replying to */
 	inReplyTo?: string;
-	/** Headers.references ==> It lists the entire ancestry of the conversation — all the Message-IDs leading up to this email. used for threading */
+	/** Headers.references ==> It lists the entire ancestry of the thread — all the Message-IDs leading up to this email. used for threading */
 	references?: string;
 };
 export const emailMessages = sqliteTable(
@@ -249,9 +232,9 @@ export const emailMessages = sqliteTable(
 		 * * For out-bound it's null and `self.id` is provided in the headers instead
 		 */
 		canonicalMessageId: text(),
-		conversationId: text()
+		threadId: text()
 			.notNull()
-			.references((): AnySQLiteColumn => emailConversations.id, { onDelete: "cascade" }),
+			.references((): AnySQLiteColumn => emailThreads.id, { onDelete: "cascade" }),
 		from: citext().notNull(),
 		to: citext().notNull(),
 		bodyPlaintext: text(),
@@ -276,7 +259,7 @@ export const emailMessages = sqliteTable(
 			foreignColumns: [emailAddressRefs.ownerId, emailAddressRefs.address],
 		}).onDelete("cascade"),
 		uniqueIndex("uniq_idx_message_canonical_message_id").on(self.ownerId, self.canonicalMessageId),
-		index("idx_message_conversation_created").on(self.conversationId, desc(self.createdAt)),
+		index("idx_message_thread_created").on(self.threadId, desc(self.createdAt)),
 	]
 );
 
@@ -292,9 +275,9 @@ export const emailAttachments = sqliteTable("emailAttachments", {
 	messageId: text()
 		.notNull()
 		.references(() => emailMessages.id, { onDelete: "cascade" }),
-	conversationId: text()
+	threadId: text()
 		.notNull()
-		.references(() => emailConversations.id, { onDelete: "cascade" }),
+		.references(() => emailThreads.id, { onDelete: "cascade" }),
 	fromRef: text()
 		.notNull()
 		.references(() => emailAddressRefs.id, { onDelete: "cascade" }),

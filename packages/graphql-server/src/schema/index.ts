@@ -1,5 +1,4 @@
 import { getTableConfig, relations } from "@gebna/db";
-import { EmailConversationKind } from "@gebna/db/schema";
 import SchemaBuilder from "@pothos/core";
 import DrizzlePlugin from "@pothos/plugin-drizzle";
 import RelayPlugin from "@pothos/plugin-relay";
@@ -103,11 +102,8 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 	}),
 });
 
-const EmailConversationKindEnum = builder.enumType("EmailConversationKind", {
-	values: EmailConversationKind,
-});
-const EmailConversationRef = builder.drizzleNode("emailConversations", {
-	name: "EmailConversation",
+const EmailThreadRef = builder.drizzleNode("emailThreads", {
+	name: "EmailThread",
 	id: {
 		column: (t) => t.id,
 	},
@@ -117,10 +113,6 @@ const EmailConversationRef = builder.drizzleNode("emailConversations", {
 	authScopes: (c) => ({ ownedByViewer: c.ownerId }),
 	fields: (t) => ({
 		title: t.exposeString("title"),
-		kind: t.expose("kind", {
-			type: EmailConversationKindEnum,
-			nullable: false,
-		}),
 		avatar: t.exposeString("uploadedAvatar"),
 		participants: t.relation("participants", {
 			nullable: false,
@@ -159,7 +151,7 @@ const ViewerRef = builder.drizzleObject("users", {
 			resolve: (user) => user.uploadedAvatar || user.avatarPlaceholder,
 		}),
 		emailAddress: t.exposeString("email", { nullable: false }),
-		emailConversations: t.relatedConnection("emailConversations", {
+		emailThreads: t.relatedConnection("emailThreads", {
 			nullable: false,
 			edgesNullable: false,
 			nodeNullable: false,

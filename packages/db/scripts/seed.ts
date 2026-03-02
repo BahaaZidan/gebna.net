@@ -1,7 +1,6 @@
-import { eq } from "drizzle-orm";
-
 import { generateImagePlaceholder, ulid } from "@gebna/utils";
 import { hashPassword } from "better-auth/crypto";
+import { eq } from "drizzle-orm";
 
 import { dbSchema, getDB, type DBInstance } from "../src/index.js";
 
@@ -23,8 +22,8 @@ async function resetDatabase(db: DBInstance) {
 
 	await db.transaction(async (tx) => {
 		await tx.delete(dbSchema.emailMessages);
-		await tx.delete(dbSchema.emailConversationParticipants);
-		await tx.delete(dbSchema.emailConversations);
+		await tx.delete(dbSchema.emailThreadParticipants);
+		await tx.delete(dbSchema.emailThreads);
 		await tx.delete(dbSchema.emailAddressRefs);
 		await tx.delete(dbSchema.emailAddresses);
 		await tx.delete(dbSchema.sessions);
@@ -245,17 +244,16 @@ async function seedDatabase(db: DBInstance) {
 		},
 	];
 
-	const aliceBobConversationId = "seed-conversation-alice-bob";
-	const bobAliceConversationId = "seed-conversation-bob-alice";
-	const bobTeamConversationId = "seed-conversation-bob-team";
-	const aliceTeamConversationId = "seed-conversation-alice-team";
-	const carolTeamConversationId = "seed-conversation-carol-team";
+	const aliceBobThreadId = "seed-thread-alice-bob";
+	const bobAliceThreadId = "seed-thread-bob-alice";
+	const bobTeamThreadId = "seed-thread-bob-team";
+	const aliceTeamThreadId = "seed-thread-alice-team";
+	const carolTeamThreadId = "seed-thread-carol-team";
 
-	const emailConversations = [
+	const emailThreads = [
 		{
-			id: aliceBobConversationId,
+			id: aliceBobThreadId,
 			ownerId: aliceUser.id,
-			kind: "PRIVATE" as const,
 			privateConvoKey: [aliceUser.email, bobUser.email].sort().join(":"),
 			title: "Product launch prep",
 			createdAt: ctx.secondsAgo(3600),
@@ -266,9 +264,8 @@ async function seedDatabase(db: DBInstance) {
 			unseenCount: 1,
 		},
 		{
-			id: bobAliceConversationId,
+			id: bobAliceThreadId,
 			ownerId: bobUser.id,
-			kind: "PRIVATE" as const,
 			privateConvoKey: [aliceUser.email, bobUser.email].sort().join(":"),
 			title: "Product launch prep",
 			createdAt: ctx.secondsAgo(3600),
@@ -279,9 +276,8 @@ async function seedDatabase(db: DBInstance) {
 			unseenCount: 0,
 		},
 		{
-			id: bobTeamConversationId,
+			id: bobTeamThreadId,
 			ownerId: bobUser.id,
-			kind: "GROUP" as const,
 			title: "Beta feedback thread",
 			createdAt: ctx.secondsAgo(5400),
 			updatedAt: ctx.now,
@@ -291,9 +287,8 @@ async function seedDatabase(db: DBInstance) {
 			unseenCount: 2,
 		},
 		{
-			id: aliceTeamConversationId,
+			id: aliceTeamThreadId,
 			ownerId: aliceUser.id,
-			kind: "GROUP" as const,
 			title: "Beta feedback thread",
 			createdAt: ctx.secondsAgo(5400),
 			updatedAt: ctx.now,
@@ -303,9 +298,8 @@ async function seedDatabase(db: DBInstance) {
 			unseenCount: 2,
 		},
 		{
-			id: carolTeamConversationId,
+			id: carolTeamThreadId,
 			ownerId: carolUser.id,
-			kind: "GROUP" as const,
 			title: "Beta feedback thread",
 			createdAt: ctx.secondsAgo(5400),
 			updatedAt: ctx.now,
@@ -316,57 +310,57 @@ async function seedDatabase(db: DBInstance) {
 		},
 	];
 
-	const emailConversationParticipants = [
+	const emailThreadParticipants = [
 		{
-			conversationId: aliceBobConversationId,
+			threadId: aliceBobThreadId,
 			emailAddressRefId: aliceSelfRefId,
 		},
 		{
-			conversationId: aliceBobConversationId,
+			threadId: aliceBobThreadId,
 			emailAddressRefId: aliceBobRefId,
 		},
 		{
-			conversationId: bobAliceConversationId,
+			threadId: bobAliceThreadId,
 			emailAddressRefId: bobSelfRefId,
 		},
 		{
-			conversationId: bobAliceConversationId,
+			threadId: bobAliceThreadId,
 			emailAddressRefId: bobAliceRefId,
 		},
 		{
-			conversationId: bobTeamConversationId,
+			threadId: bobTeamThreadId,
 			emailAddressRefId: bobSelfRefId,
 		},
 		{
-			conversationId: bobTeamConversationId,
+			threadId: bobTeamThreadId,
 			emailAddressRefId: bobAliceRefId,
 		},
 		{
-			conversationId: bobTeamConversationId,
+			threadId: bobTeamThreadId,
 			emailAddressRefId: bobCarolRefId,
 		},
 		{
-			conversationId: aliceTeamConversationId,
+			threadId: aliceTeamThreadId,
 			emailAddressRefId: aliceSelfRefId,
 		},
 		{
-			conversationId: aliceTeamConversationId,
+			threadId: aliceTeamThreadId,
 			emailAddressRefId: aliceBobRefId,
 		},
 		{
-			conversationId: aliceTeamConversationId,
+			threadId: aliceTeamThreadId,
 			emailAddressRefId: aliceCarolRefId,
 		},
 		{
-			conversationId: carolTeamConversationId,
+			threadId: carolTeamThreadId,
 			emailAddressRefId: carolSelfRefId,
 		},
 		{
-			conversationId: carolTeamConversationId,
+			threadId: carolTeamThreadId,
 			emailAddressRefId: carolAliceRefId,
 		},
 		{
-			conversationId: carolTeamConversationId,
+			threadId: carolTeamThreadId,
 			emailAddressRefId: carolBobRefId,
 		},
 	];
@@ -375,7 +369,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-1",
 			ownerId: aliceUser.id,
-			conversationId: aliceBobConversationId,
+			threadId: aliceBobThreadId,
 			canonicalMessageId: "<seed-message-1@gebna.test>",
 			from: aliceUser.email,
 			to: bobUser.email,
@@ -396,13 +390,12 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-2",
 			ownerId: aliceUser.id,
-			conversationId: aliceBobConversationId,
+			threadId: aliceBobThreadId,
 			canonicalMessageId: "<seed-message-2@gebna.test>",
 			from: bobUser.email,
 			to: aliceUser.email,
 			bodyPlaintext: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
-			bodyHTML:
-				"<p>Looks solid! I’ll finalize the press brief and loop in Carol for QA.</p>",
+			bodyHTML: "<p>Looks solid! I’ll finalize the press brief and loop in Carol for QA.</p>",
 			createdAt: ctx.secondsAgo(1800),
 			metadata: {
 				to: [{ address: aliceUser.email, name: aliceUser.name }],
@@ -417,13 +410,12 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-3",
 			ownerId: aliceUser.id,
-			conversationId: aliceBobConversationId,
+			threadId: aliceBobThreadId,
 			canonicalMessageId: "<seed-message-3@gebna.test>",
 			from: bobUser.email,
 			to: aliceUser.email,
 			bodyPlaintext: "Sharing the QA checklist—can you verify the onboarding flow by tomorrow?",
-			bodyHTML:
-				"<p>Sharing the QA checklist—can you verify the onboarding flow by tomorrow?</p>",
+			bodyHTML: "<p>Sharing the QA checklist—can you verify the onboarding flow by tomorrow?</p>",
 			createdAt: ctx.secondsAgo(300),
 			metadata: {
 				to: [{ address: aliceUser.email, name: aliceUser.name }],
@@ -438,7 +430,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-1-bob",
 			ownerId: bobUser.id,
-			conversationId: bobAliceConversationId,
+			threadId: bobAliceThreadId,
 			canonicalMessageId: "<seed-message-1@gebna.test>",
 			from: aliceUser.email,
 			to: bobUser.email,
@@ -459,13 +451,12 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-2-bob",
 			ownerId: bobUser.id,
-			conversationId: bobAliceConversationId,
+			threadId: bobAliceThreadId,
 			canonicalMessageId: "<seed-message-2@gebna.test>",
 			from: bobUser.email,
 			to: aliceUser.email,
 			bodyPlaintext: "Looks solid! I’ll finalize the press brief and loop in Carol for QA.",
-			bodyHTML:
-				"<p>Looks solid! I’ll finalize the press brief and loop in Carol for QA.</p>",
+			bodyHTML: "<p>Looks solid! I’ll finalize the press brief and loop in Carol for QA.</p>",
 			createdAt: ctx.secondsAgo(1800),
 			metadata: {
 				to: [{ address: aliceUser.email, name: aliceUser.name }],
@@ -480,13 +471,12 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-3-bob",
 			ownerId: bobUser.id,
-			conversationId: bobAliceConversationId,
+			threadId: bobAliceThreadId,
 			canonicalMessageId: "<seed-message-3@gebna.test>",
 			from: bobUser.email,
 			to: aliceUser.email,
 			bodyPlaintext: "Sharing the QA checklist—can you verify the onboarding flow by tomorrow?",
-			bodyHTML:
-				"<p>Sharing the QA checklist—can you verify the onboarding flow by tomorrow?</p>",
+			bodyHTML: "<p>Sharing the QA checklist—can you verify the onboarding flow by tomorrow?</p>",
 			createdAt: ctx.secondsAgo(300),
 			metadata: {
 				to: [{ address: aliceUser.email, name: aliceUser.name }],
@@ -501,7 +491,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-4",
 			ownerId: bobUser.id,
-			conversationId: bobTeamConversationId,
+			threadId: bobTeamThreadId,
 			canonicalMessageId: "<seed-message-4@gebna.test>",
 			from: aliceUser.email,
 			to: bobUser.email,
@@ -520,7 +510,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-5",
 			ownerId: bobUser.id,
-			conversationId: bobTeamConversationId,
+			threadId: bobTeamThreadId,
 			canonicalMessageId: "<seed-message-5@gebna.test>",
 			from: carolUser.email,
 			to: bobUser.email,
@@ -540,7 +530,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-4-alice",
 			ownerId: aliceUser.id,
-			conversationId: aliceTeamConversationId,
+			threadId: aliceTeamThreadId,
 			canonicalMessageId: "<seed-message-4@gebna.test>",
 			from: aliceUser.email,
 			to: bobUser.email,
@@ -559,7 +549,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-5-alice",
 			ownerId: aliceUser.id,
-			conversationId: aliceTeamConversationId,
+			threadId: aliceTeamThreadId,
 			canonicalMessageId: "<seed-message-5@gebna.test>",
 			from: carolUser.email,
 			to: bobUser.email,
@@ -579,7 +569,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-4-carol",
 			ownerId: carolUser.id,
-			conversationId: carolTeamConversationId,
+			threadId: carolTeamThreadId,
 			canonicalMessageId: "<seed-message-4@gebna.test>",
 			from: aliceUser.email,
 			to: bobUser.email,
@@ -598,7 +588,7 @@ async function seedDatabase(db: DBInstance) {
 		{
 			id: "seed-message-5-carol",
 			ownerId: carolUser.id,
-			conversationId: carolTeamConversationId,
+			threadId: carolTeamThreadId,
 			canonicalMessageId: "<seed-message-5@gebna.test>",
 			from: carolUser.email,
 			to: bobUser.email,
@@ -617,36 +607,36 @@ async function seedDatabase(db: DBInstance) {
 		},
 	];
 
-	const lastMessageByConversation = emailMessages.reduce<Record<
-		string,
-		{ id: string; createdAt: Date }
-	>>((acc, message) => {
-		const current = acc[message.conversationId];
-		if (!current || current.createdAt < message.createdAt) {
-			acc[message.conversationId] = { id: message.id, createdAt: message.createdAt };
-		}
-		return acc;
-	}, {});
+	const lastMessageByThread = emailMessages.reduce<Record<string, { id: string; createdAt: Date }>>(
+		(acc, message) => {
+			const current = acc[message.threadId];
+			if (!current || current.createdAt < message.createdAt) {
+				acc[message.threadId] = { id: message.id, createdAt: message.createdAt };
+			}
+			return acc;
+		},
+		{}
+	);
 
 	await db.transaction(async (tx) => {
 		await tx.insert(dbSchema.users).values(users);
 		await tx.insert(dbSchema.accounts).values(accounts);
 		await tx.insert(dbSchema.emailAddresses).values(emailAddresses);
 		await tx.insert(dbSchema.emailAddressRefs).values(emailAddressRefs);
-		await tx.insert(dbSchema.emailConversations).values(emailConversations);
-		await tx.insert(dbSchema.emailConversationParticipants).values(emailConversationParticipants);
+		await tx.insert(dbSchema.emailThreads).values(emailThreads);
+		await tx.insert(dbSchema.emailThreadParticipants).values(emailThreadParticipants);
 		await tx.insert(dbSchema.emailMessages).values(emailMessages);
 
 		await Promise.all(
-			Object.entries(lastMessageByConversation).map(([conversationId, last]) =>
+			Object.entries(lastMessageByThread).map(([threadId, last]) =>
 				tx
-					.update(dbSchema.emailConversations)
+					.update(dbSchema.emailThreads)
 					.set({
 						lastMessageId: last.id,
 						lastMessageAt: last.createdAt,
 						updatedAt: ctx.now,
 					})
-					.where(eq(dbSchema.emailConversations.id, conversationId))
+					.where(eq(dbSchema.emailThreads.id, threadId))
 			)
 		);
 	});

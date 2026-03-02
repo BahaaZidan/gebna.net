@@ -22,8 +22,7 @@
 		}
 	`);
 
-	let props: { message: FragmentType<typeof EmailMessageBubble>; conversationId: string } =
-		$props();
+	let props: { message: FragmentType<typeof EmailMessageBubble> } = $props();
 	let message = $derived(useFragment(EmailMessageBubble, props.message));
 	let sender = $derived(message.from);
 </script>
