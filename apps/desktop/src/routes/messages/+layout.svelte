@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ConversationAvatar, ConversationTitle, formatInboxDate } from "@gebna/ui";
+	import { formatInboxDate, ThreadAvatar, ThreadTitle } from "@gebna/ui";
 	import type { IconProps } from "@lucide/svelte";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
@@ -13,7 +13,7 @@
 	let { children } = $props();
 
 	let response = await getEmailConvoList();
-	let conversations = $derived(response.data?.viewer?.emailConversations.edges);
+	let threads = $derived(response.data?.viewer?.emailThreads.edges);
 </script>
 
 {#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconProps> })}
@@ -34,17 +34,17 @@
 			</div>
 		</div>
 		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
-			{#if conversations}
-				{#each conversations as { node } (node.id)}
+			{#if threads}
+				{#each threads as { node } (node.id)}
 					<a
-						href={resolve("/messages/[conversation_id]", { conversation_id: node.id })}
+						href={resolve("/messages/[thread_id]", { thread_id: node.id })}
 						class="group flex w-full items-center gap-3 p-3 hover:bg-base-200"
 					>
-						<ConversationAvatar conversation={node} class="size-12 min-h-12 min-w-12" />
+						<ThreadAvatar thread={node} class="size-12 min-h-12 min-w-12" />
 						<div class="flex w-full flex-col gap-1">
 							<div class="flex items-baseline justify-between">
 								<div class="line-clamp-1 font-semibold">
-									<ConversationTitle conversation={node} />
+									<ThreadTitle thread={node} />
 								</div>
 								<div
 									class={[

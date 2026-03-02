@@ -6,14 +6,14 @@ import { getRequestEvent, query } from "$app/server";
 export const getEmailConvoList = query(async () => {
 	const { fetch } = getRequestEvent();
 	const query = graphql(`
-		query ViewerEmailConversationsListQuery {
+		query ViewerEmailThreadsListQuery {
 			viewer {
 				id
-				emailConversations(first: 30) {
+				emailThreads(first: 30) {
 					edges {
 						node {
-							...EmailConversationTitle
-							...EmailConversationAvatar
+							...EmailThreadTitle
+							...EmailThreadAvatar
 							id
 							title
 							unseenCount
@@ -36,16 +36,16 @@ export const getEmailConvoList = query(async () => {
 	return result;
 });
 
-export const getEmailConvoDetails = query(v.optional(v.string()), async (id) => {
+export const getEmailThreadDetails = query(v.optional(v.string()), async (id) => {
 	if (!id) return;
 	const { fetch } = getRequestEvent();
 	const query = graphql(`
-		query EmailConversationDetails($id: ID!) {
+		query EmailThreadDetails($id: ID!) {
 			node(id: $id) {
 				__typename
-				... on EmailConversation {
-					...EmailConversationTitle
-					...EmailConversationAvatar
+				... on EmailThread {
+					...EmailThreadTitle
+					...EmailThreadAvatar
 					id
 					messages {
 						edges {

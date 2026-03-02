@@ -11,32 +11,6 @@ type EmailAddressRef implements Node {
   name: String!
 }
 
-type EmailConversation implements Node {
-  avatar: String
-  id: ID!
-  kind: EmailConversationKind!
-  lastMessage: EmailMessage!
-  messages(after: String, before: String, first: Int, last: Int): EmailConversationMessagesConnection!
-  participants: [EmailAddressRef!]!
-  title: String
-  unseenCount: Int!
-}
-
-enum EmailConversationKind {
-  GROUP
-  PRIVATE
-}
-
-type EmailConversationMessagesConnection {
-  edges: [EmailConversationMessagesConnectionEdge!]!
-  pageInfo: PageInfo!
-}
-
-type EmailConversationMessagesConnectionEdge {
-  cursor: String!
-  node: EmailMessage!
-}
-
 type EmailMessage implements Node {
   createdAt: DateTime!
   from: EmailAddressRef!
@@ -44,6 +18,26 @@ type EmailMessage implements Node {
   id: ID!
   snippet: String
   to: EmailAddressRef!
+}
+
+type EmailThread implements Node {
+  avatar: String
+  id: ID!
+  lastMessage: EmailMessage!
+  messages(after: String, before: String, first: Int, last: Int): EmailThreadMessagesConnection!
+  participants: [EmailAddressRef!]!
+  title: String
+  unseenCount: Int!
+}
+
+type EmailThreadMessagesConnection {
+  edges: [EmailThreadMessagesConnectionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type EmailThreadMessagesConnectionEdge {
+  cursor: String!
+  node: EmailMessage!
 }
 
 interface Node {
@@ -66,17 +60,17 @@ type Query {
 type Viewer {
   avatar: String!
   emailAddress: String!
-  emailConversations(after: String, before: String, first: Int, last: Int): ViewerEmailConversationsConnection!
+  emailThreads(after: String, before: String, first: Int, last: Int): ViewerEmailThreadsConnection!
   id: ID!
   name: String!
 }
 
-type ViewerEmailConversationsConnection {
-  edges: [ViewerEmailConversationsConnectionEdge!]!
+type ViewerEmailThreadsConnection {
+  edges: [ViewerEmailThreadsConnectionEdge!]!
   pageInfo: PageInfo!
 }
 
-type ViewerEmailConversationsConnectionEdge {
+type ViewerEmailThreadsConnectionEdge {
   cursor: String!
-  node: EmailConversation!
+  node: EmailThread!
 }

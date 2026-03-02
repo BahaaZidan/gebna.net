@@ -12,9 +12,9 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.users.id,
 			to: r.accounts.userId,
 		}),
-		emailConversations: r.many.emailConversations({
+		emailThreads: r.many.emailThreads({
 			from: r.users.id,
-			to: r.emailConversations.ownerId,
+			to: r.emailThreads.ownerId,
 		}),
 		ownAddressRef: r.one.emailAddressRefs({
 			from: [r.users.id, r.users.email],
@@ -47,22 +47,22 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.emailAddressRefs.ownerId,
 			to: r.users.id,
 		}),
-		emailConversations: r.many.emailConversations({
-			from: r.emailAddressRefs.id.through(r.emailConversationParticipants.emailAddressRefId),
-			to: r.emailConversations.id.through(r.emailConversationParticipants.conversationId),
+		emailThreads: r.many.emailThreads({
+			from: r.emailAddressRefs.id.through(r.emailThreadParticipants.emailAddressRefId),
+			to: r.emailThreads.id.through(r.emailThreadParticipants.threadId),
 		}),
 	},
-	emailConversations: {
+	emailThreads: {
 		owner: r.one.users({
-			from: r.emailConversations.ownerId,
+			from: r.emailThreads.ownerId,
 			to: r.users.id,
 		}),
 		messages: r.many.emailMessages({
-			from: r.emailConversations.id,
-			to: r.emailMessages.conversationId,
+			from: r.emailThreads.id,
+			to: r.emailMessages.threadId,
 		}),
 		lastMessage: r.one.emailMessages({
-			from: r.emailConversations.lastMessageId,
+			from: r.emailThreads.lastMessageId,
 			to: r.emailMessages.id,
 		}),
 		participants: r.many.emailAddressRefs(),
@@ -72,9 +72,9 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.emailMessages.ownerId,
 			to: r.users.id,
 		}),
-		conversation: r.one.emailConversations({
-			from: r.emailMessages.conversationId,
-			to: r.emailConversations.id,
+		thread: r.one.emailThreads({
+			from: r.emailMessages.threadId,
+			to: r.emailThreads.id,
 		}),
 		fromRef: r.one.emailAddressRefs({
 			from: [r.emailMessages.ownerId, r.emailMessages.from],

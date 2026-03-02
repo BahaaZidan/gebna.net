@@ -124,7 +124,7 @@ async function resetSeededEmails(
 	const existing = await db
 		.select({
 			id: dbSchema.emailMessages.id,
-			conversationId: dbSchema.emailMessages.conversationId,
+			threadId: dbSchema.emailMessages.threadId,
 		})
 		.from(dbSchema.emailMessages)
 		.where(inArray(dbSchema.emailMessages.canonicalMessageId, ids));
@@ -134,7 +134,7 @@ async function resetSeededEmails(
 		return;
 	}
 
-	const conversationIds = Array.from(new Set(existing.map((row) => row.conversationId)));
+	const threadIds = Array.from(new Set(existing.map((row) => row.threadId)));
 
 	console.log(`Resetting ${existing.length} seeded emails... \n`);
 
@@ -143,41 +143,41 @@ async function resetSeededEmails(
 			.delete(dbSchema.emailMessages)
 			.where(inArray(dbSchema.emailMessages.canonicalMessageId, ids));
 
-		if (!conversationIds.length) return;
+		if (!threadIds.length) return;
 
 		const remaining = await tx
-			.select({ conversationId: dbSchema.emailMessages.conversationId })
+			.select({ threadId: dbSchema.emailMessages.threadId })
 			.from(dbSchema.emailMessages)
-			.where(inArray(dbSchema.emailMessages.conversationId, conversationIds))
-			.groupBy(dbSchema.emailMessages.conversationId);
+			.where(inArray(dbSchema.emailMessages.threadId, threadIds))
+			.groupBy(dbSchema.emailMessages.threadId);
 
-		const remainingIds = new Set(remaining.map((row) => row.conversationId));
-		const emptyConversationIds = conversationIds.filter((id) => !remainingIds.has(id));
+		const remainingIds = new Set(remaining.map((row) => row.threadId));
+		const emptyThreadIds = threadIds.filter((id) => !remainingIds.has(id));
 
-		if (emptyConversationIds.length) {
+		if (emptyThreadIds.length) {
 			await tx
-				.delete(dbSchema.emailConversations)
-				.where(inArray(dbSchema.emailConversations.id, emptyConversationIds));
+				.delete(dbSchema.emailThreads)
+				.where(inArray(dbSchema.emailThreads.id, emptyThreadIds));
 		}
 
-		for (const conversationId of remainingIds) {
+		for (const threadId of remainingIds) {
 			const [latest] = await tx
 				.select({
 					id: dbSchema.emailMessages.id,
 					createdAt: dbSchema.emailMessages.createdAt,
 				})
 				.from(dbSchema.emailMessages)
-				.where(eq(dbSchema.emailMessages.conversationId, conversationId))
+				.where(eq(dbSchema.emailMessages.threadId, threadId))
 				.orderBy(desc(dbSchema.emailMessages.createdAt))
 				.limit(1);
 
 			await tx
-				.update(dbSchema.emailConversations)
+				.update(dbSchema.emailThreads)
 				.set({
 					lastMessageId: latest?.id ?? null,
 					lastMessageAt: latest?.createdAt ?? null,
 				})
-				.where(eq(dbSchema.emailConversations.id, conversationId));
+				.where(eq(dbSchema.emailThreads.id, threadId));
 		}
 	});
 

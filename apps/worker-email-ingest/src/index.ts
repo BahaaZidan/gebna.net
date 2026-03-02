@@ -2,7 +2,7 @@ import { dbSchema, eq, getDB, increment } from "@gebna/db";
 import { generateImagePlaceholder, R } from "@gebna/utils";
 import PostalMime from "postal-mime";
 
-import { findOrCreateConversation } from "./lib/find-or-create-conversation";
+import { findOrCreateThread } from "./lib/find-or-create-thread";
 import { processEmailBody } from "./lib/process-email-body";
 import {
 	extractMessageIdsFromPostalMimeValue,
@@ -95,10 +95,9 @@ export default {
 
 			await db.transaction(async (tx) => {
 				const ownerId = recipientUser.id;
-				const conversation = await findOrCreateConversation({
+				const thread = await findOrCreateThread({
 					tx,
 					ownerId,
-					uniqueParticipants,
 					parsedEnvelope,
 				});
 
@@ -106,7 +105,7 @@ export default {
 					.insert(dbSchema.emailMessages)
 					.values({
 						ownerId,
-						conversationId: conversation.id,
+						threadId: thread.id,
 						sizeInBytes: envelope.rawSize,
 						canonicalMessageId,
 						bodyHTML: processedBody?.html,
@@ -118,13 +117,13 @@ export default {
 					.returning();
 
 				await tx
-					.update(dbSchema.emailConversations)
+					.update(dbSchema.emailThreads)
 					.set({
-						unseenCount: increment(dbSchema.emailConversations.unseenCount),
+						unseenCount: increment(dbSchema.emailThreads.unseenCount),
 						lastMessageAt: new Date(),
 						lastMessageId: message.id,
 					})
-					.where(eq(dbSchema.emailConversations.id, conversation.id));
+					.where(eq(dbSchema.emailThreads.id, thread.id));
 
 				if (parsedEnvelope.attachments.length) {
 					await tx.insert(dbSchema.emailAttachments).values(
@@ -132,7 +131,7 @@ export default {
 							(a) =>
 								({
 									ownerId,
-									conversationId: conversation.id,
+									threadId: thread.id,
 									messageId: message.id,
 									fromRef: fromAddressRef.id,
 									content: a.content,
@@ -184,14 +183,14 @@ export default {
 				}
 
 				await tx
-					.insert(dbSchema.emailConversationParticipants)
+					.insert(dbSchema.emailThreadParticipants)
 					.values(
 						participantsRefs.map(
 							(ref) =>
 								({
-									conversationId: conversation.id,
+									threadId: thread.id,
 									emailAddressRefId: ref.id,
-								}) satisfies typeof dbSchema.emailConversationParticipants.$inferInsert
+								}) satisfies typeof dbSchema.emailThreadParticipants.$inferInsert
 						)
 					)
 					.onConflictDoNothing();

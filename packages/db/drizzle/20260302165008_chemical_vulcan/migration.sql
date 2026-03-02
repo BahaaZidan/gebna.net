@@ -42,7 +42,7 @@ CREATE TABLE `emailAttachments` (
 	`id` text PRIMARY KEY,
 	`ownerId` text NOT NULL,
 	`messageId` text NOT NULL,
-	`conversationId` text NOT NULL,
+	`threadId` text NOT NULL,
 	`fromRef` text NOT NULL,
 	`filename` text,
 	`mimeType` text,
@@ -54,44 +54,15 @@ CREATE TABLE `emailAttachments` (
 	`content` blob NOT NULL,
 	CONSTRAINT `fk_emailAttachments_ownerId_users_id_fk` FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE CASCADE,
 	CONSTRAINT `fk_emailAttachments_messageId_emailMessages_id_fk` FOREIGN KEY (`messageId`) REFERENCES `emailMessages`(`id`) ON DELETE CASCADE,
-	CONSTRAINT `fk_emailAttachments_conversationId_emailConversations_id_fk` FOREIGN KEY (`conversationId`) REFERENCES `emailConversations`(`id`) ON DELETE CASCADE,
+	CONSTRAINT `fk_emailAttachments_threadId_emailThreads_id_fk` FOREIGN KEY (`threadId`) REFERENCES `emailThreads`(`id`) ON DELETE CASCADE,
 	CONSTRAINT `fk_emailAttachments_fromRef_emailAddressRefs_id_fk` FOREIGN KEY (`fromRef`) REFERENCES `emailAddressRefs`(`id`) ON DELETE CASCADE
-);
---> statement-breakpoint
-CREATE TABLE `emailConversationParticipants` (
-	`conversationId` text NOT NULL,
-	`emailAddressRefId` text NOT NULL,
-	CONSTRAINT `emailConversationParticipants_pk` PRIMARY KEY(`conversationId`, `emailAddressRefId`),
-	CONSTRAINT `fk_emailConversationParticipants_conversationId_emailConversations_id_fk` FOREIGN KEY (`conversationId`) REFERENCES `emailConversations`(`id`) ON DELETE CASCADE,
-	CONSTRAINT `fk_emailConversationParticipants_emailAddressRefId_emailAddressRefs_id_fk` FOREIGN KEY (`emailAddressRefId`) REFERENCES `emailAddressRefs`(`id`) ON DELETE CASCADE
-);
---> statement-breakpoint
-CREATE TABLE `emailConversations` (
-	`id` text PRIMARY KEY,
-	`ownerId` text NOT NULL,
-	`kind` text NOT NULL,
-	`privateConvoKey` text COLLATE NOCASE,
-	`title` text,
-	`createdAt` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
-	`updatedAt` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
-	`lastMessageId` text,
-	`lastMessageAt` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
-	`uploadedAvatar` text,
-	`unseenCount` integer DEFAULT 0 NOT NULL,
-	CONSTRAINT `fk_emailConversations_ownerId_users_id_fk` FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-	CONSTRAINT `fk_emailConversations_lastMessageId_emailMessages_id_fk` FOREIGN KEY (`lastMessageId`) REFERENCES `emailMessages`(`id`) ON DELETE SET NULL,
-	CONSTRAINT "chk_conversation_dmkey_kind" CHECK((
-				("kind" = 'PRIVATE' AND "privateConvoKey" IS NOT NULL AND length("privateConvoKey") > 0)
-				OR
-				("kind" = 'GROUP' AND "privateConvoKey" IS NULL)
-			))
 );
 --> statement-breakpoint
 CREATE TABLE `emailMessages` (
 	`id` text PRIMARY KEY,
 	`ownerId` text NOT NULL,
 	`canonicalMessageId` text,
-	`conversationId` text NOT NULL,
+	`threadId` text NOT NULL,
 	`from` text COLLATE NOCASE NOT NULL,
 	`to` text COLLATE NOCASE NOT NULL,
 	`bodyPlaintext` text,
@@ -101,9 +72,31 @@ CREATE TABLE `emailMessages` (
 	`sizeInBytes` integer NOT NULL,
 	`unseen` integer DEFAULT true NOT NULL,
 	CONSTRAINT `fk_emailMessages_ownerId_users_id_fk` FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-	CONSTRAINT `fk_emailMessages_conversationId_emailConversations_id_fk` FOREIGN KEY (`conversationId`) REFERENCES `emailConversations`(`id`) ON DELETE CASCADE,
+	CONSTRAINT `fk_emailMessages_threadId_emailThreads_id_fk` FOREIGN KEY (`threadId`) REFERENCES `emailThreads`(`id`) ON DELETE CASCADE,
 	CONSTRAINT `fk_emailMessages_from_ref` FOREIGN KEY (`ownerId`,`from`) REFERENCES `emailAddressRefs`(`ownerId`,`address`) ON DELETE CASCADE,
 	CONSTRAINT `fk_emailMessages_to_ref` FOREIGN KEY (`ownerId`,`to`) REFERENCES `emailAddressRefs`(`ownerId`,`address`) ON DELETE CASCADE
+);
+--> statement-breakpoint
+CREATE TABLE `emailThreadParticipants` (
+	`threadId` text NOT NULL,
+	`emailAddressRefId` text NOT NULL,
+	CONSTRAINT `emailThreadParticipants_pk` PRIMARY KEY(`threadId`, `emailAddressRefId`),
+	CONSTRAINT `fk_emailThreadParticipants_threadId_emailThreads_id_fk` FOREIGN KEY (`threadId`) REFERENCES `emailThreads`(`id`) ON DELETE CASCADE,
+	CONSTRAINT `fk_emailThreadParticipants_emailAddressRefId_emailAddressRefs_id_fk` FOREIGN KEY (`emailAddressRefId`) REFERENCES `emailAddressRefs`(`id`) ON DELETE CASCADE
+);
+--> statement-breakpoint
+CREATE TABLE `emailThreads` (
+	`id` text PRIMARY KEY,
+	`ownerId` text NOT NULL,
+	`title` text,
+	`createdAt` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updatedAt` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`lastMessageId` text,
+	`lastMessageAt` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
+	`uploadedAvatar` text,
+	`unseenCount` integer DEFAULT 0 NOT NULL,
+	CONSTRAINT `fk_emailThreads_ownerId_users_id_fk` FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+	CONSTRAINT `fk_emailThreads_lastMessageId_emailMessages_id_fk` FOREIGN KEY (`lastMessageId`) REFERENCES `emailMessages`(`id`) ON DELETE SET NULL
 );
 --> statement-breakpoint
 CREATE TABLE `sessions` (
@@ -143,11 +136,10 @@ CREATE TABLE `verifications` (
 --> statement-breakpoint
 CREATE INDEX `accounts_userId_idx` ON `accounts` (`userId`);--> statement-breakpoint
 CREATE UNIQUE INDEX `uniq_idx_ownerId_address` ON `emailAddressRefs` (`ownerId`,`address`);--> statement-breakpoint
-CREATE INDEX `idx_conversation_participant_conversation` ON `emailConversationParticipants` (`conversationId`);--> statement-breakpoint
-CREATE INDEX `idx_conversation_participant_identity` ON `emailConversationParticipants` (`emailAddressRefId`);--> statement-breakpoint
-CREATE UNIQUE INDEX `uniq_idx_ownerId_dmKey` ON `emailConversations` (`ownerId`,`privateConvoKey`);--> statement-breakpoint
-CREATE INDEX `idx_conversation_ownerId_last_message_at` ON `emailConversations` (`ownerId`,`lastMessageAt`);--> statement-breakpoint
 CREATE UNIQUE INDEX `uniq_idx_message_canonical_message_id` ON `emailMessages` (`ownerId`,`canonicalMessageId`);--> statement-breakpoint
-CREATE INDEX `idx_message_conversation_created` ON `emailMessages` (`conversationId`,"createdAt" desc);--> statement-breakpoint
+CREATE INDEX `idx_message_thread_created` ON `emailMessages` (`threadId`,"createdAt" desc);--> statement-breakpoint
+CREATE INDEX `idx_thread_participant_thread` ON `emailThreadParticipants` (`threadId`);--> statement-breakpoint
+CREATE INDEX `idx_thread_participant_identity` ON `emailThreadParticipants` (`emailAddressRefId`);--> statement-breakpoint
+CREATE INDEX `idx_thread_ownerId_last_message_at` ON `emailThreads` (`ownerId`,`lastMessageAt`);--> statement-breakpoint
 CREATE INDEX `sessions_userId_idx` ON `sessions` (`userId`);--> statement-breakpoint
 CREATE INDEX `verifications_identifier_idx` ON `verifications` (`identifier`);

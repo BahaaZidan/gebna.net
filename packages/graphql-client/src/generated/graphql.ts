@@ -27,42 +27,6 @@ export type EmailAddressRef = Node & {
   name: Scalars['String']['output'];
 };
 
-export type EmailConversation = Node & {
-  __typename?: 'EmailConversation';
-  avatar?: Maybe<Scalars['String']['output']>;
-  id: Scalars['ID']['output'];
-  kind: EmailConversationKind;
-  lastMessage: EmailMessage;
-  messages: EmailConversationMessagesConnection;
-  participants: Array<EmailAddressRef>;
-  title?: Maybe<Scalars['String']['output']>;
-  unseenCount: Scalars['Int']['output'];
-};
-
-
-export type EmailConversationMessagesArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  before?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
-};
-
-export type EmailConversationKind =
-  | 'GROUP'
-  | 'PRIVATE';
-
-export type EmailConversationMessagesConnection = {
-  __typename?: 'EmailConversationMessagesConnection';
-  edges: Array<EmailConversationMessagesConnectionEdge>;
-  pageInfo: PageInfo;
-};
-
-export type EmailConversationMessagesConnectionEdge = {
-  __typename?: 'EmailConversationMessagesConnectionEdge';
-  cursor: Scalars['String']['output'];
-  node: EmailMessage;
-};
-
 export type EmailMessage = Node & {
   __typename?: 'EmailMessage';
   createdAt: Scalars['DateTime']['output'];
@@ -71,6 +35,37 @@ export type EmailMessage = Node & {
   id: Scalars['ID']['output'];
   snippet?: Maybe<Scalars['String']['output']>;
   to: EmailAddressRef;
+};
+
+export type EmailThread = Node & {
+  __typename?: 'EmailThread';
+  avatar?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  lastMessage: EmailMessage;
+  messages: EmailThreadMessagesConnection;
+  participants: Array<EmailAddressRef>;
+  title?: Maybe<Scalars['String']['output']>;
+  unseenCount: Scalars['Int']['output'];
+};
+
+
+export type EmailThreadMessagesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type EmailThreadMessagesConnection = {
+  __typename?: 'EmailThreadMessagesConnection';
+  edges: Array<EmailThreadMessagesConnectionEdge>;
+  pageInfo: PageInfo;
+};
+
+export type EmailThreadMessagesConnectionEdge = {
+  __typename?: 'EmailThreadMessagesConnectionEdge';
+  cursor: Scalars['String']['output'];
+  node: EmailMessage;
 };
 
 export type Node = {
@@ -106,61 +101,61 @@ export type Viewer = {
   __typename?: 'Viewer';
   avatar: Scalars['String']['output'];
   emailAddress: Scalars['String']['output'];
-  emailConversations: ViewerEmailConversationsConnection;
+  emailThreads: ViewerEmailThreadsConnection;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
 };
 
 
-export type ViewerEmailConversationsArgs = {
+export type ViewerEmailThreadsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   before?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   last?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type ViewerEmailConversationsConnection = {
-  __typename?: 'ViewerEmailConversationsConnection';
-  edges: Array<ViewerEmailConversationsConnectionEdge>;
+export type ViewerEmailThreadsConnection = {
+  __typename?: 'ViewerEmailThreadsConnection';
+  edges: Array<ViewerEmailThreadsConnectionEdge>;
   pageInfo: PageInfo;
 };
 
-export type ViewerEmailConversationsConnectionEdge = {
-  __typename?: 'ViewerEmailConversationsConnectionEdge';
+export type ViewerEmailThreadsConnectionEdge = {
+  __typename?: 'ViewerEmailThreadsConnectionEdge';
   cursor: Scalars['String']['output'];
-  node: EmailConversation;
+  node: EmailThread;
 };
 
-export type ViewerEmailConversationsListQueryQueryVariables = Exact<{ [key: string]: never; }>;
+export type ViewerEmailThreadsListQueryQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ViewerEmailConversationsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailConversations: { __typename?: 'ViewerEmailConversationsConnection', edges: Array<{ __typename?: 'ViewerEmailConversationsConnectionEdge', node: (
-          { __typename?: 'EmailConversation', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } }
-          & { ' $fragmentRefs'?: { 'EmailConversationTitleFragment': EmailConversationTitleFragment;'EmailConversationAvatarFragment': EmailConversationAvatarFragment } }
+export type ViewerEmailThreadsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailThreads: { __typename?: 'ViewerEmailThreadsConnection', edges: Array<{ __typename?: 'ViewerEmailThreadsConnectionEdge', node: (
+          { __typename?: 'EmailThread', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } }
+          & { ' $fragmentRefs'?: { 'EmailThreadTitleFragment': EmailThreadTitleFragment;'EmailThreadAvatarFragment': EmailThreadAvatarFragment } }
         ) }> } } | null };
 
-export type EmailConversationDetailsQueryVariables = Exact<{
+export type EmailThreadDetailsQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type EmailConversationDetailsQuery = { __typename?: 'Query', node?:
+export type EmailThreadDetailsQuery = { __typename?: 'Query', node?:
     | { __typename: 'EmailAddressRef' }
+    | { __typename: 'EmailMessage' }
     | (
-      { __typename: 'EmailConversation', id: string, messages: { __typename?: 'EmailConversationMessagesConnection', edges: Array<{ __typename?: 'EmailConversationMessagesConnectionEdge', node: (
+      { __typename: 'EmailThread', id: string, messages: { __typename?: 'EmailThreadMessagesConnection', edges: Array<{ __typename?: 'EmailThreadMessagesConnectionEdge', node: (
             { __typename?: 'EmailMessage', id: string }
             & { ' $fragmentRefs'?: { 'EmailMessageBubbleFragment': EmailMessageBubbleFragment } }
           ) }> } }
-      & { ' $fragmentRefs'?: { 'EmailConversationTitleFragment': EmailConversationTitleFragment;'EmailConversationAvatarFragment': EmailConversationAvatarFragment } }
+      & { ' $fragmentRefs'?: { 'EmailThreadTitleFragment': EmailThreadTitleFragment;'EmailThreadAvatarFragment': EmailThreadAvatarFragment } }
     )
-    | { __typename: 'EmailMessage' }
    | null };
 
-export type EmailConversationAvatarFragment = { __typename?: 'EmailConversation', id: string, kind: EmailConversationKind, avatar?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, avatar: string, isSelf: boolean, name: string, address: string }> } & { ' $fragmentName'?: 'EmailConversationAvatarFragment' };
-
-export type EmailConversationTitleFragment = { __typename?: 'EmailConversation', id: string, kind: EmailConversationKind, title?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string }> } & { ' $fragmentName'?: 'EmailConversationTitleFragment' };
-
 export type EmailMessageBubbleFragment = { __typename?: 'EmailMessage', id: string, html?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string, avatar: string, address: string } } & { ' $fragmentName'?: 'EmailMessageBubbleFragment' };
+
+export type EmailThreadAvatarFragment = { __typename?: 'EmailThread', id: string, avatar?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, avatar: string, isSelf: boolean, name: string, address: string }> } & { ' $fragmentName'?: 'EmailThreadAvatarFragment' };
+
+export type EmailThreadTitleFragment = { __typename?: 'EmailThread', id: string, title?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string }> } & { ' $fragmentName'?: 'EmailThreadTitleFragment' };
 
 export class TypedDocumentString<TResult, TVariables>
   extends String
@@ -180,32 +175,6 @@ export class TypedDocumentString<TResult, TVariables>
     return this.value;
   }
 }
-export const EmailConversationAvatarFragmentDoc = new TypedDocumentString(`
-    fragment EmailConversationAvatar on EmailConversation {
-  id
-  kind
-  avatar
-  participants {
-    id
-    avatar
-    isSelf
-    name
-    address
-  }
-}
-    `, {"fragmentName":"EmailConversationAvatar"}) as unknown as TypedDocumentString<EmailConversationAvatarFragment, unknown>;
-export const EmailConversationTitleFragmentDoc = new TypedDocumentString(`
-    fragment EmailConversationTitle on EmailConversation {
-  id
-  kind
-  title
-  participants {
-    id
-    isSelf
-    name
-  }
-}
-    `, {"fragmentName":"EmailConversationTitle"}) as unknown as TypedDocumentString<EmailConversationTitleFragment, unknown>;
 export const EmailMessageBubbleFragmentDoc = new TypedDocumentString(`
     fragment EmailMessageBubble on EmailMessage {
   id
@@ -220,15 +189,39 @@ export const EmailMessageBubbleFragmentDoc = new TypedDocumentString(`
   }
 }
     `, {"fragmentName":"EmailMessageBubble"}) as unknown as TypedDocumentString<EmailMessageBubbleFragment, unknown>;
-export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString(`
-    query ViewerEmailConversationsListQuery {
+export const EmailThreadAvatarFragmentDoc = new TypedDocumentString(`
+    fragment EmailThreadAvatar on EmailThread {
+  id
+  avatar
+  participants {
+    id
+    avatar
+    isSelf
+    name
+    address
+  }
+}
+    `, {"fragmentName":"EmailThreadAvatar"}) as unknown as TypedDocumentString<EmailThreadAvatarFragment, unknown>;
+export const EmailThreadTitleFragmentDoc = new TypedDocumentString(`
+    fragment EmailThreadTitle on EmailThread {
+  id
+  title
+  participants {
+    id
+    isSelf
+    name
+  }
+}
+    `, {"fragmentName":"EmailThreadTitle"}) as unknown as TypedDocumentString<EmailThreadTitleFragment, unknown>;
+export const ViewerEmailThreadsListQueryDocument = new TypedDocumentString(`
+    query ViewerEmailThreadsListQuery {
   viewer {
     id
-    emailConversations(first: 30) {
+    emailThreads(first: 30) {
       edges {
         node {
-          ...EmailConversationTitle
-          ...EmailConversationAvatar
+          ...EmailThreadTitle
+          ...EmailThreadAvatar
           id
           title
           unseenCount
@@ -242,9 +235,8 @@ export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString
     }
   }
 }
-    fragment EmailConversationAvatar on EmailConversation {
+    fragment EmailThreadAvatar on EmailThread {
   id
-  kind
   avatar
   participants {
     id
@@ -254,23 +246,22 @@ export const ViewerEmailConversationsListQueryDocument = new TypedDocumentString
     address
   }
 }
-fragment EmailConversationTitle on EmailConversation {
+fragment EmailThreadTitle on EmailThread {
   id
-  kind
   title
   participants {
     id
     isSelf
     name
   }
-}`) as unknown as TypedDocumentString<ViewerEmailConversationsListQueryQuery, ViewerEmailConversationsListQueryQueryVariables>;
-export const EmailConversationDetailsDocument = new TypedDocumentString(`
-    query EmailConversationDetails($id: ID!) {
+}`) as unknown as TypedDocumentString<ViewerEmailThreadsListQueryQuery, ViewerEmailThreadsListQueryQueryVariables>;
+export const EmailThreadDetailsDocument = new TypedDocumentString(`
+    query EmailThreadDetails($id: ID!) {
   node(id: $id) {
     __typename
-    ... on EmailConversation {
-      ...EmailConversationTitle
-      ...EmailConversationAvatar
+    ... on EmailThread {
+      ...EmailThreadTitle
+      ...EmailThreadAvatar
       id
       messages {
         edges {
@@ -283,29 +274,7 @@ export const EmailConversationDetailsDocument = new TypedDocumentString(`
     }
   }
 }
-    fragment EmailConversationAvatar on EmailConversation {
-  id
-  kind
-  avatar
-  participants {
-    id
-    avatar
-    isSelf
-    name
-    address
-  }
-}
-fragment EmailConversationTitle on EmailConversation {
-  id
-  kind
-  title
-  participants {
-    id
-    isSelf
-    name
-  }
-}
-fragment EmailMessageBubble on EmailMessage {
+    fragment EmailMessageBubble on EmailMessage {
   id
   html
   createdAt
@@ -316,4 +285,24 @@ fragment EmailMessageBubble on EmailMessage {
     avatar
     address
   }
-}`) as unknown as TypedDocumentString<EmailConversationDetailsQuery, EmailConversationDetailsQueryVariables>;
+}
+fragment EmailThreadAvatar on EmailThread {
+  id
+  avatar
+  participants {
+    id
+    avatar
+    isSelf
+    name
+    address
+  }
+}
+fragment EmailThreadTitle on EmailThread {
+  id
+  title
+  participants {
+    id
+    isSelf
+    name
+  }
+}`) as unknown as TypedDocumentString<EmailThreadDetailsQuery, EmailThreadDetailsQueryVariables>;
