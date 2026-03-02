@@ -22,7 +22,7 @@
 		"@pothos/plugin-relay": "^4.7.0",
 		"@pothos/plugin-scope-auth": "^4.1.6",
 		"@pothos/plugin-with-input": "^4.1.4",
-		"graphql": "^16.12.0",
+		"graphql": "catalog:",
 		"graphql-scalars": "^1.25.0",
 		"graphql-yoga": "^5.18.0"
 	},
@@ -31,6 +31,6 @@
 		"@repo/typescript-config": "workspace:*",
 		"chokidar-cli": "^3.0.0",
 		"tsx": "^4.19.1",
-		"typescript": "latest"
+		"typescript": "catalog:"
 	}
 }

@@ -4,6 +4,57 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@cloudflare/vite-plugin':
+      specifier: ^1.25.2
+      version: 1.25.2
+    '@sveltejs/kit':
+      specifier: ^2.50.2
+      version: 2.50.2
+    '@sveltejs/package':
+      specifier: ^2.5.7
+      version: 2.5.7
+    '@sveltejs/vite-plugin-svelte':
+      specifier: ^6.2.4
+      version: 6.2.4
+    '@tailwindcss/typography':
+      specifier: ^0.5.19
+      version: 0.5.19
+    '@tailwindcss/vite':
+      specifier: ^4.1.18
+      version: 4.1.18
+    '@total-typescript/ts-reset':
+      specifier: ^0.6.1
+      version: 0.6.1
+    daisyui:
+      specifier: ^5.5.18
+      version: 5.5.18
+    eslint:
+      specifier: ^9.39.1
+      version: 9.39.2
+    graphql:
+      specifier: ^16.12.0
+      version: 16.12.0
+    svelte:
+      specifier: ^5.50.0
+      version: 5.50.0
+    svelte-check:
+      specifier: ^4.3.6
+      version: 4.3.6
+    tailwindcss:
+      specifier: ^4.1.18
+      version: 4.1.18
+    typescript:
+      specifier: 5.9.2
+      version: 5.9.2
+    vite:
+      specifier: ^7.3.1
+      version: 7.3.1
+    wrangler:
+      specifier: ^4.67.0
+      version: 4.67.0
+
 importers:
 
   .:
@@ -73,40 +124,40 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))
       '@sveltejs/kit':
-        specifier: ^2.50.2
+        specifier: 'catalog:'
         version: 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       '@sveltejs/vite-plugin-svelte':
-        specifier: ^6.2.4
+        specifier: 'catalog:'
         version: 6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       '@tailwindcss/typography':
-        specifier: ^0.5.19
+        specifier: 'catalog:'
         version: 0.5.19(tailwindcss@4.1.18)
       '@tailwindcss/vite':
-        specifier: ^4.1.18
+        specifier: 'catalog:'
         version: 4.1.18(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       daisyui:
-        specifier: ^5.5.18
+        specifier: 'catalog:'
         version: 5.5.18
       eslint:
-        specifier: ^9.39.1
+        specifier: 'catalog:'
         version: 9.39.2(jiti@2.6.1)
       svelte:
-        specifier: ^5.50.0
+        specifier: 'catalog:'
         version: 5.50.0
       svelte-check:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6(picomatch@4.0.3)(svelte@5.50.0)(typescript@5.9.2)
       tailwindcss:
-        specifier: ^4.1.18
+        specifier: 'catalog:'
         version: 4.1.18
       tslib:
         specifier: ^2.8.1
         version: 2.8.1
       typescript:
-        specifier: 5.9.2
+        specifier: 'catalog:'
         version: 5.9.2
       vite:
-        specifier: ^7.3.1
+        specifier: 'catalog:'
         version: 7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
       vitest:
         specifier: ^3.2.0
@@ -137,40 +188,40 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))
       '@sveltejs/kit':
-        specifier: ^2.50.2
+        specifier: 'catalog:'
         version: 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       '@sveltejs/vite-plugin-svelte':
-        specifier: ^6.2.4
+        specifier: 'catalog:'
         version: 6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       '@tailwindcss/typography':
-        specifier: ^0.5.19
+        specifier: 'catalog:'
         version: 0.5.19(tailwindcss@4.1.18)
       '@tailwindcss/vite':
-        specifier: ^4.1.18
+        specifier: 'catalog:'
         version: 4.1.18(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       daisyui:
-        specifier: ^5.5.18
+        specifier: 'catalog:'
         version: 5.5.18
       eslint:
-        specifier: ^9.39.1
+        specifier: 'catalog:'
         version: 9.39.2(jiti@2.6.1)
       svelte:
-        specifier: ^5.50.0
+        specifier: 'catalog:'
         version: 5.50.0
       svelte-check:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6(picomatch@4.0.3)(svelte@5.50.0)(typescript@5.9.2)
       tailwindcss:
-        specifier: ^4.1.18
+        specifier: 'catalog:'
         version: 4.1.18
       tslib:
         specifier: ^2.8.1
         version: 2.8.1
       typescript:
-        specifier: 5.9.2
+        specifier: 'catalog:'
         version: 5.9.2
       vite:
-        specifier: ^7.3.1
+        specifier: 'catalog:'
         version: 7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
       vitest:
         specifier: ^3.2.0
@@ -231,10 +282,10 @@ importers:
         version: 11.0.5
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.25.2
+        specifier: 'catalog:'
         version: 1.25.2(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260219.0)(wrangler@4.67.0)
       '@total-typescript/ts-reset':
-        specifier: ^0.6.1
+        specifier: 'catalog:'
         version: 0.6.1
       '@types/hast':
         specifier: ^3.0.4
@@ -243,20 +294,20 @@ importers:
         specifier: ^9.0.4
         version: 9.0.4
       typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
+        specifier: 'catalog:'
+        version: 5.9.2
       vite:
-        specifier: ^7.3.1
+        specifier: 'catalog:'
         version: 7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
       wrangler:
-        specifier: ^4.67.0
+        specifier: 'catalog:'
         version: 4.67.0
 
   packages/auth:
     dependencies:
       '@better-auth/drizzle-adapter':
         specifier: https://pkg.pr.new/better-auth/better-auth/@better-auth/drizzle-adapter@6913
-        version: https://pkg.pr.new/better-auth/better-auth/@better-auth/drizzle-adapter@6913(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6))(prettier@3.8.1)
+        version: https://pkg.pr.new/better-auth/better-auth/@better-auth/drizzle-adapter@6913(@better-auth/core@1.5.0-beta.13(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.2.1(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6))(prettier@3.8.1)
       '@gebna/db':
         specifier: workspace:*
         version: link:../db
@@ -267,24 +318,24 @@ importers:
         specifier: workspace:*
         version: link:../vali
       '@sveltejs/kit':
-        specifier: ^2.50.2
-        version: 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 'catalog:'
+        version: 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       better-auth:
         specifier: ^1.4.18
-        version: 1.4.18(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@0.31.8)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6))(svelte@5.50.0)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+        version: 1.4.18(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@0.31.8)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6))(svelte@5.50.0)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       typescript:
-        specifier: latest
-        version: 5.9.3
+        specifier: 'catalog:'
+        version: 5.9.2
 
   packages/db:
     dependencies:
       drizzle-orm:
         specifier: 1.0.0-beta.15-859cf75
-        version: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6)
+        version: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6)
     devDependencies:
       '@gebna/utils':
         specifier: workspace:*
@@ -300,7 +351,7 @@ importers:
         version: 22.19.10
       better-auth:
         specifier: ^1.4.18
-        version: 1.4.18(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@1.0.0-beta.15-859cf75)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6))(svelte@5.50.0)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+        version: 1.4.18(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@1.0.0-beta.15-859cf75)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6))(svelte@5.50.0)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       dotenv-cli:
         specifier: ^11.0.0
         version: 11.0.0
@@ -311,8 +362,8 @@ importers:
         specifier: ^4.19.1
         version: 4.21.0
       typescript:
-        specifier: latest
-        version: 5.9.3
+        specifier: 'catalog:'
+        version: 5.9.2
 
   packages/eslint-config:
     devDependencies:
@@ -344,7 +395,7 @@ importers:
   packages/graphql-client:
     dependencies:
       graphql:
-        specifier: ^16.12.0
+        specifier: 'catalog:'
         version: 16.12.0
     devDependencies:
       '@gebna/graphql-server':
@@ -352,7 +403,7 @@ importers:
         version: link:../graphql-server
       '@graphql-codegen/cli':
         specifier: ^6.1.1
-        version: 6.1.1(@parcel/watcher@2.5.6)(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.3)
+        version: 6.1.1(@parcel/watcher@2.5.6)(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.2)
       '@graphql-codegen/client-preset':
         specifier: ^5.2.2
         version: 5.2.2(graphql@16.12.0)
@@ -376,16 +427,16 @@ importers:
         version: 9.2.1
       graphql-config:
         specifier: ^5.1.5
-        version: 5.1.5(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.3)
+        version: 5.1.5(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.2)
       svelte:
-        specifier: ^5.50.0
+        specifier: 'catalog:'
         version: 5.50.0
       svelte2tsx:
         specifier: ^0.7.48
-        version: 0.7.48(svelte@5.50.0)(typescript@5.9.3)
+        version: 0.7.48(svelte@5.50.0)(typescript@5.9.2)
       typescript:
-        specifier: latest
-        version: 5.9.3
+        specifier: 'catalog:'
+        version: 5.9.2
 
   packages/graphql-server:
     dependencies:
@@ -400,7 +451,7 @@ importers:
         version: 4.12.0(graphql@16.12.0)
       '@pothos/plugin-drizzle':
         specifier: ^0.17.0
-        version: 0.17.0(@pothos/core@4.12.0(graphql@16.12.0))(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6))(graphql@16.12.0)
+        version: 0.17.0(@pothos/core@4.12.0(graphql@16.12.0))(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6))(graphql@16.12.0)
       '@pothos/plugin-relay':
         specifier: ^4.7.0
         version: 4.7.0(@pothos/core@4.12.0(graphql@16.12.0))(graphql@16.12.0)
@@ -411,7 +462,7 @@ importers:
         specifier: ^4.1.4
         version: 4.1.4(@pothos/core@4.12.0(graphql@16.12.0))(graphql@16.12.0)
       graphql:
-        specifier: ^16.12.0
+        specifier: 'catalog:'
         version: 16.12.0
       graphql-scalars:
         specifier: ^1.25.0
@@ -433,8 +484,8 @@ importers:
         specifier: ^4.19.1
         version: 4.21.0
       typescript:
-        specifier: latest
-        version: 5.9.3
+        specifier: 'catalog:'
+        version: 5.9.2
 
   packages/typescript-config: {}
 
@@ -463,31 +514,31 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       '@sveltejs/kit':
-        specifier: ^2.50.2
+        specifier: 'catalog:'
         version: 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       '@sveltejs/package':
-        specifier: ^2.5.7
+        specifier: 'catalog:'
         version: 2.5.7(svelte@5.50.0)(typescript@5.9.2)
       '@sveltejs/vite-plugin-svelte':
-        specifier: ^6.2.4
+        specifier: 'catalog:'
         version: 6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       eslint:
-        specifier: ^9.39.1
+        specifier: 'catalog:'
         version: 9.39.2(jiti@2.6.1)
       svelte:
-        specifier: ^5.50.0
+        specifier: 'catalog:'
         version: 5.50.0
       svelte-check:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6(picomatch@4.0.3)(svelte@5.50.0)(typescript@5.9.2)
       tailwindcss:
-        specifier: ^4.1.18
+        specifier: 'catalog:'
         version: 4.1.18
       typescript:
-        specifier: 5.9.2
+        specifier: 'catalog:'
         version: 5.9.2
       vite:
-        specifier: ^7.3.1
+        specifier: 'catalog:'
         version: 7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/utils:
@@ -506,21 +557,21 @@ importers:
         specifier: ^0.31.1
         version: 0.31.1
       typescript:
-        specifier: latest
-        version: 5.9.3
+        specifier: 'catalog:'
+        version: 5.9.2
 
   packages/vali:
     dependencies:
       valibot:
         specifier: ^1.2.0
-        version: 1.2.0(typescript@5.9.3)
+        version: 1.2.0(typescript@5.9.2)
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       typescript:
-        specifier: latest
-        version: 5.9.3
+        specifier: 'catalog:'
+        version: 5.9.2
 
 packages:
 
@@ -688,6 +739,16 @@ packages:
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.21
       better-call: 1.1.8
+      jose: ^6.1.0
+      kysely: ^0.28.5
+      nanostores: ^1.0.1
+
+  '@better-auth/core@1.5.0-beta.13':
+    resolution: {integrity: sha512-oOK1O3bwfzebK5W4iIYOdB+IBLk+RLWfOm/MU6dMq4l1HNWvi5iZ75lxxk7Sgx0MfaeEn1C+lXIHplDyeeZKhQ==}
+    peerDependencies:
+      '@better-auth/utils': 0.3.1
+      '@better-fetch/fetch': 1.1.21
+      better-call: 1.2.1
       jose: ^6.1.0
       kysely: ^0.28.5
       nanostores: ^1.0.1
@@ -1681,89 +1742,105 @@ packages:
     resolution: {integrity: sha512-excjX8DfsIcJ10x1Kzr4RcWe1edC9PquDRRPx3YVCvQv+U5p7Yin2s32ftzikXojb1PIFc/9Mt28/y+iRklkrw==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-arm@1.2.4':
     resolution: {integrity: sha512-bFI7xcKFELdiNCVov8e44Ia4u2byA+l3XtsAj+Q8tfCwO6BQ8iDojYdvoPMqsKDkuoOo+X6HZA0s0q11ANMQ8A==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-ppc64@1.2.4':
     resolution: {integrity: sha512-FMuvGijLDYG6lW+b/UvyilUWu5Ayu+3r2d1S8notiGCIyYU/76eig1UfMmkZ7vwgOrzKzlQbFSuQfgm7GYUPpA==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-riscv64@1.2.4':
     resolution: {integrity: sha512-oVDbcR4zUC0ce82teubSm+x6ETixtKZBh/qbREIOcI3cULzDyb18Sr/Wcyx7NRQeQzOiHTNbZFF1UwPS2scyGA==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-s390x@1.2.4':
     resolution: {integrity: sha512-qmp9VrzgPgMoGZyPvrQHqk02uyjA0/QrTO26Tqk6l4ZV0MPWIW6LTkqOIov+J1yEu7MbFQaDpwdwJKhbJvuRxQ==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-x64@1.2.4':
     resolution: {integrity: sha512-tJxiiLsmHc9Ax1bz3oaOYBURTXGIRDODBqhveVHonrHJ9/+k89qbLl0bcJns+e4t4rvaNBxaEZsFtSfAdquPrw==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linuxmusl-arm64@1.2.4':
     resolution: {integrity: sha512-FVQHuwx1IIuNow9QAbYUzJ+En8KcVm9Lk5+uGUQJHaZmMECZmOlix9HnH7n1TRkXMS0pGxIJokIVB9SuqZGGXw==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@img/sharp-libvips-linuxmusl-x64@1.2.4':
     resolution: {integrity: sha512-+LpyBk7L44ZIXwz/VYfglaX/okxezESc6UxDSoyo2Ks6Jxc4Y7sGjpgU9s4PMgqgjj1gZCylTieNamqA1MF7Dg==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@img/sharp-linux-arm64@0.34.5':
     resolution: {integrity: sha512-bKQzaJRY/bkPOXyKx5EVup7qkaojECG6NLYswgktOZjaXecSAeCWiZwwiFf3/Y+O1HrauiE3FVsGxFg8c24rZg==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-arm@0.34.5':
     resolution: {integrity: sha512-9dLqsvwtg1uuXBGZKsxem9595+ujv0sJ6Vi8wcTANSFpwV/GONat5eCkzQo/1O6zRIkh0m/8+5BjrRr7jDUSZw==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-ppc64@0.34.5':
     resolution: {integrity: sha512-7zznwNaqW6YtsfrGGDA6BRkISKAAE1Jo0QdpNYXNMHu2+0dTrPflTLNkpc8l7MUP5M16ZJcUvysVWWrMefZquA==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-riscv64@0.34.5':
     resolution: {integrity: sha512-51gJuLPTKa7piYPaVs8GmByo7/U7/7TZOq+cnXJIHZKavIRHAP77e3N2HEl3dgiqdD/w0yUfiJnII77PuDDFdw==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-s390x@0.34.5':
     resolution: {integrity: sha512-nQtCk0PdKfho3eC5MrbQoigJ2gd1CgddUMkabUj+rBevs8tZ2cULOx46E7oyX+04WGfABgIwmMC0VqieTiR4jg==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-x64@0.34.5':
     resolution: {integrity: sha512-MEzd8HPKxVxVenwAa+JRPwEC7QFjoPWuS5NZnBt6B3pu7EG2Ge0id1oLHZpPJdn3OQK+BQDiw9zStiHBTJQQQQ==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linuxmusl-arm64@0.34.5':
     resolution: {integrity: sha512-fprJR6GtRsMt6Kyfq44IsChVZeGN97gTD331weR1ex1c1rypDEABN6Tm2xa1wE6lYb5DdEnk03NZPqA7Id21yg==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@img/sharp-linuxmusl-x64@0.34.5':
     resolution: {integrity: sha512-Jg8wNT1MUzIvhBFxViqrEhWDGzqymo3sV7z7ZsaWbZNDLXRJZoRGrjulp60YYtV4wfY8VIKcWidjojlLcWrd8Q==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@img/sharp-wasm32@0.34.5':
     resolution: {integrity: sha512-OdWTEiVkY2PHwqkbBI8frFxQQFekHaSSkUIJkwzclWZe64O1X4UlUjqqqLaPbUpMOQk6FBu/HtlGXNblIs0huw==}
@@ -2065,36 +2142,42 @@ packages:
     engines: {node: '>= 10.0.0'}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-arm-musl@2.5.6':
     resolution: {integrity: sha512-Ve3gUCG57nuUUSyjBq/MAM0CzArtuIOxsBdQ+ftz6ho8n7s1i9E1Nmk/xmP323r2YL0SONs1EuwqBp2u1k5fxg==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-linux-arm64-glibc@2.5.6':
     resolution: {integrity: sha512-f2g/DT3NhGPdBmMWYoxixqYr3v/UXcmLOYy16Bx0TM20Tchduwr4EaCbmxh1321TABqPGDpS8D/ggOTaljijOA==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-arm64-musl@2.5.6':
     resolution: {integrity: sha512-qb6naMDGlbCwdhLj6hgoVKJl2odL34z2sqkC7Z6kzir8b5W65WYDpLB6R06KabvZdgoHI/zxke4b3zR0wAbDTA==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-linux-x64-glibc@2.5.6':
     resolution: {integrity: sha512-kbT5wvNQlx7NaGjzPFu8nVIW1rWqV780O7ZtkjuWaPUgpv2NMFpjYERVi0UYj1msZNyCzGlaCWEtzc+exjMGbQ==}
     engines: {node: '>= 10.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-x64-musl@2.5.6':
     resolution: {integrity: sha512-1JRFeC+h7RdXwldHzTsmdtYR/Ku8SylLgTU/reMuqdVD7CtLwf0VR1FqeprZ0eHQkO0vqsbvFLXUmYm/uNKJBg==}
     engines: {node: '>= 10.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-win32-arm64@2.5.6':
     resolution: {integrity: sha512-3ukyebjc6eGlw9yRt678DxVF7rjXatWiHvTXqphZLvo7aC5NdEgFufVwjFfY51ijYEWpXbqF5jtrK275z52D4Q==}
@@ -2197,66 +2280,79 @@ packages:
     resolution: {integrity: sha512-F8sWbhZ7tyuEfsmOxwc2giKDQzN3+kuBLPwwZGyVkLlKGdV1nvnNwYD0fKQ8+XS6hp9nY7B+ZeK01EBUE7aHaw==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.57.1':
     resolution: {integrity: sha512-rGfNUfn0GIeXtBP1wL5MnzSj98+PZe/AXaGBCRmT0ts80lU5CATYGxXukeTX39XBKsxzFpEeK+Mrp9faXOlmrw==}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.57.1':
     resolution: {integrity: sha512-MMtej3YHWeg/0klK2Qodf3yrNzz6CGjo2UntLvk2RSPlhzgLvYEB3frRvbEF2wRKh1Z2fDIg9KRPe1fawv7C+g==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.57.1':
     resolution: {integrity: sha512-1a/qhaaOXhqXGpMFMET9VqwZakkljWHLmZOX48R0I/YLbhdxr1m4gtG1Hq7++VhVUmf+L3sTAf9op4JlhQ5u1Q==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-loong64-gnu@4.57.1':
     resolution: {integrity: sha512-QWO6RQTZ/cqYtJMtxhkRkidoNGXc7ERPbZN7dVW5SdURuLeVU7lwKMpo18XdcmpWYd0qsP1bwKPf7DNSUinhvA==}
     cpu: [loong64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-loong64-musl@4.57.1':
     resolution: {integrity: sha512-xpObYIf+8gprgWaPP32xiN5RVTi/s5FCR+XMXSKmhfoJjrpRAjCuuqQXyxUa/eJTdAE6eJ+KDKaoEqjZQxh3Gw==}
     cpu: [loong64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-ppc64-gnu@4.57.1':
     resolution: {integrity: sha512-4BrCgrpZo4hvzMDKRqEaW1zeecScDCR+2nZ86ATLhAoJ5FQ+lbHVD3ttKe74/c7tNT9c6F2viwB3ufwp01Oh2w==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-ppc64-musl@4.57.1':
     resolution: {integrity: sha512-NOlUuzesGauESAyEYFSe3QTUguL+lvrN1HtwEEsU2rOwdUDeTMJdO5dUYl/2hKf9jWydJrO9OL/XSSf65R5+Xw==}
     cpu: [ppc64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-riscv64-gnu@4.57.1':
     resolution: {integrity: sha512-ptA88htVp0AwUUqhVghwDIKlvJMD/fmL/wrQj99PRHFRAG6Z5nbWoWG4o81Nt9FT+IuqUQi+L31ZKAFeJ5Is+A==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.57.1':
     resolution: {integrity: sha512-S51t7aMMTNdmAMPpBg7OOsTdn4tySRQvklmL3RpDRyknk87+Sp3xaumlatU+ppQ+5raY7sSTcC2beGgvhENfuw==}
     cpu: [riscv64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.57.1':
     resolution: {integrity: sha512-Bl00OFnVFkL82FHbEqy3k5CUCKH6OEJL54KCyx2oqsmZnFTR8IoNqBF+mjQVcRCT5sB6yOvK8A37LNm/kPJiZg==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.57.1':
     resolution: {integrity: sha512-ABca4ceT4N+Tv/GtotnWAeXZUZuM/9AQyCyKYyKnpk4yoA7QIAuBt6Hkgpw8kActYlew2mvckXkvx0FfoInnLg==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.57.1':
     resolution: {integrity: sha512-HFps0JeGtuOR2convgRRkHCekD7j+gdAuXM+/i6kGzQtFhlCtQkpwtNzkNj6QhCDp7DRJ7+qC/1Vg2jt5iSOFw==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-openbsd-x64@4.57.1':
     resolution: {integrity: sha512-H+hXEv9gdVQuDTgnqD+SQffoWoc0Of59AStSzTEj/feWTBAnSfSD3+Dql1ZruJQxmykT/JVY0dE8Ka7z0DH1hw==}
@@ -2387,24 +2483,28 @@ packages:
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@tailwindcss/oxide-linux-arm64-musl@4.1.18':
     resolution: {integrity: sha512-1px92582HkPQlaaCkdRcio71p8bc8i/ap5807tPRDK/uw953cauQBT8c5tVGkOwrHMfc2Yh6UuxaH4vtTjGvHg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@tailwindcss/oxide-linux-x64-gnu@4.1.18':
     resolution: {integrity: sha512-v3gyT0ivkfBLoZGF9LyHmts0Isc8jHZyVcbzio6Wpzifg/+5ZJpDiRiUhDLkcr7f/r38SWNe7ucxmGW3j3Kb/g==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@tailwindcss/oxide-linux-x64-musl@4.1.18':
     resolution: {integrity: sha512-bhJ2y2OQNlcRwwgOAGMY0xTFStt4/wyU6pvI6LSuZpRgKQwxTec0/3Scu91O8ir7qCR3AuepQKLU/kX99FouqQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@tailwindcss/oxide-wasm32-wasi@4.1.18':
     resolution: {integrity: sha512-LffYTvPjODiP6PT16oNeUQJzNVyJl1cjIebq/rWWBF+3eDst5JGEFSc5cWxyRCJ0Mxl+KyIkqRxk1XPEs9x8TA==}
@@ -2480,11 +2580,13 @@ packages:
     resolution: {integrity: sha512-6vnnKBgAgfKhspr+nScPevOSrrnZwNJKuUbiHMSagOqNDZCzOAGDcfeC83sKd2QvZquR17l6V3tFxcFN5FnByQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@tursodatabase/database-linux-x64-gnu@0.4.4':
     resolution: {integrity: sha512-N63wK6ow6wPmD1/BjBhbrR8/Ifo6+A6zavpzgsT5YABVC4wGZBvJ1TvSz935R9n5E8eqQNY8jKiQPJLwpgOjdw==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@tursodatabase/database-win32-x64-msvc@0.4.4':
     resolution: {integrity: sha512-TYEl5FaUAImgZew05FvxvcFWLb1AQ+Zeyw/ApEbBDqS7mQmbz8VGs4iq04ECzJG2esfBR+zrLdDEG3X1BnaDTg==}
@@ -2835,6 +2937,14 @@ packages:
 
   better-call@1.1.8:
     resolution: {integrity: sha512-XMQ2rs6FNXasGNfMjzbyroSwKwYbZ/T3IxruSS6U2MJRsSYh3wYtG3o6H00ZlKZ/C/UPOAD97tqgQJNsxyeTXw==}
+    peerDependencies:
+      zod: ^4.0.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+
+  better-call@1.2.1:
+    resolution: {integrity: sha512-Ccgd5hj2Fmtu9Vjb9APXNYxutJWPRDhJanWAzFLwSzYAiOvkXN61OmYdvSirfrL2Z7REuK7TRklP8SIbZRlGwA==}
     peerDependencies:
       zod: ^4.0.0
     peerDependenciesMeta:
@@ -3963,6 +4073,7 @@ packages:
 
   libsql@0.5.22:
     resolution: {integrity: sha512-NscWthMQt7fpU8lqd7LXMvT9pi+KhhmTHAJWUB/Lj6MWa0MKFv0F2V4C6WKKpjCVZl0VwcDz4nOI3CyaT1DDiA==}
+    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lightningcss-android-arm64@1.30.2:
@@ -4000,24 +4111,28 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   lightningcss-linux-arm64-musl@1.30.2:
     resolution: {integrity: sha512-5Vh9dGeblpTxWHpOx8iauV02popZDsCYMPIgiuw97OJ5uaDsL86cnqSFs5LZkG3ghHoX5isLgWzMs+eD1YzrnA==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   lightningcss-linux-x64-gnu@1.30.2:
     resolution: {integrity: sha512-Cfd46gdmj1vQ+lR6VRTTadNHu6ALuw2pKR9lYq4FnhvgBc4zWY1EtZcAc6EffShbb1MFrIPfLDXD6Xprbnni4w==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   lightningcss-linux-x64-musl@1.30.2:
     resolution: {integrity: sha512-XJaLUUFXb6/QG2lGIW6aIk6jKdtjtcffUT0NKvIqhSBY3hh9Ch+1LCeH80dR9q9LBjG3ewbDjnumefsLsP6aiA==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   lightningcss-win32-arm64-msvc@1.30.2:
     resolution: {integrity: sha512-FZn+vaj7zLv//D/192WFFVA0RgHawIcHqLX9xuWiQt7P0PtdFEVaxgF9rjM/IRYHQXNnk61/H/gb2Ei+kUQ4xQ==}
@@ -4915,12 +5030,6 @@ packages:
       svelte:
         optional: true
 
-  svelte2tsx@0.7.47:
-    resolution: {integrity: sha512-1aw/MFKVPM96OBevJdC12do2an9t5Zwr3Va9amLgTLpJje36ibD1iIHpuqCYWUrdR9vw6g6btKGQPmsqE8ZYCw==}
-    peerDependencies:
-      svelte: ^3.55 || ^4.0.0-next.0 || ^4.0 || ^5.0.0-next.0
-      typescript: ^4.9.4 || ^5.0.0
-
   svelte2tsx@0.7.48:
     resolution: {integrity: sha512-B15C8dtOY6C9MbnQJDCkzbK3yByInzKtXrr23QCoF8APHMh6JaDhjCMcRl6ay4qaeKYqkX4X3tNaJrsZL45Zlg==}
     peerDependencies:
@@ -5727,11 +5836,22 @@ snapshots:
       nanostores: 1.1.0
       zod: 4.3.6
 
-  '@better-auth/drizzle-adapter@https://pkg.pr.new/better-auth/better-auth/@better-auth/drizzle-adapter@6913(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6))(prettier@3.8.1)':
+  '@better-auth/core@1.5.0-beta.13(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.2.1(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0)':
     dependencies:
-      '@better-auth/core': 1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0)
       '@better-auth/utils': 0.3.0
-      drizzle-orm: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6)
+      '@better-fetch/fetch': 1.1.21
+      '@standard-schema/spec': 1.1.0
+      better-call: 1.2.1(zod@4.3.6)
+      jose: 6.1.3
+      kysely: 0.28.11
+      nanostores: 1.1.0
+      zod: 4.3.6
+
+  '@better-auth/drizzle-adapter@https://pkg.pr.new/better-auth/better-auth/@better-auth/drizzle-adapter@6913(@better-auth/core@1.5.0-beta.13(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.2.1(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6))(prettier@3.8.1)':
+    dependencies:
+      '@better-auth/core': 1.5.0-beta.13(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.2.1(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0)
+      '@better-auth/utils': 0.3.0
+      drizzle-orm: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6)
       prettier: 3.8.1
 
   '@better-auth/telemetry@1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0))':
@@ -6119,7 +6239,7 @@ snapshots:
       graphql: 16.12.0
       tslib: 2.6.3
 
-  '@graphql-codegen/cli@6.1.1(@parcel/watcher@2.5.6)(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.3)':
+  '@graphql-codegen/cli@6.1.1(@parcel/watcher@2.5.6)(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.2)':
     dependencies:
       '@babel/generator': 7.29.1
       '@babel/template': 7.28.6
@@ -6139,11 +6259,11 @@ snapshots:
       '@inquirer/prompts': 7.10.1(@types/node@25.2.1)
       '@whatwg-node/fetch': 0.10.13
       chalk: 4.1.2
-      cosmiconfig: 9.0.0(typescript@5.9.3)
+      cosmiconfig: 9.0.0(typescript@5.9.2)
       debounce: 2.2.0
       detect-indent: 6.1.0
       graphql: 16.12.0
-      graphql-config: 5.1.5(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.3)
+      graphql-config: 5.1.5(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.2)
       is-glob: 4.0.3
       jiti: 2.6.1
       json-to-pretty-yaml: 1.2.2
@@ -7106,10 +7226,10 @@ snapshots:
     dependencies:
       graphql: 16.12.0
 
-  '@pothos/plugin-drizzle@0.17.0(@pothos/core@4.12.0(graphql@16.12.0))(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6))(graphql@16.12.0)':
+  '@pothos/plugin-drizzle@0.17.0(@pothos/core@4.12.0(graphql@16.12.0))(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6))(graphql@16.12.0)':
     dependencies:
       '@pothos/core': 4.12.0(graphql@16.12.0)
-      drizzle-orm: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6)
+      drizzle-orm: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6)
       graphql: 16.12.0
 
   '@pothos/plugin-relay@4.7.0(@pothos/core@4.12.0(graphql@16.12.0))(graphql@16.12.0)':
@@ -7224,7 +7344,7 @@ snapshots:
       '@sveltejs/kit': 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       import-meta-resolve: 4.2.0
 
-  '@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))':
+  '@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@sveltejs/acorn-typescript': 1.0.8(acorn@8.15.0)
@@ -7243,7 +7363,7 @@ snapshots:
       svelte: 5.50.0
       vite: 7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
     optionalDependencies:
-      typescript: 5.9.3
+      typescript: 5.9.2
     optional: true
 
   '@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))':
@@ -7267,27 +7387,6 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.2
 
-  '@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))':
-    dependencies:
-      '@standard-schema/spec': 1.1.0
-      '@sveltejs/acorn-typescript': 1.0.8(acorn@8.15.0)
-      '@sveltejs/vite-plugin-svelte': 6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
-      '@types/cookie': 0.6.0
-      acorn: 8.15.0
-      cookie: 0.6.0
-      devalue: 5.6.2
-      esm-env: 1.2.2
-      kleur: 4.1.5
-      magic-string: 0.30.21
-      mrmime: 2.0.1
-      sade: 1.8.1
-      set-cookie-parser: 3.0.1
-      sirv: 3.0.2
-      svelte: 5.50.0
-      vite: 7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
-    optionalDependencies:
-      typescript: 5.9.3
-
   '@sveltejs/package@2.5.7(svelte@5.50.0)(typescript@5.9.2)':
     dependencies:
       chokidar: 5.0.0
@@ -7295,7 +7394,7 @@ snapshots:
       sade: 1.8.1
       semver: 7.7.4
       svelte: 5.50.0
-      svelte2tsx: 0.7.47(svelte@5.50.0)(typescript@5.9.2)
+      svelte2tsx: 0.7.48(svelte@5.50.0)(typescript@5.9.2)
     transitivePeerDependencies:
       - typescript
 
@@ -7783,7 +7882,7 @@ snapshots:
 
   baseline-browser-mapping@2.9.19: {}
 
-  better-auth@1.4.18(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@1.0.0-beta.15-859cf75)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6))(svelte@5.50.0)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)):
+  better-auth@1.4.18(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@1.0.0-beta.15-859cf75)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6))(svelte@5.50.0)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
       '@better-auth/core': 1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0))
@@ -7798,13 +7897,13 @@ snapshots:
       nanostores: 1.1.0
       zod: 4.3.6
     optionalDependencies:
-      '@sveltejs/kit': 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+      '@sveltejs/kit': 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       drizzle-kit: 1.0.0-beta.15-859cf75
-      drizzle-orm: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6)
+      drizzle-orm: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6)
       svelte: 5.50.0
       vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
-  better-auth@1.4.18(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@0.31.8)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6))(svelte@5.50.0)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)):
+  better-auth@1.4.18(@sveltejs/kit@2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@0.31.8)(drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6))(svelte@5.50.0)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
       '@better-auth/core': 1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.0))
@@ -7819,13 +7918,22 @@ snapshots:
       nanostores: 1.1.0
       zod: 4.3.6
     optionalDependencies:
-      '@sveltejs/kit': 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.3)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+      '@sveltejs/kit': 2.50.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.50.0)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.50.0)(typescript@5.9.2)(vite@7.3.1(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
       drizzle-kit: 0.31.8
-      drizzle-orm: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6)
+      drizzle-orm: 1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6)
       svelte: 5.50.0
       vitest: 3.2.4(@types/debug@4.1.12)(@types/node@25.2.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
   better-call@1.1.8(zod@4.3.6):
+    dependencies:
+      '@better-auth/utils': 0.3.0
+      '@better-fetch/fetch': 1.1.21
+      rou3: 0.7.12
+      set-cookie-parser: 2.7.2
+    optionalDependencies:
+      zod: 4.3.6
+
+  better-call@1.2.1(zod@4.3.6):
     dependencies:
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.21
@@ -8051,6 +8159,15 @@ snapshots:
 
   cookie@1.1.1: {}
 
+  cosmiconfig@8.3.6(typescript@5.9.2):
+    dependencies:
+      import-fresh: 3.3.1
+      js-yaml: 4.1.1
+      parse-json: 5.2.0
+      path-type: 4.0.0
+    optionalDependencies:
+      typescript: 5.9.2
+
   cosmiconfig@8.3.6(typescript@5.9.3):
     dependencies:
       import-fresh: 3.3.1
@@ -8060,14 +8177,14 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  cosmiconfig@9.0.0(typescript@5.9.3):
+  cosmiconfig@9.0.0(typescript@5.9.2):
     dependencies:
       env-paths: 2.2.1
       import-fresh: 3.3.1
       js-yaml: 4.1.1
       parse-json: 5.2.0
     optionalDependencies:
-      typescript: 5.9.3
+      typescript: 5.9.2
 
   create-require@1.1.1:
     optional: true
@@ -8215,7 +8332,7 @@ snapshots:
       esbuild: 0.25.12
       jiti: 2.6.1
 
-  drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6):
+  drizzle-orm@1.0.0-beta.15-859cf75(@libsql/client@0.17.0)(@tursodatabase/database-common@0.4.4)(@tursodatabase/database@0.4.4)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))(valibot@1.2.0(typescript@5.9.2))(zod@4.3.6):
     dependencies:
       '@types/mssql': 9.1.9(@azure/core-client@1.10.1)
       mssql: 11.0.1(@azure/core-client@1.10.1)
@@ -8223,7 +8340,7 @@ snapshots:
       '@libsql/client': 0.17.0
       '@tursodatabase/database': 0.4.4
       '@tursodatabase/database-common': 0.4.4
-      valibot: 1.2.0(typescript@5.9.3)
+      valibot: 1.2.0(typescript@5.9.2)
       zod: 4.3.6
 
   dset@3.1.4: {}
@@ -8591,6 +8708,29 @@ snapshots:
       slash: 3.0.0
 
   graceful-fs@4.2.11: {}
+
+  graphql-config@5.1.5(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.2):
+    dependencies:
+      '@graphql-tools/graphql-file-loader': 8.1.9(graphql@16.12.0)
+      '@graphql-tools/json-file-loader': 8.0.26(graphql@16.12.0)
+      '@graphql-tools/load': 8.1.8(graphql@16.12.0)
+      '@graphql-tools/merge': 9.1.7(graphql@16.12.0)
+      '@graphql-tools/url-loader': 8.0.33(@types/node@25.2.1)(graphql@16.12.0)
+      '@graphql-tools/utils': 10.11.0(graphql@16.12.0)
+      cosmiconfig: 8.3.6(typescript@5.9.2)
+      graphql: 16.12.0
+      jiti: 2.6.1
+      minimatch: 9.0.5
+      string-env-interpolation: 1.0.1
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@fastify/websocket'
+      - '@types/node'
+      - bufferutil
+      - crossws
+      - supports-color
+      - typescript
+      - utf-8-validate
 
   graphql-config@5.1.5(@types/node@25.2.1)(graphql@16.12.0)(typescript@5.9.3):
     dependencies:
@@ -10096,19 +10236,12 @@ snapshots:
     optionalDependencies:
       svelte: 5.50.0
 
-  svelte2tsx@0.7.47(svelte@5.50.0)(typescript@5.9.2):
+  svelte2tsx@0.7.48(svelte@5.50.0)(typescript@5.9.2):
     dependencies:
       dedent-js: 1.0.1
       scule: 1.3.0
       svelte: 5.50.0
       typescript: 5.9.2
-
-  svelte2tsx@0.7.48(svelte@5.50.0)(typescript@5.9.3):
-    dependencies:
-      dedent-js: 1.0.1
-      scule: 1.3.0
-      svelte: 5.50.0
-      typescript: 5.9.3
 
   svelte@5.50.0:
     dependencies:
@@ -10402,10 +10535,6 @@ snapshots:
   valibot@1.2.0(typescript@5.9.2):
     optionalDependencies:
       typescript: 5.9.2
-
-  valibot@1.2.0(typescript@5.9.3):
-    optionalDependencies:
-      typescript: 5.9.3
 
   vfile-location@5.0.3:
     dependencies:

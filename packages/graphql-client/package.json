@@ -15,10 +15,10 @@
 		"codegen:watch": "chokidar \"../graphql-server/schema.graphql\" \"src/**/*\" \"../../apps/desktop/src/**/*\" \"../../apps/mobile/src/**/*\" \"../ui/src/**/*\" -c \"pnpm codegen\""
 	},
 	"peerDependencies": {
-		"svelte": "^5.50.0"
+		"svelte": "catalog:"
 	},
 	"dependencies": {
-		"graphql": "^16.12.0"
+		"graphql": "catalog:"
 	},
 	"devDependencies": {
 		"@gebna/graphql-server": "workspace:*",
@@ -31,8 +31,8 @@
 		"chokidar-cli": "^3.0.0",
 		"concurrently": "^9.2.1",
 		"graphql-config": "^5.1.5",
-		"svelte": "^5.50.0",
+		"svelte": "catalog:",
 		"svelte2tsx": "^0.7.48",
-		"typescript": "latest"
+		"typescript": "catalog:"
 	}
 }

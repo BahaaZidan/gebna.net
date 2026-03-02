@@ -17,7 +17,7 @@
 		"build": "tsc"
 	},
 	"peerDependencies": {
-		"@sveltejs/kit": "^2.50.2"
+		"@sveltejs/kit": "catalog:"
 	},
 	"dependencies": {
 		"@better-auth/drizzle-adapter": "https://pkg.pr.new/better-auth/better-auth/@better-auth/drizzle-adapter@6913",
@@ -28,6 +28,6 @@
 	},
 	"devDependencies": {
 		"@repo/typescript-config": "workspace:*",
-		"typescript": "latest"
+		"typescript": "catalog:"
 	}
 }
