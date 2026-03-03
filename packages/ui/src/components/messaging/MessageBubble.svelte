@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { graphql, useFragment, type FragmentType } from "@gebna/graphql-client";
 
-	import { autoIframeHeight } from "../../actions";
 	import { formatInboxDate } from "../../utils/format";
 
 	const EmailMessageBubble = graphql(`
@@ -23,6 +22,14 @@
 	let props: { message: FragmentType<typeof EmailMessageBubble> } = $props();
 	let message = $derived(useFragment(EmailMessageBubble, props.message));
 	let sender = $derived(message.from);
+	let emailBodyHost: HTMLDivElement | null = $state(null);
+
+	$effect(() => {
+		if (!emailBodyHost) return;
+
+		const shadowRoot = emailBodyHost.shadowRoot ?? emailBodyHost.attachShadow({ mode: "open" });
+		shadowRoot.innerHTML = message.html ?? "";
+	});
 </script>
 
 <div class="flex w-full items-start gap-4">
@@ -33,23 +40,16 @@
 	</div>
 	<div class="flex w-full flex-col gap-2">
 		<div class="flex items-baseline gap-1">
-			<div class="font-bold text-black">{sender.name || sender.address}</div>
-			<time class="text-xs text-gray-900">{formatInboxDate(message.createdAt)}</time>
+			<div class="font-bold">{sender.name || sender.address}</div>
+			<time class="text-xs">{formatInboxDate(message.createdAt)}</time>
 		</div>
 		{#if message.plaintext}
 			<div>
-				<pre class="text-black">{message.plaintext}</pre>
+				<pre class="">{message.plaintext}</pre>
 			</div>
 		{:else if message.html}
 			<div class="w-full">
-				<iframe
-					title="email"
-					sandbox="allow-same-origin"
-					referrerpolicy="no-referrer"
-					srcdoc={message.html}
-					class="w-full"
-					use:autoIframeHeight
-				></iframe>
+				<div bind:this={emailBodyHost} class="w-full"></div>
 			</div>
 		{/if}
 	</div>
