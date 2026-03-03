@@ -99,6 +99,15 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 			},
 		}),
 		html: t.exposeString("bodyHTML"),
+		plaintext: t.string({
+			select: {
+				columns: {
+					bodyPlaintext: true,
+					bodyHTML: true,
+				},
+			},
+			resolve: ({ bodyPlaintext, bodyHTML }) => (bodyHTML ? null : bodyPlaintext),
+		}),
 	}),
 });
 

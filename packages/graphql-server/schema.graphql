@@ -16,6 +16,7 @@ type EmailMessage implements Node {
   from: EmailAddressRef!
   html: String
   id: ID!
+  plaintext: String
   snippet: String
   to: EmailAddressRef!
 }

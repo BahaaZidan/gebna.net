@@ -33,6 +33,7 @@ export type EmailMessage = Node & {
   from: EmailAddressRef;
   html?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  plaintext?: Maybe<Scalars['String']['output']>;
   snippet?: Maybe<Scalars['String']['output']>;
   to: EmailAddressRef;
 };
@@ -151,7 +152,7 @@ export type EmailThreadDetailsQuery = { __typename?: 'Query', node?:
     )
    | null };
 
-export type EmailMessageBubbleFragment = { __typename?: 'EmailMessage', id: string, html?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string, avatar: string, address: string } } & { ' $fragmentName'?: 'EmailMessageBubbleFragment' };
+export type EmailMessageBubbleFragment = { __typename?: 'EmailMessage', id: string, html?: string | null, plaintext?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string, avatar: string, address: string } } & { ' $fragmentName'?: 'EmailMessageBubbleFragment' };
 
 export type EmailThreadAvatarFragment = { __typename?: 'EmailThread', id: string, avatar?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, avatar: string, isSelf: boolean, name: string, address: string }> } & { ' $fragmentName'?: 'EmailThreadAvatarFragment' };
 
@@ -179,6 +180,7 @@ export const EmailMessageBubbleFragmentDoc = new TypedDocumentString(`
     fragment EmailMessageBubble on EmailMessage {
   id
   html
+  plaintext
   createdAt
   from {
     id
@@ -277,6 +279,7 @@ export const EmailThreadDetailsDocument = new TypedDocumentString(`
     fragment EmailMessageBubble on EmailMessage {
   id
   html
+  plaintext
   createdAt
   from {
     id
