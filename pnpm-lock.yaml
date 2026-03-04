@@ -238,60 +238,15 @@ importers:
       '@iocium/favicon-fetcher':
         specifier: ^1.5.0
         version: 1.5.0
-      '@wordpress/wordcount':
-        specifier: ^4.40.0
-        version: 4.40.0
-      hast:
-        specifier: ^1.0.0
-        version: 1.0.0
-      hast-util-to-string:
-        specifier: ^3.0.1
-        version: 3.0.1
       html-to-text:
         specifier: ^9.0.5
         version: 9.0.5
       postal-mime:
         specifier: ^2.7.3
         version: 2.7.3
-      postcss:
-        specifier: ^8.5.8
-        version: 8.5.8
-      postcss-safe-parser:
-        specifier: ^7.0.1
-        version: 7.0.1(postcss@8.5.8)
-      rehype-parse:
-        specifier: ^9.0.1
-        version: 9.0.1
-      rehype-remark:
-        specifier: ^10.0.1
-        version: 10.0.1
-      rehype-sanitize:
-        specifier: ^6.0.0
-        version: 6.0.0
-      rehype-stringify:
-        specifier: ^10.0.1
-        version: 10.0.1
-      remark-gfm:
-        specifier: ^4.0.1
-        version: 4.0.1
-      remark-parse:
-        specifier: ^11.0.0
-        version: 11.0.0
-      remark-rehype:
-        specifier: ^11.1.2
-        version: 11.1.2
-      remark-stringify:
-        specifier: ^11.0.0
-        version: 11.0.0
       tldts:
         specifier: ^7.0.23
         version: 7.0.23
-      unified:
-        specifier: ^11.0.5
-        version: 11.0.5
-      unist-util-visit:
-        specifier: ^5.1.0
-        version: 5.1.0
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 'catalog:'
@@ -299,15 +254,9 @@ importers:
       '@total-typescript/ts-reset':
         specifier: 'catalog:'
         version: 0.6.1
-      '@types/hast':
-        specifier: ^3.0.4
-        version: 3.0.4
       '@types/html-to-text':
         specifier: ^9.0.4
         version: 9.0.4
-      '@types/postcss-safe-parser':
-        specifier: ^5.0.4
-        version: 5.0.4
       typescript:
         specifier: 'catalog:'
         version: 5.9.2
@@ -558,16 +507,67 @@ importers:
 
   packages/utils:
     dependencies:
+      '@wordpress/wordcount':
+        specifier: ^4.40.0
+        version: 4.40.0
+      hast:
+        specifier: ^1.0.0
+        version: 1.0.0
+      hast-util-to-string:
+        specifier: ^3.0.1
+        version: 3.0.1
+      postcss:
+        specifier: ^8.5.8
+        version: 8.5.8
+      postcss-safe-parser:
+        specifier: ^7.0.1
+        version: 7.0.1(postcss@8.5.8)
       ramda:
         specifier: ^0.32.0
         version: 0.32.0
+      rehype-parse:
+        specifier: ^9.0.1
+        version: 9.0.1
+      rehype-remark:
+        specifier: ^10.0.1
+        version: 10.0.1
+      rehype-sanitize:
+        specifier: ^6.0.0
+        version: 6.0.0
+      rehype-stringify:
+        specifier: ^10.0.1
+        version: 10.0.1
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
+      remark-parse:
+        specifier: ^11.0.0
+        version: 11.0.0
+      remark-rehype:
+        specifier: ^11.1.2
+        version: 11.1.2
+      remark-stringify:
+        specifier: ^11.0.0
+        version: 11.0.0
       ulid:
         specifier: ^3.0.2
         version: 3.0.2
+      unified:
+        specifier: ^11.0.5
+        version: 11.0.5
+      unist-util-visit:
+        specifier: ^5.1.0
+        version: 5.1.0
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/hast':
+        specifier: ^3.0.4
+        version: 3.0.4
+      '@types/postcss-safe-parser':
+        specifier: ^5.0.4
+        version: 5.0.4
       '@types/ramda':
         specifier: ^0.31.1
         version: 0.31.1
@@ -9835,9 +9835,9 @@ snapshots:
     dependencies:
       postcss: 8.5.8
 
-  postcss-scss@4.0.9(postcss@8.5.6):
+  postcss-scss@4.0.9(postcss@8.5.8):
     dependencies:
-      postcss: 8.5.6
+      postcss: 8.5.8
 
   postcss-selector-parser@6.0.10:
     dependencies:
@@ -10256,8 +10256,8 @@ snapshots:
       eslint-scope: 8.4.0
       eslint-visitor-keys: 4.2.1
       espree: 10.4.0
-      postcss: 8.5.6
-      postcss-scss: 4.0.9(postcss@8.5.6)
+      postcss: 8.5.8
+      postcss-scss: 4.0.9(postcss@8.5.8)
       postcss-selector-parser: 7.1.1
     optionalDependencies:
       svelte: 5.50.0

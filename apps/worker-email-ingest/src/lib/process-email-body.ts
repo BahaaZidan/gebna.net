@@ -1,13 +1,14 @@
-import { count } from "@wordpress/wordcount";
-import type { Element, ElementContent, Root, RootContent } from "hast";
+import { count, rehypeParse, rehypeSanitize, rehypeStringify, unified } from "@gebna/utils";
+import type {
+	HastElement,
+	HastElementContent,
+	HastRoot,
+	HastRootContent,
+	RehypeSanitizeOptions,
+	UnifiedPlugin,
+} from "@gebna/utils";
 import { convert } from "html-to-text";
 import type { Email } from "postal-mime";
-import rehypeParse from "rehype-parse";
-import rehypeSanitize, { type Options } from "rehype-sanitize";
-import rehypeStringify from "rehype-stringify";
-import { unified, type Plugin } from "unified";
-
-import { rehypeEnforcePalette } from "./rehype-enforce-palette";
 
 interface ProcessEmailBodyArguments {
 	email: Email;
@@ -28,19 +29,6 @@ export async function processEmailBody({ email }: ProcessEmailBodyArguments): Pr
 			.use(rehypeParse, { fragment: false })
 			.use(rehypeSanitize, EMAIL_SANITIZE_SCHEMA)
 			.use(rehypeEnsureFullDocumentWithBaseStyles)
-			// TODO: this should be owned by the clients ????
-			.use(rehypeEnforcePalette, {
-				palette: {
-					// daisyUI black theme tokens converted to email-safe hex
-					bg: "#000000", // --color-base-100
-					text: "#d6d6d6", // --color-base-content
-					link: "#d6d6d6", // --color-primary
-					muted: "#1b1b1b", // --color-base-300
-					fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial",
-				},
-				injectBaseCss: true,
-				force: true, // flip to true if you want to override explicit colors too
-			})
 			.use(rehypeStringify)
 			.process(email.html)
 	)
@@ -53,13 +41,13 @@ export async function processEmailBody({ email }: ProcessEmailBodyArguments): Pr
 
 const BASE_EMAIL_STYLE = "html, body { font-family: Inter, sans-serif; margin: 0; padding: 0; }";
 
-const rehypeEnsureFullDocumentWithBaseStyles: Plugin<[], Root> = () => (tree) => {
+const rehypeEnsureFullDocumentWithBaseStyles: UnifiedPlugin<[], HastRoot> = () => (tree) => {
 	ensureFullDocumentWithBaseStyles(tree);
 };
 
-function ensureFullDocumentWithBaseStyles(root: Root) {
+function ensureFullDocumentWithBaseStyles(root: HastRoot) {
 	const rootChildren = root.children;
-	const htmlNode = rootChildren.find((node): node is Element => isElementWithTag(node, "html"));
+	const htmlNode = rootChildren.find((node): node is HastElement => isElementWithTag(node, "html"));
 
 	if (!htmlNode) {
 		root.children = [
@@ -101,7 +89,7 @@ function ensureFullDocumentWithBaseStyles(root: Root) {
 	}
 
 	const hasBaseStyle = headNode.children.some(
-		(node): node is Element =>
+		(node): node is HastElement =>
 			isElementWithTag(node, "style") && node.properties.dataEmailIngestBase === "true"
 	);
 
@@ -110,7 +98,7 @@ function ensureFullDocumentWithBaseStyles(root: Root) {
 	}
 }
 
-function createBaseStyleNode(): Element {
+function createBaseStyleNode(): HastElement {
 	return {
 		type: "element",
 		tagName: "style",
@@ -119,23 +107,26 @@ function createBaseStyleNode(): Element {
 	};
 }
 
-function createElement(tagName: string, children: ElementContent[]): Element {
+function createElement(tagName: string, children: HastElementContent[]): HastElement {
 	return { type: "element", tagName, properties: {}, children };
 }
 
-function findChildElementByTagName(parent: Element, tagName: string): Element | undefined {
-	return parent.children.find((node): node is Element => isElementWithTag(node, tagName));
+function findChildElementByTagName(parent: HastElement, tagName: string): HastElement | undefined {
+	return parent.children.find((node): node is HastElement => isElementWithTag(node, tagName));
 }
 
-function isElementWithTag(node: RootContent | ElementContent, tagName: string): node is Element {
+function isElementWithTag(
+	node: HastRootContent | HastElementContent,
+	tagName: string
+): node is HastElement {
 	return node.type === "element" && node.tagName === tagName;
 }
 
-function rootContentToBodyContent(node: RootContent): ElementContent[] {
+function rootContentToBodyContent(node: HastRootContent): HastElementContent[] {
 	return node.type === "doctype" ? [] : [node];
 }
 
-const EMAIL_SANITIZE_SCHEMA: Options = {
+const EMAIL_SANITIZE_SCHEMA: RehypeSanitizeOptions = {
 	allowComments: false,
 	allowDoctypes: false,
 	ancestors: {

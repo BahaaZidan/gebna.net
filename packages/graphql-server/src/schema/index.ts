@@ -1,4 +1,5 @@
 import { getTableConfig, relations } from "@gebna/db";
+import { rehypeEnforcePalette, rehypeParse, rehypeStringify, unified } from "@gebna/utils";
 import SchemaBuilder from "@pothos/core";
 import DrizzlePlugin from "@pothos/plugin-drizzle";
 import RelayPlugin from "@pothos/plugin-relay";
@@ -98,7 +99,37 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 				return bodyPlaintext?.slice(0, 100);
 			},
 		}),
-		html: t.exposeString("bodyHTML"),
+		html: t.string({
+			select: {
+				columns: {
+					bodyHTML: true,
+				},
+			},
+			resolve: async ({ bodyHTML }) => {
+				if (!bodyHTML) return null;
+				const html = (
+					await unified()
+						.use(rehypeParse)
+						// WORKAROUND: this should be owned by the clients(?). we do it here for now.
+						.use(rehypeEnforcePalette, {
+							palette: {
+								// daisyUI black theme tokens converted to email-safe hex
+								bg: "#000000", // --color-base-100
+								text: "#d6d6d6", // --color-base-content
+								link: "#d6d6d6", // --color-base-content
+								muted: "#1b1b1b", // --color-base-300
+								fontFamily:
+									"Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial",
+							},
+							injectBaseCss: true,
+							force: true, // flip to true if you want to override explicit colors too
+						})
+						.use(rehypeStringify)
+						.process(bodyHTML)
+				).toString();
+				return html;
+			},
+		}),
 		plaintext: t.string({
 			select: {
 				columns: {

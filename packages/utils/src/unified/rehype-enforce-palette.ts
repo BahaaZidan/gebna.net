@@ -33,7 +33,12 @@ function isLinkDecl(decl: Declaration): boolean {
 	return parent?.type === "rule" && isLinkSelector((parent as Rule).selector);
 }
 
-function rewriteDecl(decl: Declaration, palette: Palette, force: boolean, preferLinkColor: boolean): void {
+function rewriteDecl(
+	decl: Declaration,
+	palette: Palette,
+	force: boolean,
+	preferLinkColor: boolean
+): void {
 	if (!force) return;
 
 	const prop = decl.prop.toLowerCase();
@@ -68,7 +73,7 @@ function rewriteStyleAttr(style: string, palette: Palette, force: boolean): stri
 
 	const out = root.toString();
 	const m = out.match(/^a\s*\{([\s\S]*)\}\s*$/);
-	return m ? m[1].trim() : style;
+	return m ? m[1]?.trim()! : style;
 }
 
 function rewriteStyleTag(cssText: string, palette: Palette, force: boolean): string {
