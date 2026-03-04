@@ -37,9 +37,9 @@ async function resolveAvatar(address: string): Promise<string | null> {
 	if (AVATAR_INFERENCE_DENYLIST.has(domain)) return null;
 
 	const fetcher = new FaviconFetcher(domain);
-	const favicon = await fetcher.fetchFavicon();
+	const bimi = await fetcher.fetchFavicon("bimi");
 
-	return favicon.url;
+	return bimi.url;
 }
 
 /** We don't want to try to infer personal email providers */
