@@ -3,7 +3,7 @@
 	"private": true,
 	"scripts": {
 		"build": "turbo run build",
-		"dev": "turbo run schema:watch codegen:watch dev --parallel",
+		"dev": "turbo run dev schema:watch codegen:watch  --parallel",
 		"lint": "turbo run lint",
 		"format": "prettier --write .",
 		"check-types": "turbo run check-types"
@@ -13,7 +13,7 @@
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.4.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",
-		"turbo": "^2.8.3"
+		"turbo": "^2.8.13"
 	},
 	"packageManager": "pnpm@10.30.3",
 	"engines": {
