@@ -7,6 +7,8 @@ import rehypeSanitize, { type Options } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import { unified, type Plugin } from "unified";
 
+import { rehypeEnforcePalette } from "./rehype-enforce-palette";
+
 interface ProcessEmailBodyArguments {
 	email: Email;
 }
@@ -26,6 +28,19 @@ export async function processEmailBody({ email }: ProcessEmailBodyArguments): Pr
 			.use(rehypeParse, { fragment: false })
 			.use(rehypeSanitize, EMAIL_SANITIZE_SCHEMA)
 			.use(rehypeEnsureFullDocumentWithBaseStyles)
+			// TODO: this should be owned by the clients ????
+			.use(rehypeEnforcePalette, {
+				palette: {
+					// daisyUI black theme tokens converted to email-safe hex
+					bg: "#000000", // --color-base-100
+					text: "#d6d6d6", // --color-base-content
+					link: "#3a3a3a", // --color-primary
+					muted: "#1b1b1b", // --color-base-300
+					fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial",
+				},
+				injectBaseCss: true,
+				force: true, // flip to true if you want to override explicit colors too
+			})
 			.use(rehypeStringify)
 			.process(email.html)
 	)
@@ -36,8 +51,7 @@ export async function processEmailBody({ email }: ProcessEmailBodyArguments): Pr
 	return { html, plaintext, wordCount: count(plaintext, "words") };
 }
 
-const BASE_EMAIL_STYLE =
-	"html, body { font-family: Inter, sans-serif; margin: 0; padding: 0; }";
+const BASE_EMAIL_STYLE = "html, body { font-family: Inter, sans-serif; margin: 0; padding: 0; }";
 
 const rehypeEnsureFullDocumentWithBaseStyles: Plugin<[], Root> = () => (tree) => {
 	ensureFullDocumentWithBaseStyles(tree);
