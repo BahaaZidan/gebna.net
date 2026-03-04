@@ -37,13 +37,22 @@ async function resolveAvatar(address: string): Promise<string | null> {
 	if (AVATAR_INFERENCE_DENYLIST.has(domain)) return null;
 
 	const fetcher = new FaviconFetcher(domain);
-	const bimi = await fetcher.fetchFavicon("bimi");
+	const bimi = await fetcher.fetchFavicon("bimi").catch(() => null);
+	if (bimi) return bimi.url;
 
-	return bimi.url;
+	const favicon = await fetcher.fetchFavicon("faviconis").catch(() => null);
+	if (favicon) {
+		const content = Buffer.from(favicon.content).toString("utf8");
+		if (content.trim() === FAVICON_PLACEHOLDER.trim()) return null;
+
+		return favicon.url;
+	}
+
+	return null;
 }
 
 /** We don't want to try to infer personal email providers */
-export const AVATAR_INFERENCE_DENYLIST = new Set([
+const AVATAR_INFERENCE_DENYLIST = new Set([
 	"gebna.net",
 
 	// Google (consumer)
@@ -205,3 +214,18 @@ export const AVATAR_INFERENCE_DENYLIST = new Set([
 	// Legacy providers
 	"lycos.com",
 ]);
+
+const FAVICON_PLACEHOLDER = `
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-78.505,-102.675)">
+        <circle cx="334.534" cy="357.264" r="243.481" style="fill:rgb(196,196,196);"/>
+    </g>
+    <g transform="matrix(1,0,0,1,-44.1325,-117.882)">
+        <g transform="matrix(530,0,0,530,457.423,564.535)">
+        </g>
+        <text x="146.843px" y="564.535px" style="font-family:'TitanOne', 'Titan One';font-size:530px;fill:white;">F</text>
+    </g>
+</svg>
+`;
