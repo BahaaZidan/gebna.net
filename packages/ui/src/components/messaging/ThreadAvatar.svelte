@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { graphql, useFragment, type FragmentType } from "@gebna/graphql-client";
-	import UsersIcon from "@lucide/svelte/icons/users";
 	import type { ClassValue } from "svelte/elements";
 
 	const EmailThreadAvatar = graphql(`
@@ -24,9 +23,11 @@
 
 	let props: Props = $props();
 	let thread = $derived(useFragment(EmailThreadAvatar, props.thread));
-	let otherParticipant = $derived(thread.participants.filter((p) => !p.isSelf)[0]);
+	let otherParticipants = $derived(thread.participants.filter((p) => !p.isSelf));
 </script>
 
-<div class={["flex items-center justify-center bg-base-300", props.class]}>
-	<UsersIcon />
-</div>
+<img
+	src={otherParticipants[0].avatar}
+	alt="{otherParticipants[0].name || otherParticipants[0].address} avatar"
+	class={["object-contain", props.class]}
+/>
