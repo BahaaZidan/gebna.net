@@ -19,6 +19,7 @@
 	import { type Component, type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
+	import { navigating } from "$app/state";
 	import type { Pathname } from "$app/types";
 
 	import type { LayoutData } from "./$types";
@@ -72,6 +73,11 @@
 	<main
 		class="flex h-screen max-h-screen min-h-screen w-screen max-w-screen min-w-screen overflow-hidden"
 	>
+		<div
+			class={["invisible absolute h-1.5 max-h-1.5 w-full", { visible: navigating.type !== null }]}
+		>
+			<progress class="progress mb-3 h-1.5 w-full rounded-none"></progress>
+		</div>
 		<div class="flex h-screen w-16 min-w-16 flex-col items-center justify-between border-r py-3">
 			<div class="flex flex-col">
 				{@render iconLink({ route: "/", label: "Dashboard", Icon: LayoutDashboardIcon })}
