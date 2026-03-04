@@ -154,7 +154,7 @@ export type EmailThreadDetailsQuery = { __typename?: 'Query', node?:
 
 export type EmailMessageBubbleFragment = { __typename?: 'EmailMessage', id: string, html?: string | null, plaintext?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string, avatar: string, address: string } } & { ' $fragmentName'?: 'EmailMessageBubbleFragment' };
 
-export type EmailThreadAvatarFragment = { __typename?: 'EmailThread', id: string, avatar?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, avatar: string, isSelf: boolean, name: string, address: string }> } & { ' $fragmentName'?: 'EmailThreadAvatarFragment' };
+export type EmailThreadAvatarFragment = { __typename?: 'EmailThread', id: string, avatar?: string | null, title?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, avatar: string, isSelf: boolean, name: string, address: string }> } & { ' $fragmentName'?: 'EmailThreadAvatarFragment' };
 
 export type EmailThreadTitleFragment = { __typename?: 'EmailThread', id: string, title?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string }> } & { ' $fragmentName'?: 'EmailThreadTitleFragment' };
 
@@ -195,6 +195,7 @@ export const EmailThreadAvatarFragmentDoc = new TypedDocumentString(`
     fragment EmailThreadAvatar on EmailThread {
   id
   avatar
+  title
   participants {
     id
     avatar
@@ -240,6 +241,7 @@ export const ViewerEmailThreadsListQueryDocument = new TypedDocumentString(`
     fragment EmailThreadAvatar on EmailThread {
   id
   avatar
+  title
   participants {
     id
     avatar
@@ -292,6 +294,7 @@ export const EmailThreadDetailsDocument = new TypedDocumentString(`
 fragment EmailThreadAvatar on EmailThread {
   id
   avatar
+  title
   participants {
     id
     avatar

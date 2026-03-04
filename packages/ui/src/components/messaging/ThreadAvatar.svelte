@@ -6,6 +6,7 @@
 		fragment EmailThreadAvatar on EmailThread {
 			id
 			avatar
+			title
 			participants {
 				id
 				avatar
@@ -27,7 +28,7 @@
 </script>
 
 <img
-	src={otherParticipants[0].avatar}
-	alt="{otherParticipants[0].name || otherParticipants[0].address} avatar"
+	src={thread.avatar || otherParticipants[0].avatar}
+	alt="thread {thread.title} avatar"
 	class={["object-contain", props.class]}
 />
