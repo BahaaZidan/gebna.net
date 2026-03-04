@@ -18,14 +18,14 @@ type Documents = {
     "\n\t\tquery ViewerEmailThreadsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailThreads(first: 30) {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t...EmailThreadTitle\n\t\t\t\t\t\t\t...EmailThreadAvatar\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.ViewerEmailThreadsListQueryDocument,
     "\n\t\tquery EmailThreadDetails($id: ID!) {\n\t\t\tnode(id: $id) {\n\t\t\t\t__typename\n\t\t\t\t... on EmailThread {\n\t\t\t\t\t...EmailThreadTitle\n\t\t\t\t\t...EmailThreadAvatar\n\t\t\t\t\tid\n\t\t\t\t\tmessages {\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\t...EmailMessageBubble\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.EmailThreadDetailsDocument,
     "\n\t\tfragment EmailMessageBubble on EmailMessage {\n\t\t\tid\n\t\t\thtml\n\t\t\tplaintext\n\t\t\tcreatedAt\n\t\t\tfrom {\n\t\t\t\tid\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t": typeof types.EmailMessageBubbleFragmentDoc,
-    "\n\t\tfragment EmailThreadAvatar on EmailThread {\n\t\t\tid\n\t\t\tavatar\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t": typeof types.EmailThreadAvatarFragmentDoc,
+    "\n\t\tfragment EmailThreadAvatar on EmailThread {\n\t\t\tid\n\t\t\tavatar\n\t\t\ttitle\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t": typeof types.EmailThreadAvatarFragmentDoc,
     "\n\t\tfragment EmailThreadTitle on EmailThread {\n\t\t\tid\n\t\t\ttitle\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t}\n\t\t}\n\t": typeof types.EmailThreadTitleFragmentDoc,
 };
 const documents: Documents = {
     "\n\t\tquery ViewerEmailThreadsListQuery {\n\t\t\tviewer {\n\t\t\t\tid\n\t\t\t\temailThreads(first: 30) {\n\t\t\t\t\tedges {\n\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t...EmailThreadTitle\n\t\t\t\t\t\t\t...EmailThreadAvatar\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\ttitle\n\t\t\t\t\t\t\tunseenCount\n\t\t\t\t\t\t\tlastMessage {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tsnippet\n\t\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.ViewerEmailThreadsListQueryDocument,
     "\n\t\tquery EmailThreadDetails($id: ID!) {\n\t\t\tnode(id: $id) {\n\t\t\t\t__typename\n\t\t\t\t... on EmailThread {\n\t\t\t\t\t...EmailThreadTitle\n\t\t\t\t\t...EmailThreadAvatar\n\t\t\t\t\tid\n\t\t\t\t\tmessages {\n\t\t\t\t\t\tedges {\n\t\t\t\t\t\t\tnode {\n\t\t\t\t\t\t\t\t...EmailMessageBubble\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.EmailThreadDetailsDocument,
     "\n\t\tfragment EmailMessageBubble on EmailMessage {\n\t\t\tid\n\t\t\thtml\n\t\t\tplaintext\n\t\t\tcreatedAt\n\t\t\tfrom {\n\t\t\t\tid\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\tavatar\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t": types.EmailMessageBubbleFragmentDoc,
-    "\n\t\tfragment EmailThreadAvatar on EmailThread {\n\t\t\tid\n\t\t\tavatar\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t": types.EmailThreadAvatarFragmentDoc,
+    "\n\t\tfragment EmailThreadAvatar on EmailThread {\n\t\t\tid\n\t\t\tavatar\n\t\t\ttitle\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t": types.EmailThreadAvatarFragmentDoc,
     "\n\t\tfragment EmailThreadTitle on EmailThread {\n\t\t\tid\n\t\t\ttitle\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t}\n\t\t}\n\t": types.EmailThreadTitleFragmentDoc,
 };
 
@@ -44,7 +44,7 @@ export function graphql(source: "\n\t\tfragment EmailMessageBubble on EmailMessa
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n\t\tfragment EmailThreadAvatar on EmailThread {\n\t\t\tid\n\t\t\tavatar\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t"): typeof import('./graphql.js').EmailThreadAvatarFragmentDoc;
+export function graphql(source: "\n\t\tfragment EmailThreadAvatar on EmailThread {\n\t\t\tid\n\t\t\tavatar\n\t\t\ttitle\n\t\t\tparticipants {\n\t\t\t\tid\n\t\t\t\tavatar\n\t\t\t\tisSelf\n\t\t\t\tname\n\t\t\t\taddress\n\t\t\t}\n\t\t}\n\t"): typeof import('./graphql.js').EmailThreadAvatarFragmentDoc;
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
