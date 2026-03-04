@@ -34,7 +34,7 @@ export async function processEmailBody({ email }: ProcessEmailBodyArguments): Pr
 					// daisyUI black theme tokens converted to email-safe hex
 					bg: "#000000", // --color-base-100
 					text: "#d6d6d6", // --color-base-content
-					link: "#3a3a3a", // --color-primary
+					link: "#d6d6d6", // --color-primary
 					muted: "#1b1b1b", // --color-base-300
 					fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial",
 				},
