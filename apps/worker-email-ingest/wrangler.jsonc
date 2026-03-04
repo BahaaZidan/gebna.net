@@ -4,4 +4,17 @@
 	"compatibility_date": "2026-02-22",
 	"main": "./src/index.ts",
 	"compatibility_flags": ["nodejs_compat"],
+	"queues": {
+		"producers": [
+			{
+				"queue": "gebna-queue-0",
+				"binding": "Q",
+			},
+		],
+		"consumers": [
+			{
+				"queue": "gebna-queue-0",
+			},
+		],
+	},
 }
