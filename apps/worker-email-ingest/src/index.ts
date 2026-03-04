@@ -3,6 +3,10 @@ import { generateImagePlaceholder, R } from "@gebna/utils";
 import PostalMime from "postal-mime";
 
 import { findOrCreateThread } from "./lib/find-or-create-thread";
+import {
+	inferAddressAvatar,
+	type InferAddressAvatarQueueMessage,
+} from "./lib/infer-address-avatar";
 import { processEmailBody } from "./lib/process-email-body";
 import {
 	extractMessageIdsFromPostalMimeValue,
@@ -196,13 +200,46 @@ export default {
 					.onConflictDoNothing();
 			});
 
-			/**
-			 * TODOs after transaction:
-			 * * enqueue address avatar inference
-			 * * [?] enqueue attachment thumbnail generation
-			 */
+			await env.Q.sendBatch(
+				uniqueParticipants.map((p) => ({
+					body: {
+						type: "infer-address-avatar",
+						payload: {
+							address: p.address,
+						},
+					} satisfies InferAddressAvatarQueueMessage,
+					contentType: "json",
+				}))
+			);
 		} catch (e) {
 			console.error({ e });
 		}
 	},
-} satisfies ExportedHandler<Env>;
+	async queue(batch, env, ctx) {
+		const db = getDB({
+			url: env.TURSO_DATABASE_URL,
+			authToken: env.TURSO_AUTH_TOKEN,
+			fetch: workAroundFetch,
+		});
+
+		const tasks = batch.messages.map((message) =>
+			(async () => {
+				try {
+					switch (message.body.type) {
+						case "infer-address-avatar":
+							return await inferAddressAvatar({ db, address: message.body.payload.address });
+						default:
+							return;
+					}
+				} catch (error) {
+					console.error("queue processing failed", error);
+					message.retry({ delaySeconds: 30 });
+				}
+			})()
+		);
+
+		const all = Promise.all(tasks);
+		ctx.waitUntil(all);
+		await all;
+	},
+} satisfies ExportedHandler<Env, InferAddressAvatarQueueMessage>;

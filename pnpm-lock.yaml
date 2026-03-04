@@ -549,6 +549,9 @@ importers:
       remark-stringify:
         specifier: ^11.0.0
         version: 11.0.0
+      tldts:
+        specifier: ^7.0.23
+        version: 7.0.23
       ulid:
         specifier: ^3.0.2
         version: 3.0.2
