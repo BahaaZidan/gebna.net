@@ -74,7 +74,10 @@
 		class="flex h-screen max-h-screen min-h-screen w-screen max-w-screen min-w-screen overflow-hidden"
 	>
 		<div
-			class={["invisible absolute h-1.5 max-h-1.5 w-full", { visible: navigating.type !== null }]}
+			class={[
+				"absolute h-1.5 max-h-1.5 w-full",
+				{ [navigating.type !== null ? "visible" : "invisible"]: true },
+			]}
 		>
 			<progress class="progress mb-3 h-1.5 w-full rounded-none"></progress>
 		</div>
