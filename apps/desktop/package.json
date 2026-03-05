@@ -24,7 +24,6 @@
 		"@gebna/graphql-server": "workspace:*",
 		"@gebna/ui": "workspace:*",
 		"@gebna/vali": "workspace:*",
-		"@lucide/svelte": "^0.563.1",
 		"date-fns": "^4.1.0",
 		"runed": "^0.37.1"
 	},
@@ -45,6 +44,7 @@
 		"tslib": "^2.8.1",
 		"typescript": "catalog:",
 		"vite": "catalog:",
-		"vitest": "^3.2.0"
+		"vitest": "^3.2.0",
+		"phosphor-svelte": "catalog:"
 	}
 }

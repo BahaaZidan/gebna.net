@@ -1,9 +1,6 @@
 <script lang="ts">
 	import { MessageBubble, ThreadTitle } from "@gebna/ui";
-	import { type IconProps } from "@lucide/svelte";
-	import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
-	import SearchIcon from "@lucide/svelte/icons/search";
-	import { type Component } from "svelte";
+	import { DotsThreeOutlineVerticalIcon } from "phosphor-svelte";
 
 	import { page } from "$app/state";
 
@@ -24,8 +21,11 @@
 				<div class="text-lg"><ThreadTitle {thread} /></div>
 			</div>
 			<div class="flex">
-				{@render iconButton({ label: "Search", Icon: SearchIcon })}
-				{@render iconButton({ label: "Menu", Icon: EllipsisVerticalIcon })}
+				<div class="tooltip tooltip-bottom" data-tip="Options">
+					<button class="btn p-2 btn-ghost">
+						<DotsThreeOutlineVerticalIcon weight="fill" class="size-5.5" />
+					</button>
+				</div>
 			</div>
 		</div>
 		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
@@ -35,11 +35,3 @@
 		</div>
 	</div>
 {/if}
-
-{#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconProps> })}
-	<div class="tooltip tooltip-bottom" data-tip={label}>
-		<button class="btn p-2 btn-ghost">
-			<Icon />
-		</button>
-	</div>
-{/snippet}

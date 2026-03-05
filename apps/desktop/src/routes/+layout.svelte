@@ -12,15 +12,16 @@
 	import { getAuthClient } from "@gebna/auth/client";
 	import { TextInput } from "@gebna/ui";
 	import { loginSchema } from "@gebna/vali";
-	import type { IconProps } from "@lucide/svelte";
-	import CogIcon from "@lucide/svelte/icons/cog";
-	import LayoutDashboardIcon from "@lucide/svelte/icons/layout-dashboard";
-	import MessagesSquareIcon from "@lucide/svelte/icons/messages-square";
-	import { type Component, type Snippet } from "svelte";
+	import {
+		EnvelopeSimpleIcon,
+		EnvelopeSimpleOpenIcon,
+		GearFineIcon,
+		MagnifyingGlassIcon,
+	} from "phosphor-svelte";
+	import { type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
-	import { navigating } from "$app/state";
-	import type { Pathname } from "$app/types";
+	import { navigating, page } from "$app/state";
 
 	import type { LayoutData } from "./$types";
 
@@ -82,22 +83,49 @@
 			<progress class="progress mb-3 h-1.5 w-full rounded-none"></progress>
 		</div>
 		<div class="flex h-screen w-16 min-w-16 flex-col items-center justify-between border-r py-3">
-			<div class="flex flex-col">
-				{@render iconLink({ route: "/", label: "Dashboard", Icon: LayoutDashboardIcon })}
-				{@render iconLink({
-					route: "/messages",
-					label: "Messages",
-					Icon: MessagesSquareIcon,
-				})}
-			</div>
-			<div class="flex flex-col">
-				{@render iconLink({ route: "/settings", label: "Settings", Icon: CogIcon })}
-				<div class="tooltip tooltip-right" data-tip="Profile">
-					<button class="btn btn-ghost">
-						<img
+			<div class="flex w-16 flex-col gap-2">
+				<div class="tooltip tooltip-right w-16" data-tip="Search">
+					<a
+						class={["btn w-16", page.url.pathname === "/" ? "btn-active" : "btn-ghost"]}
+						href={resolve("/")}
+					>
+						<MagnifyingGlassIcon
 							class="size-6"
-							src="https://img.daisyui.com/images/profile/demo/batperson@192.webp"
-							alt="sadasds"
+							weight={page.url.pathname === "/" ? "bold" : "regular"}
+						/>
+					</a>
+				</div>
+				<div class="tooltip tooltip-right w-16" data-tip="Email">
+					<a
+						class={["btn w-16", page.url.pathname.includes("/email") ? "btn-active" : "btn-ghost"]}
+						href={resolve("/email")}
+					>
+						{#if page.url.pathname.includes("/email")}
+							<EnvelopeSimpleOpenIcon class="size-6" weight="bold" />
+						{:else}
+							<EnvelopeSimpleIcon class="size-6" weight="regular" />
+						{/if}
+					</a>
+				</div>
+			</div>
+			<div class="flex w-16 flex-col gap-2">
+				<div class="tooltip tooltip-right w-16" data-tip="Settings">
+					<a
+						class={["btn w-16", page.url.pathname === "/settings" ? "btn-active" : "btn-ghost"]}
+						href={resolve("/settings")}
+					>
+						<GearFineIcon
+							class="size-6"
+							weight={page.url.pathname === "/settings" ? "bold" : "regular"}
+						/>
+					</a>
+				</div>
+				<div class="tooltip tooltip-right w-16" data-tip="Profile">
+					<button class="btn w-16 btn-ghost">
+						<img
+							class="size-8"
+							src={viewer.uploadedAvatar || viewer.avatarPlaceholder}
+							alt="viewer avatar"
 						/>
 					</button>
 				</div>
@@ -108,19 +136,3 @@
 		</div>
 	</main>
 {/if}
-
-{#snippet iconLink({
-	route,
-	label,
-	Icon,
-}: {
-	route: Pathname;
-	label: string;
-	Icon: Component<IconProps>;
-})}
-	<div class="tooltip tooltip-right" data-tip={label}>
-		<a class="btn btn-ghost" href={resolve(route)}>
-			<Icon />
-		</a>
-	</div>
-{/snippet}
