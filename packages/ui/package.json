@@ -40,12 +40,12 @@
 		"svelte-check": "catalog:",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:",
-		"vite": "catalog:"
+		"vite": "catalog:",
+		"phosphor-svelte": "catalog:"
 	},
 	"dependencies": {
 		"@floating-ui/dom": "^1.7.5",
 		"@gebna/graphql-client": "workspace:*",
-		"@lucide/svelte": "^0.563.1",
 		"date-fns": "^4.1.0"
 	}
 }
