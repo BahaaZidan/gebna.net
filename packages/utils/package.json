@@ -30,7 +30,7 @@
 		"tldts": "^7.0.23",
 		"ulid": "^3.0.2",
 		"unified": "^11.0.5",
-		"unist-util-visit": "^5.1.0"
+		"unist-util-visit": "catalog:"
 	},
 	"devDependencies": {
 		"@repo/typescript-config": "workspace:*",

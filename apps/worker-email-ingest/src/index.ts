@@ -1,5 +1,5 @@
 import { dbSchema, eq, getDB, increment } from "@gebna/db";
-import { generateImagePlaceholder, R } from "@gebna/utils";
+import { generateImagePlaceholder, R, stripAngleBrackets } from "@gebna/utils";
 import PostalMime from "postal-mime";
 
 import { findOrCreateThread } from "./lib/find-or-create-thread";
@@ -138,8 +138,8 @@ export default {
 									threadId: thread.id,
 									messageId: message.id,
 									fromRef: fromAddressRef.id,
-									content: a.content,
-									contentId: a.contentId,
+									content: Buffer.from(a.content as ArrayBuffer),
+									contentId: a.contentId && stripAngleBrackets(a.contentId),
 									description: a.description,
 									disposition: a.disposition,
 									method: a.method,
