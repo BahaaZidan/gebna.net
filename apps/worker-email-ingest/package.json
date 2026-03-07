@@ -17,9 +17,14 @@
 		"@iocium/favicon-fetcher": "^1.5.0",
 		"html-to-text": "^9.0.5",
 		"postal-mime": "^2.7.3",
-		"tldts": "^7.0.23"
+		"hast": "catalog:",
+		"unified": "catalog:",
+		"rehype-parse": "catalog:",
+		"rehype-sanitize": "catalog:",
+		"rehype-stringify": "catalog:"
 	},
 	"devDependencies": {
+		"@types/hast": "catalog:",
 		"@cloudflare/vite-plugin": "catalog:",
 		"@total-typescript/ts-reset": "catalog:",
 		"@types/html-to-text": "^9.0.4",

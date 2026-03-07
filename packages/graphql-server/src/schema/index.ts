@@ -1,11 +1,14 @@
 import { getTableConfig, relations } from "@gebna/db";
-import { rehypeEnforcePalette, rehypeParse, rehypeStringify, unified } from "@gebna/utils";
+import { rehypeEnforcePalette } from "@gebna/utils";
 import SchemaBuilder from "@pothos/core";
 import DrizzlePlugin from "@pothos/plugin-drizzle";
 import RelayPlugin from "@pothos/plugin-relay";
 import ScopeAuthPlugin from "@pothos/plugin-scope-auth";
 import WithInputPlugin from "@pothos/plugin-with-input";
 import { DateTimeResolver } from "graphql-scalars";
+import rehypeParse from "rehype-parse";
+import rehypeStringify from "rehype-stringify";
+import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
 import type { GraphQLResolverContext } from "../types.js";

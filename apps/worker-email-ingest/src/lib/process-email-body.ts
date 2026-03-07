@@ -1,14 +1,10 @@
-import { count, rehypeParse, rehypeSanitize, rehypeStringify, unified } from "@gebna/utils";
-import type {
-	HastElement,
-	HastElementContent,
-	HastRoot,
-	HastRootContent,
-	RehypeSanitizeOptions,
-	UnifiedPlugin,
-} from "@gebna/utils";
+import type { Element, ElementContent, Root, RootContent } from "hast";
 import { convert } from "html-to-text";
 import type { Email } from "postal-mime";
+import rehypeParse from "rehype-parse";
+import rehypeSanitize, { type Options as RehypeSanitizeOptions } from "rehype-sanitize";
+import rehypeStringify from "rehype-stringify";
+import { unified, type Plugin } from "unified";
 
 interface ProcessEmailBodyArguments {
 	email: Email;
@@ -17,11 +13,9 @@ interface ProcessEmailBodyArguments {
 export async function processEmailBody({ email }: ProcessEmailBodyArguments): Promise<{
 	html?: string;
 	plaintext?: string;
-	wordCount?: number;
 } | null> {
 	if (!email.html && !email.text) return null;
-	if (email.text && !email.html)
-		return { plaintext: email.text, wordCount: count(email.text, "words") };
+	if (email.text && !email.html) return { plaintext: email.text };
 	if (!email.html) return null;
 
 	const html = (
@@ -36,18 +30,18 @@ export async function processEmailBody({ email }: ProcessEmailBodyArguments): Pr
 		.trim();
 
 	const plaintext = convert(html).trim();
-	return { html, plaintext, wordCount: count(plaintext, "words") };
+	return { html, plaintext };
 }
 
 const BASE_EMAIL_STYLE = "html, body { font-family: Inter, sans-serif; margin: 0; padding: 0; }";
 
-const rehypeEnsureFullDocumentWithBaseStyles: UnifiedPlugin<[], HastRoot> = () => (tree) => {
+const rehypeEnsureFullDocumentWithBaseStyles: Plugin<[], Root> = () => (tree) => {
 	ensureFullDocumentWithBaseStyles(tree);
 };
 
-function ensureFullDocumentWithBaseStyles(root: HastRoot) {
+function ensureFullDocumentWithBaseStyles(root: Root) {
 	const rootChildren = root.children;
-	const htmlNode = rootChildren.find((node): node is HastElement => isElementWithTag(node, "html"));
+	const htmlNode = rootChildren.find((node): node is Element => isElementWithTag(node, "html"));
 
 	if (!htmlNode) {
 		root.children = [
@@ -89,7 +83,7 @@ function ensureFullDocumentWithBaseStyles(root: HastRoot) {
 	}
 
 	const hasBaseStyle = headNode.children.some(
-		(node): node is HastElement =>
+		(node): node is Element =>
 			isElementWithTag(node, "style") && node.properties.dataEmailIngestBase === "true"
 	);
 
@@ -98,7 +92,7 @@ function ensureFullDocumentWithBaseStyles(root: HastRoot) {
 	}
 }
 
-function createBaseStyleNode(): HastElement {
+function createBaseStyleNode(): Element {
 	return {
 		type: "element",
 		tagName: "style",
@@ -107,22 +101,19 @@ function createBaseStyleNode(): HastElement {
 	};
 }
 
-function createElement(tagName: string, children: HastElementContent[]): HastElement {
+function createElement(tagName: string, children: ElementContent[]): Element {
 	return { type: "element", tagName, properties: {}, children };
 }
 
-function findChildElementByTagName(parent: HastElement, tagName: string): HastElement | undefined {
-	return parent.children.find((node): node is HastElement => isElementWithTag(node, tagName));
+function findChildElementByTagName(parent: Element, tagName: string): Element | undefined {
+	return parent.children.find((node): node is Element => isElementWithTag(node, tagName));
 }
 
-function isElementWithTag(
-	node: HastRootContent | HastElementContent,
-	tagName: string
-): node is HastElement {
+function isElementWithTag(node: RootContent | ElementContent, tagName: string): node is Element {
 	return node.type === "element" && node.tagName === tagName;
 }
 
-function rootContentToBodyContent(node: HastRootContent): HastElementContent[] {
+function rootContentToBodyContent(node: RootContent): ElementContent[] {
 	return node.type === "doctype" ? [] : [node];
 }
 
