@@ -34,6 +34,7 @@ export type EmailAttachment = Node & {
   filename?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   sizeInBytes?: Maybe<Scalars['Int']['output']>;
+  url?: Maybe<Scalars['String']['output']>;
 };
 
 export type EmailAttachmentFileCategory =

@@ -17,6 +17,7 @@ type EmailAttachment implements Node {
   filename: String
   id: ID!
   sizeInBytes: Int
+  url: String
 }
 
 enum EmailAttachmentFileCategory {
