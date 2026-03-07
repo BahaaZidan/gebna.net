@@ -1,9 +1,11 @@
-import { dbSchema, eq, getDB, increment } from "@gebna/db";
+import { dbSchema, eq, increment } from "@gebna/db";
 import { generateImagePlaceholder, R, stripAngleBrackets } from "@gebna/utils";
 import { ALLOWED_ATTACHMENT_MIME_TYPES } from "@gebna/vali";
+import { env } from "cloudflare:workers";
 import { fileTypeFromBuffer } from "file-type";
 import PostalMime from "postal-mime";
 
+import { db } from "./lib/db";
 import { findOrCreateThread } from "./lib/find-or-create-thread";
 import {
 	inferAddressAvatar,
@@ -14,13 +16,12 @@ import {
 	extractMessageIdsFromPostalMimeValue,
 	getEmailMessageMetadata,
 } from "./lib/process-email-headers";
-import { workAroundFetch } from "./lib/workaround-fetch";
 
 export default {
 	fetch() {
 		return new Response(`Running in ${navigator.userAgent}! LOLOooooooo`);
 	},
-	async email(envelope, env, ctx) {
+	async email(envelope) {
 		try {
 			// TODO: maybe a good place to use never-throw ?
 			const parsedEnvelope = await PostalMime.parse(envelope.raw, {
@@ -29,11 +30,6 @@ export default {
 			});
 			if (!parsedEnvelope.from || !parsedEnvelope.from.address)
 				return envelope.setReject("INVALID");
-			const db = getDB({
-				url: env.TURSO_DATABASE_URL,
-				authToken: env.TURSO_AUTH_TOKEN,
-				fetch: workAroundFetch,
-			});
 			const recipientUser = await db.query.users.findFirst({
 				where: {
 					email: envelope.to,
@@ -226,12 +222,6 @@ export default {
 		}
 	},
 	async queue(batch, env, ctx) {
-		const db = getDB({
-			url: env.TURSO_DATABASE_URL,
-			authToken: env.TURSO_AUTH_TOKEN,
-			fetch: workAroundFetch,
-		});
-
 		const tasks = batch.messages.map((message) =>
 			(async () => {
 				try {
