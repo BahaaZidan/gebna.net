@@ -1,5 +1,6 @@
 import { getTableConfig, relations } from "@gebna/db";
 import { rehypeEnforcePalette } from "@gebna/utils";
+import { ALLOWED_ATTACHMENT_MIME_TYPES } from "@gebna/vali";
 import SchemaBuilder from "@pothos/core";
 import DrizzlePlugin from "@pothos/plugin-drizzle";
 import RelayPlugin from "@pothos/plugin-relay";
@@ -43,12 +44,48 @@ const builder = new SchemaBuilder<{
 
 builder.addScalarType("DateTime", DateTimeResolver);
 
+const EmailAttachmentFileCategoryEnumValues = [
+	"Image",
+	"PDF",
+	"Audio",
+	"Video",
+	"Word",
+	"Excel",
+	"Slides",
+	"Calendar",
+	"Archive",
+	"Other",
+] as const;
 const EmailAttachmentFileCategoryEnum = builder.enumType("EmailAttachmentFileCategory", {
-	values: ["Image", "PDF", "Audio", "Video", "Word", "Excel", "Calendar", "Other"] as const,
+	values: EmailAttachmentFileCategoryEnumValues,
 });
 
-const EMAIL_ATTACHMENT_CATEGORY_BY_MIME_TYPE = {
+const EMAIL_ATTACHMENT_CATEGORY_BY_MIME_TYPE: Record<
+	(typeof ALLOWED_ATTACHMENT_MIME_TYPES)[number],
+	(typeof EmailAttachmentFileCategoryEnumValues)[number]
+> = {
+	"image/jpeg": "Image",
+	"image/png": "Image",
+	"image/gif": "Image",
+	"image/webp": "Image",
+	"image/avif": "Image",
+	"image/heic": "Image",
+	"image/heif": "Image",
+	"audio/mpeg": "Audio",
+	"audio/mp4": "Audio",
+	"audio/ogg": "Audio",
+	"audio/wav": "Audio",
+	"audio/x-wav": "Audio",
+	"audio/webm": "Audio",
+	"audio/aac": "Audio",
+	"audio/flac": "Audio",
+	"video/mp4": "Video",
+	"video/webm": "Video",
+	"video/ogg": "Video",
+	"video/quicktime": "Video",
 	"application/pdf": "PDF",
+	"text/plain": "Other",
+	"text/markdown": "Other",
 	"application/msword": "Word",
 	"application/vnd.ms-word": "Word",
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": "Word",
@@ -62,6 +99,11 @@ const EMAIL_ATTACHMENT_CATEGORY_BY_MIME_TYPE = {
 	"application/vnd.ms-excel.template.macroenabled.12": "Excel",
 	"application/vnd.ms-excel.addin.macroenabled.12": "Excel",
 	"application/vnd.ms-excel.sheet.binary.macroenabled.12": "Excel",
+	"application/vnd.ms-powerpoint": "Other",
+	"application/vnd.openxmlformats-officedocument.presentationml.presentation": "Slides",
+	"application/vnd.oasis.opendocument.text": "Word",
+	"application/vnd.oasis.opendocument.spreadsheet": "Excel",
+	"application/vnd.oasis.opendocument.presentation": "Slides",
 	"text/csv": "Excel",
 	"application/csv": "Excel",
 	"text/calendar": "Calendar",
@@ -69,7 +111,16 @@ const EMAIL_ATTACHMENT_CATEGORY_BY_MIME_TYPE = {
 	"application/icalendar": "Calendar",
 	"application/x-ical": "Calendar",
 	"application/x-vcalendar": "Calendar",
-} as const;
+	"application/zip": "Archive",
+	"application/gzip": "Archive",
+	"application/x-tar": "Archive",
+	"application/x-7z-compressed": "Archive",
+	"application/vnd.rar": "Archive",
+	"application/x-rar-compressed": "Archive",
+	"application/json": "Other",
+	"application/xml": "Other",
+	"text/xml": "Other",
+};
 
 const EmailAttachmentRef = builder.drizzleNode("emailAttachments", {
 	name: "EmailAttachment",
@@ -88,6 +139,7 @@ const EmailAttachmentRef = builder.drizzleNode("emailAttachments", {
 		sizeInBytes: t.exposeInt("sizeInBytes"),
 		category: t.field({
 			type: EmailAttachmentFileCategoryEnum,
+			nullable: false,
 			select: {
 				columns: {
 					mimeType: true,
@@ -95,10 +147,6 @@ const EmailAttachmentRef = builder.drizzleNode("emailAttachments", {
 			},
 			resolve: ({ mimeType }) => {
 				if (!mimeType) return "Other" as const;
-
-				if (mimeType.startsWith("image/")) return "Image" as const;
-				if (mimeType.startsWith("audio/")) return "Audio" as const;
-				if (mimeType.startsWith("video/")) return "Video" as const;
 
 				const mappedCategory =
 					EMAIL_ATTACHMENT_CATEGORY_BY_MIME_TYPE[

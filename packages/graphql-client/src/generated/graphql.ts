@@ -29,7 +29,7 @@ export type EmailAddressRef = Node & {
 
 export type EmailAttachment = Node & {
   __typename?: 'EmailAttachment';
-  category?: Maybe<EmailAttachmentFileCategory>;
+  category: EmailAttachmentFileCategory;
   description?: Maybe<Scalars['String']['output']>;
   filename?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
@@ -37,12 +37,14 @@ export type EmailAttachment = Node & {
 };
 
 export type EmailAttachmentFileCategory =
+  | 'Archive'
   | 'Audio'
   | 'Calendar'
   | 'Excel'
   | 'Image'
   | 'Other'
   | 'PDF'
+  | 'Slides'
   | 'Video'
   | 'Word';
 
@@ -173,7 +175,7 @@ export type EmailThreadDetailsQuery = { __typename?: 'Query', node?:
     )
    | null };
 
-export type EmailMessageBubbleFragment = { __typename?: 'EmailMessage', id: string, html?: string | null, plaintext?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string, avatar: string, address: string } } & { ' $fragmentName'?: 'EmailMessageBubbleFragment' };
+export type EmailMessageBubbleFragment = { __typename?: 'EmailMessage', id: string, html?: string | null, plaintext?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string, avatar: string, address: string }, attachments: Array<{ __typename?: 'EmailAttachment', id: string, filename?: string | null, sizeInBytes?: number | null, description?: string | null, category: EmailAttachmentFileCategory }> } & { ' $fragmentName'?: 'EmailMessageBubbleFragment' };
 
 export type EmailThreadAvatarFragment = { __typename?: 'EmailThread', id: string, avatar?: string | null, title?: string | null, participants: Array<{ __typename?: 'EmailAddressRef', id: string, avatar: string, isSelf: boolean, name: string, address: string }> } & { ' $fragmentName'?: 'EmailThreadAvatarFragment' };
 
@@ -209,6 +211,13 @@ export const EmailMessageBubbleFragmentDoc = new TypedDocumentString(`
     name
     avatar
     address
+  }
+  attachments {
+    id
+    filename
+    sizeInBytes
+    description
+    category
   }
 }
     `, {"fragmentName":"EmailMessageBubble"}) as unknown as TypedDocumentString<EmailMessageBubbleFragment, unknown>;
@@ -310,6 +319,13 @@ export const EmailThreadDetailsDocument = new TypedDocumentString(`
     name
     avatar
     address
+  }
+  attachments {
+    id
+    filename
+    sizeInBytes
+    description
+    category
   }
 }
 fragment EmailThreadAvatar on EmailThread {

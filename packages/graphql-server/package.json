@@ -17,6 +17,7 @@
 	"dependencies": {
 		"@gebna/db": "workspace:*",
 		"@gebna/utils": "workspace:*",
+		"@gebna/vali": "workspace:*",
 		"@pothos/core": "^4.12.0",
 		"@pothos/plugin-drizzle": "^0.17.0",
 		"@pothos/plugin-relay": "^4.7.0",
