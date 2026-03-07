@@ -289,4 +289,5 @@ export const emailAttachments = sqliteTable("emailAttachments", {
 	contentId: text(),
 	method: text(),
 	content: blob({ mode: "buffer" }).notNull(),
+	sizeInBytes: integer(),
 });

@@ -1,5 +1,7 @@
 import { dbSchema, eq, getDB, increment } from "@gebna/db";
 import { generateImagePlaceholder, R, stripAngleBrackets } from "@gebna/utils";
+import { ALLOWED_ATTACHMENT_MIME_TYPES } from "@gebna/vali";
+import { fileTypeFromBuffer } from "file-type";
 import PostalMime from "postal-mime";
 
 import { findOrCreateThread } from "./lib/find-or-create-thread";
@@ -131,24 +133,32 @@ export default {
 
 				if (parsedEnvelope.attachments.length) {
 					await tx.insert(dbSchema.emailAttachments).values(
-						parsedEnvelope.attachments.map(
-							(a) =>
-								({
+						parsedEnvelope.attachments
+							.filter(async (a) => {
+								let fileTypeResult = await fileTypeFromBuffer(a.content as ArrayBuffer);
+								if (!fileTypeResult) return false;
+								if (fileTypeResult.mime !== a.mimeType) return false;
+								if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(fileTypeResult.mime)) return false;
+								return true;
+							})
+							.map((a) => {
+								let content = Buffer.from(a.content as ArrayBuffer);
+								return {
 									ownerId,
 									threadId: thread.id,
 									messageId: message.id,
 									fromRef: fromAddressRef.id,
-									content: Buffer.from(a.content as ArrayBuffer),
+									content,
 									contentId: a.contentId && stripAngleBrackets(a.contentId),
 									description: a.description,
 									disposition: a.disposition,
 									method: a.method,
-									// TODO: don't trust the provided mimeType. check magic bytes instead
 									mimeType: a.mimeType,
 									filename: a.filename,
 									related: a.related,
-								}) satisfies typeof dbSchema.emailAttachments.$inferInsert
-						)
+									sizeInBytes: Buffer.byteLength(content),
+								} satisfies typeof dbSchema.emailAttachments.$inferInsert;
+							})
 					);
 				}
 
