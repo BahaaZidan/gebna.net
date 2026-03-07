@@ -43,6 +43,75 @@ const builder = new SchemaBuilder<{
 
 builder.addScalarType("DateTime", DateTimeResolver);
 
+const EmailAttachmentFileCategoryEnum = builder.enumType("EmailAttachmentFileCategory", {
+	values: ["Image", "PDF", "Audio", "Video", "Word", "Excel", "Calendar", "Other"] as const,
+});
+
+const EMAIL_ATTACHMENT_CATEGORY_BY_MIME_TYPE = {
+	"application/pdf": "PDF",
+	"application/msword": "Word",
+	"application/vnd.ms-word": "Word",
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": "Word",
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.template": "Word",
+	"application/vnd.ms-word.document.macroenabled.12": "Word",
+	"application/vnd.ms-word.template.macroenabled.12": "Word",
+	"application/vnd.ms-excel": "Excel",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.template": "Excel",
+	"application/vnd.ms-excel.sheet.macroenabled.12": "Excel",
+	"application/vnd.ms-excel.template.macroenabled.12": "Excel",
+	"application/vnd.ms-excel.addin.macroenabled.12": "Excel",
+	"application/vnd.ms-excel.sheet.binary.macroenabled.12": "Excel",
+	"text/csv": "Excel",
+	"application/csv": "Excel",
+	"text/calendar": "Calendar",
+	"application/ics": "Calendar",
+	"application/icalendar": "Calendar",
+	"application/x-ical": "Calendar",
+	"application/x-vcalendar": "Calendar",
+} as const;
+
+const EmailAttachmentRef = builder.drizzleNode("emailAttachments", {
+	name: "EmailAttachment",
+	id: {
+		column: (t) => t.id,
+	},
+	select: {
+		columns: {
+			ownerId: true,
+		},
+	},
+	authScopes: (a) => ({ ownedByViewer: a.ownerId }),
+	fields: (t) => ({
+		description: t.exposeString("description"),
+		filename: t.exposeString("filename"),
+		sizeInBytes: t.exposeInt("sizeInBytes"),
+		category: t.field({
+			type: EmailAttachmentFileCategoryEnum,
+			select: {
+				columns: {
+					mimeType: true,
+				},
+			},
+			resolve: ({ mimeType }) => {
+				if (!mimeType) return "Other" as const;
+
+				if (mimeType.startsWith("image/")) return "Image" as const;
+				if (mimeType.startsWith("audio/")) return "Audio" as const;
+				if (mimeType.startsWith("video/")) return "Video" as const;
+
+				const mappedCategory =
+					EMAIL_ATTACHMENT_CATEGORY_BY_MIME_TYPE[
+						mimeType as keyof typeof EMAIL_ATTACHMENT_CATEGORY_BY_MIME_TYPE
+					];
+				if (mappedCategory) return mappedCategory;
+
+				return "Other" as const;
+			},
+		}),
+	}),
+});
+
 const EmailAddressRefRef = builder.drizzleNode("emailAddressRefs", {
 	name: "EmailAddressRef",
 	id: {
@@ -172,6 +241,7 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 			},
 			resolve: ({ bodyPlaintext, bodyHTML }) => (bodyHTML ? null : bodyPlaintext),
 		}),
+		attachments: t.relation("attachments", { nullable: false }),
 	}),
 });
 

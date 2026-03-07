@@ -91,5 +91,12 @@ export const relations = defineRelations(schema, (r) => ({
 				related: true,
 			},
 		}),
+		attachments: r.many.emailAttachments({
+			from: r.emailMessages.id,
+			to: r.emailAttachments.messageId,
+			where: {
+				OR: [{ related: false }, { related: { isNull: true } }],
+			},
+		}),
 	},
 }));

@@ -11,7 +11,27 @@ type EmailAddressRef implements Node {
   name: String!
 }
 
+type EmailAttachment implements Node {
+  category: EmailAttachmentFileCategory
+  description: String
+  filename: String
+  id: ID!
+  sizeInBytes: Int
+}
+
+enum EmailAttachmentFileCategory {
+  Audio
+  Calendar
+  Excel
+  Image
+  Other
+  PDF
+  Video
+  Word
+}
+
 type EmailMessage implements Node {
+  attachments: [EmailAttachment!]!
   createdAt: DateTime!
   from: EmailAddressRef!
   html: String
