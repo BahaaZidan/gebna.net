@@ -27,8 +27,28 @@ export type EmailAddressRef = Node & {
   name: Scalars['String']['output'];
 };
 
+export type EmailAttachment = Node & {
+  __typename?: 'EmailAttachment';
+  category?: Maybe<EmailAttachmentFileCategory>;
+  description?: Maybe<Scalars['String']['output']>;
+  filename?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  sizeInBytes?: Maybe<Scalars['Int']['output']>;
+};
+
+export type EmailAttachmentFileCategory =
+  | 'Audio'
+  | 'Calendar'
+  | 'Excel'
+  | 'Image'
+  | 'Other'
+  | 'PDF'
+  | 'Video'
+  | 'Word';
+
 export type EmailMessage = Node & {
   __typename?: 'EmailMessage';
+  attachments: Array<EmailAttachment>;
   createdAt: Scalars['DateTime']['output'];
   from: EmailAddressRef;
   html?: Maybe<Scalars['String']['output']>;
@@ -142,6 +162,7 @@ export type EmailThreadDetailsQueryVariables = Exact<{
 
 export type EmailThreadDetailsQuery = { __typename?: 'Query', node?:
     | { __typename: 'EmailAddressRef' }
+    | { __typename: 'EmailAttachment' }
     | { __typename: 'EmailMessage' }
     | (
       { __typename: 'EmailThread', id: string, messages: { __typename?: 'EmailThreadMessagesConnection', edges: Array<{ __typename?: 'EmailThreadMessagesConnectionEdge', node: (
