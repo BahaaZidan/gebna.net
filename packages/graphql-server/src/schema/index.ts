@@ -157,6 +157,18 @@ const EmailAttachmentRef = builder.drizzleNode("emailAttachments", {
 				return "Other" as const;
 			},
 		}),
+		url: t.string({
+			select: {
+				columns: {
+					content: true,
+					mimeType: true,
+				},
+			},
+			resolve: async ({ content, mimeType = "application/octet-stream" }) => {
+				if (!content) return null;
+				return `data:${mimeType};base64,${content.toString("base64")}`;
+			},
+		}),
 	}),
 });
 
