@@ -29,13 +29,25 @@ export const ALLOWED_ATTACHMENT_MIME_TYPES = [
 	"text/plain",
 	"text/markdown",
 	"text/csv",
+	"application/csv",
 	"text/calendar",
 	"application/ics",
-
+	"application/icalendar",
+	"application/x-ical",
+	"application/x-vcalendar",
 	// Microsoft Office
 	"application/msword",
+	"application/vnd.ms-word",
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.template",
+	"application/vnd.ms-word.document.macroenabled.12",
+	"application/vnd.ms-word.template.macroenabled.12",
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
 	"application/vnd.ms-excel",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.template",
+	"application/vnd.ms-excel.sheet.macroenabled.12",
+	"application/vnd.ms-excel.template.macroenabled.12",
+	"application/vnd.ms-excel.addin.macroenabled.12",
+	"application/vnd.ms-excel.sheet.binary.macroenabled.12",
 	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
 	"application/vnd.ms-powerpoint",
 	"application/vnd.openxmlformats-officedocument.presentationml.presentation", // pptx
@@ -51,6 +63,7 @@ export const ALLOWED_ATTACHMENT_MIME_TYPES = [
 	"application/x-tar",
 	"application/x-7z-compressed",
 	"application/vnd.rar",
+	"application/x-rar-compressed",
 
 	// Misc common
 	"application/json",

@@ -12,7 +12,7 @@ type EmailAddressRef implements Node {
 }
 
 type EmailAttachment implements Node {
-  category: EmailAttachmentFileCategory
+  category: EmailAttachmentFileCategory!
   description: String
   filename: String
   id: ID!
@@ -20,12 +20,14 @@ type EmailAttachment implements Node {
 }
 
 enum EmailAttachmentFileCategory {
+  Archive
   Audio
   Calendar
   Excel
   Image
   Other
   PDF
+  Slides
   Video
   Word
 }
