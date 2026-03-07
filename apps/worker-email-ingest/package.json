@@ -14,19 +14,21 @@
 	"dependencies": {
 		"@gebna/db": "workspace:*",
 		"@gebna/utils": "workspace:*",
+		"@gebna/vali": "workspace:*",
 		"@iocium/favicon-fetcher": "^1.5.0",
+		"file-type": "^21.3.0",
+		"hast": "catalog:",
 		"html-to-text": "^9.0.5",
 		"postal-mime": "^2.7.3",
-		"hast": "catalog:",
-		"unified": "catalog:",
 		"rehype-parse": "catalog:",
 		"rehype-sanitize": "catalog:",
-		"rehype-stringify": "catalog:"
+		"rehype-stringify": "catalog:",
+		"unified": "catalog:"
 	},
 	"devDependencies": {
-		"@types/hast": "catalog:",
 		"@cloudflare/vite-plugin": "catalog:",
 		"@total-typescript/ts-reset": "catalog:",
+		"@types/hast": "catalog:",
 		"@types/html-to-text": "^9.0.4",
 		"typescript": "catalog:",
 		"vite": "catalog:",
