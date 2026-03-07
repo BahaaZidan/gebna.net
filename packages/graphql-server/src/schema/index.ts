@@ -6,6 +6,7 @@ import RelayPlugin from "@pothos/plugin-relay";
 import ScopeAuthPlugin from "@pothos/plugin-scope-auth";
 import WithInputPlugin from "@pothos/plugin-with-input";
 import { DateTimeResolver } from "graphql-scalars";
+import { visit } from "unist-util-visit";
 
 import type { GraphQLResolverContext } from "../types.js";
 
@@ -104,8 +105,11 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 				columns: {
 					bodyHTML: true,
 				},
+				with: {
+					inlineAttachments: true,
+				},
 			},
-			resolve: async ({ bodyHTML }) => {
+			resolve: async ({ bodyHTML, inlineAttachments }) => {
 				if (!bodyHTML) return null;
 				const html = (
 					await unified()
@@ -123,6 +127,32 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 							},
 							injectBaseCss: true,
 							force: true, // flip to true if you want to override explicit colors too
+						})
+						.use(() => {
+							return (tree) => {
+								const inlineAttachmentByContentId = new Map(
+									inlineAttachments.map((attachment) => [attachment.contentId, attachment])
+								);
+
+								visit(
+									tree,
+									"element",
+									(node: { tagName?: string; properties?: Record<string, unknown> }) => {
+										if (node.tagName !== "img") return;
+
+										const properties = node.properties;
+										const src = properties?.src ? String(properties.src) : null;
+										if (!src?.toLowerCase().startsWith("cid:")) return;
+
+										const contentId = src.slice(4).trim();
+										const attachment = inlineAttachmentByContentId.get(contentId);
+										if (!attachment) return;
+
+										const mimeType = attachment.mimeType?.trim() || "application/octet-stream";
+										properties!.src = `data:${mimeType};base64,${attachment.content.toString("base64")}`;
+									}
+								);
+							};
 						})
 						.use(rehypeStringify)
 						.process(bodyHTML)

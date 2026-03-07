@@ -20,4 +20,5 @@ catalog:
   "@tailwindcss/typography": "^0.5.19"
   "daisyui": "^5.5.18"
   "phosphor-svelte": "^3.1.0"
+  "unist-util-visit": "^5.1.0"
   
