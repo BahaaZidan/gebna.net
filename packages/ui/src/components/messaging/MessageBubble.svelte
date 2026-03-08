@@ -54,7 +54,7 @@
 	});
 </script>
 
-<div class="flex w-full items-start gap-4">
+<div class="flex w-full items-start gap-4 p-3">
 	<div class="avatar">
 		<div class="w-12">
 			<img alt="{sender.name || sender.address} avatar" src={sender.avatar} />
