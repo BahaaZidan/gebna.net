@@ -26,10 +26,11 @@
 		"graphql": "catalog:",
 		"graphql-scalars": "^1.25.0",
 		"graphql-yoga": "^5.18.0",
-		"unist-util-visit": "catalog:",
-		"unified": "catalog:",
 		"rehype-parse": "catalog:",
-		"rehype-stringify": "catalog:"
+		"rehype-stringify": "catalog:",
+		"unified": "catalog:",
+		"unist-util-find": "catalog:",
+		"unist-util-visit": "catalog:"
 	},
 	"devDependencies": {
 		"@gebna/auth": "workspace:*",

@@ -10,6 +10,7 @@ import { DateTimeResolver } from "graphql-scalars";
 import rehypeParse from "rehype-parse";
 import rehypeStringify from "rehype-stringify";
 import { unified } from "unified";
+import { find } from "unist-util-find";
 import { visit } from "unist-util-visit";
 
 import type { GraphQLResolverContext } from "../types.js";
@@ -286,6 +287,38 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 								);
 							};
 						})
+						.use(() => {
+							return (tree) => {
+								const node = find(tree, (node) => {
+									if (!isElementNodeWithProperties(node)) return false;
+									if (node.tagName !== "div") return false;
+									const classNames = node.properties?.className;
+									if (!Array.isArray(classNames)) return false;
+									if (!classNames.includes("gmail_quote")) return false;
+									return true;
+								});
+								if (!isElementNodeWithProperties(node)) return;
+
+								const quotedNode = {
+									type: "element" as const,
+									tagName: node.tagName,
+									properties: node.properties,
+									children: Array.isArray(node.children) ? node.children : [],
+								};
+
+								node.tagName = "details";
+								node.properties = {};
+								node.children = [
+									{
+										type: "element",
+										tagName: "summary",
+										properties: {},
+										children: [{ type: "text", value: "Show quoted content" }],
+									},
+									quotedNode,
+								];
+							};
+						})
 						.use(rehypeStringify)
 						.process(bodyHTML)
 				).toString();
@@ -383,3 +416,21 @@ builder.queryType({
 export const executableSchema = builder.toSchema();
 
 export default executableSchema;
+
+type ElementNodeWithProperties = {
+	type: "element";
+	tagName: string;
+	properties?: Record<string, unknown>;
+	children?: unknown[];
+};
+
+function isElementNodeWithProperties(node: unknown): node is ElementNodeWithProperties {
+	return (
+		typeof node === "object" &&
+		node !== null &&
+		"type" in node &&
+		node.type === "element" &&
+		"tagName" in node &&
+		typeof node.tagName === "string"
+	);
+}
