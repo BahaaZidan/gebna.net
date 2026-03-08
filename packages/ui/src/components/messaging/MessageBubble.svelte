@@ -1,4 +1,5 @@
 <script lang="ts">
+	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { graphql, useFragment, type FragmentType } from "@gebna/graphql-client";
 	import {
 		CalendarDotIcon,
@@ -35,6 +36,7 @@
 				sizeInBytes
 				description
 				category
+				url
 			}
 		}
 	`);
@@ -75,7 +77,11 @@
 		{#if message.attachments.length}
 			<div class="flex gap-2">
 				{#each message.attachments as a (a.id)}
-					<div class="flex gap-2 bg-base-200 px-4 py-2">
+					<a
+						href={a.url}
+						download={a.filename}
+						class="flex gap-2 bg-base-200 px-4 py-2 hover:cursor-pointer hover:bg-base-300"
+					>
 						<div>
 							<IconContext values={{ class: "size-12" }}>
 								{#if a.category === "Archive"}
@@ -105,7 +111,7 @@
 							<div>{a.filename}</div>
 							<div class="text-sm text-secondary-content">{a.description}</div>
 						</div>
-					</div>
+					</a>
 				{/each}
 			</div>
 		{/if}
