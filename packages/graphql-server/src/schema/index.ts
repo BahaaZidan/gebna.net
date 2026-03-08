@@ -294,8 +294,13 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 									if (node.tagName !== "div") return false;
 									const classNames = node.properties?.className;
 									if (!Array.isArray(classNames)) return false;
-									// TODO: investigate supporting outlook, yahoo, and others?
-									if (!classNames.includes("gmail_quote")) return false;
+									// TODO: investigate supporting outlook and other grains of sand :(
+									if (
+										!classNames.includes("gmail_quote") &&
+										!classNames.includes("yahoo_quoted") &&
+										!classNames.includes("moz-cite-prefix")
+									)
+										return false;
 									return true;
 								});
 								if (!isElementNodeWithProperties(node)) return;
