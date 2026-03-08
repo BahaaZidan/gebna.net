@@ -67,7 +67,7 @@
 		</div>
 		{#if message.plaintext}
 			<div>
-				<pre class="">{message.plaintext}</pre>
+				<pre class="font-sans">{message.plaintext}</pre>
 			</div>
 		{:else if message.html}
 			<div class="w-full">
