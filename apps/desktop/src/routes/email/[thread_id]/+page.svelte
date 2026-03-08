@@ -32,7 +32,7 @@
 			{#each thread.messages.edges as { node }, index (node.id)}
 				<MessageBubble message={node} />
 				{#if index + 1 < thread.messages.edges.length}
-					<div class="divider"></div>
+					<hr class="border border-base-200" />
 				{/if}
 			{/each}
 		</div>
