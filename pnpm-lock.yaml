@@ -72,6 +72,9 @@ catalogs:
     unified:
       specifier: ^11.0.5
       version: 11.0.5
+    unist-util-find:
+      specifier: ^3.0.0
+      version: 3.0.0
     unist-util-visit:
       specifier: ^5.1.0
       version: 5.1.0
@@ -497,6 +500,9 @@ importers:
       unified:
         specifier: 'catalog:'
         version: 11.0.5
+      unist-util-find:
+        specifier: 'catalog:'
+        version: 3.0.0
       unist-util-visit:
         specifier: 'catalog:'
         version: 5.1.0
@@ -4228,6 +4234,9 @@ packages:
   lodash.isstring@4.0.1:
     resolution: {integrity: sha512-0wJxfxH1wgO3GrbuP+dTTk7op+6L41QCXbGINEmD+ny/G/eCqGzxyCsh7159S+mgDDcoarnBw6PC1PS5+wUGgw==}
 
+  lodash.iteratee@4.7.0:
+    resolution: {integrity: sha512-yv3cSQZmfpbIKo4Yo45B1taEvxjNvcpF1CEOc0Y6dEyvhPIfEJE3twDwPgWTPQubcSgXyBwBKG6wpQvWMDOf6Q==}
+
   lodash.lowercase@4.3.0:
     resolution: {integrity: sha512-UcvP1IZYyDKyEL64mmrwoA1AbFu5ahojhTtkOUr1K9dbuxzS9ev8i4TxMMGCqRC9TE8uDaSoufNAXxRPNTseVA==}
 
@@ -5183,6 +5192,9 @@ packages:
 
   unified@11.0.5:
     resolution: {integrity: sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA==}
+
+  unist-util-find@3.0.0:
+    resolution: {integrity: sha512-T7ZqS7immLjYyC4FCp2hDo3ksZ1v+qcbb+e5+iWxc2jONgHOLXPCpms1L8VV4hVxCXgWTxmBHDztuEZFVwC+Gg==}
 
   unist-util-is@6.0.1:
     resolution: {integrity: sha512-LsiILbtBETkDz8I9p1dQ0uyRUWuaQzd/cuEeS1hoRSyW5E5XGmTzlwY1OrNzzakGowI9Dr/I8HVaw4hTtnxy8g==}
@@ -9109,6 +9121,8 @@ snapshots:
 
   lodash.isstring@4.0.1: {}
 
+  lodash.iteratee@4.7.0: {}
+
   lodash.lowercase@4.3.0: {}
 
   lodash.merge@4.6.2: {}
@@ -10051,6 +10065,12 @@ snapshots:
       is-plain-obj: 4.1.0
       trough: 2.2.0
       vfile: 6.0.3
+
+  unist-util-find@3.0.0:
+    dependencies:
+      '@types/unist': 3.0.3
+      lodash.iteratee: 4.7.0
+      unist-util-visit: 5.1.0
 
   unist-util-is@6.0.1:
     dependencies:
