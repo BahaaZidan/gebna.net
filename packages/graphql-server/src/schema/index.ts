@@ -294,6 +294,7 @@ const EmailMessageRef = builder.drizzleNode("emailMessages", {
 									if (node.tagName !== "div") return false;
 									const classNames = node.properties?.className;
 									if (!Array.isArray(classNames)) return false;
+									// TODO: investigate supporting outlook, yahoo, and others?
 									if (!classNames.includes("gmail_quote")) return false;
 									return true;
 								});
