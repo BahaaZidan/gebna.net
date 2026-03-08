@@ -246,6 +246,7 @@ export const emailMessages = sqliteTable(
 		/** Size of the whole Envelope */
 		sizeInBytes: integer().notNull(),
 		unseen: integer({ mode: "boolean" }).notNull().default(true),
+		subject: text(),
 	},
 	(self) => [
 		foreignKey({
