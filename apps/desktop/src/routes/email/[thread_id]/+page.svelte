@@ -28,9 +28,12 @@
 				</div>
 			</div>
 		</div>
-		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
-			{#each thread.messages.edges as { node } (node.id)}
+		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+			{#each thread.messages.edges as { node }, index (node.id)}
 				<MessageBubble message={node} />
+				{#if index + 1 < thread.messages.edges.length}
+					<div class="divider"></div>
+				{/if}
 			{/each}
 		</div>
 	</div>
