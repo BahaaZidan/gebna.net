@@ -10,7 +10,7 @@ import { sveltekitCookies } from "better-auth/svelte-kit";
 export { svelteKitHandler } from "better-auth/svelte-kit";
 
 // TODO: creating a custom adapter is the only way we can guarantee that each user record is bound to have an identity record.
-
+type AuthServer = ReturnType<typeof betterAuth>;
 export function getAuthServer({
 	db,
 	secret,
@@ -21,7 +21,7 @@ export function getAuthServer({
 	baseURL: string;
 	db: DBInstance;
 	getRequestEvent: () => RequestEvent;
-}) {
+}): AuthServer {
 	return betterAuth({
 		secret,
 		baseURL,
