@@ -1,0 +1,1 @@
+ALTER TABLE `emailAttachments` ADD `sizeInBytes` integer;

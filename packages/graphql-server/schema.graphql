@@ -1,0 +1,100 @@
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
+"""
+scalar DateTime
+
+type EmailAddressRef implements Node {
+  address: String!
+  avatar: String!
+  id: ID!
+  isSelf: Boolean!
+  name: String!
+}
+
+type EmailAttachment implements Node {
+  category: EmailAttachmentFileCategory!
+  description: String
+  filename: String
+  id: ID!
+  sizeInBytes: Int
+  url: String
+}
+
+enum EmailAttachmentFileCategory {
+  Archive
+  Audio
+  Calendar
+  Excel
+  Image
+  Other
+  PDF
+  Slides
+  Video
+  Word
+}
+
+type EmailMessage implements Node {
+  attachments: [EmailAttachment!]!
+  createdAt: DateTime!
+  from: EmailAddressRef!
+  html: String
+  id: ID!
+  plaintext: String
+  snippet: String
+  to: EmailAddressRef!
+}
+
+type EmailThread implements Node {
+  avatar: String
+  id: ID!
+  lastMessage: EmailMessage!
+  messages(after: String, before: String, first: Int, last: Int): EmailThreadMessagesConnection!
+  participants: [EmailAddressRef!]!
+  title: String
+  unseenCount: Int!
+}
+
+type EmailThreadMessagesConnection {
+  edges: [EmailThreadMessagesConnectionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type EmailThreadMessagesConnectionEdge {
+  cursor: String!
+  node: EmailMessage!
+}
+
+interface Node {
+  id: ID!
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+type Query {
+  node(id: ID!): Node
+  nodes(ids: [ID!]!): [Node]!
+  viewer: Viewer
+}
+
+type Viewer {
+  avatar: String!
+  emailAddress: String!
+  emailThreads(after: String, before: String, first: Int, last: Int): ViewerEmailThreadsConnection!
+  id: ID!
+  name: String!
+}
+
+type ViewerEmailThreadsConnection {
+  edges: [ViewerEmailThreadsConnectionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ViewerEmailThreadsConnectionEdge {
+  cursor: String!
+  node: EmailThread!
+}
