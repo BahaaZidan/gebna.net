@@ -1,9 +1,9 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "276566c7-ea07-416f-8fc8-0827e20ef92d",
+  "id": "526fe5d0-81f8-44b0-b420-4ffed6c95c2a",
   "prevIds": [
-    "ed8c4454-88d1-410b-8b14-98605031ae84"
+    "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
@@ -583,6 +583,16 @@
       "default": "true",
       "generated": null,
       "name": "unseen",
+      "entityType": "columns",
+      "table": "emailMessages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "subject",
       "entityType": "columns",
       "table": "emailMessages"
     },
