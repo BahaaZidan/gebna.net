@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { MessageBubble, ThreadTitle } from "@gebna/ui";
-	import { DotsThreeOutlineVerticalIcon } from "phosphor-svelte";
+	import DotsThreeOutlineVerticalIcon from "phosphor-svelte/lib/DotsThreeOutlineVerticalIcon";
 
 	import { page } from "$app/state";
 

@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { formatInboxDate, ThreadAvatar, ThreadTitle } from "@gebna/ui";
-	import {
-		CaretDownIcon,
-		NotePencilIcon,
-		PlusIcon,
-		type IconComponentProps,
-	} from "phosphor-svelte";
+	import type { IconComponentProps } from "phosphor-svelte";
+	import CaretDownIcon from "phosphor-svelte/lib/CaretDownIcon";
+	import NotePencilIcon from "phosphor-svelte/lib/NotePencilIcon";
+	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
 	import { type Component } from "svelte";
 
 	import { resolve } from "$app/paths";

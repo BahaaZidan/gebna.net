@@ -1,19 +1,17 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { graphql, useFragment, type FragmentType } from "@gebna/graphql-client";
-	import {
-		CalendarDotIcon,
-		FileArchiveIcon,
-		FileIcon,
-		FilePdfIcon,
-		GridNineIcon,
-		IconContext,
-		ImageIcon,
-		MicrosoftWordLogoIcon,
-		PresentationChartIcon,
-		VideoIcon,
-		WaveformIcon,
-	} from "phosphor-svelte";
+	import CalendarDotIcon from "phosphor-svelte/lib/CalendarDotIcon";
+	import FileArchiveIcon from "phosphor-svelte/lib/FileArchiveIcon";
+	import FileIcon from "phosphor-svelte/lib/FileIcon";
+	import FilePdfIcon from "phosphor-svelte/lib/FilePdfIcon";
+	import GridNineIcon from "phosphor-svelte/lib/GridNineIcon";
+	import IconContext from "phosphor-svelte/lib/IconContext";
+	import ImageIcon from "phosphor-svelte/lib/ImageIcon";
+	import MicrosoftWordLogoIcon from "phosphor-svelte/lib/MicrosoftWordLogoIcon";
+	import PresentationChartIcon from "phosphor-svelte/lib/PresentationChartIcon";
+	import VideoIcon from "phosphor-svelte/lib/VideoIcon";
+	import WaveformIcon from "phosphor-svelte/lib/WaveformIcon";
 
 	import { formatInboxDate } from "../../utils/format";
 
