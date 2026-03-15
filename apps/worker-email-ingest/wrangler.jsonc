@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "worker-email-ingest",
+	"name": "gebna-worker-email-ingest",
 	"compatibility_date": "2026-03-15",
 	"main": "./src/index.ts",
 	"compatibility_flags": ["nodejs_compat"],
