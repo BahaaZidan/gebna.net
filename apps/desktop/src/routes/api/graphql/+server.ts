@@ -3,10 +3,16 @@ import { createYoga } from "@gebna/graphql-server";
 
 import { env } from "$env/dynamic/private";
 
+import { workAroundFetch } from "$lib/workaround-fetch";
+
 import type { RequestEvent, RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async (event) => {
-	const db = getDB({ authToken: env.TURSO_AUTH_TOKEN, url: env.TURSO_DATABASE_URL });
+	const db = getDB({
+		authToken: env.TURSO_AUTH_TOKEN,
+		url: env.TURSO_DATABASE_URL,
+		fetch: workAroundFetch,
+	});
 	const handler = createYoga<RequestEvent>({
 		db,
 		viewer: event.locals.user,
