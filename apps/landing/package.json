@@ -38,6 +38,7 @@
 		"typescript": "catalog:",
 		"vite": "catalog:",
 		"vitest": "^3.2.0",
-		"phosphor-svelte": "catalog:"
+		"phosphor-svelte": "catalog:",
+		"wrangler": "catalog:"
 	}
 }
