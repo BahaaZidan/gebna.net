@@ -21,6 +21,7 @@ export const getDB = ({
 	return drizzle({
 		relations,
 		connection: { url, authToken, fetch },
+		logger: true,
 	});
 };
 
