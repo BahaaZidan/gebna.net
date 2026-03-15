@@ -20,6 +20,7 @@
 
 	import { resolve } from "$app/paths";
 	import { navigating, page } from "$app/state";
+	import { env } from "$env/dynamic/public";
 
 	import type { LayoutData } from "./$types";
 
@@ -32,7 +33,10 @@
 	});
 
 	const handleLogin: SubmitHandler<typeof loginSchema> = async ({ username, password }) => {
-		const result = await getAuthClient().signIn.username({ username, password });
+		const result = await getAuthClient({ baseURL: env.PUBLIC_BASE_URL }).signIn.username({
+			username,
+			password,
+		});
 		if (result.error) return;
 		location.reload();
 	};
