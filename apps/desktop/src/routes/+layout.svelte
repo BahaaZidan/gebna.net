@@ -37,7 +37,10 @@
 			username,
 			password,
 		});
-		if (result.error) return;
+		if (result.error) {
+			console.log(result.error);
+			return;
+		}
 		location.reload();
 	};
 </script>
