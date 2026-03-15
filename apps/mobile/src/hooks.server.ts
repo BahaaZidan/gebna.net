@@ -7,8 +7,14 @@ import { building } from "$app/environment";
 import { getRequestEvent } from "$app/server";
 import { env } from "$env/dynamic/private";
 
+import { workAroundFetch } from "$lib/workaround-fetch";
+
 const handleAuth: Handle = async ({ event, resolve }) => {
-	const db = getDB({ authToken: env.TURSO_AUTH_TOKEN, url: env.TURSO_DATABASE_URL });
+	const db = getDB({
+		authToken: env.TURSO_AUTH_TOKEN,
+		url: env.TURSO_DATABASE_URL,
+		fetch: workAroundFetch,
+	});
 	const auth = getAuthServer({
 		db,
 		baseURL: env.BASE_URL,
