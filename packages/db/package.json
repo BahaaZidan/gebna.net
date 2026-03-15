@@ -1,0 +1,43 @@
+{
+	"name": "@gebna/db",
+	"version": "0.0.0",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./dist/src/index.js"
+		},
+		"./schema": {
+			"types": "./src/schema.ts",
+			"default": "./dist/src/schema.js"
+		}
+	},
+	"scripts": {
+		"dev": "tsc --watch",
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"generate": "drizzle-kit generate",
+		"push": "dotenv -e .env.dev -- drizzle-kit push",
+		"pull": "dotenv -e .env.dev -- drizzle-kit pull",
+		"seed": "dotenv -e .env.dev -- tsx scripts/seed.ts",
+		"seed:raw": "dotenv -e .env.dev -- tsx scripts/seed-raw.ts",
+		"migrate:dev": "dotenv -e .env.dev -- drizzle-kit migrate",
+		"migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
+		"studio:dev": "dotenv -e .env.dev -- drizzle-kit studio",
+		"studio:prod": "dotenv -e .env.prod -- drizzle-kit studio"
+	},
+	"dependencies": {
+		"drizzle-orm": "1.0.0-beta.15-859cf75"
+	},
+	"devDependencies": {
+		"@gebna/utils": "workspace:*",
+		"@libsql/client": "^0.17.0",
+		"@repo/typescript-config": "workspace:*",
+		"@types/node": "^22.13.1",
+		"better-auth": "^1.4.18",
+		"dotenv-cli": "^11.0.0",
+		"drizzle-kit": "1.0.0-beta.15-859cf75",
+		"tsx": "^4.19.1",
+		"typescript": "catalog:"
+	}
+}
