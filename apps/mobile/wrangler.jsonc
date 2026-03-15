@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "gebna-app-mobile-web",
+	"name": "mobile-gebna-net",
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_flags": ["nodejs_als"],
 	"compatibility_date": "2026-03-15",
