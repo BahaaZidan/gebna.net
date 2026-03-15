@@ -24,7 +24,11 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-	const db = getDB({ authToken: env.TURSO_AUTH_TOKEN, url: env.TURSO_DATABASE_URL });
+	const db = getDB({
+		authToken: env.TURSO_AUTH_TOKEN,
+		url: env.TURSO_DATABASE_URL,
+		fetch: workAroundFetch,
+	});
 	const handler = createYoga<RequestEvent>({
 		db,
 		viewer: event.locals.user,
@@ -36,7 +40,11 @@ export const POST: RequestHandler = async (event) => {
 };
 
 export const OPTIONS: RequestHandler = async (event) => {
-	const db = getDB({ authToken: env.TURSO_AUTH_TOKEN, url: env.TURSO_DATABASE_URL });
+	const db = getDB({
+		authToken: env.TURSO_AUTH_TOKEN,
+		url: env.TURSO_DATABASE_URL,
+		fetch: workAroundFetch,
+	});
 	const handler = createYoga<RequestEvent>({
 		db,
 		viewer: event.locals.user,
