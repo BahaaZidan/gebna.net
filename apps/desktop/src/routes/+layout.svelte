@@ -12,12 +12,10 @@
 	import { getAuthClient } from "@gebna/auth/client";
 	import { TextInput } from "@gebna/ui";
 	import { loginSchema } from "@gebna/vali";
-	import {
-		EnvelopeSimpleIcon,
-		EnvelopeSimpleOpenIcon,
-		GearFineIcon,
-		MagnifyingGlassIcon,
-	} from "phosphor-svelte";
+	import EnvelopeSimpleIcon from "phosphor-svelte/lib/EnvelopeSimpleIcon";
+	import EnvelopeSimpleOpenIcon from "phosphor-svelte/lib/EnvelopeSimpleOpenIcon";
+	import GearFineIcon from "phosphor-svelte/lib/GearFineIcon";
+	import MagnifyingGlassIcon from "phosphor-svelte/lib/MagnifyingGlassIcon";
 	import { type Snippet } from "svelte";
 
 	import { resolve } from "$app/paths";
