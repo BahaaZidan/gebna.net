@@ -204,12 +204,6 @@ importers:
 
   apps/landing:
     dependencies:
-      '@gebna/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@gebna/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@gebna/ui':
         specifier: workspace:*
         version: link:../../packages/ui
