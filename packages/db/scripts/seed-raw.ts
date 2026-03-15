@@ -8,7 +8,7 @@ import { dbSchema, getDB, type DBInstance } from "../src/index.js";
 
 const PORT = 5191;
 const EMAIL_TO_SWAP = "gebnatorky@gmail.com";
-const EMAIL_REPLACEMENT = "bob@gebna.test";
+const EMAIL_REPLACEMENT = "bob@gebna.net";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // const RAW_EMAILS_DIR = path.join(__dirname, "data", "lolo");
 const RAW_EMAILS_DIR = path.join(__dirname, "data", "raw-emails");
@@ -272,7 +272,7 @@ async function main() {
 	}
 
 	for (const { file, payload } of payloads) {
-		const from = extractAddress("From", payload) ?? "seed@gebna.test";
+		const from = extractAddress("From", payload) ?? "seed@gebna.net";
 		const to = extractAddress("To", payload) ?? EMAIL_REPLACEMENT;
 
 		console.log(`\n Seeding ${file}...`);
