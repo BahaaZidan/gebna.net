@@ -17,4 +17,7 @@
 	"observability": {
 		"enabled": true,
 	},
+	"vars": {
+		"PUBLIC_BASE_URL": "https://desktop.gebna.net/",
+	},
 }
