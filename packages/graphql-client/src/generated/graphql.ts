@@ -150,13 +150,16 @@ export type ViewerEmailThreadsConnectionEdge = {
   node: EmailThread;
 };
 
-export type ViewerEmailThreadsListQueryQueryVariables = Exact<{ [key: string]: never; }>;
+export type ViewerEmailThreadsListQueryQueryVariables = Exact<{
+  first: Scalars['Int']['input'];
+  after?: InputMaybe<Scalars['String']['input']>;
+}>;
 
 
-export type ViewerEmailThreadsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailThreads: { __typename?: 'ViewerEmailThreadsConnection', edges: Array<{ __typename?: 'ViewerEmailThreadsConnectionEdge', node: (
+export type ViewerEmailThreadsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailThreads: { __typename?: 'ViewerEmailThreadsConnection', edges: Array<{ __typename?: 'ViewerEmailThreadsConnectionEdge', cursor: string, node: (
           { __typename?: 'EmailThread', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } }
           & { ' $fragmentRefs'?: { 'EmailThreadTitleFragment': EmailThreadTitleFragment;'EmailThreadAvatarFragment': EmailThreadAvatarFragment } }
-        ) }> } } | null };
+        ) }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } | null };
 
 export type EmailThreadDetailsQueryVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -249,11 +252,12 @@ export const EmailThreadTitleFragmentDoc = new TypedDocumentString(`
 }
     `, {"fragmentName":"EmailThreadTitle"}) as unknown as TypedDocumentString<EmailThreadTitleFragment, unknown>;
 export const ViewerEmailThreadsListQueryDocument = new TypedDocumentString(`
-    query ViewerEmailThreadsListQuery {
+    query ViewerEmailThreadsListQuery($first: Int!, $after: String) {
   viewer {
     id
-    emailThreads(first: 30) {
+    emailThreads(first: $first, after: $after) {
       edges {
+        cursor
         node {
           ...EmailThreadTitle
           ...EmailThreadAvatar
@@ -266,6 +270,10 @@ export const ViewerEmailThreadsListQueryDocument = new TypedDocumentString(`
             createdAt
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
