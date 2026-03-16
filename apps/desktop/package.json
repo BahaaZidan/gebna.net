@@ -25,8 +25,7 @@
 		"@gebna/graphql-server": "workspace:*",
 		"@gebna/ui": "workspace:*",
 		"@gebna/vali": "workspace:*",
-		"date-fns": "^4.1.0",
-		"runed": "^0.37.1"
+		"@tanstack/svelte-query": "catalog:"
 	},
 	"devDependencies": {
 		"@fontsource/inter": "catalog:",

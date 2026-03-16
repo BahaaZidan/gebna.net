@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatInboxDate, ThreadAvatar, ThreadTitle } from "@gebna/ui";
+	import { createInfiniteQuery } from "@tanstack/svelte-query";
 	import type { IconComponentProps } from "phosphor-svelte";
 	import CaretDownIcon from "phosphor-svelte/lib/CaretDownIcon";
 	import NotePencilIcon from "phosphor-svelte/lib/NotePencilIcon";
@@ -9,21 +10,39 @@
 	import { page } from "$app/state";
 	import type { Pathname } from "$app/types";
 
-	import { getEmailConvoList } from "$lib/email.remote";
+	import { getEmailThreadsConnection } from "$lib/email.remote";
 
 	let { children } = $props();
 
-	let response = await getEmailConvoList();
-	let threads = $derived(response.data?.viewer?.emailThreads.edges);
-</script>
+	const pageSize = 10;
+	type EmailThreadsPageParam = { first: number; after?: string };
+	let initialPageParam: EmailThreadsPageParam = { first: pageSize };
+	let initialPage = await getEmailThreadsConnection({ first: pageSize });
 
-{#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconComponentProps> })}
-	<div class="tooltip tooltip-bottom" data-tip={label}>
-		<button class="btn p-2 btn-ghost">
-			<Icon class="size-6" />
-		</button>
-	</div>
-{/snippet}
+	let query = createInfiniteQuery(() => ({
+		queryKey: ["email_threads_connection"],
+		queryFn: async ({ pageParam }: { pageParam: EmailThreadsPageParam }) =>
+			await getEmailThreadsConnection(pageParam),
+		initialPageParam,
+		getNextPageParam: (lastPage) => {
+			let pageInfo = lastPage.data?.viewer?.emailThreads.pageInfo;
+			if (!pageInfo?.hasNextPage) return;
+			return {
+				first: pageSize,
+				after: pageInfo.endCursor as string,
+			};
+		},
+		initialData: {
+			pages: [initialPage],
+			pageParams: [initialPageParam],
+		},
+		refetchOnMount: false,
+	}));
+
+	let threads = $derived(
+		query.data?.pages.flatMap((page) => page.data?.viewer?.emailThreads.edges ?? []) ?? []
+	);
+</script>
 
 <div class="flex h-full min-h-0">
 	<div class="flex h-full w-[40%] max-w-[40%] min-w-xs flex-col gap-1 border-r py-3">
@@ -73,9 +92,28 @@
 					</div>
 				</a>
 			{/each}
+			{#if query.hasNextPage}
+				<button class="btn" disabled={query.isFetching} onclick={() => query.fetchNextPage()}>
+					Load more
+					<span
+						class={[
+							"loading loading-md loading-spinner",
+							query.isFetching ? "visible" : "invisible",
+						]}
+					></span>
+				</button>
+			{/if}
 		</div>
 	</div>
 	<div class="flex h-full min-h-0 w-full flex-col overflow-hidden">
 		{@render children()}
 	</div>
 </div>
+
+{#snippet iconButton({ label, Icon }: { label: string; Icon: Component<IconComponentProps> })}
+	<div class="tooltip tooltip-bottom" data-tip={label}>
+		<button class="btn p-2 btn-ghost">
+			<Icon class="size-6" />
+		</button>
+	</div>
+{/snippet}
