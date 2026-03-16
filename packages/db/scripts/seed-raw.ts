@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { dbSchema, getDB, type DBInstance } from "../src/index.js";
 
@@ -73,6 +73,16 @@ function buildPayload(raw: string) {
 		: raw;
 }
 
+function extractEmailDate(raw: string): Date | undefined {
+	const value = extractHeaderValue("Date", raw);
+	if (!value) return;
+
+	const timestamp = Date.parse(value);
+	if (Number.isNaN(timestamp)) return;
+
+	return new Date(timestamp);
+}
+
 async function sendEmail(payload: string, filename: string, envelope: EnvelopeAddrs) {
 	return new Promise<void>((resolve, reject) => {
 		const curl = spawn(
@@ -104,6 +114,73 @@ async function sendEmail(payload: string, filename: string, envelope: EnvelopeAd
 			reject(new Error(`curl exited with code ${code ?? "unknown"} for ${filename} \n`));
 		});
 		curl.on("error", reject);
+	});
+}
+
+async function syncSeededEmailDate(
+	db: DBInstance,
+	payload: string,
+	envelope: EnvelopeAddrs
+) {
+	const createdAt = extractEmailDate(payload);
+	if (!createdAt) return;
+
+	const [canonicalMessageId] = extractMessageIds(payload);
+	const lookupConditions = [
+		eq(dbSchema.emailMessages.from, envelope.from),
+		eq(dbSchema.emailMessages.to, envelope.to),
+		eq(dbSchema.emailMessages.sizeInBytes, Buffer.byteLength(payload)),
+	];
+
+	if (canonicalMessageId) {
+		lookupConditions.unshift(eq(dbSchema.emailMessages.canonicalMessageId, canonicalMessageId));
+	}
+
+	const [message] = await db
+		.select({
+			id: dbSchema.emailMessages.id,
+			threadId: dbSchema.emailMessages.threadId,
+		})
+		.from(dbSchema.emailMessages)
+		.where(and(...lookupConditions))
+		.orderBy(desc(dbSchema.emailMessages.createdAt))
+		.limit(1);
+
+	if (!message) return;
+
+	await db.transaction(async (tx) => {
+		await tx
+			.update(dbSchema.emailMessages)
+			.set({ createdAt })
+			.where(eq(dbSchema.emailMessages.id, message.id));
+
+		const [firstMessage] = await tx
+			.select({
+				createdAt: dbSchema.emailMessages.createdAt,
+			})
+			.from(dbSchema.emailMessages)
+			.where(eq(dbSchema.emailMessages.threadId, message.threadId))
+			.orderBy(asc(dbSchema.emailMessages.createdAt))
+			.limit(1);
+
+		const [lastMessage] = await tx
+			.select({
+				id: dbSchema.emailMessages.id,
+				createdAt: dbSchema.emailMessages.createdAt,
+			})
+			.from(dbSchema.emailMessages)
+			.where(eq(dbSchema.emailMessages.threadId, message.threadId))
+			.orderBy(desc(dbSchema.emailMessages.createdAt))
+			.limit(1);
+
+		await tx
+			.update(dbSchema.emailThreads)
+			.set({
+				createdAt: firstMessage?.createdAt ?? createdAt,
+				lastMessageAt: lastMessage?.createdAt ?? createdAt,
+				lastMessageId: lastMessage?.id ?? message.id,
+			})
+			.where(eq(dbSchema.emailThreads.id, message.threadId));
 	});
 }
 
@@ -254,15 +331,16 @@ async function main() {
 		})
 	);
 
+	const url = process.env.TURSO_DATABASE_URL;
+	const authToken = process.env.TURSO_AUTH_TOKEN;
+
+	if (!url || !authToken) {
+		throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN. \n");
+	}
+
+	const db = getDB({ url, authToken });
+
 	if (shouldReset || shouldClear) {
-		const url = process.env.TURSO_DATABASE_URL;
-		const authToken = process.env.TURSO_AUTH_TOKEN;
-
-		if (!url || !authToken) {
-			throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN. \n");
-		}
-
-		const db = getDB({ url, authToken });
 		if (shouldReset) {
 			await resetSeededEmails(db, payloads);
 		} else {
@@ -277,6 +355,7 @@ async function main() {
 
 		console.log(`\n Seeding ${file}...`);
 		await sendEmail(payload, file, { from, to });
+		await syncSeededEmailDate(db, payload, { from, to });
 	}
 
 	console.log("\n ✅ Done seeding raw emails.");
