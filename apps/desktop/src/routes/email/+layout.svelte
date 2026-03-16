@@ -3,7 +3,6 @@
 	import type { IconComponentProps } from "phosphor-svelte";
 	import CaretDownIcon from "phosphor-svelte/lib/CaretDownIcon";
 	import NotePencilIcon from "phosphor-svelte/lib/NotePencilIcon";
-	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
 	import { type Component } from "svelte";
 
 	import { resolve } from "$app/paths";
@@ -32,13 +31,6 @@
 			<h1 class="font-mono text-2xl font-bold">gebna</h1>
 			<div class="flex">
 				{@render iconButton({ label: "New Mail", Icon: NotePencilIcon })}
-			</div>
-		</div>
-		<div class="flex gap-2 px-5">
-			<button class="btn btn-active">All</button>
-			<button class="btn btn-ghost">Unseen</button>
-			<div class="tooltip tooltip-right" data-tip="New List">
-				<button class="btn btn-ghost"><PlusIcon class="size-4.5" /></button>
 			</div>
 		</div>
 		<div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
