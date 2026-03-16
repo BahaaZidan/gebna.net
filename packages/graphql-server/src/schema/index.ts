@@ -398,10 +398,8 @@ const ViewerRef = builder.drizzleObject("users", {
 			edgesNullable: false,
 			nodeNullable: false,
 			query: () => ({
-				where: {
-					lastMessageId: {
-						isNotNull: true,
-					},
+				orderBy: {
+					lastMessageAt: "desc",
 				},
 			}),
 		}),
