@@ -78,7 +78,6 @@ export default {
 
 					return { ...addressRef, address_ };
 				});
-				// TODO: enqueue address avatar inference here based on emailAddresses.updatedAt and createdAt
 			}
 			participantsRefs.push(fromAddressRef);
 
