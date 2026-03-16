@@ -33,8 +33,6 @@ export async function processEmailBody({ email }: ProcessEmailBodyArguments): Pr
 	return { html, plaintext };
 }
 
-const BASE_EMAIL_STYLE = "html, body { font-family: Inter, sans-serif; margin: 0; padding: 0; }";
-
 const rehypeEnsureFullDocumentWithBaseStyles: Plugin<[], Root> = () => (tree) => {
 	ensureFullDocumentWithBaseStyles(tree);
 };
@@ -97,7 +95,7 @@ function createBaseStyleNode(): Element {
 		type: "element",
 		tagName: "style",
 		properties: { dataEmailIngestBase: "true" },
-		children: [{ type: "text", value: BASE_EMAIL_STYLE }],
+		children: [{ type: "text", value: "html, body { margin: 0; padding: 0; }" }],
 	};
 }
 
