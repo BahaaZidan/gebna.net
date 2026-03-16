@@ -15,6 +15,11 @@ export const relations = defineRelations(schema, (r) => ({
 		emailThreads: r.many.emailThreads({
 			from: r.users.id,
 			to: r.emailThreads.ownerId,
+			where: {
+				lastMessageId: {
+					isNotNull: true,
+				},
+			},
 		}),
 		ownAddressRef: r.one.emailAddressRefs({
 			from: [r.users.id, r.users.email],
