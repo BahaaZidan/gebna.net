@@ -14,7 +14,7 @@
 
 	let { children } = $props();
 
-	const pageSize = 10;
+	const pageSize = 25;
 	type EmailThreadsPageParam = { first: number; after?: string };
 	let initialPageParam: EmailThreadsPageParam = { first: pageSize };
 	let initialPage = await getEmailThreadsConnection({ first: pageSize });
