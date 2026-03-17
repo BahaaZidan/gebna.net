@@ -116,5 +116,7 @@ type BaseSession = ReturnType<typeof getAuthServer>["$Infer"]["Session"];
 export type Session = BaseSession & {
 	user: BaseSession["user"] & {
 		username: string;
+		uploadedAvatar?: string;
+		avatarPlaceholder: string;
 	};
 };
