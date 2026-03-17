@@ -17,8 +17,7 @@
 	const pageSize = 25;
 	type EmailThreadsPageParam = { first: number; after?: string };
 	let initialPageParam: EmailThreadsPageParam = { first: pageSize };
-	let initialPage = await getEmailThreadsConnection({ first: pageSize });
-
+	let initialPage = await getEmailThreadsConnection(initialPageParam);
 	let query = createInfiniteQuery(() => ({
 		queryKey: ["email_threads_connection"],
 		queryFn: async ({ pageParam }: { pageParam: EmailThreadsPageParam }) =>

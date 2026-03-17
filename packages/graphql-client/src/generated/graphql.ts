@@ -163,6 +163,8 @@ export type ViewerEmailThreadsListQueryQuery = { __typename?: 'Query', viewer?: 
 
 export type EmailThreadDetailsQueryVariables = Exact<{
   id: Scalars['ID']['input'];
+  first: Scalars['Int']['input'];
+  after?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
@@ -174,7 +176,7 @@ export type EmailThreadDetailsQuery = { __typename?: 'Query', node?:
       { __typename: 'EmailThread', id: string, messages: { __typename?: 'EmailThreadMessagesConnection', edges: Array<{ __typename?: 'EmailThreadMessagesConnectionEdge', node: (
             { __typename?: 'EmailMessage', id: string }
             & { ' $fragmentRefs'?: { 'EmailMessageBubbleFragment': EmailMessageBubbleFragment } }
-          ) }> } }
+          ) }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } }
       & { ' $fragmentRefs'?: { 'EmailThreadTitleFragment': EmailThreadTitleFragment;'EmailThreadAvatarFragment': EmailThreadAvatarFragment } }
     )
    | null };
@@ -300,19 +302,23 @@ fragment EmailThreadTitle on EmailThread {
   }
 }`) as unknown as TypedDocumentString<ViewerEmailThreadsListQueryQuery, ViewerEmailThreadsListQueryQueryVariables>;
 export const EmailThreadDetailsDocument = new TypedDocumentString(`
-    query EmailThreadDetails($id: ID!) {
+    query EmailThreadDetails($id: ID!, $first: Int!, $after: String) {
   node(id: $id) {
     __typename
     ... on EmailThread {
       ...EmailThreadTitle
       ...EmailThreadAvatar
       id
-      messages {
+      messages(first: $first, after: $after) {
         edges {
           node {
             ...EmailMessageBubble
             id
           }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
       }
     }
