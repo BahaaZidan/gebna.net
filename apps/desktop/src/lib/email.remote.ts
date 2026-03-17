@@ -51,36 +51,57 @@ export const getEmailThreadsConnection = query(
 	}
 );
 
-export const getEmailThreadDetails = query(v.optional(v.string()), async (id) => {
-	if (!id) return;
-	const { fetch } = getRequestEvent();
-	const query = graphql(`
-		query EmailThreadDetails($id: ID!) {
-			node(id: $id) {
-				__typename
-				... on EmailThread {
-					...EmailThreadTitle
-					...EmailThreadAvatar
-					id
-					messages {
-						edges {
-							node {
-								...EmailMessageBubble
-								id
+export const getEmailThreadDetails = query(
+	v.optional(
+		v.object({
+			id: v.optional(v.pipe(v.string(), v.base64())),
+			messagesPagination: v.object({
+				first: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(30)),
+				after: v.optional(v.pipe(v.string(), v.trim(), v.base64())),
+			}),
+		})
+	),
+	async (args) => {
+		if (!args || !args.id) return;
+		const {
+			id,
+			messagesPagination: { first, after },
+		} = args;
+		const { fetch } = getRequestEvent();
+		const query = graphql(`
+			query EmailThreadDetails($id: ID!, $first: Int!, $after: String) {
+				node(id: $id) {
+					__typename
+					... on EmailThread {
+						...EmailThreadTitle
+						...EmailThreadAvatar
+						id
+						messages(first: $first, after: $after) {
+							edges {
+								node {
+									...EmailMessageBubble
+									id
+								}
+							}
+							pageInfo {
+								hasNextPage
+								endCursor
 							}
 						}
 					}
 				}
 			}
-		}
-	`);
-	const result = await graphqlRequest({
-		query,
-		fetch,
-		variables: {
-			id,
-		},
-	});
+		`);
+		const result = await graphqlRequest({
+			query,
+			fetch,
+			variables: {
+				id,
+				first,
+				after,
+			},
+		});
 
-	return result;
-});
+		return result;
+	}
+);

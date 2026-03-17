@@ -366,6 +366,11 @@ const EmailThreadRef = builder.drizzleNode("emailThreads", {
 			nullable: false,
 			edgesNullable: false,
 			nodeNullable: false,
+			query: () => ({
+				orderBy: {
+					createdAt: "asc",
+				},
+			}),
 		}),
 		unseenCount: t.exposeInt("unseenCount", { nullable: false }),
 	}),
