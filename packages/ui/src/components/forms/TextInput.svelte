@@ -34,7 +34,7 @@
 		id={name}
 		{name}
 		class={[
-			"input",
+			"input w-full",
 			{
 				"input-error": errors,
 			},

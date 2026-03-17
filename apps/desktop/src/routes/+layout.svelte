@@ -28,16 +28,19 @@
 	import type { LayoutData } from "./$types";
 
 	let { children, data }: { children: Snippet; data: LayoutData } = $props();
-
 	let viewer = $derived(data.viewer);
+
+	let authButtonsDisbled = $state(false);
 
 	let loginForm = createForm({
 		schema: loginSchema,
 	});
 	let authClient = getAuthClient({ baseURL: env.PUBLIC_BASE_URL });
 	const handleLogin: SubmitHandler<typeof loginSchema> = async ({ username, password }) => {
+		authButtonsDisbled = true;
 		const result = await authClient.signIn.username({ username, password });
 		if (result.error) {
+			authButtonsDisbled = false;
 			console.log(result.error);
 			return;
 		}
@@ -56,7 +59,7 @@
 <QueryClientProvider client={queryClient}>
 	{#if !viewer}
 		<div class="flex h-screen w-full items-center justify-center">
-			<Form of={loginForm} onsubmit={handleLogin}>
+			<Form of={loginForm} onsubmit={handleLogin} class="flex w-full max-w-sm flex-col gap-3">
 				<Field of={loginForm} path={["username"]}>
 					{#snippet children(field)}
 						<TextInput
@@ -81,7 +84,7 @@
 						/>
 					{/snippet}
 				</Field>
-				<button type="submit" class="btn btn-primary">Submit</button>
+				<button type="submit" class="btn btn-primary" disabled={authButtonsDisbled}>Submit</button>
 			</Form>
 		</div>
 	{:else}
@@ -149,9 +152,11 @@
 							<li>
 								<button
 									onclick={async () => {
+										authButtonsDisbled = true;
 										await authClient.signOut();
 										location.reload();
 									}}
+									disabled={authButtonsDisbled}
 								>
 									<SignOutIcon class="size-6" />Logout
 								</button>
