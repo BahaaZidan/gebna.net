@@ -10,13 +10,14 @@
 
 	import { createForm, Field, Form, type SubmitHandler } from "@formisch/svelte";
 	import { getAuthClient } from "@gebna/auth/client";
-	import { TextInput } from "@gebna/ui";
+	import { floatingDropdown, TextInput } from "@gebna/ui";
 	import { loginSchema } from "@gebna/vali";
 	import { QueryClient, QueryClientProvider } from "@tanstack/svelte-query";
 	import EnvelopeSimpleIcon from "phosphor-svelte/lib/EnvelopeSimpleIcon";
 	import EnvelopeSimpleOpenIcon from "phosphor-svelte/lib/EnvelopeSimpleOpenIcon";
 	import GearFineIcon from "phosphor-svelte/lib/GearFineIcon";
 	import MagnifyingGlassIcon from "phosphor-svelte/lib/MagnifyingGlassIcon";
+	import SignOutIcon from "phosphor-svelte/lib/SignOutIcon";
 	import { type Snippet } from "svelte";
 
 	import { browser } from "$app/environment";
@@ -33,12 +34,9 @@
 	let loginForm = createForm({
 		schema: loginSchema,
 	});
-
+	let authClient = getAuthClient({ baseURL: env.PUBLIC_BASE_URL });
 	const handleLogin: SubmitHandler<typeof loginSchema> = async ({ username, password }) => {
-		const result = await getAuthClient({ baseURL: env.PUBLIC_BASE_URL }).signIn.username({
-			username,
-			password,
-		});
+		const result = await authClient.signIn.username({ username, password });
 		if (result.error) {
 			console.log(result.error);
 			return;
@@ -139,15 +137,27 @@
 							/>
 						</a>
 					</div>
-					<div class="tooltip tooltip-right w-16" data-tip="Profile">
-						<button class="btn w-16 btn-ghost">
+					<details class="dropdown" use:floatingDropdown={{ placement: "top-start", offsetPx: 0 }}>
+						<summary class="btn w-16 btn-ghost">
 							<img
 								class="size-8"
 								src={viewer.uploadedAvatar || viewer.avatarPlaceholder}
 								alt="viewer avatar"
 							/>
-						</button>
-					</div>
+						</summary>
+						<ul class="dropdown-content menu z-1 w-52 rounded-box bg-base-100 p-2 shadow-sm">
+							<li>
+								<button
+									onclick={async () => {
+										await authClient.signOut();
+										location.reload();
+									}}
+								>
+									<SignOutIcon class="size-6" />Logout
+								</button>
+							</li>
+						</ul>
+					</details>
 				</div>
 			</div>
 			<div class="flex h-full min-h-0 w-full flex-col overflow-hidden">
