@@ -11,7 +11,8 @@
 	import { createForm, Field, Form, type SubmitHandler } from "@formisch/svelte";
 	import { getAuthClient } from "@gebna/auth/client";
 	import { floatingDropdown, TextInput } from "@gebna/ui";
-	import { loginSchema } from "@gebna/vali";
+	import { generateImagePlaceholder } from "@gebna/utils";
+	import { loginSchema, registerSchema } from "@gebna/vali";
 	import { QueryClient, QueryClientProvider } from "@tanstack/svelte-query";
 	import EnvelopeSimpleIcon from "phosphor-svelte/lib/EnvelopeSimpleIcon";
 	import EnvelopeSimpleOpenIcon from "phosphor-svelte/lib/EnvelopeSimpleOpenIcon";
@@ -28,14 +29,22 @@
 	import type { LayoutData } from "./$types";
 
 	let { children, data }: { children: Snippet; data: LayoutData } = $props();
+	const queryClient = new QueryClient({
+		defaultOptions: {
+			queries: {
+				enabled: browser,
+			},
+		},
+	});
 	let viewer = $derived(data.viewer);
+	let authClient = getAuthClient({ baseURL: env.PUBLIC_BASE_URL });
 
 	let authButtonsDisbled = $state(false);
+	let signingIn = $state(true);
 
 	let loginForm = createForm({
 		schema: loginSchema,
 	});
-	let authClient = getAuthClient({ baseURL: env.PUBLIC_BASE_URL });
 	const handleLogin: SubmitHandler<typeof loginSchema> = async ({ username, password }) => {
 		authButtonsDisbled = true;
 		const result = await authClient.signIn.username({ username, password });
@@ -47,45 +56,130 @@
 		location.reload();
 	};
 
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {
-				enabled: browser,
-			},
-		},
+	let signUpForm = createForm({
+		schema: registerSchema,
 	});
+	const handleSignUp: SubmitHandler<typeof registerSchema> = async ({
+		username,
+		password,
+		name,
+	}) => {
+		authButtonsDisbled = true;
+		const result = await authClient.signUp.email({
+			username,
+			name,
+			password,
+			email: `${username}@gebna.net`,
+			// @ts-expect-error don't worry about it
+			avatarPlaceholder: generateImagePlaceholder(name || username),
+		});
+		if (result.error) {
+			authButtonsDisbled = false;
+			console.log(result.error);
+			return;
+		}
+		location.reload();
+	};
 </script>
 
 <QueryClientProvider client={queryClient}>
 	{#if !viewer}
-		<div class="flex h-screen w-full items-center justify-center">
-			<Form of={loginForm} onsubmit={handleLogin} class="flex w-full max-w-sm flex-col gap-3">
-				<Field of={loginForm} path={["username"]}>
-					{#snippet children(field)}
-						<TextInput
-							{...field.props}
-							input={field.input}
-							errors={field.errors}
-							type="text"
-							label="Username"
-							required
-						/>
-					{/snippet}
-				</Field>
-				<Field of={loginForm} path={["password"]}>
-					{#snippet children(field)}
-						<TextInput
-							{...field.props}
-							input={field.input}
-							errors={field.errors}
-							type="password"
-							label="Password"
-							required
-						/>
-					{/snippet}
-				</Field>
-				<button type="submit" class="btn btn-primary" disabled={authButtonsDisbled}>Submit</button>
-			</Form>
+		<div class="flex h-screen w-full flex-col items-center justify-center">
+			<h1 class="mb-2 font-mono text-4xl">
+				{signingIn ? "login to" : "join"}
+				<span>gebna</span>
+			</h1>
+			<div>
+				or <button class="link" onclick={() => (signingIn = !signingIn)}>
+					{signingIn ? "create an account" : "login"}
+				</button>
+			</div>
+
+			{#if signingIn}
+				<Form of={loginForm} onsubmit={handleLogin} class="flex w-full max-w-sm flex-col gap-3">
+					<Field of={loginForm} path={["username"]}>
+						{#snippet children(field)}
+							<TextInput
+								{...field.props}
+								input={field.input}
+								errors={field.errors}
+								type="text"
+								label="Username"
+								required
+							/>
+						{/snippet}
+					</Field>
+					<Field of={loginForm} path={["password"]}>
+						{#snippet children(field)}
+							<TextInput
+								{...field.props}
+								input={field.input}
+								errors={field.errors}
+								type="password"
+								label="Password"
+								required
+							/>
+						{/snippet}
+					</Field>
+					<button type="submit" class="btn btn-primary" disabled={authButtonsDisbled}>
+						Submit
+					</button>
+				</Form>
+			{:else}
+				<Form of={signUpForm} onsubmit={handleSignUp} class="flex w-full max-w-sm flex-col gap-3">
+					<Field of={signUpForm} path={["name"]}>
+						{#snippet children(field)}
+							<TextInput
+								{...field.props}
+								input={field.input}
+								errors={field.errors}
+								type="text"
+								label="Name"
+								required
+							/>
+						{/snippet}
+					</Field>
+					<Field of={signUpForm} path={["username"]}>
+						{#snippet children(field)}
+							<TextInput
+								{...field.props}
+								input={field.input}
+								errors={field.errors}
+								type="text"
+								label="Username"
+								required
+							/>
+						{/snippet}
+					</Field>
+					<Field of={signUpForm} path={["password"]}>
+						{#snippet children(field)}
+							<TextInput
+								{...field.props}
+								input={field.input}
+								errors={field.errors}
+								type="password"
+								label="Password"
+								required
+							/>
+						{/snippet}
+					</Field>
+					<Field of={signUpForm} path={["passwordConfirm"]}>
+						{#snippet children(field)}
+							<TextInput
+								{...field.props}
+								input={field.input}
+								errors={field.errors}
+								type="password"
+								label="Confirm Password"
+								required
+							/>
+						{/snippet}
+					</Field>
+					<button type="submit" class="btn btn-primary" disabled={authButtonsDisbled}>
+						Submit
+					</button>
+				</Form>
+			{/if}
 		</div>
 	{:else}
 		<main
