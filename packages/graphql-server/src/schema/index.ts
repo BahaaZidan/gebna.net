@@ -1,4 +1,4 @@
-import { getTableConfig, relations } from "@gebna/db";
+import { and, dbSchema, eq, getTableConfig, relations } from "@gebna/db";
 import { rehypeEnforcePalette } from "@gebna/utils";
 import { ALLOWED_ATTACHMENT_MIME_TYPES } from "@gebna/vali";
 import SchemaBuilder from "@pothos/core";
@@ -417,6 +417,37 @@ builder.queryType({
 			type: ViewerRef,
 			resolve(query, parent, args, ctx, info) {
 				return ctx.db.query.users.findFirst(query({ where: { id: ctx.viewer.id } }));
+			},
+		}),
+	}),
+});
+
+builder.mutationType({
+	fields: (t) => ({
+		seeEmailThread: t.drizzleField({
+			type: EmailThreadRef,
+			args: {
+				id: t.arg.globalID({ required: true }),
+			},
+			resolve: async (query, parent, args, ctx) => {
+				return await ctx.db.transaction(async (tx) => {
+					const [thread] = await tx
+						.update(dbSchema.emailThreads)
+						.set({ unseenCount: 0 })
+						.where(
+							and(
+								eq(dbSchema.emailThreads.ownerId, ctx.viewer.id),
+								eq(dbSchema.emailThreads.id, args.id.id)
+							)
+						)
+						.returning();
+					if (!thread) return;
+					await tx
+						.update(dbSchema.emailMessages)
+						.set({ unseen: false })
+						.where(eq(dbSchema.emailMessages.threadId, thread.id));
+					return thread;
+				});
 			},
 		}),
 	}),

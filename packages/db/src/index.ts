@@ -7,7 +7,7 @@ import * as schema from "./schema.js";
 
 export { schema as dbSchema, relations, getTableConfig };
 export * from "./utils.js";
-export { eq } from "drizzle-orm";
+export { eq, and, or } from "drizzle-orm";
 
 export const getDB = ({
 	url,

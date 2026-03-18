@@ -92,6 +92,16 @@ export type EmailThreadMessagesConnectionEdge = {
   node: EmailMessage;
 };
 
+export type Mutation = {
+  __typename?: 'Mutation';
+  seeEmailThread?: Maybe<EmailThread>;
+};
+
+
+export type MutationSeeEmailThreadArgs = {
+  id: Scalars['ID']['input'];
+};
+
 export type Node = {
   id: Scalars['ID']['output'];
 };

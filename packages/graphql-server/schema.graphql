@@ -64,6 +64,10 @@ type EmailThreadMessagesConnectionEdge {
   node: EmailMessage!
 }
 
+type Mutation {
+  seeEmailThread(id: ID!): EmailThread
+}
+
 interface Node {
   id: ID!
 }
