@@ -44,7 +44,7 @@
 </script>
 
 <div class="flex h-full min-h-0">
-	<div class="flex h-full w-[40%] max-w-[40%] min-w-xs flex-col gap-1 border-r py-3">
+	<div class="flex h-full w-[50%] max-w-[50%] min-w-md flex-col gap-1 border-r py-3">
 		<div class="flex justify-between px-5">
 			<h1 class="font-mono text-2xl font-bold">gebna</h1>
 			<div class="flex">
@@ -57,14 +57,14 @@
 					href={resolve("/email/[thread_id]", { thread_id: node.id })}
 					class={[
 						"group flex w-full items-center gap-3 px-5 py-3 hover:bg-base-200",
-						page.url.pathname === (`/email/${node.id}` as Pathname) ? "bg-base-200" : null,
+						page.url.pathname === (`/email/${node.id}` as Pathname) ? "bg-base-300" : null,
 					]}
 				>
 					<ThreadAvatar thread={node} class="size-12 min-h-12 min-w-12" />
 					<div class="flex w-full flex-col gap-1">
 						<div class="flex items-baseline justify-between">
-							<div class="line-clamp-1 font-semibold">
-								<ThreadTitle thread={node} />
+							<div class="line-clamp-1 min-w-0 text-sm wrap-anywhere text-gray-400">
+								{node.lastMessage.from.name || node.lastMessage.from.address}
 							</div>
 							<div
 								class={[
@@ -76,14 +76,19 @@
 							</div>
 						</div>
 						<div class="flex min-h-6 justify-between">
-							<div class="line-clamp-1 min-w-0 text-sm wrap-anywhere text-gray-400">
-								{node.lastMessage.snippet}
+							<div class="line-clamp-1 font-semibold">
+								<ThreadTitle thread={node} />
 							</div>
 							<div class="flex gap-1">
 								{#if node.unseenCount}
 									<div class="badge badge-primary">{node.unseenCount}</div>
 								{/if}
-								<button class="btn hidden btn-ghost btn-xs group-hover:inline-flex">
+								<button
+									class="btn hidden btn-ghost btn-xs group-hover:inline-flex"
+									onclick={(e) => {
+										e.preventDefault();
+									}}
+								>
 									<CaretDownIcon class="size-5.5" />
 								</button>
 							</div>
