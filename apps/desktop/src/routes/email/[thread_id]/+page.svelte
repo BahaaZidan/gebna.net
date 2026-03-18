@@ -9,11 +9,11 @@
 
 	const pageSize = 15;
 	type MessagesParams = Parameters<typeof getEmailThreadDetails>[number];
-	let initialPageParam: MessagesParams = {
+	let initialPageParam: MessagesParams = $derived({
 		id: page.params.thread_id,
 		messagesPagination: { first: pageSize },
-	};
-	let initialPage = await getEmailThreadDetails(initialPageParam);
+	});
+	let initialPage = $derived(await getEmailThreadDetails(initialPageParam));
 	let query = createInfiniteQuery(() => ({
 		queryKey: ["email_thread_details", page.params.thread_id],
 		queryFn: async ({ pageParam }: { pageParam: MessagesParams }) =>

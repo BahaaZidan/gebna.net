@@ -6,6 +6,10 @@
 		".": {
 			"types": "./src/index.ts",
 			"default": "./dist/index.js"
+		},
+		"./generate-image-placeholder": {
+			"types": "./src/generate-image-placeholder.ts",
+			"default": "./dist/generate-image-placeholder.js"
 		}
 	},
 	"scripts": {

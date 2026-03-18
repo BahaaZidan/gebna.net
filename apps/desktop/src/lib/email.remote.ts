@@ -27,6 +27,11 @@ export const getEmailThreadsConnection = query(
 									id
 									snippet
 									createdAt
+									from {
+										id
+										name
+										address
+									}
 								}
 							}
 						}

@@ -11,7 +11,7 @@
 	import { createForm, Field, Form, type SubmitHandler } from "@formisch/svelte";
 	import { getAuthClient } from "@gebna/auth/client";
 	import { floatingDropdown, TextInput } from "@gebna/ui";
-	import { generateImagePlaceholder } from "@gebna/utils";
+	import { generateImagePlaceholder } from "@gebna/utils/generate-image-placeholder";
 	import { loginSchema, registerSchema } from "@gebna/vali";
 	import { QueryClient, QueryClientProvider } from "@tanstack/svelte-query";
 	import EnvelopeSimpleIcon from "phosphor-svelte/lib/EnvelopeSimpleIcon";
@@ -197,7 +197,7 @@
 				<div class="flex w-16 flex-col gap-2">
 					<div class="tooltip tooltip-right w-16" data-tip="Search">
 						<a
-							class={["btn w-16", page.url.pathname === "/" ? "btn-active" : "btn-ghost"]}
+							class={["btn w-16", page.url.pathname === "/" ? "btn-accent" : "btn-ghost"]}
 							href={resolve("/")}
 						>
 							<MagnifyingGlassIcon
@@ -210,7 +210,7 @@
 						<a
 							class={[
 								"btn w-16",
-								page.url.pathname.includes("/email") ? "btn-active" : "btn-ghost",
+								page.url.pathname.includes("/email") ? "btn-accent" : "btn-ghost",
 							]}
 							href={resolve("/email")}
 						>
@@ -225,7 +225,7 @@
 				<div class="flex w-16 flex-col gap-2">
 					<div class="tooltip tooltip-right w-16" data-tip="Settings">
 						<a
-							class={["btn w-16", page.url.pathname === "/settings" ? "btn-active" : "btn-ghost"]}
+							class={["btn w-16", page.url.pathname === "/settings" ? "btn-accent" : "btn-ghost"]}
 							href={resolve("/settings")}
 						>
 							<GearFineIcon

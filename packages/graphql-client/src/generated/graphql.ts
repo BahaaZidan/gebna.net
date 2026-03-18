@@ -157,7 +157,7 @@ export type ViewerEmailThreadsListQueryQueryVariables = Exact<{
 
 
 export type ViewerEmailThreadsListQueryQuery = { __typename?: 'Query', viewer?: { __typename?: 'Viewer', id: string, emailThreads: { __typename?: 'ViewerEmailThreadsConnection', edges: Array<{ __typename?: 'ViewerEmailThreadsConnectionEdge', cursor: string, node: (
-          { __typename?: 'EmailThread', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string } }
+          { __typename?: 'EmailThread', id: string, title?: string | null, unseenCount: number, lastMessage: { __typename?: 'EmailMessage', id: string, snippet?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, name: string, address: string } } }
           & { ' $fragmentRefs'?: { 'EmailThreadTitleFragment': EmailThreadTitleFragment;'EmailThreadAvatarFragment': EmailThreadAvatarFragment } }
         ) }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } | null };
 
@@ -270,6 +270,11 @@ export const ViewerEmailThreadsListQueryDocument = new TypedDocumentString(`
             id
             snippet
             createdAt
+            from {
+              id
+              name
+              address
+            }
           }
         }
       }
