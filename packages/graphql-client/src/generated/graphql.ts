@@ -183,13 +183,20 @@ export type EmailThreadDetailsQuery = { __typename?: 'Query', node?:
     | { __typename: 'EmailAttachment' }
     | { __typename: 'EmailMessage' }
     | (
-      { __typename: 'EmailThread', id: string, messages: { __typename?: 'EmailThreadMessagesConnection', edges: Array<{ __typename?: 'EmailThreadMessagesConnectionEdge', node: (
+      { __typename: 'EmailThread', id: string, unseenCount: number, messages: { __typename?: 'EmailThreadMessagesConnection', edges: Array<{ __typename?: 'EmailThreadMessagesConnectionEdge', node: (
             { __typename?: 'EmailMessage', id: string }
             & { ' $fragmentRefs'?: { 'EmailMessageBubbleFragment': EmailMessageBubbleFragment } }
           ) }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } }
       & { ' $fragmentRefs'?: { 'EmailThreadTitleFragment': EmailThreadTitleFragment;'EmailThreadAvatarFragment': EmailThreadAvatarFragment } }
     )
    | null };
+
+export type SeeEmailThreadMutationMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type SeeEmailThreadMutationMutation = { __typename?: 'Mutation', seeEmailThread?: { __typename?: 'EmailThread', id: string, unseenCount: number } | null };
 
 export type EmailMessageBubbleFragment = { __typename?: 'EmailMessage', id: string, html?: string | null, plaintext?: string | null, createdAt: string, from: { __typename?: 'EmailAddressRef', id: string, isSelf: boolean, name: string, avatar: string, address: string }, attachments: Array<{ __typename?: 'EmailAttachment', id: string, filename?: string | null, sizeInBytes?: number | null, description?: string | null, category: EmailAttachmentFileCategory, url?: string | null }> } & { ' $fragmentName'?: 'EmailMessageBubbleFragment' };
 
@@ -324,6 +331,7 @@ export const EmailThreadDetailsDocument = new TypedDocumentString(`
       ...EmailThreadTitle
       ...EmailThreadAvatar
       id
+      unseenCount
       messages(first: $first, after: $after) {
         edges {
           node {
@@ -381,3 +389,11 @@ fragment EmailThreadTitle on EmailThread {
     name
   }
 }`) as unknown as TypedDocumentString<EmailThreadDetailsQuery, EmailThreadDetailsQueryVariables>;
+export const SeeEmailThreadMutationDocument = new TypedDocumentString(`
+    mutation SeeEmailThreadMutation($id: ID!) {
+  seeEmailThread(id: $id) {
+    id
+    unseenCount
+  }
+}
+    `) as unknown as TypedDocumentString<SeeEmailThreadMutationMutation, SeeEmailThreadMutationMutationVariables>;
