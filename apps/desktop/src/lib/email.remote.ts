@@ -81,6 +81,7 @@ export const getEmailThreadDetails = query(
 						...EmailThreadTitle
 						...EmailThreadAvatar
 						id
+						unseenCount
 						messages(first: $first, after: $after) {
 							edges {
 								node {

@@ -1,14 +1,19 @@
 <script lang="ts">
+	import { graphql, graphqlRequest } from "@gebna/graphql-client";
 	import { MessageBubble, ThreadTitle } from "@gebna/ui";
-	import { createInfiniteQuery } from "@tanstack/svelte-query";
+	import { createInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/svelte-query";
 	import DotsThreeOutlineVerticalIcon from "phosphor-svelte/lib/DotsThreeOutlineVerticalIcon";
 
 	import { page } from "$app/state";
 
-	import { getEmailThreadDetails } from "$lib/email.remote";
+	import { getEmailThreadDetails, getEmailThreadsConnection } from "$lib/email.remote";
 
 	const pageSize = 15;
+	type EmailThreadsConnectionData = InfiniteData<
+		Awaited<ReturnType<typeof getEmailThreadsConnection>>
+	>;
 	type MessagesParams = Parameters<typeof getEmailThreadDetails>[number];
+	const queryClient = useQueryClient();
 	let initialPageParam: MessagesParams = $derived({
 		id: page.params.thread_id,
 		messagesPagination: { first: pageSize },
@@ -45,6 +50,74 @@
 			page?.data?.node?.__typename !== "EmailThread" ? [] : page.data.node.messages.edges
 		) ?? []
 	);
+
+	$effect(() => {
+		if (!thread) return;
+		let timeout: NodeJS.Timeout | null;
+		if (thread.unseenCount > 0) {
+			timeout = setTimeout(async () => {
+				const SeeEmailThreadMutation = graphql(`
+					mutation SeeEmailThreadMutation($id: ID!) {
+						seeEmailThread(id: $id) {
+							id
+							unseenCount
+						}
+					}
+				`);
+				let result = await graphqlRequest({
+					fetch,
+					query: SeeEmailThreadMutation,
+					variables: { id: thread.id },
+				});
+				let seenThread = result.data?.seeEmailThread;
+				if (!seenThread) return;
+				queryClient.setQueryData<EmailThreadsConnectionData>(
+					["email_threads_connection"],
+					(data) => {
+						if (!data) return data;
+						let updated = false;
+						let pages = data.pages.map((page) => {
+							let edges = page.data?.viewer?.emailThreads.edges;
+							if (!edges) return page;
+							let pageUpdated = false;
+							let nextEdges = edges.map((edge) => {
+								if (edge.node.id !== seenThread.id) return edge;
+								updated = true;
+								pageUpdated = true;
+								return {
+									...edge,
+									node: {
+										...edge.node,
+										unseenCount: seenThread.unseenCount,
+									},
+								};
+							});
+							if (!pageUpdated) return page;
+							return {
+								...page,
+								data: page.data?.viewer
+									? {
+											...page.data,
+											viewer: {
+												...page.data.viewer,
+												emailThreads: {
+													...page.data.viewer.emailThreads,
+													edges: nextEdges,
+												},
+											},
+										}
+									: page.data,
+							};
+						});
+						return updated ? { ...data, pages } : data;
+					}
+				);
+			}, 2000);
+		}
+		return () => {
+			if (timeout) clearTimeout(timeout);
+		};
+	});
 </script>
 
 {#if thread}
