@@ -64,31 +64,6 @@ export function getAuthServer({
 			},
 		},
 
-		databaseHooks: {
-			user: {
-				create: {
-					async after(user) {
-						await db.transaction(async (tx) => {
-							const [addressRecord] = await tx
-								.insert(dbSchema.emailAddresses)
-								.values({
-									name: user.name,
-									address: user.email,
-									avatarPlaceholder: generateImagePlaceholder(user.name || user.email),
-								})
-								.returning();
-							if (!addressRecord) throw new Error("something_went_wrong");
-
-							await tx.insert(dbSchema.emailAddressRefs).values({
-								ownerId: user.id,
-								address: addressRecord.address,
-							});
-						});
-					},
-				},
-			},
-		},
-
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
 				if (ctx.path !== "/sign-up/email" && ctx.path !== "/update-user") return;
@@ -96,6 +71,51 @@ export function getAuthServer({
 				if (!ctx.body.username) {
 					throw new APIError("BAD_REQUEST", {
 						message: "Username is required",
+					});
+				}
+			}),
+			after: createAuthMiddleware(async (ctx) => {
+				if (ctx.path !== "/sign-up/email") return;
+
+				const user = ctx.context.session?.user;
+				if (!user) return;
+
+				try {
+					await db.transaction(async (tx) => {
+						await tx
+							.insert(dbSchema.emailAddresses)
+							.values({
+								name: user.name,
+								address: user.email,
+								avatarPlaceholder: generateImagePlaceholder(user.name || user.email),
+							})
+							.onConflictDoNothing();
+
+						await tx
+							.insert(dbSchema.emailAddressRefs)
+							.values({
+								ownerId: user.id,
+								address: user.email,
+							})
+							.onConflictDoNothing();
+					});
+				} catch (error) {
+					ctx.context.logger.error("Failed to create signup email identity", error);
+
+					// Drop any cookies prepared by sign-up before we return the failure.
+					ctx.context.responseHeaders = new Headers();
+
+					try {
+						await ctx.context.internalAdapter.deleteUser(user.id);
+					} catch (cleanupError) {
+						ctx.context.logger.error(
+							"Failed to clean up user after email identity creation failed",
+							cleanupError
+						);
+					}
+
+					throw new APIError("UNPROCESSABLE_ENTITY", {
+						message: "Failed to create user",
 					});
 				}
 			}),

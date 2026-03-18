@@ -137,6 +137,9 @@ importers:
       '@gebna/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@gebna/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@gebna/vali':
         specifier: workspace:*
         version: link:../../packages/vali

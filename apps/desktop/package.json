@@ -25,6 +25,7 @@
 		"@gebna/graphql-server": "workspace:*",
 		"@gebna/ui": "workspace:*",
 		"@gebna/vali": "workspace:*",
+		"@gebna/utils": "workspace:*",
 		"@tanstack/svelte-query": "catalog:"
 	},
 	"devDependencies": {
