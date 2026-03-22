@@ -12,11 +12,8 @@ import clsx from "clsx";
 import { Suspense } from "react";
 import { graphql, useLazyLoadQuery, usePaginationFragment } from "react-relay";
 
-import {
-	formatInboxDate,
-	ThreadAvatar,
-	ThreadTitle,
-} from "#/lib/email/components";
+import { ThreadAvatar, ThreadTitle } from "#/lib/email/components";
+import { formatInboxDate } from "#/lib/email/format";
 
 import type { routePaginationQuery } from "./__generated__/routePaginationQuery.graphql";
 import type { routeQuery } from "./__generated__/routeQuery.graphql";
@@ -147,7 +144,7 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 							>
 								<ThreadAvatar
 									thread={thread}
-									className="size-12 min-h-12 min-w-12 bg-accent-content rounded-xs"
+									className="size-12 min-h-12 min-w-12 bg-accent-content"
 								/>
 								<div className="flex min-w-0 flex-1 flex-col gap-1">
 									<div className="flex items-baseline justify-between gap-3">
