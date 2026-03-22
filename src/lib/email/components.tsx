@@ -240,6 +240,10 @@ function EmailHtml({ html }: { html: string }) {
 
 		const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: "open" });
 		shadowRoot.innerHTML = html;
+
+		return () => {
+			shadowRoot.replaceChildren();
+		};
 	}, [html]);
 
 	return <div ref={hostRef} className="w-full overflow-hidden" />;
