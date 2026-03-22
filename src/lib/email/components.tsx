@@ -1,3 +1,13 @@
+import { CalendarDotIcon } from "@phosphor-icons/react/dist/ssr/CalendarDot";
+import { FileIcon } from "@phosphor-icons/react/dist/ssr/File";
+import { FileArchiveIcon } from "@phosphor-icons/react/dist/ssr/FileArchive";
+import { FilePdfIcon } from "@phosphor-icons/react/dist/ssr/FilePdf";
+import { GridNineIcon } from "@phosphor-icons/react/dist/ssr/GridNine";
+import { ImageIcon } from "@phosphor-icons/react/dist/ssr/Image";
+import { MicrosoftWordLogoIcon } from "@phosphor-icons/react/dist/ssr/MicrosoftWordLogo";
+import { PresentationChartIcon } from "@phosphor-icons/react/dist/ssr/PresentationChart";
+import { VideoIcon } from "@phosphor-icons/react/dist/ssr/Video";
+import { WaveformIcon } from "@phosphor-icons/react/dist/ssr/Waveform";
 import clsx from "clsx";
 import { useEffect, useRef } from "react";
 import { graphql, useFragment } from "react-relay";
@@ -208,18 +218,18 @@ export function MessageBubble({
 									key={attachment.id}
 									href={attachment.url ?? undefined}
 									download={attachment.filename ?? undefined}
-									className="flex min-w-56 max-w-full flex-col gap-1 rounded-box bg-base-200 px-4 py-3 transition-colors hover:bg-base-300"
+									className="flex min-w-56 max-w-full items-center gap-3 rounded-box bg-base-200 px-4 py-3 transition-colors hover:bg-base-300"
 								>
-									<div className="flex items-center justify-between gap-3">
+									<div className="shrink-0 text-base-content/70">
+										{renderAttachmentIcon(attachment.category)}
+									</div>
+									<div className="flex min-w-0 flex-1 flex-col gap-1">
 										<div className="line-clamp-1 font-medium">
 											{attachment.filename || "Attachment"}
 										</div>
-										<div className="badge badge-outline badge-sm">
-											{attachment.category}
+										<div className="line-clamp-2 text-sm text-base-content/70">
+											{attachment.description || size || "Download file"}
 										</div>
-									</div>
-									<div className="line-clamp-2 text-sm text-base-content/70">
-										{attachment.description || size || "Download file"}
 									</div>
 								</a>
 							);
@@ -229,6 +239,31 @@ export function MessageBubble({
 			</div>
 		</div>
 	);
+}
+
+function renderAttachmentIcon(category: string) {
+	switch (category) {
+		case "Archive":
+			return <FileArchiveIcon className="size-12" />;
+		case "Audio":
+			return <WaveformIcon className="size-12" />;
+		case "Video":
+			return <VideoIcon className="size-12" />;
+		case "PDF":
+			return <FilePdfIcon className="size-12" />;
+		case "Word":
+			return <MicrosoftWordLogoIcon className="size-12" />;
+		case "Slides":
+			return <PresentationChartIcon className="size-12" />;
+		case "Excel":
+			return <GridNineIcon className="size-12" />;
+		case "Image":
+			return <ImageIcon className="size-12" />;
+		case "Calendar":
+			return <CalendarDotIcon className="size-12" />;
+		default:
+			return <FileIcon className="size-12" />;
+	}
 }
 
 function EmailHtml({ html }: { html: string }) {
