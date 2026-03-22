@@ -1,0 +1,246 @@
+import clsx from "clsx";
+import { useEffect, useRef } from "react";
+import { graphql, useFragment } from "react-relay";
+
+import type { componentsMessageBubble$key } from "./__generated__/componentsMessageBubble.graphql";
+import type { componentsThreadAvatar$key } from "./__generated__/componentsThreadAvatar.graphql";
+import type { componentsThreadTitle$key } from "./__generated__/componentsThreadTitle.graphql";
+
+export function formatInboxDate(value: string): string {
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "";
+
+	const now = new Date();
+	const isSameDay =
+		date.getFullYear() === now.getFullYear() &&
+		date.getMonth() === now.getMonth() &&
+		date.getDate() === now.getDate();
+
+	if (isSameDay) {
+		return new Intl.DateTimeFormat(undefined, {
+			hour: "numeric",
+			minute: "2-digit",
+		})
+			.format(date)
+			.replace(/\s/g, "")
+			.toLowerCase();
+	}
+
+	if (date.getFullYear() === now.getFullYear()) {
+		return new Intl.DateTimeFormat(undefined, {
+			month: "short",
+			day: "numeric",
+		}).format(date);
+	}
+
+	return new Intl.DateTimeFormat("en-GB", {
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+	}).format(date);
+}
+
+function formatSizeInBytes(sizeInBytes: number): string {
+	if (sizeInBytes < 1024) return `${sizeInBytes} B`;
+
+	const kib = sizeInBytes / 1024;
+	if (kib < 1024) return `${roundTo2(kib)} KB`;
+
+	return `${roundTo2(kib / 1024)} MB`;
+}
+
+function roundTo2(value: number): string {
+	return `${Math.round(value * 100) / 100}`;
+}
+
+export function ThreadAvatar({
+	thread,
+	className,
+}: {
+	thread: componentsThreadAvatar$key;
+	className?: string;
+}) {
+	const data = useFragment(
+		graphql`
+			fragment componentsThreadAvatar on EmailThread {
+				id
+				avatar
+				title
+				participants {
+					id
+					avatar
+					isSelf
+					name
+					address
+				}
+			}
+		`,
+		thread,
+	);
+	const otherParticipants = data.participants.filter((participant) => {
+		return !participant.isSelf;
+	});
+	const avatar = data.avatar ?? otherParticipants[0]?.avatar;
+	const alt =
+		data.title ||
+		otherParticipants.map((participant) => participant.name).join(", ") ||
+		"Email thread";
+
+	return avatar ? (
+		<img
+			src={avatar}
+			alt={`${alt} avatar`}
+			className={clsx("rounded-box object-contain", className)}
+		/>
+	) : (
+		<div
+			className={clsx(
+				"rounded-box bg-base-300 text-center text-sm font-semibold uppercase",
+				className,
+			)}
+			aria-hidden="true"
+		>
+			{alt.slice(0, 2)}
+		</div>
+	);
+}
+
+export function ThreadTitle({
+	thread,
+	className,
+}: {
+	thread: componentsThreadTitle$key;
+	className?: string;
+}) {
+	const data = useFragment(
+		graphql`
+			fragment componentsThreadTitle on EmailThread {
+				id
+				title
+				participants {
+					id
+					isSelf
+					name
+				}
+			}
+		`,
+		thread,
+	);
+	const otherParticipants = data.participants.filter((participant) => {
+		return !participant.isSelf;
+	});
+
+	return (
+		<span className={clsx("wrap-anywhere", className)}>
+			{data.title ||
+				otherParticipants.map((participant) => participant.name).join(", ") ||
+				"Untitled thread"}
+		</span>
+	);
+}
+
+export function MessageBubble({
+	message,
+}: {
+	message: componentsMessageBubble$key;
+}) {
+	const data = useFragment(
+		graphql`
+			fragment componentsMessageBubble on EmailMessage {
+				id
+				html
+				plaintext
+				createdAt
+				from {
+					id
+					isSelf
+					name
+					avatar
+					address
+				}
+				attachments {
+					id
+					filename
+					sizeInBytes
+					description
+					category
+					url
+				}
+			}
+		`,
+		message,
+	);
+	const senderName = data.from.name || data.from.address;
+
+	return (
+		<div className="flex w-full items-start gap-4 p-3">
+			<div className="shrink-0">
+				<img
+					alt={`${senderName} avatar`}
+					src={data.from.avatar}
+					className="size-12 rounded-box object-cover"
+				/>
+			</div>
+			<div className="flex w-full min-w-0 flex-col gap-3">
+				<div className="flex flex-wrap items-baseline gap-2">
+					<div className="font-bold">{senderName}</div>
+					<time className="text-xs text-base-content/60">
+						{formatInboxDate(data.createdAt)}
+					</time>
+				</div>
+				{data.plaintext ? (
+					<pre className="font-sans text-sm leading-6 whitespace-pre-wrap text-base-content">
+						{data.plaintext}
+					</pre>
+				) : data.html ? (
+					<EmailHtml html={data.html} />
+				) : null}
+				{data.attachments.length ? (
+					<div className="flex flex-wrap gap-2">
+						{data.attachments.map((attachment) => {
+							const size =
+								typeof attachment.sizeInBytes === "number"
+									? formatSizeInBytes(attachment.sizeInBytes)
+									: null;
+
+							return (
+								<a
+									key={attachment.id}
+									href={attachment.url ?? undefined}
+									download={attachment.filename ?? undefined}
+									className="flex min-w-56 max-w-full flex-col gap-1 rounded-box bg-base-200 px-4 py-3 transition-colors hover:bg-base-300"
+								>
+									<div className="flex items-center justify-between gap-3">
+										<div className="line-clamp-1 font-medium">
+											{attachment.filename || "Attachment"}
+										</div>
+										<div className="badge badge-outline badge-sm">
+											{attachment.category}
+										</div>
+									</div>
+									<div className="line-clamp-2 text-sm text-base-content/70">
+										{attachment.description || size || "Download file"}
+									</div>
+								</a>
+							);
+						})}
+					</div>
+				) : null}
+			</div>
+		</div>
+	);
+}
+
+function EmailHtml({ html }: { html: string }) {
+	const hostRef = useRef<HTMLDivElement | null>(null);
+
+	useEffect(() => {
+		const host = hostRef.current;
+		if (!host) return;
+
+		const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+		shadowRoot.innerHTML = html;
+	}, [html]);
+
+	return <div ref={hostRef} className="w-full overflow-hidden" />;
+}

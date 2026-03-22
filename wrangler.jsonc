@@ -1,0 +1,29 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "gebna-net",
+	"compatibility_date": "2026-03-20",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": "src/server.ts",
+	"observability": {
+		"enabled": true,
+	},
+	"routes": [
+		{
+			"pattern": "gebna.net",
+			"custom_domain": true,
+		},
+	],
+	"queues": {
+		"producers": [
+			{
+				"queue": "gebna-queue-0",
+				"binding": "Q",
+			},
+		],
+		"consumers": [
+			{
+				"queue": "gebna-queue-0",
+			},
+		],
+	},
+}
