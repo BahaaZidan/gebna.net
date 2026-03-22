@@ -1,9 +1,12 @@
+import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
+import { NotePencilIcon } from "@phosphor-icons/react/dist/ssr/NotePencil";
 import {
 	createFileRoute,
 	Link,
 	Outlet,
 	useHydrated,
-	useMatchRoute,
+	useRouter,
+	useRouterState,
 } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Suspense } from "react";
@@ -65,7 +68,10 @@ function EmailThreadsLayoutQueryBoundary() {
 }
 
 function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
-	const matchRoute = useMatchRoute();
+	const router = useRouter();
+	const pathname = useRouterState({
+		select: (state) => state.location.pathname,
+	});
 	const { data, hasNext, isLoadingNext, loadNext } = usePaginationFragment<
 		routePaginationQuery,
 		routeViewer$key
@@ -111,19 +117,23 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 				<div className="flex items-center justify-between px-5">
 					<h1 className="font-mono text-2xl font-bold">gebna</h1>
 					<div className="tooltip tooltip-bottom" data-tip="New Mail">
-						<button type="button" className="btn btn-ghost px-3">
-							New Mail
+						<button
+							type="button"
+							className="btn btn-ghost p-2"
+							aria-label="New Mail"
+						>
+							<NotePencilIcon className="size-6" />
 						</button>
 					</div>
 				</div>
 				<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
 					{data.emailThreads.edges.map((edge) => {
 						const thread = edge.node;
-						const isActive = !!matchRoute({
+						const threadPath = router.buildLocation({
 							to: emailThreadRoute.to,
 							params: { thread_id: thread.id },
-							fuzzy: false,
-						});
+						}).pathname;
+						const isActive = pathname === threadPath;
 
 						return (
 							<Link
@@ -166,9 +176,16 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 													{thread.unseenCount}
 												</div>
 											) : null}
-											<span className="hidden text-base-content/50 group-hover:inline-flex">
-												▾
-											</span>
+											<button
+												type="button"
+												className="btn hidden btn-ghost btn-xs group-hover:inline-flex"
+												aria-label="Thread options"
+												onClick={(event) => {
+													event.preventDefault();
+												}}
+											>
+												<CaretDownIcon className="size-5.5" />
+											</button>
 										</div>
 									</div>
 								</div>

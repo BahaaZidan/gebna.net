@@ -1,3 +1,4 @@
+import { DotsThreeOutlineVerticalIcon } from "@phosphor-icons/react/dist/ssr/DotsThreeOutlineVertical";
 import { createFileRoute, useHydrated } from "@tanstack/react-router";
 import { Suspense, useEffect } from "react";
 import {
@@ -125,9 +126,15 @@ function EmailThreadContent({ thread }: { thread: ThreadIdThread$key }) {
 				<div className="min-w-0 text-lg">
 					<ThreadTitle thread={data} />
 				</div>
-				<button type="button" className="btn btn-ghost btn-sm">
-					Options
-				</button>
+				<div className="tooltip tooltip-bottom" data-tip="Options">
+					<button
+						type="button"
+						className="btn btn-ghost p-2"
+						aria-label="Thread options"
+					>
+						<DotsThreeOutlineVerticalIcon className="size-5.5" weight="fill" />
+					</button>
+				</div>
 			</div>
 			<div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
 				{data.messages.edges.map((edge, index) => {
