@@ -6,8 +6,7 @@ import { RelayEnvironmentProvider } from "react-relay";
 import { Environment, Network } from "relay-runtime";
 import type { FetchFunction } from "relay-runtime";
 
-import { getViewer } from "#/lib/auth/viewer";
-import type { Viewer } from "#/lib/auth/viewer";
+import { getViewer, type Viewer } from "#/lib/auth/viewer";
 
 import appCss from "../styles.css?url";
 
