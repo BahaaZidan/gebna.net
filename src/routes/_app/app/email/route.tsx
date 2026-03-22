@@ -147,27 +147,37 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 							>
 								<ThreadAvatar
 									thread={thread}
-									className="size-12 min-h-12 min-w-12"
+									className="size-12 min-h-12 min-w-12 bg-accent-content rounded-xs"
 								/>
 								<div className="flex min-w-0 flex-1 flex-col gap-1">
 									<div className="flex items-baseline justify-between gap-3">
-										<div className="line-clamp-1 min-w-0 text-sm text-base-content/60">
+										<div
+											className={clsx(
+												"line-clamp-1 min-w-0 text-sm",
+												thread.unseenCount > 0 ? "" : "text-base-content/60",
+											)}
+										>
 											{thread.lastMessage.from.name ||
 												thread.lastMessage.from.address}
 										</div>
 										<div
 											className={clsx(
 												"mx-px text-xs whitespace-nowrap",
-												thread.unseenCount
-													? "text-primary"
-													: "text-base-content/50",
+												thread.unseenCount ? "" : "text-base-content/50",
 											)}
 										>
 											{formatInboxDate(thread.lastMessage.createdAt)}
 										</div>
 									</div>
 									<div className="flex min-h-6 items-center justify-between gap-3">
-										<div className="line-clamp-1 min-w-0 font-semibold">
+										<div
+											className={clsx(
+												"line-clamp-1 min-w-0",
+												thread.unseenCount > 0
+													? "font-semibold"
+													: "text-base-content/60",
+											)}
+										>
 											<ThreadTitle thread={thread} />
 										</div>
 										<div className="flex shrink-0 items-center gap-1">

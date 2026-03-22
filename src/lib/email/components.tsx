@@ -188,7 +188,7 @@ export function MessageBubble({
 				<img
 					alt={`${senderName} avatar`}
 					src={data.from.avatar}
-					className="size-12 rounded-box object-cover"
+					className="size-12 bg-accent-content object-cover"
 				/>
 			</div>
 			<div className="flex w-full min-w-0 flex-col gap-3">
