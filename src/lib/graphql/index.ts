@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { createGraphQLError, createYoga } from "graphql-yoga";
 
 import type { Viewer } from "#/lib/auth/viewer";
-import { db } from "#/lib/db";
+import { db } from "#/lib/db/client";
 
 import { executableSchema } from "./schema/index.js";
 import type { GraphQLResolverContext } from "./types.js";

@@ -8,7 +8,8 @@ import { env } from "cloudflare:workers";
 import { ulid } from "ulid";
 import * as v from "valibot";
 
-import { db, dbSchema } from "#/lib/db";
+import { db } from "#/lib/db/client";
+import { dbSchema } from "#/lib/db";
 import { generateImagePlaceholder } from "#/lib/utils/users";
 
 import { authUserAdditionalFields } from "./viewer";
