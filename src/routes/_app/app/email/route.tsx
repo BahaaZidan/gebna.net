@@ -53,7 +53,7 @@ function EmailThreadsLayoutQueryBoundary() {
 			}
 		`,
 		{ first: PAGE_SIZE },
-		{ fetchPolicy: "store-and-network" },
+		{ fetchPolicy: "store-or-network" },
 	);
 
 	if (!data.viewer) {

@@ -50,7 +50,7 @@ function EmailThreadQueryBoundary() {
 			}
 		`,
 		{ id: thread_id, first: PAGE_SIZE },
-		{ fetchPolicy: "store-and-network" },
+		{ fetchPolicy: "store-or-network" },
 	);
 
 	if (!data.node || data.node.__typename !== "EmailThread") {
@@ -125,6 +125,7 @@ function EmailThreadContent({ thread }: { thread: ThreadIdThread$key }) {
 			<div className="flex shrink-0 items-center justify-between border-b p-3">
 				<div className="min-w-0 text-lg">
 					<ThreadTitle thread={data} />
+					lolo
 				</div>
 				<div className="tooltip tooltip-bottom" data-tip="Options">
 					<button
