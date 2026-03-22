@@ -200,24 +200,22 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 						);
 					})}
 					{hasNext ? (
-						<div className="px-5 pb-1">
-							<button
-								type="button"
-								className="btn w-full"
-								disabled={isLoadingNext}
-								onClick={() => {
-									loadNext(PAGE_SIZE);
-								}}
-							>
-								Load more
-								<span
-									className={clsx(
-										"loading loading-md loading-spinner",
-										isLoadingNext ? "visible" : "invisible",
-									)}
-								></span>
-							</button>
-						</div>
+						<button
+							type="button"
+							className="btn w-full"
+							disabled={isLoadingNext}
+							onClick={() => {
+								loadNext(PAGE_SIZE);
+							}}
+						>
+							Load more
+							<span
+								className={clsx(
+									"loading loading-md loading-spinner",
+									isLoadingNext ? "visible" : "invisible",
+								)}
+							></span>
+						</button>
 					) : null}
 				</div>
 			</div>
