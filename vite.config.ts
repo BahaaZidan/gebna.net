@@ -46,7 +46,11 @@ const config = defineConfig({
 		tsconfigPaths({ projects: ["./tsconfig.json"] }),
 		tailwindcss(),
 		cloudflare({ viteEnvironment: { name: "ssr" } }),
-		tanstackStart(),
+		tanstackStart({
+			router: {
+				routeFileIgnorePattern: "^__generated__$",
+			},
+		}),
 		viteReact({
 			babel: {
 				plugins: ["babel-plugin-react-compiler", "relay"],
