@@ -28,8 +28,8 @@ import { useState } from "react";
 
 import { authClient } from "#/lib/auth/client";
 
-import { Route as appIndexRoute } from "./app/index";
 import { Route as emailIndexRoute } from "./app/email/index";
+import { Route as appIndexRoute } from "./app/index";
 import { Route as settingsIndexRoute } from "./app/settings/index";
 
 export const Route = createFileRoute("/_app")({

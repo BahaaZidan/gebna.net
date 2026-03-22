@@ -5,7 +5,8 @@ import { fileTypeFromBuffer } from "file-type";
 import PostalMime from "postal-mime";
 import * as R from "ramda";
 
-import { db, dbSchema, increment } from "#/lib/db";
+import { db } from "#/lib/db/client";
+import { dbSchema, increment } from "#/lib/db";
 import {
 	ALLOWED_ATTACHMENT_MIME_TYPES,
 	extractMessageIdsFromPostalMimeValue,
