@@ -1,9 +1,9 @@
 import { NotePencilIcon } from "@phosphor-icons/react/dist/ssr/NotePencil";
 import { createFileRoute, Outlet, useHydrated } from "@tanstack/react-router";
-import clsx from "clsx";
 import { Suspense } from "react";
 import { graphql, useLazyLoadQuery, usePaginationFragment } from "react-relay";
 
+import { LoadNextButton } from "#/lib/components";
 import { ThreadListItem } from "#/lib/email/components";
 
 import type { routePaginationQuery } from "./__generated__/routePaginationQuery.graphql";
@@ -102,24 +102,13 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 					{data.emailThreads.edges.map(({ node }) => (
 						<ThreadListItem thread={node} />
 					))}
-					{hasNext ? (
-						<button
-							type="button"
-							className="btn w-full"
-							disabled={isLoadingNext}
-							onClick={() => {
-								loadNext(PAGE_SIZE);
-							}}
-						>
-							Load more
-							<span
-								className={clsx(
-									"loading loading-md loading-spinner",
-									isLoadingNext ? "visible" : "invisible",
-								)}
-							></span>
-						</button>
-					) : null}
+					<LoadNextButton
+						hasNext={hasNext}
+						isLoadingNext={isLoadingNext}
+						onClick={() => {
+							loadNext(PAGE_SIZE);
+						}}
+					/>
 				</div>
 			</div>
 			<div className="flex h-full min-h-0 w-full flex-col overflow-hidden">

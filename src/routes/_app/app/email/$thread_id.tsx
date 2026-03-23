@@ -14,6 +14,7 @@ import {
 	usePaginationFragment,
 } from "react-relay";
 
+import { LoadNextButton } from "#/lib/components";
 import { MessageBubble, ThreadTitle } from "#/lib/email/components";
 
 import type { ThreadIdPaginationQuery } from "./__generated__/ThreadIdPaginationQuery.graphql";
@@ -172,23 +173,13 @@ function EmailThreadContent({ thread }: { thread: ThreadIdThread$key }) {
 							</div>
 						);
 					})}
-					{hasNext ? (
-						<button
-							type="button"
-							className="btn w-full"
-							disabled={isLoadingNext}
-							onClick={() => {
-								loadNext(PAGE_SIZE);
-							}}
-						>
-							Load more
-							<span
-								className={`loading loading-md loading-spinner ${
-									isLoadingNext ? "visible" : "invisible"
-								}`}
-							></span>
-						</button>
-					) : null}
+					<LoadNextButton
+						hasNext={hasNext}
+						isLoadingNext={isLoadingNext}
+						onClick={() => {
+							loadNext(PAGE_SIZE);
+						}}
+					/>
 				</div>
 			</div>
 			{isSenderDetailsOpen ? (
