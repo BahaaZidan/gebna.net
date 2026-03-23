@@ -1,4 +1,5 @@
 import { CalendarDotIcon } from "@phosphor-icons/react/dist/ssr/CalendarDot";
+import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { FileIcon } from "@phosphor-icons/react/dist/ssr/File";
 import { FileArchiveIcon } from "@phosphor-icons/react/dist/ssr/FileArchive";
 import { FilePdfIcon } from "@phosphor-icons/react/dist/ssr/FilePdf";
@@ -9,12 +10,14 @@ import { PresentationChartIcon } from "@phosphor-icons/react/dist/ssr/Presentati
 import { ProhibitIcon } from "@phosphor-icons/react/dist/ssr/Prohibit";
 import { VideoIcon } from "@phosphor-icons/react/dist/ssr/Video";
 import { WaveformIcon } from "@phosphor-icons/react/dist/ssr/Waveform";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import clsx from "clsx";
 import { useEffect, useRef } from "react";
 import { graphql, useFragment } from "react-relay";
 
 import type { componentsMessageBubble$key } from "./__generated__/componentsMessageBubble.graphql";
 import type { componentsThreadAvatar$key } from "./__generated__/componentsThreadAvatar.graphql";
+import type { componentsThreadListItem$key } from "./__generated__/componentsThreadListItem.graphql";
 import type { componentsThreadTitle$key } from "./__generated__/componentsThreadTitle.graphql";
 import { formatInboxDate } from "./format";
 
@@ -115,6 +118,104 @@ export function ThreadTitle({
 				otherParticipants.map((participant) => participant.name).join(", ") ||
 				"Untitled thread"}
 		</span>
+	);
+}
+
+export function ThreadListItem(props: {
+	thread: componentsThreadListItem$key;
+}) {
+	const thread = useFragment(
+		graphql`
+			fragment componentsThreadListItem on EmailThread {
+				id
+				...componentsThreadAvatar
+				...componentsThreadTitle
+				unseenCount
+				lastMessage {
+					id
+					createdAt
+					from {
+						id
+						name
+						address
+					}
+				}
+			}
+		`,
+		props.thread,
+	);
+	const router = useRouter();
+	const pathname = useRouterState({
+		select: (state) => state.location.pathname,
+	});
+
+	const threadPath = router.buildLocation({
+		to: "/app/email/$thread_id",
+		params: { thread_id: thread.id },
+	}).pathname;
+	const isActive =
+		pathname === threadPath || pathname.startsWith(`${threadPath}/`);
+
+	return (
+		<Link
+			key={thread.id}
+			to="/app/email/$thread_id"
+			params={{ thread_id: thread.id }}
+			className={clsx(
+				"group flex w-full items-center gap-3 px-5 py-3 hover:bg-base-200",
+				isActive ? "bg-base-300" : null,
+			)}
+		>
+			<ThreadAvatar
+				thread={thread}
+				className="size-12 min-h-12 min-w-12 bg-accent-content"
+			/>
+			<div className="flex min-w-0 flex-1 flex-col gap-1">
+				<div className="flex items-baseline justify-between gap-3">
+					<div
+						className={clsx(
+							"line-clamp-1 min-w-0 text-sm",
+							thread.unseenCount > 0 ? "" : "text-base-content/60",
+						)}
+					>
+						{thread.lastMessage.from.name || thread.lastMessage.from.address}
+					</div>
+					<div
+						className={clsx(
+							"mx-px text-xs whitespace-nowrap",
+							thread.unseenCount ? "" : "text-base-content/50",
+						)}
+					>
+						{formatInboxDate(thread.lastMessage.createdAt)}
+					</div>
+				</div>
+				<div className="flex min-h-6 items-center justify-between gap-3">
+					<div
+						className={clsx(
+							"line-clamp-1 min-w-0",
+							thread.unseenCount > 0 ? "font-semibold" : "text-base-content/60",
+						)}
+					>
+						<ThreadTitle thread={thread} />
+					</div>
+					<div className="flex shrink-0 items-center gap-1">
+						{thread.unseenCount ? (
+							<div className="badge badge-primary">{thread.unseenCount}</div>
+						) : null}
+						<button
+							type="button"
+							className="btn hidden btn-ghost btn-xs group-hover:inline-flex"
+							aria-label="Thread options"
+							onClick={(event) => {
+								event.preventDefault();
+							}}
+						>
+							<CaretDownIcon className="size-5.5" />
+						</button>
+					</div>
+				</div>
+			</div>
+		</Link>
 	);
 }
 

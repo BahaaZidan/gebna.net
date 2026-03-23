@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8675282f4c218c7d8244cfbfd399d531>>
+ * @generated SignedSource<<6c5ed7fded02ee6fc5c457ff8e8aa96f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,17 +15,7 @@ export type routeViewer$data = {
     readonly edges: ReadonlyArray<{
       readonly node: {
         readonly id: string;
-        readonly lastMessage: {
-          readonly createdAt: any;
-          readonly from: {
-            readonly address: string;
-            readonly id: string;
-            readonly name: string;
-          };
-          readonly id: string;
-        };
-        readonly unseenCount: number;
-        readonly " $fragmentSpreads": FragmentRefs<"componentsThreadAvatar" | "componentsThreadTitle">;
+        readonly " $fragmentSpreads": FragmentRefs<"componentsThreadListItem">;
       };
     }>;
     readonly pageInfo: {
@@ -44,14 +34,7 @@ import routePaginationQuery_graphql from './routePaginationQuery.graphql';
 const node: ReaderFragment = (function(){
 var v0 = [
   "emailThreads"
-],
-v1 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "id",
-  "storageKey": null
-};
+];
 return {
   "argumentDefinitions": [
     {
@@ -116,68 +99,17 @@ return {
               "name": "node",
               "plural": false,
               "selections": [
-                (v1/*: any*/),
-                {
-                  "args": null,
-                  "kind": "FragmentSpread",
-                  "name": "componentsThreadAvatar"
-                },
-                {
-                  "args": null,
-                  "kind": "FragmentSpread",
-                  "name": "componentsThreadTitle"
-                },
                 {
                   "alias": null,
                   "args": null,
                   "kind": "ScalarField",
-                  "name": "unseenCount",
+                  "name": "id",
                   "storageKey": null
                 },
                 {
-                  "alias": null,
                   "args": null,
-                  "concreteType": "EmailMessage",
-                  "kind": "LinkedField",
-                  "name": "lastMessage",
-                  "plural": false,
-                  "selections": [
-                    (v1/*: any*/),
-                    {
-                      "alias": null,
-                      "args": null,
-                      "kind": "ScalarField",
-                      "name": "createdAt",
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "concreteType": "EmailAddressRef",
-                      "kind": "LinkedField",
-                      "name": "from",
-                      "plural": false,
-                      "selections": [
-                        (v1/*: any*/),
-                        {
-                          "alias": null,
-                          "args": null,
-                          "kind": "ScalarField",
-                          "name": "name",
-                          "storageKey": null
-                        },
-                        {
-                          "alias": null,
-                          "args": null,
-                          "kind": "ScalarField",
-                          "name": "address",
-                          "storageKey": null
-                        }
-                      ],
-                      "storageKey": null
-                    }
-                  ],
-                  "storageKey": null
+                  "kind": "FragmentSpread",
+                  "name": "componentsThreadListItem"
                 },
                 {
                   "alias": null,
@@ -233,6 +165,6 @@ return {
 };
 })();
 
-(node as any).hash = "8faf3ec859a580eaad527e1c3758c1d4";
+(node as any).hash = "b26e961638cebcb554de50b065783af8";
 
 export default node;

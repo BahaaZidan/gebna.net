@@ -1,24 +1,14 @@
-import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { NotePencilIcon } from "@phosphor-icons/react/dist/ssr/NotePencil";
-import {
-	createFileRoute,
-	Link,
-	Outlet,
-	useHydrated,
-	useRouter,
-	useRouterState,
-} from "@tanstack/react-router";
+import { createFileRoute, Outlet, useHydrated } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Suspense } from "react";
 import { graphql, useLazyLoadQuery, usePaginationFragment } from "react-relay";
 
-import { ThreadAvatar, ThreadTitle } from "#/lib/email/components";
-import { formatInboxDate } from "#/lib/email/format";
+import { ThreadListItem } from "#/lib/email/components";
 
 import type { routePaginationQuery } from "./__generated__/routePaginationQuery.graphql";
 import type { routeQuery } from "./__generated__/routeQuery.graphql";
 import type { routeViewer$key } from "./__generated__/routeViewer.graphql";
-import { Route as emailThreadRoute } from "./$thread_id";
 
 export const Route = createFileRoute("/_app/app/email")({
 	component: RouteComponent,
@@ -65,10 +55,6 @@ function EmailThreadsLayoutQueryBoundary() {
 }
 
 function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
-	const router = useRouter();
-	const pathname = useRouterState({
-		select: (state) => state.location.pathname,
-	});
 	const { data, hasNext, isLoadingNext, loadNext } = usePaginationFragment<
 		routePaginationQuery,
 		routeViewer$key
@@ -85,18 +71,7 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 					edges {
 						node {
 							id
-							...componentsThreadAvatar
-							...componentsThreadTitle
-							unseenCount
-							lastMessage {
-								id
-								createdAt
-								from {
-									id
-									name
-									address
-								}
-							}
+							...componentsThreadListItem
 						}
 					}
 					pageInfo {
@@ -124,82 +99,9 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 					</div>
 				</div>
 				<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
-					{data.emailThreads.edges.map((edge) => {
-						const thread = edge.node;
-						const threadPath = router.buildLocation({
-							to: emailThreadRoute.to,
-							params: { thread_id: thread.id },
-						}).pathname;
-						const isActive =
-							pathname === threadPath || pathname.startsWith(`${threadPath}/`);
-
-						return (
-							<Link
-								key={thread.id}
-								to={emailThreadRoute.to}
-								params={{ thread_id: thread.id }}
-								className={clsx(
-									"group flex w-full items-center gap-3 px-5 py-3 hover:bg-base-200",
-									isActive ? "bg-base-300" : null,
-								)}
-							>
-								<ThreadAvatar
-									thread={thread}
-									className="size-12 min-h-12 min-w-12 bg-accent-content"
-								/>
-								<div className="flex min-w-0 flex-1 flex-col gap-1">
-									<div className="flex items-baseline justify-between gap-3">
-										<div
-											className={clsx(
-												"line-clamp-1 min-w-0 text-sm",
-												thread.unseenCount > 0 ? "" : "text-base-content/60",
-											)}
-										>
-											{thread.lastMessage.from.name ||
-												thread.lastMessage.from.address}
-										</div>
-										<div
-											className={clsx(
-												"mx-px text-xs whitespace-nowrap",
-												thread.unseenCount ? "" : "text-base-content/50",
-											)}
-										>
-											{formatInboxDate(thread.lastMessage.createdAt)}
-										</div>
-									</div>
-									<div className="flex min-h-6 items-center justify-between gap-3">
-										<div
-											className={clsx(
-												"line-clamp-1 min-w-0",
-												thread.unseenCount > 0
-													? "font-semibold"
-													: "text-base-content/60",
-											)}
-										>
-											<ThreadTitle thread={thread} />
-										</div>
-										<div className="flex shrink-0 items-center gap-1">
-											{thread.unseenCount ? (
-												<div className="badge badge-primary">
-													{thread.unseenCount}
-												</div>
-											) : null}
-											<button
-												type="button"
-												className="btn hidden btn-ghost btn-xs group-hover:inline-flex"
-												aria-label="Thread options"
-												onClick={(event) => {
-													event.preventDefault();
-												}}
-											>
-												<CaretDownIcon className="size-5.5" />
-											</button>
-										</div>
-									</div>
-								</div>
-							</Link>
-						);
-					})}
+					{data.emailThreads.edges.map(({ node }) => (
+						<ThreadListItem thread={node} />
+					))}
 					{hasNext ? (
 						<button
 							type="button"
