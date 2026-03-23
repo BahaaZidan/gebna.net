@@ -15,6 +15,7 @@ import clsx from "clsx";
 import { useEffect, useRef } from "react";
 import { graphql, useFragment } from "react-relay";
 
+import type { componentsAttachmentListItem$key } from "./__generated__/componentsAttachmentListItem.graphql";
 import type { componentsMessageBubble$key } from "./__generated__/componentsMessageBubble.graphql";
 import type { componentsThreadListItem$key } from "./__generated__/componentsThreadListItem.graphql";
 import type { componentsThreadTitle$key } from "./__generated__/componentsThreadTitle.graphql";
@@ -221,12 +222,7 @@ export function MessageBubble({
 					address
 				}
 				attachments {
-					id
-					filename
-					sizeInBytes
-					description
-					category
-					url
+					...componentsAttachmentListItem
 				}
 			}
 		`,
@@ -285,33 +281,9 @@ export function MessageBubble({
 				) : null}
 				{data.attachments.length ? (
 					<div className="flex flex-wrap gap-2">
-						{data.attachments.map((attachment) => {
-							const size =
-								typeof attachment.sizeInBytes === "number"
-									? formatSizeInBytes(attachment.sizeInBytes)
-									: null;
-
-							return (
-								<a
-									key={attachment.id}
-									href={attachment.url ?? undefined}
-									download={attachment.filename ?? undefined}
-									className="flex min-w-56 max-w-full items-center gap-3 rounded-box bg-base-200 px-4 py-3 transition-colors hover:bg-base-300"
-								>
-									<div className="shrink-0 text-base-content/70">
-										{renderAttachmentIcon(attachment.category)}
-									</div>
-									<div className="flex min-w-0 flex-1 flex-col gap-1">
-										<div className="line-clamp-1 font-medium">
-											{attachment.filename || "Attachment"}
-										</div>
-										<div className="line-clamp-2 text-sm text-base-content/70">
-											{attachment.description || size || "Download file"}
-										</div>
-									</div>
-								</a>
-							);
-						})}
+						{data.attachments.map((a) => (
+							<AttachmentListItem attachment={a} />
+						))}
 					</div>
 				) : null}
 			</div>
@@ -360,4 +332,48 @@ function EmailHtml({ html }: { html: string }) {
 	}, [html]);
 
 	return <div ref={hostRef} className="w-full overflow-hidden" />;
+}
+
+export function AttachmentListItem(props: {
+	attachment: componentsAttachmentListItem$key;
+}) {
+	const attachment = useFragment(
+		graphql`
+			fragment componentsAttachmentListItem on EmailAttachment {
+				id
+				filename
+				sizeInBytes
+				description
+				category
+				url
+			}
+		`,
+		props.attachment,
+	);
+
+	const size =
+		typeof attachment.sizeInBytes === "number"
+			? formatSizeInBytes(attachment.sizeInBytes)
+			: null;
+
+	return (
+		<a
+			key={attachment.id}
+			href={attachment.url ?? undefined}
+			download={attachment.filename ?? undefined}
+			className="flex min-w-56 max-w-full items-center gap-3 rounded-box bg-base-200 px-4 py-3 transition-colors hover:bg-base-300"
+		>
+			<div className="shrink-0 text-base-content/70">
+				{renderAttachmentIcon(attachment.category)}
+			</div>
+			<div className="flex min-w-0 flex-1 flex-col gap-1">
+				<div className="line-clamp-1 font-medium">
+					{attachment.filename || "Attachment"}
+				</div>
+				<div className="line-clamp-2 text-sm text-base-content/70">
+					{attachment.description || size || "Download file"}
+				</div>
+			</div>
+		</a>
+	);
 }

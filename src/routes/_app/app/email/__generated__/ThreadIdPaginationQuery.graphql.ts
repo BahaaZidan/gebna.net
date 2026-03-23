@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5d22076e5dda4436eb337c9bc5218d98>>
+ * @generated SignedSource<<64a0f3018a85822a9a01bd3f7d0b43fd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -368,12 +368,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "c172e8a17e9b8de0822ae394b6db5017",
+    "cacheID": "15719a95d6f38b495449d23d96fa01e3",
     "id": null,
     "metadata": {},
     "name": "ThreadIdPaginationQuery",
     "operationKind": "query",
-    "text": "query ThreadIdPaginationQuery(\n  $after: String\n  $first: Int = 15\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ...ThreadIdThread_2HEEH6\n    id\n  }\n}\n\nfragment ThreadIdThread_2HEEH6 on EmailThread {\n  id\n  unseenCount\n  ...componentsThreadTitle\n  messages(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsMessageBubble\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n\nfragment componentsMessageBubble on EmailMessage {\n  id\n  html\n  plaintext\n  createdAt\n  from {\n    id\n    isSelf\n    isBlocked\n    name\n    avatar\n    address\n  }\n  to {\n    id\n    isSelf\n    address\n  }\n  attachments {\n    id\n    filename\n    sizeInBytes\n    description\n    category\n    url\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n"
+    "text": "query ThreadIdPaginationQuery(\n  $after: String\n  $first: Int = 15\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ...ThreadIdThread_2HEEH6\n    id\n  }\n}\n\nfragment ThreadIdThread_2HEEH6 on EmailThread {\n  id\n  unseenCount\n  ...componentsThreadTitle\n  messages(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsMessageBubble\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n\nfragment componentsAttachmentListItem on EmailAttachment {\n  id\n  filename\n  sizeInBytes\n  description\n  category\n  url\n}\n\nfragment componentsMessageBubble on EmailMessage {\n  id\n  html\n  plaintext\n  createdAt\n  from {\n    id\n    isSelf\n    isBlocked\n    name\n    avatar\n    address\n  }\n  to {\n    id\n    isSelf\n    address\n  }\n  attachments {\n    ...componentsAttachmentListItem\n    id\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n"
   }
 };
 })();

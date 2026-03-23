@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ab1baecd22e2207a63f7231c55cdf93f>>
+ * @generated SignedSource<<43053610c8c37b136b18986c00a46fd1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,16 +9,10 @@
 // @ts-nocheck
 
 import { ReaderFragment } from 'relay-runtime';
-export type EmailAttachmentFileCategory = "Archive" | "Audio" | "Calendar" | "Excel" | "Image" | "Other" | "PDF" | "Slides" | "Video" | "Word" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type componentsMessageBubble$data = {
   readonly attachments: ReadonlyArray<{
-    readonly category: EmailAttachmentFileCategory;
-    readonly description: string | null | undefined;
-    readonly filename: string | null | undefined;
-    readonly id: string;
-    readonly sizeInBytes: number | null | undefined;
-    readonly url: string | null | undefined;
+    readonly " $fragmentSpreads": FragmentRefs<"componentsAttachmentListItem">;
   }>;
   readonly createdAt: any;
   readonly from: {
@@ -151,41 +145,10 @@ return {
       "name": "attachments",
       "plural": true,
       "selections": [
-        (v0/*: any*/),
         {
-          "alias": null,
           "args": null,
-          "kind": "ScalarField",
-          "name": "filename",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "sizeInBytes",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "description",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "category",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "url",
-          "storageKey": null
+          "kind": "FragmentSpread",
+          "name": "componentsAttachmentListItem"
         }
       ],
       "storageKey": null
@@ -196,6 +159,6 @@ return {
 };
 })();
 
-(node as any).hash = "f83da428216c05ef780c65922d36cf83";
+(node as any).hash = "52773de38757d0cb87ba66b18d12299d";
 
 export default node;
