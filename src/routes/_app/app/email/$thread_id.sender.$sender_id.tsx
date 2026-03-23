@@ -1,11 +1,19 @@
+import { ProhibitIcon } from "@phosphor-icons/react/dist/ssr/Prohibit";
+import { WarningIcon } from "@phosphor-icons/react/dist/ssr/Warning";
 import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 import { createFileRoute, Link, useHydrated } from "@tanstack/react-router";
 import { Suspense } from "react";
-import { graphql, useLazyLoadQuery, usePaginationFragment } from "react-relay";
+import {
+	graphql,
+	useLazyLoadQuery,
+	useMutation,
+	usePaginationFragment,
+} from "react-relay";
 
 import { LoadNextButton } from "#/lib/components";
 import { AttachmentListItem, ThreadListItem } from "#/lib/email/components";
 
+import type { ThreadIdSenderDetailsActionsMutation } from "./__generated__/ThreadIdSenderDetailsActionsMutation.graphql";
 import type { ThreadIdSenderDetailsAttachmentsSection$key } from "./__generated__/ThreadIdSenderDetailsAttachmentsSection.graphql";
 import type { ThreadIdSenderDetailsQuery } from "./__generated__/ThreadIdSenderDetailsQuery.graphql";
 import type { ThreadIdSenderDetailsThreadsSection$key } from "./__generated__/ThreadIdSenderDetailsThreadsSection.graphql";
@@ -47,6 +55,7 @@ function SenderDetailsQueryBoundary() {
 						avatar
 						address
 						isBlocked
+						isSpam
 						...ThreadIdSenderDetailsAttachmentsSection
 							@arguments(first: $firstAttachments)
 						...ThreadIdSenderDetailsThreadsSection
@@ -115,8 +124,112 @@ function SenderDetailsQueryBoundary() {
 				</div>
 				<SenderAttachmentsSection sender={sender} />
 				<SenderThreadsSection sender={sender} />
+				<SenderActionsSection sender={sender} />
 			</div>
 		</div>
+	);
+}
+
+function SenderActionsSection({
+	sender,
+}: {
+	sender: {
+		id: string;
+		address: string;
+		isBlocked: boolean;
+		isSpam: boolean;
+	};
+}) {
+	const [commitUpdate, isInFlight] =
+		useMutation<ThreadIdSenderDetailsActionsMutation>(graphql`
+			mutation ThreadIdSenderDetailsActionsMutation(
+				$input: UpdateEmailAddressRefInput!
+			) {
+				updateEmailAddressRef(input: $input) {
+					result {
+						id
+						address
+						isBlocked
+						isSpam
+					}
+				}
+			}
+		`);
+
+	return (
+		<section className="flex flex-col gap-4">
+			<div>
+				<h2 className="text-xs font-medium uppercase tracking-[0.2em] text-base-content/50">
+					Actions
+				</h2>
+				<p className="mt-1 text-sm text-base-content/60">
+					Manage how future messages from this address are handled.
+				</p>
+			</div>
+			<div className="grid gap-3">
+				<button
+					type="button"
+					className="btn justify-start"
+					disabled={isInFlight}
+					onClick={() => {
+						const nextBlocked = !sender.isBlocked;
+						commitUpdate({
+							variables: {
+								input: {
+									address: sender.address,
+									isBlocked: nextBlocked,
+									isSpam: sender.isSpam,
+								},
+							},
+							optimisticResponse: {
+								updateEmailAddressRef: {
+									result: {
+										id: sender.id,
+										address: sender.address,
+										isBlocked: nextBlocked,
+										isSpam: sender.isSpam,
+									},
+								},
+							},
+						});
+					}}
+				>
+					<ProhibitIcon className="size-5" />
+					{sender.isBlocked ? "Unblock sender" : "Block sender"}
+				</button>
+				<button
+					type="button"
+					className="btn btn-error btn-outline justify-start"
+					disabled={isInFlight}
+					onClick={() => {
+						const nextSpam = !sender.isSpam;
+						const nextBlocked = nextSpam ? true : false;
+						commitUpdate({
+							variables: {
+								input: {
+									address: sender.address,
+									isBlocked: nextBlocked,
+									isSpam: nextSpam,
+								},
+							},
+							optimisticResponse: {
+								updateEmailAddressRef: {
+									result: {
+										id: sender.id,
+										address: sender.address,
+										isBlocked: nextBlocked,
+										isSpam: nextSpam,
+									},
+								},
+							},
+						});
+					}}
+				>
+					<WarningIcon className="size-5" />
+					{sender.isSpam ? "Unreport sender" : "Report and block"}
+				</button>
+			</div>
+		</section>
 	);
 }
 

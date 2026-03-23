@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bc0525b1d0d744ec595fafd542a85eb3>>
+ * @generated SignedSource<<53d5dfc9fd10a3eea30d992e76924a90>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,7 @@ export type ThreadIdSenderDetailsQuery$data = {
     readonly avatar: string;
     readonly id: string;
     readonly isBlocked: boolean;
+    readonly isSpam: boolean;
     readonly name: string;
     readonly " $fragmentSpreads": FragmentRefs<"ThreadIdSenderDetailsAttachmentsSection" | "ThreadIdSenderDetailsThreadsSection">;
   } | {
@@ -100,28 +101,35 @@ v9 = {
   "name": "isBlocked",
   "storageKey": null
 },
-v10 = [
+v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isSpam",
+  "storageKey": null
+},
+v11 = [
   {
     "kind": "Variable",
     "name": "first",
     "variableName": "firstAttachments"
   }
 ],
-v11 = [
+v12 = [
   {
     "kind": "Variable",
     "name": "first",
     "variableName": "firstThreads"
   }
 ],
-v12 = {
+v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cursor",
   "storageKey": null
 },
-v13 = {
+v14 = {
   "alias": null,
   "args": null,
   "concreteType": "PageInfo",
@@ -174,13 +182,14 @@ return {
               (v7/*: any*/),
               (v8/*: any*/),
               (v9/*: any*/),
+              (v10/*: any*/),
               {
-                "args": (v10/*: any*/),
+                "args": (v11/*: any*/),
                 "kind": "FragmentSpread",
                 "name": "ThreadIdSenderDetailsAttachmentsSection"
               },
               {
-                "args": (v11/*: any*/),
+                "args": (v12/*: any*/),
                 "kind": "FragmentSpread",
                 "name": "ThreadIdSenderDetailsThreadsSection"
               }
@@ -222,9 +231,10 @@ return {
               (v7/*: any*/),
               (v8/*: any*/),
               (v9/*: any*/),
+              (v10/*: any*/),
               {
                 "alias": null,
-                "args": (v10/*: any*/),
+                "args": (v11/*: any*/),
                 "concreteType": "EmailAddressRefAttachmentsConnection",
                 "kind": "LinkedField",
                 "name": "attachments",
@@ -286,17 +296,17 @@ return {
                         ],
                         "storageKey": null
                       },
-                      (v12/*: any*/)
+                      (v13/*: any*/)
                     ],
                     "storageKey": null
                   },
-                  (v13/*: any*/)
+                  (v14/*: any*/)
                 ],
                 "storageKey": null
               },
               {
                 "alias": null,
-                "args": (v10/*: any*/),
+                "args": (v11/*: any*/),
                 "filters": null,
                 "handle": "connection",
                 "key": "ThreadIdSenderDetailsAttachmentsSection_attachments",
@@ -305,7 +315,7 @@ return {
               },
               {
                 "alias": null,
-                "args": (v11/*: any*/),
+                "args": (v12/*: any*/),
                 "concreteType": "EmailAddressRefThreadsConnection",
                 "kind": "LinkedField",
                 "name": "threads",
@@ -403,17 +413,17 @@ return {
                         ],
                         "storageKey": null
                       },
-                      (v12/*: any*/)
+                      (v13/*: any*/)
                     ],
                     "storageKey": null
                   },
-                  (v13/*: any*/)
+                  (v14/*: any*/)
                 ],
                 "storageKey": null
               },
               {
                 "alias": null,
-                "args": (v11/*: any*/),
+                "args": (v12/*: any*/),
                 "filters": null,
                 "handle": "connection",
                 "key": "ThreadIdSenderDetailsThreadsSection_threads",
@@ -430,16 +440,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "d37a6a1bf9464cb8d0696e69634dbda9",
+    "cacheID": "fe4f089ef80899e0a7cd7b9b23b5d2ef",
     "id": null,
     "metadata": {},
     "name": "ThreadIdSenderDetailsQuery",
     "operationKind": "query",
-    "text": "query ThreadIdSenderDetailsQuery(\n  $id: ID!\n  $firstAttachments: Int!\n  $firstThreads: Int!\n) {\n  node(id: $id) {\n    __typename\n    ... on EmailAddressRef {\n      id\n      name\n      avatar\n      address\n      isBlocked\n      ...ThreadIdSenderDetailsAttachmentsSection_2ubKr\n      ...ThreadIdSenderDetailsThreadsSection_33QL3A\n    }\n    id\n  }\n}\n\nfragment ThreadIdSenderDetailsAttachmentsSection_2ubKr on EmailAddressRef {\n  attachments(first: $firstAttachments) {\n    edges {\n      node {\n        id\n        ...componentsAttachmentListItem\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n  id\n}\n\nfragment ThreadIdSenderDetailsThreadsSection_33QL3A on EmailAddressRef {\n  threads(first: $firstThreads) {\n    edges {\n      node {\n        id\n        ...componentsThreadListItem\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n  id\n}\n\nfragment componentsAttachmentListItem on EmailAttachment {\n  id\n  filename\n  sizeInBytes\n  description\n  category\n  url\n}\n\nfragment componentsThreadListItem on EmailThread {\n  id\n  ...componentsThreadTitle\n  unseenCount\n  avatar\n  title\n  participants {\n    id\n    avatar\n    isSelf\n    name\n    address\n    isBlocked\n  }\n  lastMessage {\n    id\n    createdAt\n    from {\n      id\n      name\n      address\n    }\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n"
+    "text": "query ThreadIdSenderDetailsQuery(\n  $id: ID!\n  $firstAttachments: Int!\n  $firstThreads: Int!\n) {\n  node(id: $id) {\n    __typename\n    ... on EmailAddressRef {\n      id\n      name\n      avatar\n      address\n      isBlocked\n      isSpam\n      ...ThreadIdSenderDetailsAttachmentsSection_2ubKr\n      ...ThreadIdSenderDetailsThreadsSection_33QL3A\n    }\n    id\n  }\n}\n\nfragment ThreadIdSenderDetailsAttachmentsSection_2ubKr on EmailAddressRef {\n  attachments(first: $firstAttachments) {\n    edges {\n      node {\n        id\n        ...componentsAttachmentListItem\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n  id\n}\n\nfragment ThreadIdSenderDetailsThreadsSection_33QL3A on EmailAddressRef {\n  threads(first: $firstThreads) {\n    edges {\n      node {\n        id\n        ...componentsThreadListItem\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n  id\n}\n\nfragment componentsAttachmentListItem on EmailAttachment {\n  id\n  filename\n  sizeInBytes\n  description\n  category\n  url\n}\n\nfragment componentsThreadListItem on EmailThread {\n  id\n  ...componentsThreadTitle\n  unseenCount\n  avatar\n  title\n  participants {\n    id\n    avatar\n    isSelf\n    name\n    address\n    isBlocked\n  }\n  lastMessage {\n    id\n    createdAt\n    from {\n      id\n      name\n      address\n    }\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9777d412f6e37c5d4acbbe0d8545ba65";
+(node as any).hash = "0c55feb0caeea142bff03d090bf569b0";
 
 export default node;
