@@ -5,12 +5,23 @@ scalar DateTime
 
 type EmailAddressRef implements Node {
   address: String!
+  attachments(after: String, before: String, first: Int, last: Int): EmailAddressRefAttachmentsConnection!
   avatar: String!
   id: ID!
   isBlocked: Boolean!
   isSelf: Boolean!
   isSpam: Boolean!
   name: String!
+}
+
+type EmailAddressRefAttachmentsConnection {
+  edges: [EmailAddressRefAttachmentsConnectionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type EmailAddressRefAttachmentsConnectionEdge {
+  cursor: String!
+  node: EmailAttachment!
 }
 
 type EmailAttachment implements Node {

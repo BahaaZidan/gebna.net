@@ -60,6 +60,10 @@ export const relations = defineRelations(schema, (r) => ({
 			),
 			to: r.emailThreads.id.through(r.emailThreadParticipants.threadId),
 		}),
+		authoredAttachments: r.many.emailAttachments({
+			from: r.emailAddressRefs.id,
+			to: r.emailAttachments.fromRef,
+		}),
 	},
 	emailThreads: {
 		owner: r.one.users({

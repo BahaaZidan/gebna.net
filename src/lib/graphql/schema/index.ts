@@ -226,6 +226,11 @@ const EmailAddressRefRef = builder.drizzleNode("emailAddressRefs", {
 		}),
 		isBlocked: t.exposeBoolean("isBlocked", { nullable: false }),
 		isSpam: t.exposeBoolean("isSpam", { nullable: false }),
+		attachments: t.relatedConnection("authoredAttachments", {
+			nullable: false,
+			nodeNullable: false,
+			edgesNullable: false,
+		}),
 	}),
 });
 
