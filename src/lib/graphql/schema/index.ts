@@ -231,6 +231,11 @@ const EmailAddressRefRef = builder.drizzleNode("emailAddressRefs", {
 			nodeNullable: false,
 			edgesNullable: false,
 		}),
+		threads: t.relatedConnection("emailThreads", {
+			nullable: false,
+			nodeNullable: false,
+			edgesNullable: false,
+		}),
 	}),
 });
 

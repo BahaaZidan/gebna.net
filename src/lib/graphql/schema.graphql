@@ -12,6 +12,7 @@ type EmailAddressRef implements Node {
   isSelf: Boolean!
   isSpam: Boolean!
   name: String!
+  threads(after: String, before: String, first: Int, last: Int): EmailAddressRefThreadsConnection!
 }
 
 type EmailAddressRefAttachmentsConnection {
@@ -22,6 +23,16 @@ type EmailAddressRefAttachmentsConnection {
 type EmailAddressRefAttachmentsConnectionEdge {
   cursor: String!
   node: EmailAttachment!
+}
+
+type EmailAddressRefThreadsConnection {
+  edges: [EmailAddressRefThreadsConnectionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type EmailAddressRefThreadsConnectionEdge {
+  cursor: String!
+  node: EmailThread!
 }
 
 type EmailAttachment implements Node {
