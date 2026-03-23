@@ -120,8 +120,10 @@ export function ThreadTitle({
 
 export function MessageBubble({
 	message,
+	onOpenSender,
 }: {
 	message: componentsMessageBubble$key;
+	onOpenSender?: (senderId: string) => void;
 }) {
 	const data = useFragment(
 		graphql`
@@ -160,7 +162,12 @@ export function MessageBubble({
 	return (
 		<div className="flex w-full items-start gap-4 p-3">
 			<div className="shrink-0">
-				<div className="indicator">
+				<button
+					type="button"
+					className="indicator cursor-pointer appearance-none border-0 bg-transparent p-0"
+					onClick={() => onOpenSender?.(data.from.id)}
+					aria-label={`View sender details for ${senderName}`}
+				>
 					<span
 						className={clsx(
 							"indicator-item badge badge-primary px-1 py-2 mx-1 badge-xs indicator-start",
@@ -174,16 +181,21 @@ export function MessageBubble({
 						src={data.from.avatar}
 						className="size-12 bg-accent-content object-cover"
 					/>
-				</div>
+				</button>
 			</div>
 			<div className="flex w-full min-w-0 flex-col">
-				<div className="flex flex-wrap items-baseline justify-between gap-2 mb-0.5">
-					<div className="font-bold">
+				<div className="mb-0.5 flex flex-wrap items-baseline justify-between gap-2">
+					<button
+						type="button"
+						className="min-w-0 cursor-pointer appearance-none border-0 bg-transparent p-0 text-left font-bold"
+						onClick={() => onOpenSender?.(data.from.id)}
+						aria-label={`View sender details for ${senderName}`}
+					>
 						{senderName}{" "}
-						<span className="font-normal text-base-content/50 text-sm">
+						<span className="text-sm font-normal text-base-content/50">
 							&lt;{data.from.address}&gt;
 						</span>
-					</div>
+					</button>
 					<time className="text-xs text-base-content/60">
 						{formatInboxDate(data.createdAt)}
 					</time>

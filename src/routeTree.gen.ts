@@ -21,6 +21,7 @@ import { Route as AppAppEmailRouteRouteImport } from './routes/_app/app/email/ro
 import { Route as AppAppSettingsIndexRouteImport } from './routes/_app/app/settings/index'
 import { Route as AppAppEmailIndexRouteImport } from './routes/_app/app/email/index'
 import { Route as AppAppEmailThread_idRouteImport } from './routes/_app/app/email/$thread_id'
+import { Route as AppAppEmailThread_idSenderSender_idRouteImport } from './routes/_app/app/email/$thread_id.sender.$sender_id'
 
 const AuthRouteRoute = AuthRouteRouteImport.update({
   id: '/_auth',
@@ -80,6 +81,12 @@ const AppAppEmailThread_idRoute = AppAppEmailThread_idRouteImport.update({
   path: '/$thread_id',
   getParentRoute: () => AppAppEmailRouteRoute,
 } as any)
+const AppAppEmailThread_idSenderSender_idRoute =
+  AppAppEmailThread_idSenderSender_idRouteImport.update({
+    id: '/sender/$sender_id',
+    path: '/sender/$sender_id',
+    getParentRoute: () => AppAppEmailThread_idRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,9 +96,10 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
   '/app/': typeof AppAppIndexRoute
-  '/app/email/$thread_id': typeof AppAppEmailThread_idRoute
+  '/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/app/email/': typeof AppAppEmailIndexRoute
   '/app/settings/': typeof AppAppSettingsIndexRoute
+  '/app/email/$thread_id/sender/$sender_id': typeof AppAppEmailThread_idSenderSender_idRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -100,9 +108,10 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
   '/app': typeof AppAppIndexRoute
-  '/app/email/$thread_id': typeof AppAppEmailThread_idRoute
+  '/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/app/email': typeof AppAppEmailIndexRoute
   '/app/settings': typeof AppAppSettingsIndexRoute
+  '/app/email/$thread_id/sender/$sender_id': typeof AppAppEmailThread_idSenderSender_idRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,9 +124,10 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
   '/_app/app/': typeof AppAppIndexRoute
-  '/_app/app/email/$thread_id': typeof AppAppEmailThread_idRoute
+  '/_app/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/_app/app/email/': typeof AppAppEmailIndexRoute
   '/_app/app/settings/': typeof AppAppSettingsIndexRoute
+  '/_app/app/email/$thread_id/sender/$sender_id': typeof AppAppEmailThread_idSenderSender_idRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/app/email/$thread_id'
     | '/app/email/'
     | '/app/settings/'
+    | '/app/email/$thread_id/sender/$sender_id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/app/email/$thread_id'
     | '/app/email'
     | '/app/settings'
+    | '/app/email/$thread_id/sender/$sender_id'
   id:
     | '__root__'
     | '/'
@@ -157,6 +169,7 @@ export interface FileRouteTypes {
     | '/_app/app/email/$thread_id'
     | '/_app/app/email/'
     | '/_app/app/settings/'
+    | '/_app/app/email/$thread_id/sender/$sender_id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -253,16 +266,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppEmailThread_idRouteImport
       parentRoute: typeof AppAppEmailRouteRoute
     }
+    '/_app/app/email/$thread_id/sender/$sender_id': {
+      id: '/_app/app/email/$thread_id/sender/$sender_id'
+      path: '/sender/$sender_id'
+      fullPath: '/app/email/$thread_id/sender/$sender_id'
+      preLoaderRoute: typeof AppAppEmailThread_idSenderSender_idRouteImport
+      parentRoute: typeof AppAppEmailThread_idRoute
+    }
   }
 }
 
+interface AppAppEmailThread_idRouteChildren {
+  AppAppEmailThread_idSenderSender_idRoute: typeof AppAppEmailThread_idSenderSender_idRoute
+}
+
+const AppAppEmailThread_idRouteChildren: AppAppEmailThread_idRouteChildren = {
+  AppAppEmailThread_idSenderSender_idRoute:
+    AppAppEmailThread_idSenderSender_idRoute,
+}
+
+const AppAppEmailThread_idRouteWithChildren =
+  AppAppEmailThread_idRoute._addFileChildren(AppAppEmailThread_idRouteChildren)
+
 interface AppAppEmailRouteRouteChildren {
-  AppAppEmailThread_idRoute: typeof AppAppEmailThread_idRoute
+  AppAppEmailThread_idRoute: typeof AppAppEmailThread_idRouteWithChildren
   AppAppEmailIndexRoute: typeof AppAppEmailIndexRoute
 }
 
 const AppAppEmailRouteRouteChildren: AppAppEmailRouteRouteChildren = {
-  AppAppEmailThread_idRoute: AppAppEmailThread_idRoute,
+  AppAppEmailThread_idRoute: AppAppEmailThread_idRouteWithChildren,
   AppAppEmailIndexRoute: AppAppEmailIndexRoute,
 }
 

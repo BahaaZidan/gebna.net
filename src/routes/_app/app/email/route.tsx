@@ -130,7 +130,8 @@ function EmailThreadsLayout({ viewer }: { viewer: routeViewer$key }) {
 							to: emailThreadRoute.to,
 							params: { thread_id: thread.id },
 						}).pathname;
-						const isActive = pathname === threadPath;
+						const isActive =
+							pathname === threadPath || pathname.startsWith(`${threadPath}/`);
 
 						return (
 							<Link
