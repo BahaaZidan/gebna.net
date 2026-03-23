@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5d2657e89a0bd8f8a6d9fb3c2ab699b5>>
+ * @generated SignedSource<<52d63dbf6fe60d3b1e6a275bbb6a421a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,7 @@
 import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type componentsThreadListItem$data = {
+  readonly avatar: string | null | undefined;
   readonly id: string;
   readonly lastMessage: {
     readonly createdAt: any;
@@ -21,8 +22,17 @@ export type componentsThreadListItem$data = {
     };
     readonly id: string;
   };
+  readonly participants: ReadonlyArray<{
+    readonly address: string;
+    readonly avatar: string;
+    readonly id: string;
+    readonly isBlocked: boolean;
+    readonly isSelf: boolean;
+    readonly name: string;
+  }>;
+  readonly title: string | null | undefined;
   readonly unseenCount: number;
-  readonly " $fragmentSpreads": FragmentRefs<"componentsThreadAvatar" | "componentsThreadTitle">;
+  readonly " $fragmentSpreads": FragmentRefs<"componentsThreadTitle">;
   readonly " $fragmentType": "componentsThreadListItem";
 };
 export type componentsThreadListItem$key = {
@@ -37,6 +47,27 @@ var v0 = {
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "avatar",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "address",
+  "storageKey": null
 };
 return {
   "argumentDefinitions": [],
@@ -48,11 +79,6 @@ return {
     {
       "args": null,
       "kind": "FragmentSpread",
-      "name": "componentsThreadAvatar"
-    },
-    {
-      "args": null,
-      "kind": "FragmentSpread",
       "name": "componentsThreadTitle"
     },
     {
@@ -60,6 +86,43 @@ return {
       "args": null,
       "kind": "ScalarField",
       "name": "unseenCount",
+      "storageKey": null
+    },
+    (v1/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "title",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "EmailAddressRef",
+      "kind": "LinkedField",
+      "name": "participants",
+      "plural": true,
+      "selections": [
+        (v0/*: any*/),
+        (v1/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "isSelf",
+          "storageKey": null
+        },
+        (v2/*: any*/),
+        (v3/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "isBlocked",
+          "storageKey": null
+        }
+      ],
       "storageKey": null
     },
     {
@@ -87,20 +150,8 @@ return {
           "plural": false,
           "selections": [
             (v0/*: any*/),
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "name",
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "address",
-              "storageKey": null
-            }
+            (v2/*: any*/),
+            (v3/*: any*/)
           ],
           "storageKey": null
         }
@@ -113,6 +164,6 @@ return {
 };
 })();
 
-(node as any).hash = "9dd1abe484ac07d3b2eef7553bd6e59e";
+(node as any).hash = "9db0a2dc4c63d66bb99665fb8b86a78f";
 
 export default node;

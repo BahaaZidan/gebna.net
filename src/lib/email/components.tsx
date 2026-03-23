@@ -16,7 +16,6 @@ import { useEffect, useRef } from "react";
 import { graphql, useFragment } from "react-relay";
 
 import type { componentsMessageBubble$key } from "./__generated__/componentsMessageBubble.graphql";
-import type { componentsThreadAvatar$key } from "./__generated__/componentsThreadAvatar.graphql";
 import type { componentsThreadListItem$key } from "./__generated__/componentsThreadListItem.graphql";
 import type { componentsThreadTitle$key } from "./__generated__/componentsThreadTitle.graphql";
 import { formatInboxDate } from "./format";
@@ -32,59 +31,6 @@ function formatSizeInBytes(sizeInBytes: number): string {
 
 function roundTo2(value: number): string {
 	return `${Math.round(value * 100) / 100}`;
-}
-
-export function ThreadAvatar({
-	thread,
-	className,
-}: {
-	thread: componentsThreadAvatar$key;
-	className?: string;
-}) {
-	const data = useFragment(
-		graphql`
-			fragment componentsThreadAvatar on EmailThread {
-				id
-				avatar
-				title
-				participants {
-					id
-					avatar
-					isSelf
-					name
-					address
-					isBlocked
-				}
-			}
-		`,
-		thread,
-	);
-	const otherParticipants = data.participants.filter((participant) => {
-		return !participant.isSelf;
-	});
-	const avatar = data.avatar ?? otherParticipants[0]?.avatar;
-	const alt =
-		data.title ||
-		otherParticipants.map((participant) => participant.name).join(", ") ||
-		"Email thread";
-
-	return (
-		<div className="indicator">
-			<span
-				className={clsx(
-					"indicator-item badge badge-primary px-1 py-2 badge-xs indicator-start",
-					otherParticipants[0].isBlocked ? "visible" : "invisible",
-				)}
-			>
-				<ProhibitIcon className="size-4" />
-			</span>
-			<img
-				src={avatar}
-				alt={`${alt} avatar`}
-				className={clsx("rounded-box object-contain", className)}
-			/>
-		</div>
-	);
 }
 
 export function ThreadTitle({
@@ -128,9 +74,18 @@ export function ThreadListItem(props: {
 		graphql`
 			fragment componentsThreadListItem on EmailThread {
 				id
-				...componentsThreadAvatar
 				...componentsThreadTitle
 				unseenCount
+				avatar
+				title
+				participants {
+					id
+					avatar
+					isSelf
+					name
+					address
+					isBlocked
+				}
 				lastMessage {
 					id
 					createdAt
@@ -148,13 +103,21 @@ export function ThreadListItem(props: {
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
-
 	const threadPath = router.buildLocation({
 		to: "/app/email/$thread_id",
 		params: { thread_id: thread.id },
 	}).pathname;
 	const isActive =
 		pathname === threadPath || pathname.startsWith(`${threadPath}/`);
+
+	const otherParticipants = thread.participants.filter((participant) => {
+		return !participant.isSelf;
+	});
+	const avatar = thread.avatar ?? otherParticipants[0]?.avatar;
+	const alt =
+		thread.title ||
+		otherParticipants.map((participant) => participant.name).join(", ") ||
+		"Email thread";
 
 	return (
 		<Link
@@ -166,10 +129,21 @@ export function ThreadListItem(props: {
 				isActive ? "bg-base-300" : null,
 			)}
 		>
-			<ThreadAvatar
-				thread={thread}
-				className="size-12 min-h-12 min-w-12 bg-accent-content"
-			/>
+			<div className="indicator">
+				<span
+					className={clsx(
+						"indicator-item badge badge-primary px-1 py-2 badge-xs indicator-start",
+						otherParticipants[0].isBlocked ? "visible" : "invisible",
+					)}
+				>
+					<ProhibitIcon className="size-4" />
+				</span>
+				<img
+					src={avatar}
+					alt={`${alt} avatar`}
+					className="rounded-box object-contain size-12 min-h-12 min-w-12 bg-accent-content"
+				/>
+			</div>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<div className="flex items-baseline justify-between gap-3">
 					<div

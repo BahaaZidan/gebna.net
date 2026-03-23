@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a27beb640177983ac37f767ceecdfc9e>>
+ * @generated SignedSource<<e8dc6a6c91a4601c55fca54c7e7c2beb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -60,14 +60,14 @@ v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "avatar",
+  "name": "name",
   "storageKey": null
 },
 v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "name",
+  "name": "avatar",
   "storageKey": null
 },
 v5 = {
@@ -143,7 +143,6 @@ return {
                     "plural": false,
                     "selections": [
                       (v2/*: any*/),
-                      (v3/*: any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -160,7 +159,6 @@ return {
                         "plural": true,
                         "selections": [
                           (v2/*: any*/),
-                          (v3/*: any*/),
                           {
                             "alias": null,
                             "args": null,
@@ -168,6 +166,7 @@ return {
                             "name": "isSelf",
                             "storageKey": null
                           },
+                          (v3/*: any*/),
                           (v4/*: any*/),
                           (v5/*: any*/),
                           {
@@ -187,6 +186,7 @@ return {
                         "name": "unseenCount",
                         "storageKey": null
                       },
+                      (v4/*: any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -212,7 +212,7 @@ return {
                             "plural": false,
                             "selections": [
                               (v2/*: any*/),
-                              (v4/*: any*/),
+                              (v3/*: any*/),
                               (v5/*: any*/)
                             ],
                             "storageKey": null
@@ -284,12 +284,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "4224d99ff876eb82a46cf13875e91e66",
+    "cacheID": "ef64d733a546682d9ba41b08b5bdd012",
     "id": null,
     "metadata": {},
     "name": "routePaginationQuery",
     "operationKind": "query",
-    "text": "query routePaginationQuery(\n  $after: String\n  $first: Int = 25\n) {\n  viewer {\n    ...routeViewer_2HEEH6\n    id\n  }\n}\n\nfragment componentsThreadAvatar on EmailThread {\n  id\n  avatar\n  title\n  participants {\n    id\n    avatar\n    isSelf\n    name\n    address\n    isBlocked\n  }\n}\n\nfragment componentsThreadListItem on EmailThread {\n  id\n  ...componentsThreadAvatar\n  ...componentsThreadTitle\n  unseenCount\n  lastMessage {\n    id\n    createdAt\n    from {\n      id\n      name\n      address\n    }\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n\nfragment routeViewer_2HEEH6 on Viewer {\n  emailThreads(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsThreadListItem\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query routePaginationQuery(\n  $after: String\n  $first: Int = 25\n) {\n  viewer {\n    ...routeViewer_2HEEH6\n    id\n  }\n}\n\nfragment componentsThreadListItem on EmailThread {\n  id\n  ...componentsThreadTitle\n  unseenCount\n  avatar\n  title\n  participants {\n    id\n    avatar\n    isSelf\n    name\n    address\n    isBlocked\n  }\n  lastMessage {\n    id\n    createdAt\n    from {\n      id\n      name\n      address\n    }\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n\nfragment routeViewer_2HEEH6 on Viewer {\n  emailThreads(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsThreadListItem\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
