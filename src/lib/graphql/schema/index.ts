@@ -2,6 +2,7 @@ import SchemaBuilder from "@pothos/core";
 import DrizzlePlugin from "@pothos/plugin-drizzle";
 import RelayPlugin from "@pothos/plugin-relay";
 import ScopeAuthPlugin from "@pothos/plugin-scope-auth";
+import ValidationPlugin from "@pothos/plugin-validation";
 import WithInputPlugin from "@pothos/plugin-with-input";
 import { and, eq } from "drizzle-orm";
 import { DateTimeResolver } from "graphql-scalars";
@@ -10,6 +11,7 @@ import rehypeStringify from "rehype-stringify";
 import { unified } from "unified";
 import { find } from "unist-util-find";
 import { visit } from "unist-util-visit";
+import * as v from "valibot";
 
 import { dbSchema, getTableConfig, relations } from "#/lib/db";
 import {
@@ -32,7 +34,13 @@ const builder = new SchemaBuilder<{
 		ownedByViewer: string;
 	};
 }>({
-	plugins: [RelayPlugin, ScopeAuthPlugin, WithInputPlugin, DrizzlePlugin],
+	plugins: [
+		RelayPlugin,
+		ScopeAuthPlugin,
+		WithInputPlugin,
+		DrizzlePlugin,
+		ValidationPlugin,
+	],
 	drizzle: {
 		client: (ctx) => ctx.db,
 		getTableConfig,
@@ -216,6 +224,8 @@ const EmailAddressRefRef = builder.drizzleNode("emailAddressRefs", {
 			nullable: false,
 			resolve: (ref, _args, ctx) => ctx.viewer.email === ref.address_?.address,
 		}),
+		isBlocked: t.exposeBoolean("isBlocked", { nullable: false }),
+		isSpam: t.exposeBoolean("isSpam", { nullable: false }),
 	}),
 });
 
@@ -446,6 +456,65 @@ builder.queryType({
 		}),
 	}),
 });
+
+builder.relayMutationField(
+	"updateEmailAddressRef",
+	{
+		inputFields: (t) => ({
+			address: t.string({
+				required: true,
+				validate: v.pipe(v.string(), v.trim(), v.nonEmpty(), v.email()),
+			}),
+			givenName: t.string({
+				validate: v.optional(
+					v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(30)),
+				),
+			}),
+			givenAvatar: t.string({
+				validate: v.optional(
+					v.pipe(v.string(), v.trim(), v.nonEmpty(), v.url()),
+				),
+			}),
+			isBlocked: t.boolean(),
+			isSpam: t.boolean(),
+		}),
+	},
+	{
+		resolve: async (_root, { input }, ctx) => {
+			let table = dbSchema.emailAddressRefs;
+			let [addressRef] = await ctx.db
+				.update(table)
+				.set({
+					givenAvatar: input.givenAvatar,
+					givenName: input.givenName,
+					isBlocked: input.isBlocked!,
+					isSpam: input.isSpam!,
+				})
+				.where(
+					and(
+						eq(table.address, input.address),
+						eq(table.ownerId, ctx.viewer.id),
+					),
+				)
+				.returning();
+			return addressRef;
+		},
+	},
+	{
+		outputFields: (t) => ({
+			result: t.field({
+				type: EmailAddressRefRef,
+				resolve: async (result, _root, ctx) => {
+					if (!result) return;
+					let address_ = (await ctx.db.query.emailAddresses.findFirst({
+						where: { address: result.address },
+					}))!;
+					return { ...result, address_ };
+				},
+			}),
+		}),
+	},
+);
 
 builder.mutationType({
 	fields: (t) => ({

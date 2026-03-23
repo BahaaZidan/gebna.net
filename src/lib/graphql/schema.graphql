@@ -7,7 +7,9 @@ type EmailAddressRef implements Node {
   address: String!
   avatar: String!
   id: ID!
+  isBlocked: Boolean!
   isSelf: Boolean!
+  isSpam: Boolean!
   name: String!
 }
 
@@ -66,6 +68,7 @@ type EmailThreadMessagesConnectionEdge {
 
 type Mutation {
   seeEmailThread(id: ID!): EmailThread
+  updateEmailAddressRef(input: UpdateEmailAddressRefInput!): UpdateEmailAddressRefPayload
 }
 
 interface Node {
@@ -83,6 +86,18 @@ type Query {
   node(id: ID!): Node
   nodes(ids: [ID!]!): [Node]!
   viewer: Viewer
+}
+
+input UpdateEmailAddressRefInput {
+  address: String!
+  givenAvatar: String
+  givenName: String
+  isBlocked: Boolean
+  isSpam: Boolean
+}
+
+type UpdateEmailAddressRefPayload {
+  result: EmailAddressRef
 }
 
 type Viewer {
