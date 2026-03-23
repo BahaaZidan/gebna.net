@@ -19,9 +19,7 @@ import {
 	Link,
 	Outlet,
 	redirect,
-	useHydrated,
 	useMatchRoute,
-	useRouterState,
 } from "@tanstack/react-router";
 import clsx from "clsx";
 import { useState } from "react";
@@ -64,11 +62,6 @@ function RouteComponent() {
 		dismiss,
 		role,
 	]);
-	const hydrated = useHydrated();
-	const isNavigating = useRouterState({
-		select: (s) => s.status === "pending",
-	});
-	const showNavigationProgress = hydrated && isNavigating;
 	const matchRoute = useMatchRoute();
 	let isSearchActive = !!matchRoute({ to: "/app", fuzzy: false });
 	let isEmailActive = !!matchRoute({ to: "/app/email", fuzzy: true });
@@ -76,14 +69,6 @@ function RouteComponent() {
 
 	return (
 		<main className="flex h-screen max-h-screen min-h-screen w-screen max-w-screen min-w-screen overflow-hidden">
-			<div
-				className={clsx(
-					"absolute h-1.5 max-h-1.5 w-full",
-					showNavigationProgress ? "visible" : "invisible",
-				)}
-			>
-				<progress className="progress mb-3 h-1.5 w-full rounded-none"></progress>
-			</div>
 			<div className="flex h-screen w-16 min-w-16 flex-col items-center justify-between border-r py-3">
 				<div className="flex w-16 flex-col gap-2">
 					<div className="tooltip tooltip-right w-16" data-tip="Search">
