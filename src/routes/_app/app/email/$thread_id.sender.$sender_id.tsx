@@ -1,8 +1,10 @@
+import { CheckIcon } from "@phosphor-icons/react/dist/ssr/Check";
+import { PencilSimpleIcon } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 import { ProhibitIcon } from "@phosphor-icons/react/dist/ssr/Prohibit";
 import { WarningIcon } from "@phosphor-icons/react/dist/ssr/Warning";
 import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 import { createFileRoute, Link, useHydrated } from "@tanstack/react-router";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
 	graphql,
 	useLazyLoadQuery,
@@ -15,7 +17,11 @@ import { AttachmentListItem, ThreadListItem } from "#/lib/email/components";
 
 import type { ThreadIdSenderDetailsActionsMutation } from "./__generated__/ThreadIdSenderDetailsActionsMutation.graphql";
 import type { ThreadIdSenderDetailsAttachmentsSection$key } from "./__generated__/ThreadIdSenderDetailsAttachmentsSection.graphql";
-import type { ThreadIdSenderDetailsQuery } from "./__generated__/ThreadIdSenderDetailsQuery.graphql";
+import type { ThreadIdSenderDetailsNameMutation } from "./__generated__/ThreadIdSenderDetailsNameMutation.graphql";
+import type {
+	ThreadIdSenderDetailsQuery,
+	ThreadIdSenderDetailsQuery$data,
+} from "./__generated__/ThreadIdSenderDetailsQuery.graphql";
 import type { ThreadIdSenderDetailsThreadsSection$key } from "./__generated__/ThreadIdSenderDetailsThreadsSection.graphql";
 
 export const Route = createFileRoute(
@@ -23,6 +29,11 @@ export const Route = createFileRoute(
 )({
 	component: RouteComponent,
 });
+
+type Sender = Exclude<
+	NonNullable<ThreadIdSenderDetailsQuery$data["node"]>,
+	{ readonly __typename: "%other" }
+>;
 
 function RouteComponent() {
 	const hydrated = useHydrated();
@@ -77,7 +88,31 @@ function SenderDetailsQueryBoundary() {
 	}
 
 	const { thread_id } = Route.useParams();
-	let sender = data.node;
+	const sender = data.node;
+	const [isEditingName, setIsEditingName] = useState(false);
+	const [draftName, setDraftName] = useState(sender.name);
+	const [commitUpdateName, isSavingName] =
+		useMutation<ThreadIdSenderDetailsNameMutation>(graphql`
+			mutation ThreadIdSenderDetailsNameMutation(
+				$input: UpdateEmailAddressRefInput!
+			) {
+				updateEmailAddressRef(input: $input) {
+					result {
+						id
+						name
+					}
+				}
+			}
+		`);
+
+	useEffect(() => {
+		if (!isEditingName) {
+			setDraftName(sender.name);
+		}
+	}, [isEditingName, sender.name]);
+
+	const trimmedDraftName = draftName.trim();
+
 	return (
 		<div className="flex h-full min-h-0 flex-col bg-base-100">
 			<div className="flex shrink-0 items-center gap-2 p-3">
@@ -101,10 +136,99 @@ function SenderDetailsQueryBoundary() {
 						className="size-24 rounded-box bg-accent-content object-cover"
 					/>
 					<div className="min-w-0">
-						<div className="truncate text-xl font-semibold">{sender.name}</div>
-						<div className="truncate text-sm text-base-content/60">
-							{sender.address}
-						</div>
+						{isEditingName ? (
+							<form
+								className="flex flex-col items-center gap-3"
+								onSubmit={(event) => {
+									event.preventDefault();
+									if (!trimmedDraftName || trimmedDraftName === sender.name) {
+										setIsEditingName(false);
+										return;
+									}
+
+									commitUpdateName({
+										variables: {
+											input: {
+												address: sender.address,
+												givenName: trimmedDraftName,
+											},
+										},
+										optimisticResponse: {
+											updateEmailAddressRef: {
+												result: {
+													id: sender.id,
+													name: trimmedDraftName,
+												},
+											},
+										},
+										onCompleted: () => {
+											setIsEditingName(false);
+										},
+									});
+								}}
+							>
+								<label className="w-full max-w-xs">
+									<span className="sr-only">Address name</span>
+									<input
+										autoFocus
+										value={draftName}
+										onChange={(event) => {
+											setDraftName(event.target.value);
+										}}
+										className="input input-bordered w-full text-center"
+										maxLength={30}
+									/>
+								</label>
+								<div className="flex items-center gap-2">
+									<button
+										type="submit"
+										className="btn btn-primary btn-sm"
+										disabled={
+											isSavingName ||
+											!trimmedDraftName ||
+											trimmedDraftName === sender.name
+										}
+									>
+										<CheckIcon className="size-4" />
+										Save
+									</button>
+									<button
+										type="button"
+										className="btn btn-ghost btn-sm"
+										disabled={isSavingName}
+										onClick={() => {
+											setDraftName(sender.name);
+											setIsEditingName(false);
+										}}
+									>
+										<XIcon className="size-4" />
+										Cancel
+									</button>
+								</div>
+							</form>
+						) : (
+							<div className="flex flex-col items-center gap-2">
+								<div className="group relative flex w-full max-w-xs items-center justify-center">
+									<div className="truncate px-8 text-center text-xl font-semibold">
+										{sender.name}
+									</div>
+									<button
+										type="button"
+										className="btn btn-ghost btn-xs absolute right-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+										aria-label="Edit address name"
+										onClick={() => {
+											setDraftName(sender.name);
+											setIsEditingName(true);
+										}}
+									>
+										<PencilSimpleIcon className="size-4" />
+									</button>
+								</div>
+								<div className="truncate text-sm text-base-content/60">
+									{sender.address}
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
 				<div className="rounded-box border border-base-300 bg-base-200/60 p-4">
@@ -130,16 +254,7 @@ function SenderDetailsQueryBoundary() {
 	);
 }
 
-function SenderActionsSection({
-	sender,
-}: {
-	sender: {
-		id: string;
-		address: string;
-		isBlocked: boolean;
-		isSpam: boolean;
-	};
-}) {
+function SenderActionsSection({ sender }: { sender: Sender }) {
 	const [commitUpdate, isInFlight] =
 		useMutation<ThreadIdSenderDetailsActionsMutation>(graphql`
 			mutation ThreadIdSenderDetailsActionsMutation(
