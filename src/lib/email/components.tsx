@@ -133,8 +133,14 @@ export function MessageBubble({
 				from {
 					id
 					isSelf
+					isBlocked
 					name
 					avatar
+					address
+				}
+				to {
+					id
+					isSelf
 					address
 				}
 				attachments {
@@ -154,19 +160,35 @@ export function MessageBubble({
 	return (
 		<div className="flex w-full items-start gap-4 p-3">
 			<div className="shrink-0">
-				<img
-					alt={`${senderName} avatar`}
-					src={data.from.avatar}
-					className="size-12 bg-accent-content object-cover"
-				/>
+				<div className="indicator">
+					<span
+						className={clsx(
+							"indicator-item badge badge-primary px-1 py-2 mx-1 badge-xs indicator-start",
+							data.from.isBlocked ? "visible" : "invisible",
+						)}
+					>
+						<ProhibitIcon className="size-4" />
+					</span>
+					<img
+						alt={`${senderName} avatar`}
+						src={data.from.avatar}
+						className="size-12 bg-accent-content object-cover"
+					/>
+				</div>
 			</div>
-			<div className="flex w-full min-w-0 flex-col gap-3">
-				<div className="flex flex-wrap items-baseline gap-2">
-					<div className="font-bold">{senderName}</div>
+			<div className="flex w-full min-w-0 flex-col">
+				<div className="flex flex-wrap items-baseline justify-between gap-2 mb-0.5">
+					<div className="font-bold">
+						{senderName}{" "}
+						<span className="font-normal text-base-content/50 text-sm">
+							&lt;{data.from.address}&gt;
+						</span>
+					</div>
 					<time className="text-xs text-base-content/60">
 						{formatInboxDate(data.createdAt)}
 					</time>
 				</div>
+				{!data.to.isSelf && <div>to {data.to.address}</div>}
 				{data.plaintext ? (
 					<pre className="font-sans text-sm leading-6 whitespace-pre-wrap text-base-content">
 						{data.plaintext}

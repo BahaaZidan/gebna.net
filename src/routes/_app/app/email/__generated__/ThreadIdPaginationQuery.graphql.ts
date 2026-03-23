@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ffbb2f4f6c1189078ed8a882f9498ced>>
+ * @generated SignedSource<<5d22076e5dda4436eb337c9bc5218d98>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -88,6 +88,13 @@ v6 = {
   "args": null,
   "kind": "ScalarField",
   "name": "name",
+  "storageKey": null
+},
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "address",
   "storageKey": null
 };
 return {
@@ -220,6 +227,13 @@ return {
                             "selections": [
                               (v4/*: any*/),
                               (v5/*: any*/),
+                              {
+                                "alias": null,
+                                "args": null,
+                                "kind": "ScalarField",
+                                "name": "isBlocked",
+                                "storageKey": null
+                              },
                               (v6/*: any*/),
                               {
                                 "alias": null,
@@ -228,13 +242,21 @@ return {
                                 "name": "avatar",
                                 "storageKey": null
                               },
-                              {
-                                "alias": null,
-                                "args": null,
-                                "kind": "ScalarField",
-                                "name": "address",
-                                "storageKey": null
-                              }
+                              (v7/*: any*/)
+                            ],
+                            "storageKey": null
+                          },
+                          {
+                            "alias": null,
+                            "args": null,
+                            "concreteType": "EmailAddressRef",
+                            "kind": "LinkedField",
+                            "name": "to",
+                            "plural": false,
+                            "selections": [
+                              (v4/*: any*/),
+                              (v5/*: any*/),
+                              (v7/*: any*/)
                             ],
                             "storageKey": null
                           },
@@ -346,12 +368,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "660b36bf265e50eb6587fc0dce13a2b2",
+    "cacheID": "c172e8a17e9b8de0822ae394b6db5017",
     "id": null,
     "metadata": {},
     "name": "ThreadIdPaginationQuery",
     "operationKind": "query",
-    "text": "query ThreadIdPaginationQuery(\n  $after: String\n  $first: Int = 15\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ...ThreadIdThread_2HEEH6\n    id\n  }\n}\n\nfragment ThreadIdThread_2HEEH6 on EmailThread {\n  id\n  unseenCount\n  ...componentsThreadTitle\n  messages(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsMessageBubble\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n\nfragment componentsMessageBubble on EmailMessage {\n  id\n  html\n  plaintext\n  createdAt\n  from {\n    id\n    isSelf\n    name\n    avatar\n    address\n  }\n  attachments {\n    id\n    filename\n    sizeInBytes\n    description\n    category\n    url\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n"
+    "text": "query ThreadIdPaginationQuery(\n  $after: String\n  $first: Int = 15\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ...ThreadIdThread_2HEEH6\n    id\n  }\n}\n\nfragment ThreadIdThread_2HEEH6 on EmailThread {\n  id\n  unseenCount\n  ...componentsThreadTitle\n  messages(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsMessageBubble\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n\nfragment componentsMessageBubble on EmailMessage {\n  id\n  html\n  plaintext\n  createdAt\n  from {\n    id\n    isSelf\n    isBlocked\n    name\n    avatar\n    address\n  }\n  to {\n    id\n    isSelf\n    address\n  }\n  attachments {\n    id\n    filename\n    sizeInBytes\n    description\n    category\n    url\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n"
   }
 };
 })();

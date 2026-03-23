@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9b3d25acd0cd472afd9c07670bb8b7ce>>
+ * @generated SignedSource<<ab1baecd22e2207a63f7231c55cdf93f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,12 +25,18 @@ export type componentsMessageBubble$data = {
     readonly address: string;
     readonly avatar: string;
     readonly id: string;
+    readonly isBlocked: boolean;
     readonly isSelf: boolean;
     readonly name: string;
   };
   readonly html: string | null | undefined;
   readonly id: string;
   readonly plaintext: string | null | undefined;
+  readonly to: {
+    readonly address: string;
+    readonly id: string;
+    readonly isSelf: boolean;
+  };
   readonly " $fragmentType": "componentsMessageBubble";
 };
 export type componentsMessageBubble$key = {
@@ -44,6 +50,20 @@ var v0 = {
   "args": null,
   "kind": "ScalarField",
   "name": "id",
+  "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isSelf",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "address",
   "storageKey": null
 };
 return {
@@ -83,11 +103,12 @@ return {
       "plural": false,
       "selections": [
         (v0/*: any*/),
+        (v1/*: any*/),
         {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "isSelf",
+          "name": "isBlocked",
           "storageKey": null
         },
         {
@@ -104,13 +125,21 @@ return {
           "name": "avatar",
           "storageKey": null
         },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "address",
-          "storageKey": null
-        }
+        (v2/*: any*/)
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "EmailAddressRef",
+      "kind": "LinkedField",
+      "name": "to",
+      "plural": false,
+      "selections": [
+        (v0/*: any*/),
+        (v1/*: any*/),
+        (v2/*: any*/)
       ],
       "storageKey": null
     },
@@ -167,6 +196,6 @@ return {
 };
 })();
 
-(node as any).hash = "69ecf690b7586d0b97fe2c8e21582540";
+(node as any).hash = "f83da428216c05ef780c65922d36cf83";
 
 export default node;

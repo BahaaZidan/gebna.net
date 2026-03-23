@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<33530be9dfb1906cc95c7cb5c4f67d47>>
+ * @generated SignedSource<<3f94c6cc9c4bd7bbd7caf895a55d873f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -92,6 +92,13 @@ v8 = {
   "args": null,
   "kind": "ScalarField",
   "name": "name",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "address",
   "storageKey": null
 };
 return {
@@ -241,6 +248,13 @@ return {
                             "selections": [
                               (v5/*: any*/),
                               (v7/*: any*/),
+                              {
+                                "alias": null,
+                                "args": null,
+                                "kind": "ScalarField",
+                                "name": "isBlocked",
+                                "storageKey": null
+                              },
                               (v8/*: any*/),
                               {
                                 "alias": null,
@@ -249,13 +263,21 @@ return {
                                 "name": "avatar",
                                 "storageKey": null
                               },
-                              {
-                                "alias": null,
-                                "args": null,
-                                "kind": "ScalarField",
-                                "name": "address",
-                                "storageKey": null
-                              }
+                              (v9/*: any*/)
+                            ],
+                            "storageKey": null
+                          },
+                          {
+                            "alias": null,
+                            "args": null,
+                            "concreteType": "EmailAddressRef",
+                            "kind": "LinkedField",
+                            "name": "to",
+                            "plural": false,
+                            "selections": [
+                              (v5/*: any*/),
+                              (v7/*: any*/),
+                              (v9/*: any*/)
                             ],
                             "storageKey": null
                           },
@@ -367,12 +389,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "6036cabd645dc2686486ea47a036bf71",
+    "cacheID": "9363d1f931895135e952014b2e653b8c",
     "id": null,
     "metadata": {},
     "name": "ThreadIdQuery",
     "operationKind": "query",
-    "text": "query ThreadIdQuery(\n  $id: ID!\n  $first: Int!\n  $after: String\n) {\n  node(id: $id) {\n    __typename\n    ... on EmailThread {\n      id\n      ...ThreadIdThread_2HEEH6\n    }\n    id\n  }\n}\n\nfragment ThreadIdThread_2HEEH6 on EmailThread {\n  id\n  unseenCount\n  ...componentsThreadTitle\n  messages(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsMessageBubble\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n\nfragment componentsMessageBubble on EmailMessage {\n  id\n  html\n  plaintext\n  createdAt\n  from {\n    id\n    isSelf\n    name\n    avatar\n    address\n  }\n  attachments {\n    id\n    filename\n    sizeInBytes\n    description\n    category\n    url\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n"
+    "text": "query ThreadIdQuery(\n  $id: ID!\n  $first: Int!\n  $after: String\n) {\n  node(id: $id) {\n    __typename\n    ... on EmailThread {\n      id\n      ...ThreadIdThread_2HEEH6\n    }\n    id\n  }\n}\n\nfragment ThreadIdThread_2HEEH6 on EmailThread {\n  id\n  unseenCount\n  ...componentsThreadTitle\n  messages(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsMessageBubble\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n\nfragment componentsMessageBubble on EmailMessage {\n  id\n  html\n  plaintext\n  createdAt\n  from {\n    id\n    isSelf\n    isBlocked\n    name\n    avatar\n    address\n  }\n  to {\n    id\n    isSelf\n    address\n  }\n  attachments {\n    id\n    filename\n    sizeInBytes\n    description\n    category\n    url\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n"
   }
 };
 })();
