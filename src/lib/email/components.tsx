@@ -6,6 +6,7 @@ import { GridNineIcon } from "@phosphor-icons/react/dist/ssr/GridNine";
 import { ImageIcon } from "@phosphor-icons/react/dist/ssr/Image";
 import { MicrosoftWordLogoIcon } from "@phosphor-icons/react/dist/ssr/MicrosoftWordLogo";
 import { PresentationChartIcon } from "@phosphor-icons/react/dist/ssr/PresentationChart";
+import { ProhibitIcon } from "@phosphor-icons/react/dist/ssr/Prohibit";
 import { VideoIcon } from "@phosphor-icons/react/dist/ssr/Video";
 import { WaveformIcon } from "@phosphor-icons/react/dist/ssr/Waveform";
 import clsx from "clsx";
@@ -49,6 +50,7 @@ export function ThreadAvatar({
 					isSelf
 					name
 					address
+					isBlocked
 				}
 			}
 		`,
@@ -63,21 +65,21 @@ export function ThreadAvatar({
 		otherParticipants.map((participant) => participant.name).join(", ") ||
 		"Email thread";
 
-	return avatar ? (
-		<img
-			src={avatar}
-			alt={`${alt} avatar`}
-			className={clsx("rounded-box object-contain", className)}
-		/>
-	) : (
-		<div
-			className={clsx(
-				"rounded-box bg-base-300 text-center text-sm font-semibold uppercase",
-				className,
-			)}
-			aria-hidden="true"
-		>
-			{alt.slice(0, 2)}
+	return (
+		<div className="indicator">
+			<span
+				className={clsx(
+					"indicator-item badge badge-primary px-1 py-2 badge-xs indicator-start",
+					otherParticipants[0].isBlocked ? "visible" : "invisible",
+				)}
+			>
+				<ProhibitIcon className="size-4" />
+			</span>
+			<img
+				src={avatar}
+				alt={`${alt} avatar`}
+				className={clsx("rounded-box object-contain", className)}
+			/>
 		</div>
 	);
 }

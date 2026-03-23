@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1669674f9759b504c1869a0b38b08b5e>>
+ * @generated SignedSource<<f8bdad29d8c0fe4370125671dace4a96>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,7 @@ export type componentsThreadAvatar$data = {
     readonly address: string;
     readonly avatar: string;
     readonly id: string;
+    readonly isBlocked: boolean;
     readonly isSelf: boolean;
     readonly name: string;
   }>;
@@ -88,6 +89,13 @@ return {
           "kind": "ScalarField",
           "name": "address",
           "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "isBlocked",
+          "storageKey": null
         }
       ],
       "storageKey": null
@@ -98,6 +106,6 @@ return {
 };
 })();
 
-(node as any).hash = "4ff34098ac63ade68473696efbfd0d85";
+(node as any).hash = "b5d4b79d391b746910ef11c8d38b3e28";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<af8318f1a51773d59165d6c3fc53b7d5>>
+ * @generated SignedSource<<3bedbc70418e282d196daa184444a9d7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -169,7 +169,14 @@ return {
                             "storageKey": null
                           },
                           (v4/*: any*/),
-                          (v5/*: any*/)
+                          (v5/*: any*/),
+                          {
+                            "alias": null,
+                            "args": null,
+                            "kind": "ScalarField",
+                            "name": "isBlocked",
+                            "storageKey": null
+                          }
                         ],
                         "storageKey": null
                       },
@@ -277,12 +284,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "c7257e6eff286c7f8428aaaa5e342f9f",
+    "cacheID": "4ee0ab703ff9bc8fc9f1ff4d37eeb0f7",
     "id": null,
     "metadata": {},
     "name": "routePaginationQuery",
     "operationKind": "query",
-    "text": "query routePaginationQuery(\n  $after: String\n  $first: Int = 25\n) {\n  viewer {\n    ...routeViewer_2HEEH6\n    id\n  }\n}\n\nfragment componentsThreadAvatar on EmailThread {\n  id\n  avatar\n  title\n  participants {\n    id\n    avatar\n    isSelf\n    name\n    address\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n\nfragment routeViewer_2HEEH6 on Viewer {\n  emailThreads(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsThreadAvatar\n        ...componentsThreadTitle\n        unseenCount\n        lastMessage {\n          id\n          createdAt\n          from {\n            id\n            name\n            address\n          }\n        }\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query routePaginationQuery(\n  $after: String\n  $first: Int = 25\n) {\n  viewer {\n    ...routeViewer_2HEEH6\n    id\n  }\n}\n\nfragment componentsThreadAvatar on EmailThread {\n  id\n  avatar\n  title\n  participants {\n    id\n    avatar\n    isSelf\n    name\n    address\n    isBlocked\n  }\n}\n\nfragment componentsThreadTitle on EmailThread {\n  id\n  title\n  participants {\n    id\n    isSelf\n    name\n  }\n}\n\nfragment routeViewer_2HEEH6 on Viewer {\n  emailThreads(first: $first, after: $after) {\n    edges {\n      node {\n        id\n        ...componentsThreadAvatar\n        ...componentsThreadTitle\n        unseenCount\n        lastMessage {\n          id\n          createdAt\n          from {\n            id\n            name\n            address\n          }\n        }\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
