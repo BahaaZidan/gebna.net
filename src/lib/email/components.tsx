@@ -10,13 +10,16 @@ import { PresentationChartIcon } from "@phosphor-icons/react/dist/ssr/Presentati
 import { ProhibitIcon } from "@phosphor-icons/react/dist/ssr/Prohibit";
 import { VideoIcon } from "@phosphor-icons/react/dist/ssr/Video";
 import { WaveformIcon } from "@phosphor-icons/react/dist/ssr/Waveform";
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import clsx from "clsx";
 import type { ComponentProps } from "react";
 import { useEffect, useRef } from "react";
 import { graphql, useFragment, useMutation } from "react-relay";
+import { ConnectionHandler } from "relay-runtime";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 
 import type { componentsAttachmentListItem$key } from "./__generated__/componentsAttachmentListItem.graphql";
+import type { componentsThreadListItemDeleteMutation } from "./__generated__/componentsThreadListItemDeleteMutation.graphql";
 import type { componentsMessageBubble$key } from "./__generated__/componentsMessageBubble.graphql";
 import type { componentsThreadListItem$key } from "./__generated__/componentsThreadListItem.graphql";
 import type { componentsThreadListItemSeenMutation } from "./__generated__/componentsThreadListItemSeenMutation.graphql";
@@ -111,6 +114,13 @@ export function ThreadListItem(props: {
 				}
 			}
 		`);
+	const [commitDeleteMutation, isDeletingThread] =
+		useMutation<componentsThreadListItemDeleteMutation>(graphql`
+			mutation componentsThreadListItemDeleteMutation($id: ID!) {
+				deleteEmailThread(id: $id)
+			}
+		`);
+	const navigate = useNavigate();
 	const router = useRouter();
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
@@ -149,6 +159,53 @@ export function ThreadListItem(props: {
 					id: thread.id,
 					unseenCount: 0,
 				},
+			},
+		});
+	}
+
+	function removeThreadFromInboxConnection(
+		store: RecordSourceSelectorProxy,
+		deletedThreadId: string,
+	) {
+		const viewer = store.getRoot().getLinkedRecord("viewer");
+		if (!viewer) return;
+
+		const connection = ConnectionHandler.getConnection(
+			viewer,
+			"route_emailThreads",
+		);
+		if (!connection) return;
+
+		ConnectionHandler.deleteNode(connection, deletedThreadId);
+	}
+
+	function handleDeleteThread(
+		event: Parameters<NonNullable<ComponentProps<"button">["onClick"]>>[0],
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		if (isDeletingThread) return;
+
+		commitDeleteMutation({
+			variables: {
+				id: thread.id,
+			},
+			optimisticResponse: {
+				deleteEmailThread: true,
+			},
+			optimisticUpdater: (store) => {
+				removeThreadFromInboxConnection(store, thread.id);
+			},
+			updater: (store) => {
+				removeThreadFromInboxConnection(store, thread.id);
+			},
+			onCompleted: (response) => {
+				if (!response.deleteEmailThread || !isActive) return;
+
+				void navigate({
+					to: "/app/email",
+				});
 			},
 		});
 	}
@@ -216,32 +273,41 @@ export function ThreadListItem(props: {
 				{thread.unseenCount ? (
 					<div className="badge badge-primary">{thread.unseenCount}</div>
 				) : null}
-				{canMarkAsSeen ? (
-					<div className="dropdown dropdown-end">
-						<button
-							type="button"
-							tabIndex={0}
-							className="btn hidden btn-ghost btn-xs group-hover:inline-flex group-focus-within:inline-flex"
-							aria-label="Thread options"
-						>
-							<CaretDownIcon className="size-5.5" />
-						</button>
-						<ul
-							tabIndex={0}
-							className="menu dropdown-content z-10 mt-1 w-44 rounded-box border border-base-300 bg-base-100 p-2 shadow-xl"
-						>
+				<div className="dropdown dropdown-end">
+					<button
+						type="button"
+						tabIndex={0}
+						className="btn hidden btn-ghost btn-xs group-hover:inline-flex group-focus-within:inline-flex"
+						aria-label="Thread options"
+					>
+						<CaretDownIcon className="size-5.5" />
+					</button>
+					<ul
+						tabIndex={0}
+						className="menu dropdown-content z-10 mt-1 w-44 rounded-box border border-base-300 bg-base-100 p-2 shadow-xl"
+					>
+						{canMarkAsSeen ? (
 							<li>
 								<button
 									type="button"
 									onClick={handleMarkAsSeen}
-									disabled={isMarkingSeen}
+									disabled={isMarkingSeen || isDeletingThread}
 								>
 									Mark as seen
 								</button>
 							</li>
-						</ul>
-					</div>
-				) : null}
+						) : null}
+						<li>
+							<button
+								type="button"
+								onClick={handleDeleteThread}
+								disabled={isDeletingThread}
+							>
+								Delete thread
+							</button>
+						</li>
+					</ul>
+				</div>
 			</div>
 		</div>
 	);

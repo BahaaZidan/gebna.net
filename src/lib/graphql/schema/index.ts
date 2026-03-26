@@ -554,6 +554,26 @@ builder.mutationType({
 				});
 			},
 		}),
+		deleteEmailThread: t.field({
+			type: "Boolean",
+			nullable: false,
+			args: {
+				id: t.arg.globalID({ required: true }),
+			},
+			resolve: async (_parent, args, ctx) => {
+				const [thread] = await ctx.db
+					.delete(dbSchema.emailThreads)
+					.where(
+						and(
+							eq(dbSchema.emailThreads.ownerId, ctx.viewer.id),
+							eq(dbSchema.emailThreads.id, args.id.id),
+						),
+					)
+					.returning({ id: dbSchema.emailThreads.id });
+
+				return !!thread;
+			},
+		}),
 	}),
 });
 

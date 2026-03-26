@@ -89,6 +89,7 @@ type EmailThreadMessagesConnectionEdge {
 }
 
 type Mutation {
+  deleteEmailThread(id: ID!): Boolean!
   seeEmailThread(id: ID!): EmailThread
   updateEmailAddressRef(input: UpdateEmailAddressRefInput!): UpdateEmailAddressRefPayload
 }
