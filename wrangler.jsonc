@@ -27,7 +27,6 @@
 		],
 	},
 	"vars": {
-		"VITE_BASE_URL": "http://gebna.net",
+		"VITE_BASE_URL": "https://gebna.net",
 	},
-	// lolo
 }
