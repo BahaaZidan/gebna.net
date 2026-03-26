@@ -1,4 +1,5 @@
 import { DotsThreeOutlineVerticalIcon } from "@phosphor-icons/react/dist/ssr/DotsThreeOutlineVertical";
+import { TrashIcon } from "@phosphor-icons/react/dist/ssr/Trash";
 import {
 	createFileRoute,
 	Outlet,
@@ -186,6 +187,7 @@ function EmailThreadContent({ thread }: { thread: ThreadIdThread$key }) {
 									onClick={handleDeleteThread}
 									disabled={isDeletingThread}
 								>
+									<TrashIcon className="size-4" />
 									Delete thread
 								</button>
 							</li>

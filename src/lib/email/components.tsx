@@ -1,5 +1,6 @@
 import { CalendarDotIcon } from "@phosphor-icons/react/dist/ssr/CalendarDot";
 import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
+import { EnvelopeSimpleOpenIcon } from "@phosphor-icons/react/dist/ssr/EnvelopeSimpleOpen";
 import { FileIcon } from "@phosphor-icons/react/dist/ssr/File";
 import { FileArchiveIcon } from "@phosphor-icons/react/dist/ssr/FileArchive";
 import { FilePdfIcon } from "@phosphor-icons/react/dist/ssr/FilePdf";
@@ -8,6 +9,7 @@ import { ImageIcon } from "@phosphor-icons/react/dist/ssr/Image";
 import { MicrosoftWordLogoIcon } from "@phosphor-icons/react/dist/ssr/MicrosoftWordLogo";
 import { PresentationChartIcon } from "@phosphor-icons/react/dist/ssr/PresentationChart";
 import { ProhibitIcon } from "@phosphor-icons/react/dist/ssr/Prohibit";
+import { TrashIcon } from "@phosphor-icons/react/dist/ssr/Trash";
 import { VideoIcon } from "@phosphor-icons/react/dist/ssr/Video";
 import { WaveformIcon } from "@phosphor-icons/react/dist/ssr/Waveform";
 import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
@@ -313,6 +315,7 @@ export function ThreadListItem(props: {
 									onClick={handleMarkAsSeen}
 									disabled={isMarkingSeen || isDeletingThread}
 								>
+									<EnvelopeSimpleOpenIcon className="size-4" />
 									Mark as seen
 								</button>
 							</li>
@@ -323,6 +326,7 @@ export function ThreadListItem(props: {
 								onClick={handleDeleteThread}
 								disabled={isDeletingThread}
 							>
+								<TrashIcon className="size-4" />
 								Delete thread
 							</button>
 						</li>
