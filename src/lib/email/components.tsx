@@ -12,12 +12,14 @@ import { VideoIcon } from "@phosphor-icons/react/dist/ssr/Video";
 import { WaveformIcon } from "@phosphor-icons/react/dist/ssr/Waveform";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import clsx from "clsx";
+import type { ComponentProps } from "react";
 import { useEffect, useRef } from "react";
-import { graphql, useFragment } from "react-relay";
+import { graphql, useFragment, useMutation } from "react-relay";
 
 import type { componentsAttachmentListItem$key } from "./__generated__/componentsAttachmentListItem.graphql";
 import type { componentsMessageBubble$key } from "./__generated__/componentsMessageBubble.graphql";
 import type { componentsThreadListItem$key } from "./__generated__/componentsThreadListItem.graphql";
+import type { componentsThreadListItemSeenMutation } from "./__generated__/componentsThreadListItemSeenMutation.graphql";
 import type { componentsThreadTitle$key } from "./__generated__/componentsThreadTitle.graphql";
 import { formatInboxDate } from "./format";
 
@@ -100,6 +102,15 @@ export function ThreadListItem(props: {
 		`,
 		props.thread,
 	);
+	const [commitSeenMutation, isMarkingSeen] =
+		useMutation<componentsThreadListItemSeenMutation>(graphql`
+			mutation componentsThreadListItemSeenMutation($id: ID!) {
+				seeEmailThread(id: $id) {
+					id
+					unseenCount
+				}
+			}
+		`);
 	const router = useRouter();
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
@@ -119,78 +130,120 @@ export function ThreadListItem(props: {
 		thread.title ||
 		otherParticipants.map((participant) => participant.name).join(", ") ||
 		"Email thread";
+	const canMarkAsSeen = thread.unseenCount > 0;
+
+	function handleMarkAsSeen(
+		event: Parameters<NonNullable<ComponentProps<"button">["onClick"]>>[0],
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		if (!canMarkAsSeen || isMarkingSeen) return;
+
+		commitSeenMutation({
+			variables: {
+				id: thread.id,
+			},
+			optimisticResponse: {
+				seeEmailThread: {
+					id: thread.id,
+					unseenCount: 0,
+				},
+			},
+		});
+	}
 
 	return (
-		<Link
-			key={thread.id}
-			to="/app/email/$thread_id"
-			params={{ thread_id: thread.id }}
+		<div
 			className={clsx(
 				"group flex w-full items-center gap-3 px-5 py-3 hover:bg-base-200",
 				isActive ? "bg-base-300" : null,
 			)}
 		>
-			<div className="indicator">
-				<span
-					className={clsx(
-						"indicator-item badge badge-primary px-1 py-2 badge-xs indicator-start",
-						otherParticipants[0].isBlocked ? "visible" : "invisible",
-					)}
-				>
-					<ProhibitIcon className="size-4" />
-				</span>
-				<img
-					src={avatar}
-					alt={`${alt} avatar`}
-					className="rounded-box object-contain size-12 min-h-12 min-w-12 bg-accent-content"
-				/>
-			</div>
-			<div className="flex min-w-0 flex-1 flex-col gap-1">
-				<div className="flex items-baseline justify-between gap-3">
-					<div
+			<Link
+				key={thread.id}
+				to="/app/email/$thread_id"
+				params={{ thread_id: thread.id }}
+				className="flex min-w-0 flex-1 items-center gap-3"
+			>
+				<div className="indicator">
+					<span
 						className={clsx(
-							"line-clamp-1 min-w-0 text-sm",
-							thread.unseenCount > 0 ? "" : "text-base-content/60",
+							"indicator-item badge badge-primary px-1 py-2 badge-xs indicator-start",
+							otherParticipants[0].isBlocked ? "visible" : "invisible",
 						)}
 					>
-						{thread.lastMessage.from.name || thread.lastMessage.from.address}
+						<ProhibitIcon className="size-4" />
+					</span>
+					<img
+						src={avatar}
+						alt={`${alt} avatar`}
+						className="rounded-box object-contain size-12 min-h-12 min-w-12 bg-accent-content"
+					/>
+				</div>
+				<div className="flex min-w-0 flex-1 flex-col gap-1">
+					<div className="flex items-baseline justify-between gap-3">
+						<div
+							className={clsx(
+								"line-clamp-1 min-w-0 text-sm",
+								thread.unseenCount > 0 ? "" : "text-base-content/60",
+							)}
+						>
+							{thread.lastMessage.from.name || thread.lastMessage.from.address}
+						</div>
+						<div
+							className={clsx(
+								"mx-px text-xs whitespace-nowrap",
+								thread.unseenCount ? "" : "text-base-content/50",
+							)}
+						>
+							{formatInboxDate(thread.lastMessage.createdAt)}
+						</div>
 					</div>
-					<div
-						className={clsx(
-							"mx-px text-xs whitespace-nowrap",
-							thread.unseenCount ? "" : "text-base-content/50",
-						)}
-					>
-						{formatInboxDate(thread.lastMessage.createdAt)}
+					<div className="flex min-h-6 items-center justify-between gap-3">
+						<div
+							className={clsx(
+								"line-clamp-1 min-w-0",
+								thread.unseenCount > 0 ? "font-semibold" : "text-base-content/60",
+							)}
+						>
+							<ThreadTitle thread={thread} />
+						</div>
 					</div>
 				</div>
-				<div className="flex min-h-6 items-center justify-between gap-3">
-					<div
-						className={clsx(
-							"line-clamp-1 min-w-0",
-							thread.unseenCount > 0 ? "font-semibold" : "text-base-content/60",
-						)}
-					>
-						<ThreadTitle thread={thread} />
-					</div>
-					<div className="flex shrink-0 items-center gap-1">
-						{thread.unseenCount ? (
-							<div className="badge badge-primary">{thread.unseenCount}</div>
-						) : null}
+			</Link>
+			<div className="flex shrink-0 items-center gap-1">
+				{thread.unseenCount ? (
+					<div className="badge badge-primary">{thread.unseenCount}</div>
+				) : null}
+				{canMarkAsSeen ? (
+					<div className="dropdown dropdown-end">
 						<button
 							type="button"
-							className="btn hidden btn-ghost btn-xs group-hover:inline-flex"
+							tabIndex={0}
+							className="btn hidden btn-ghost btn-xs group-hover:inline-flex group-focus-within:inline-flex"
 							aria-label="Thread options"
-							onClick={(event) => {
-								event.preventDefault();
-							}}
 						>
 							<CaretDownIcon className="size-5.5" />
 						</button>
+						<ul
+							tabIndex={0}
+							className="menu dropdown-content z-10 mt-1 w-44 rounded-box border border-base-300 bg-base-100 p-2 shadow-xl"
+						>
+							<li>
+								<button
+									type="button"
+									onClick={handleMarkAsSeen}
+									disabled={isMarkingSeen}
+								>
+									Mark as seen
+								</button>
+							</li>
+						</ul>
 					</div>
-				</div>
+				) : null}
 			</div>
-		</Link>
+		</div>
 	);
 }
 
