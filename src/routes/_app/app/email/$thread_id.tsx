@@ -4,6 +4,7 @@ import {
 	Outlet,
 	useHydrated,
 	useNavigate,
+	useRouter,
 	useRouterState,
 } from "@tanstack/react-router";
 import { Suspense, useEffect } from "react";
@@ -15,7 +16,11 @@ import {
 } from "react-relay";
 
 import { LoadNextButton } from "#/lib/components";
-import { MessageBubble, ThreadTitle } from "#/lib/email/components";
+import {
+	MessageBubble,
+	ThreadTitle,
+	useDeleteThreadAction,
+} from "#/lib/email/components";
 import { buildPageMeta } from "#/lib/utils/seo";
 
 import type { ThreadIdPaginationQuery } from "./__generated__/ThreadIdPaginationQuery.graphql";
@@ -82,6 +87,7 @@ function EmailThreadQueryBoundary() {
 function EmailThreadContent({ thread }: { thread: ThreadIdThread$key }) {
 	const { thread_id } = Route.useParams();
 	const navigate = useNavigate();
+	const router = useRouter();
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
@@ -141,6 +147,15 @@ function EmailThreadContent({ thread }: { thread: ThreadIdThread$key }) {
 	}, [commitSeenMutation, data.id, data.unseenCount]);
 
 	const isSenderDetailsOpen = pathname.includes("/sender/");
+	const threadPath = router.buildLocation({
+		to: "/app/email/$thread_id",
+		params: { thread_id },
+	}).pathname;
+	const isOnThreadDetailsPage = pathname === threadPath;
+	const { handleDeleteThread, isDeletingThread } = useDeleteThreadAction({
+		threadId: data.id,
+		shouldNavigateOnDelete: isOnThreadDetailsPage,
+	});
 
 	return (
 		<div className="flex h-full min-h-0 flex-col lg:flex-row">
@@ -149,9 +164,10 @@ function EmailThreadContent({ thread }: { thread: ThreadIdThread$key }) {
 					<div className="min-w-0 text-lg">
 						<ThreadTitle thread={data} />
 					</div>
-					<div className="tooltip tooltip-bottom" data-tip="Options">
+					<div className="dropdown dropdown-end">
 						<button
 							type="button"
+							tabIndex={0}
 							className="btn btn-ghost p-2"
 							aria-label="Thread options"
 						>
@@ -160,6 +176,20 @@ function EmailThreadContent({ thread }: { thread: ThreadIdThread$key }) {
 								weight="fill"
 							/>
 						</button>
+						<ul
+							tabIndex={0}
+							className="menu dropdown-content z-10 mt-1 w-44 rounded-box border border-base-300 bg-base-100 p-2 shadow-xl"
+						>
+							<li>
+								<button
+									type="button"
+									onClick={handleDeleteThread}
+									disabled={isDeletingThread}
+								>
+									Delete thread
+								</button>
+							</li>
+						</ul>
 					</div>
 				</div>
 				<div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">

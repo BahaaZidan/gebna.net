@@ -26,6 +26,10 @@ import type { componentsThreadListItemSeenMutation } from "./__generated__/compo
 import type { componentsThreadTitle$key } from "./__generated__/componentsThreadTitle.graphql";
 import { formatInboxDate } from "./format";
 
+type ButtonClickEvent = Parameters<
+	NonNullable<ComponentProps<"button">["onClick"]>
+>[0];
+
 function formatSizeInBytes(sizeInBytes: number): string {
 	if (sizeInBytes < 1024) return `${sizeInBytes} B`;
 
@@ -73,6 +77,72 @@ export function ThreadTitle({
 	);
 }
 
+function removeThreadFromInboxConnection(
+	store: RecordSourceSelectorProxy,
+	deletedThreadId: string,
+) {
+	const viewer = store.getRoot().getLinkedRecord("viewer");
+	if (!viewer) return;
+
+	const connection = ConnectionHandler.getConnection(
+		viewer,
+		"route_emailThreads",
+	);
+	if (!connection) return;
+
+	ConnectionHandler.deleteNode(connection, deletedThreadId);
+}
+
+export function useDeleteThreadAction({
+	threadId,
+	shouldNavigateOnDelete,
+}: {
+	threadId: string;
+	shouldNavigateOnDelete: boolean;
+}) {
+	const navigate = useNavigate();
+	const [commitDeleteMutation, isDeletingThread] =
+		useMutation<componentsThreadListItemDeleteMutation>(graphql`
+			mutation componentsThreadListItemDeleteMutation($id: ID!) {
+				deleteEmailThread(id: $id)
+			}
+		`);
+
+	function handleDeleteThread(event: ButtonClickEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		if (isDeletingThread) return;
+
+		commitDeleteMutation({
+			variables: {
+				id: threadId,
+			},
+			optimisticResponse: {
+				deleteEmailThread: true,
+			},
+			optimisticUpdater: (store) => {
+				removeThreadFromInboxConnection(store, threadId);
+			},
+			updater: (store) => {
+				removeThreadFromInboxConnection(store, threadId);
+			},
+			onCompleted: (response) => {
+				if (!response.deleteEmailThread || !shouldNavigateOnDelete) return;
+
+				void navigate({
+					to: "/app/email",
+				});
+			},
+		});
+	}
+
+	return {
+		handleDeleteThread,
+		isDeletingThread,
+	};
+}
+
 export function ThreadListItem(props: {
 	thread: componentsThreadListItem$key;
 }) {
@@ -114,13 +184,6 @@ export function ThreadListItem(props: {
 				}
 			}
 		`);
-	const [commitDeleteMutation, isDeletingThread] =
-		useMutation<componentsThreadListItemDeleteMutation>(graphql`
-			mutation componentsThreadListItemDeleteMutation($id: ID!) {
-				deleteEmailThread(id: $id)
-			}
-		`);
-	const navigate = useNavigate();
 	const router = useRouter();
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
@@ -131,6 +194,7 @@ export function ThreadListItem(props: {
 	}).pathname;
 	const isActive =
 		pathname === threadPath || pathname.startsWith(`${threadPath}/`);
+	const isOnThreadDetailsPage = pathname === threadPath;
 
 	const otherParticipants = thread.participants.filter((participant) => {
 		return !participant.isSelf;
@@ -142,9 +206,12 @@ export function ThreadListItem(props: {
 		"Email thread";
 	const canMarkAsSeen = thread.unseenCount > 0;
 
-	function handleMarkAsSeen(
-		event: Parameters<NonNullable<ComponentProps<"button">["onClick"]>>[0],
-	) {
+	const { handleDeleteThread, isDeletingThread } = useDeleteThreadAction({
+		threadId: thread.id,
+		shouldNavigateOnDelete: isOnThreadDetailsPage,
+	});
+
+	function handleMarkAsSeen(event: ButtonClickEvent) {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -159,53 +226,6 @@ export function ThreadListItem(props: {
 					id: thread.id,
 					unseenCount: 0,
 				},
-			},
-		});
-	}
-
-	function removeThreadFromInboxConnection(
-		store: RecordSourceSelectorProxy,
-		deletedThreadId: string,
-	) {
-		const viewer = store.getRoot().getLinkedRecord("viewer");
-		if (!viewer) return;
-
-		const connection = ConnectionHandler.getConnection(
-			viewer,
-			"route_emailThreads",
-		);
-		if (!connection) return;
-
-		ConnectionHandler.deleteNode(connection, deletedThreadId);
-	}
-
-	function handleDeleteThread(
-		event: Parameters<NonNullable<ComponentProps<"button">["onClick"]>>[0],
-	) {
-		event.preventDefault();
-		event.stopPropagation();
-
-		if (isDeletingThread) return;
-
-		commitDeleteMutation({
-			variables: {
-				id: thread.id,
-			},
-			optimisticResponse: {
-				deleteEmailThread: true,
-			},
-			optimisticUpdater: (store) => {
-				removeThreadFromInboxConnection(store, thread.id);
-			},
-			updater: (store) => {
-				removeThreadFromInboxConnection(store, thread.id);
-			},
-			onCompleted: (response) => {
-				if (!response.deleteEmailThread || !isActive) return;
-
-				void navigate({
-					to: "/app/email",
-				});
 			},
 		});
 	}
