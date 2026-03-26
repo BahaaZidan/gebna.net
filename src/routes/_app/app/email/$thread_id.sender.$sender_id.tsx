@@ -14,6 +14,7 @@ import {
 
 import { LoadNextButton } from "#/lib/components";
 import { AttachmentListItem, ThreadListItem } from "#/lib/email/components";
+import { buildPageMeta } from "#/lib/utils/seo";
 
 import type { ThreadIdSenderDetailsActionsMutation } from "./__generated__/ThreadIdSenderDetailsActionsMutation.graphql";
 import type { ThreadIdSenderDetailsAttachmentsSection$key } from "./__generated__/ThreadIdSenderDetailsAttachmentsSection.graphql";
@@ -28,6 +29,13 @@ export const Route = createFileRoute(
 	"/_app/app/email/$thread_id/sender/$sender_id",
 )({
 	component: RouteComponent,
+	head: () => ({
+		meta: buildPageMeta({
+			title: "Sender Details",
+			description: "gebna sender details.",
+			robots: "noindex, nofollow",
+		}),
+	}),
 });
 
 type Sender = Exclude<

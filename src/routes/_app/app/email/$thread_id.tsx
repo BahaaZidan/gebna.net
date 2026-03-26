@@ -16,6 +16,7 @@ import {
 
 import { LoadNextButton } from "#/lib/components";
 import { MessageBubble, ThreadTitle } from "#/lib/email/components";
+import { buildPageMeta } from "#/lib/utils/seo";
 
 import type { ThreadIdPaginationQuery } from "./__generated__/ThreadIdPaginationQuery.graphql";
 import type { ThreadIdQuery } from "./__generated__/ThreadIdQuery.graphql";
@@ -24,6 +25,13 @@ import type { ThreadIdThread$key } from "./__generated__/ThreadIdThread.graphql"
 
 export const Route = createFileRoute("/_app/app/email/$thread_id")({
 	component: RouteComponent,
+	head: () => ({
+		meta: buildPageMeta({
+			title: "Thread",
+			description: "gebna thread view.",
+			robots: "noindex, nofollow",
+		}),
+	}),
 });
 
 function RouteComponent() {

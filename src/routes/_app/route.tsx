@@ -63,9 +63,9 @@ function RouteComponent() {
 		role,
 	]);
 	const matchRoute = useMatchRoute();
-	let isSearchActive = !!matchRoute({ to: "/app", fuzzy: false });
-	let isEmailActive = !!matchRoute({ to: "/app/email", fuzzy: true });
-	let isSettingsActive = !!matchRoute({ to: "/app/settings", fuzzy: true });
+	const isSearchActive = !!matchRoute({ to: "/app", fuzzy: false });
+	const isEmailActive = !!matchRoute({ to: "/app/email", fuzzy: true });
+	const isSettingsActive = !!matchRoute({ to: "/app/settings", fuzzy: true });
 
 	return (
 		<main className="flex h-screen max-h-screen min-h-screen w-screen max-w-screen min-w-screen overflow-hidden">

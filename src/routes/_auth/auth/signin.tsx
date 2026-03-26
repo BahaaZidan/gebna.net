@@ -1,19 +1,28 @@
-import { Field, Form, useForm, type SubmitHandler } from "@formisch/react";
+import { Field, Form, useForm } from "@formisch/react";
+import type { SubmitHandler } from "@formisch/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { authClient, TextInput } from "#/lib/auth/client";
 import { loginSchema } from "#/lib/auth/validation-schemas";
+import { buildPageMeta } from "#/lib/utils/seo";
 
 import { Route as signUpRoute } from "./signup";
 
 export const Route = createFileRoute("/_auth/auth/signin")({
 	component: RouteComponent,
+	head: () => ({
+		meta: buildPageMeta({
+			title: "Sign In",
+			description: "Sign in to gebna.",
+			robots: "noindex, nofollow",
+		}),
+	}),
 });
 
 function RouteComponent() {
 	const loginForm = useForm({
 		schema: loginSchema,
-	})
+	});
 	const handleLogin: SubmitHandler<typeof loginSchema> = async ({
 		username,
 		password,
@@ -21,7 +30,7 @@ function RouteComponent() {
 		const result = await authClient.signIn.username({ username, password });
 		if (result.error) return;
 		location.reload();
-	}
+	};
 
 	return (
 		<div className="flex h-screen w-full flex-col items-center justify-center">
@@ -69,5 +78,5 @@ function RouteComponent() {
 				</button>
 			</Form>
 		</div>
-	)
+	);
 }

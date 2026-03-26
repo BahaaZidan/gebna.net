@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/")({ component: App });
+import { buildPageMeta } from "#/lib/utils/seo";
+
+export const Route = createFileRoute("/")({
+	component: App,
+	head: () => ({
+		meta: buildPageMeta({
+			title: "gebna",
+			description: "gebna",
+		}),
+	}),
+});
 
 function App() {
 	return (

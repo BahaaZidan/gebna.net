@@ -1,7 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { buildPageMeta } from "#/lib/utils/seo";
+
 export const Route = createFileRoute("/_app/app/email/")({
 	component: RouteComponent,
+	head: () => ({
+		meta: buildPageMeta({
+			title: "Inbox",
+			description: "gebna inbox.",
+			robots: "noindex, nofollow",
+		}),
+	}),
 });
 
 function RouteComponent() {

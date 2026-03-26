@@ -5,6 +5,7 @@ import { graphql, useLazyLoadQuery, usePaginationFragment } from "react-relay";
 
 import { LoadNextButton } from "#/lib/components";
 import { ThreadListItem } from "#/lib/email/components";
+import { buildPageMeta } from "#/lib/utils/seo";
 
 import type { routePaginationQuery } from "./__generated__/routePaginationQuery.graphql";
 import type { routeQuery } from "./__generated__/routeQuery.graphql";
@@ -12,6 +13,13 @@ import type { routeViewer$key } from "./__generated__/routeViewer.graphql";
 
 export const Route = createFileRoute("/_app/app/email")({
 	component: RouteComponent,
+	head: () => ({
+		meta: buildPageMeta({
+			title: "Inbox",
+			description: "gebna inbox.",
+			robots: "noindex, nofollow",
+		}),
+	}),
 });
 
 function RouteComponent() {

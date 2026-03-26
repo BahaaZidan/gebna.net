@@ -1,19 +1,28 @@
-import { Field, Form, useForm, type SubmitHandler } from "@formisch/react";
+import { Field, Form, useForm } from "@formisch/react";
+import type { SubmitHandler } from "@formisch/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { authClient, TextInput } from "#/lib/auth/client";
 import { registerSchema } from "#/lib/auth/validation-schemas";
+import { buildPageMeta } from "#/lib/utils/seo";
 
 import { Route as signInRoute } from "./signin";
 
 export const Route = createFileRoute("/_auth/auth/signup")({
 	component: RouteComponent,
+	head: () => ({
+		meta: buildPageMeta({
+			title: "Create Account",
+			description: "Create a gebna account.",
+			robots: "noindex, nofollow",
+		}),
+	}),
 });
 
 function RouteComponent() {
 	const signupForm = useForm({
 		schema: registerSchema,
-	})
+	});
 
 	const handleSignUp: SubmitHandler<typeof registerSchema> = async ({
 		username,
@@ -27,10 +36,10 @@ function RouteComponent() {
 			email: `${username}@gebna.net`,
 			// @ts-expect-error don't worry about it
 			avatarPlaceholder: generateImagePlaceholder(name || username),
-		})
+		});
 		if (result.error) return;
 		location.reload();
-	}
+	};
 
 	return (
 		<div className="flex h-screen w-full flex-col items-center justify-center">
@@ -102,5 +111,5 @@ function RouteComponent() {
 				</button>
 			</Form>
 		</div>
-	)
+	);
 }
