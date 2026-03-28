@@ -91,6 +91,7 @@ type EmailThreadMessagesConnectionEdge {
 type Mutation {
   deleteEmailThread(id: ID!): Boolean!
   seeEmailThread(id: ID!): EmailThread
+  sendEmailMessage(body: String!, to: String!): Boolean!
   updateEmailAddressRef(input: UpdateEmailAddressRefInput!): UpdateEmailAddressRefPayload
 }
 

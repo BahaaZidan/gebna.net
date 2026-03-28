@@ -6,6 +6,7 @@ import ValidationPlugin from "@pothos/plugin-validation";
 import WithInputPlugin from "@pothos/plugin-with-input";
 import { and, eq } from "drizzle-orm";
 import { DateTimeResolver } from "graphql-scalars";
+import { createGraphQLError } from "graphql-yoga";
 import rehypeParse from "rehype-parse";
 import rehypeStringify from "rehype-stringify";
 import { unified } from "unified";
@@ -17,6 +18,7 @@ import { dbSchema, getTableConfig, relations } from "#/lib/db";
 import {
 	ALLOWED_ATTACHMENT_MIME_TYPES,
 	rehypeEnforcePalette,
+	sendPlaintextEmailMessage,
 } from "#/lib/email";
 
 import type { GraphQLResolverContext } from "../types.js";
@@ -572,6 +574,37 @@ builder.mutationType({
 					.returning({ id: dbSchema.emailThreads.id });
 
 				return !!thread;
+			},
+		}),
+		sendEmailMessage: t.field({
+			type: "Boolean",
+			nullable: false,
+			args: {
+				body: t.arg.string({
+					required: true,
+					validate: v.pipe(v.string(), v.trim(), v.nonEmpty()),
+				}),
+				to: t.arg.string({
+					required: true,
+					validate: v.pipe(v.string(), v.trim(), v.nonEmpty(), v.email()),
+				}),
+			},
+			resolve: async (_parent, args, ctx) => {
+				try {
+					await sendPlaintextEmailMessage({
+						body: args.body.trim(),
+						from: ctx.viewer.email,
+						to: args.to.trim(),
+					});
+				} catch (error) {
+					throw createGraphQLError("Something went wrong!", {
+						extensions: {
+							http: { status: 500 },
+						},
+					});
+				}
+
+				return true;
 			},
 		}),
 	}),
