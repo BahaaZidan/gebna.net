@@ -33,12 +33,12 @@ const yoga = createYoga<
 	},
 	graphqlEndpoint: "/api/graphql",
 	context: async ({ viewer, params }) => {
-		// const isIntrospection =
-		// 	params.operationName === "IntrospectionQuery" ||
-		// 	params.query?.includes("__schema");
-		// if (ENABLE_INTROSPECTION && !viewer && isIntrospection) {
-		// 	return {} satisfies Record<string, never>;
-		// }
+		const isIntrospection =
+			params.operationName === "IntrospectionQuery" ||
+			params.query?.includes("__schema");
+		if (ENABLE_INTROSPECTION && !viewer && isIntrospection) {
+			return {} satisfies Record<string, never>;
+		}
 
 		if (!viewer) {
 			throw createGraphQLError("UNAUTHORIZED", {
