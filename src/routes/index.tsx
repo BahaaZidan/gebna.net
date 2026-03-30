@@ -25,10 +25,13 @@ function App() {
 					<div className="hero-content w-full flex-col items-start gap-10 px-6 py-10 lg:flex-row lg:items-center lg:px-10">
 						<div className="max-w-3xl space-y-6">
 							<div className="badge badge-outline badge-lg">
-								Cloud-first personal software
+								Privacy-first personal software
 							</div>
 							<h1 className="text-5xl font-black tracking-tight text-base-content sm:text-6xl">
-								Your digital life belongs to you. Not{" "}
+								Your digital life belongs to{" "}
+								<span className="underline">you.</span>
+								<br />
+								Not{" "}
 								<span className="text-rotate">
 									<span>
 										<span>Google</span>
