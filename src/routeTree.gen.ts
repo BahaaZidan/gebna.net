@@ -13,7 +13,7 @@ import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppAppIndexRouteImport } from './routes/_app/app/index'
-import { Route as WebhookEmailMessageRecieverRouteImport } from './routes/webhook/email/message-reciever'
+import { Route as WebhookEmailPostalRouteImport } from './routes/webhook/email/postal'
 import { Route as ApiGraphqlSplatRouteImport } from './routes/api/graphql/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthAuthSignupRouteImport } from './routes/_auth/auth/signup'
@@ -42,12 +42,11 @@ const AppAppIndexRoute = AppAppIndexRouteImport.update({
   path: '/app/',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const WebhookEmailMessageRecieverRoute =
-  WebhookEmailMessageRecieverRouteImport.update({
-    id: '/webhook/email/message-reciever',
-    path: '/webhook/email/message-reciever',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const WebhookEmailPostalRoute = WebhookEmailPostalRouteImport.update({
+  id: '/webhook/email/postal',
+  path: '/webhook/email/postal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGraphqlSplatRoute = ApiGraphqlSplatRouteImport.update({
   id: '/api/graphql/$',
   path: '/api/graphql/$',
@@ -102,7 +101,7 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthAuthSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
-  '/webhook/email/message-reciever': typeof WebhookEmailMessageRecieverRoute
+  '/webhook/email/postal': typeof WebhookEmailPostalRoute
   '/app/': typeof AppAppIndexRoute
   '/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/app/email/': typeof AppAppEmailIndexRoute
@@ -115,7 +114,7 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthAuthSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
-  '/webhook/email/message-reciever': typeof WebhookEmailMessageRecieverRoute
+  '/webhook/email/postal': typeof WebhookEmailPostalRoute
   '/app': typeof AppAppIndexRoute
   '/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/app/email': typeof AppAppEmailIndexRoute
@@ -132,7 +131,7 @@ export interface FileRoutesById {
   '/_auth/auth/signup': typeof AuthAuthSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
-  '/webhook/email/message-reciever': typeof WebhookEmailMessageRecieverRoute
+  '/webhook/email/postal': typeof WebhookEmailPostalRoute
   '/_app/app/': typeof AppAppIndexRoute
   '/_app/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/_app/app/email/': typeof AppAppEmailIndexRoute
@@ -148,7 +147,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/api/auth/$'
     | '/api/graphql/$'
-    | '/webhook/email/message-reciever'
+    | '/webhook/email/postal'
     | '/app/'
     | '/app/email/$thread_id'
     | '/app/email/'
@@ -161,7 +160,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/api/auth/$'
     | '/api/graphql/$'
-    | '/webhook/email/message-reciever'
+    | '/webhook/email/postal'
     | '/app'
     | '/app/email/$thread_id'
     | '/app/email'
@@ -177,7 +176,7 @@ export interface FileRouteTypes {
     | '/_auth/auth/signup'
     | '/api/auth/$'
     | '/api/graphql/$'
-    | '/webhook/email/message-reciever'
+    | '/webhook/email/postal'
     | '/_app/app/'
     | '/_app/app/email/$thread_id'
     | '/_app/app/email/'
@@ -191,7 +190,7 @@ export interface RootRouteChildren {
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiGraphqlSplatRoute: typeof ApiGraphqlSplatRoute
-  WebhookEmailMessageRecieverRoute: typeof WebhookEmailMessageRecieverRoute
+  WebhookEmailPostalRoute: typeof WebhookEmailPostalRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -224,11 +223,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/webhook/email/message-reciever': {
-      id: '/webhook/email/message-reciever'
-      path: '/webhook/email/message-reciever'
-      fullPath: '/webhook/email/message-reciever'
-      preLoaderRoute: typeof WebhookEmailMessageRecieverRouteImport
+    '/webhook/email/postal': {
+      id: '/webhook/email/postal'
+      path: '/webhook/email/postal'
+      fullPath: '/webhook/email/postal'
+      preLoaderRoute: typeof WebhookEmailPostalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/graphql/$': {
@@ -358,7 +357,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRouteRoute: AuthRouteRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiGraphqlSplatRoute: ApiGraphqlSplatRoute,
-  WebhookEmailMessageRecieverRoute: WebhookEmailMessageRecieverRoute,
+  WebhookEmailPostalRoute: WebhookEmailPostalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
