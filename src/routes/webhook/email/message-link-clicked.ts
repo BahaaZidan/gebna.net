@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+/** A link in one of your outbound messages has been clicked. */
 export const Route = createFileRoute("/webhook/email/message-link-clicked")({
 	server: {
 		handlers: {

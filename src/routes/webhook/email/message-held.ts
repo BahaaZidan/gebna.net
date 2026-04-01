@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+/** An e-mail has been held in Postal. This will be because a limit has been reached or your server is in development mode. */
 export const Route = createFileRoute("/webhook/email/message-held")({
 	server: {
 		handlers: {

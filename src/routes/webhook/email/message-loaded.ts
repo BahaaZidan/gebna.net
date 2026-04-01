@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+/** A message you have sent has been loaded. (this uses pixel tracking) */
 export const Route = createFileRoute("/webhook/email/message-loaded")({
 	server: {
 		handlers: {

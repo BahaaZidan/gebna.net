@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+/** An e-mail cannot be delivered to its endpoint. This is a permanent failure so it will not be retried. */
 export const Route = createFileRoute("/webhook/email/message-delivery-failed")({
 	server: {
 		handlers: {
