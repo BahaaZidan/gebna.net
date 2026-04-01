@@ -226,6 +226,10 @@ export type EmailMessageMetadata = {
 	/** Headers.references ==> It lists the entire ancestry of the thread — all the Message-IDs leading up to this email. used for threading */
 	references?: string;
 };
+type MessageDeliveryStatus = "Queued" | "Sent" | "Delayed" | "Failed" | "Held";
+type MessageDelivery = {
+	status: MessageDeliveryStatus;
+};
 export const emailMessages = sqliteTable(
 	"emailMessages",
 	{
@@ -258,6 +262,8 @@ export const emailMessages = sqliteTable(
 		sizeInBytes: integer().notNull(),
 		unseen: integer({ mode: "boolean" }).notNull().default(true),
 		subject: text(),
+		/** Only applies to outbound */
+		delivery: text({ mode: "json" }).$type<MessageDelivery>(),
 	},
 	(self) => [
 		foreignKey({
