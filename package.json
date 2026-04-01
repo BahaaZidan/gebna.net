@@ -15,6 +15,7 @@
 		"check": "prettier --write . && eslint --fix",
 		"deploy": "npm run build && wrangler deploy",
 		"cf-typegen": "wrangler types",
+		"tail": "wrangler tail",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
