@@ -86,7 +86,11 @@ type PostalDomainDNSErrorPayload = {
 export type PostalOutboundWebhookEvent =
 	| {
 			payload: PostalMessageStatusPayload;
-			type: "MessageDelayed" | "MessageDeliveryFailed" | "MessageHeld" | "MessageSent";
+			type:
+				| "MessageDelayed"
+				| "MessageDeliveryFailed"
+				| "MessageHeld"
+				| "MessageSent";
 	  }
 	| { payload: PostalMessageBouncePayload; type: "MessageBounced" }
 	| { payload: PostalMessageLinkClickedPayload; type: "MessageLinkClicked" }
@@ -217,6 +221,7 @@ function isPostalDomainDNSErrorPayload(
 export function parsePostalOutboundWebhookEvent(
 	payload: unknown,
 ): PostalOutboundWebhookEvent | null {
+	console.log(JSON.stringify(payload, null, 4));
 	if (isPostalMessageStatusPayload(payload)) {
 		const type = POSTAL_MESSAGE_STATUS_TO_EVENT_TYPE[payload.status];
 
@@ -302,7 +307,9 @@ async function handleMessageDelayed(payload: PostalMessageStatusPayload) {
 	// TODO: store retry state and expose that the message is delayed.
 }
 
-async function handleMessageDeliveryFailed(payload: PostalMessageStatusPayload) {
+async function handleMessageDeliveryFailed(
+	payload: PostalMessageStatusPayload,
+) {
 	logPostalWebhook("MessageDeliveryFailed", {
 		details: payload.details,
 		messageId: payload.message.message_id,
