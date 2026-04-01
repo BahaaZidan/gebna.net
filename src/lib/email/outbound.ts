@@ -4,7 +4,6 @@ import { env } from "cloudflare:workers";
 
 const MESSAGE_ID_DOMAIN_FALLBACK = "localhost";
 const SUBJECT_MAX_LENGTH = 80;
-
 type SendPlaintextEmailMessageArgs = {
 	body: string;
 	from: string;
@@ -13,7 +12,7 @@ type SendPlaintextEmailMessageArgs = {
 
 const config = {
 	apiSecret: env.OUTBOUND_API_SECRET,
-	apiUrl: new URL("send", env.OUTBOUND_API_URL),
+	apiUrl: new URL("api/v1/send/message", env.OUTBOUND_API_URL),
 };
 
 function getMessageIdDomain(from: string): string {
@@ -57,7 +56,7 @@ export async function sendPlaintextEmailMessage({
 			method: "POST",
 			headers: {
 				"content-type": "application/json",
-				"x-api-secret": apiSecret,
+				"x-server-api-key": apiSecret,
 			},
 			body: JSON.stringify({
 				from,
@@ -65,9 +64,9 @@ export async function sendPlaintextEmailMessage({
 					"Message-ID": messageId,
 					"X-App": "gebna.net",
 				},
-				replyTo: from,
+				reply_to: from,
 				subject: createPlaintextEmailSubject(body),
-				text: body,
+				plain_body: body,
 				to: [to],
 			}),
 		});
@@ -75,7 +74,13 @@ export async function sendPlaintextEmailMessage({
 		throw new Error(`Failed to reach the outbound service`);
 	}
 
-	if (!response.ok) {
+	let payload: { status?: string } | null = null;
+
+	try {
+		payload = (await response.json()) as { status?: string };
+	} catch {}
+
+	if (!response.ok || payload?.status !== "success") {
 		throw new Error();
 	}
 
