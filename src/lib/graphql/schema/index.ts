@@ -4,6 +4,7 @@ import RelayPlugin from "@pothos/plugin-relay";
 import ScopeAuthPlugin from "@pothos/plugin-scope-auth";
 import ValidationPlugin from "@pothos/plugin-validation";
 import WithInputPlugin from "@pothos/plugin-with-input";
+import { env } from "cloudflare:workers";
 import { and, eq } from "drizzle-orm";
 import { DateTimeResolver } from "graphql-scalars";
 import { createGraphQLError } from "graphql-yoga";
@@ -18,7 +19,6 @@ import { dbSchema, getTableConfig, relations } from "#/lib/db";
 import {
 	ALLOWED_ATTACHMENT_MIME_TYPES,
 	rehypeEnforcePalette,
-	sendPlaintextEmailMessage,
 } from "#/lib/email";
 
 import type { GraphQLResolverContext } from "../types.js";
@@ -590,13 +590,30 @@ builder.mutationType({
 				}),
 			},
 			resolve: async (_parent, args, ctx) => {
+				let from = ctx.viewer.email;
+				let apiUrl = new URL("api/v1/send/message", env.OUTBOUND_API_URL);
+
 				try {
-					await sendPlaintextEmailMessage({
-						body: args.body.trim(),
-						from: ctx.viewer.email,
-						to: args.to.trim(),
+					await fetch(apiUrl, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							"X-Server-API-Key": env.OUTBOUND_API_SECRET,
+						},
+						body: JSON.stringify({
+							from,
+							headers: {
+								// "Message-ID": messageId,
+								// "X-App": "gebna.net",
+							},
+							reply_to: from,
+							subject: args.body,
+							plain_body: args.body,
+							to: [args.to],
+						}),
 					});
 				} catch (error) {
+					console.error(error);
 					throw createGraphQLError("Something went wrong!", {
 						extensions: {
 							http: { status: 500 },
