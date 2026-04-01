@@ -13,7 +13,14 @@ import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppAppIndexRouteImport } from './routes/_app/app/index'
-import { Route as WebhookEmailPostalRouteImport } from './routes/webhook/email/postal'
+import { Route as WebhookEmailMessageSentRouteImport } from './routes/webhook/email/message-sent'
+import { Route as WebhookEmailMessageLoadedRouteImport } from './routes/webhook/email/message-loaded'
+import { Route as WebhookEmailMessageLinkClickedRouteImport } from './routes/webhook/email/message-link-clicked'
+import { Route as WebhookEmailMessageHeldRouteImport } from './routes/webhook/email/message-held'
+import { Route as WebhookEmailMessageDeliveryFailedRouteImport } from './routes/webhook/email/message-delivery-failed'
+import { Route as WebhookEmailMessageDelayedRouteImport } from './routes/webhook/email/message-delayed'
+import { Route as WebhookEmailMessageBouncedRouteImport } from './routes/webhook/email/message-bounced'
+import { Route as WebhookEmailDomainDnsErrorRouteImport } from './routes/webhook/email/domain-dns-error'
 import { Route as ApiGraphqlSplatRouteImport } from './routes/api/graphql/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthAuthSignupRouteImport } from './routes/_auth/auth/signup'
@@ -42,11 +49,52 @@ const AppAppIndexRoute = AppAppIndexRouteImport.update({
   path: '/app/',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const WebhookEmailPostalRoute = WebhookEmailPostalRouteImport.update({
-  id: '/webhook/email/postal',
-  path: '/webhook/email/postal',
+const WebhookEmailMessageSentRoute = WebhookEmailMessageSentRouteImport.update({
+  id: '/webhook/email/message-sent',
+  path: '/webhook/email/message-sent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WebhookEmailMessageLoadedRoute =
+  WebhookEmailMessageLoadedRouteImport.update({
+    id: '/webhook/email/message-loaded',
+    path: '/webhook/email/message-loaded',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const WebhookEmailMessageLinkClickedRoute =
+  WebhookEmailMessageLinkClickedRouteImport.update({
+    id: '/webhook/email/message-link-clicked',
+    path: '/webhook/email/message-link-clicked',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const WebhookEmailMessageHeldRoute = WebhookEmailMessageHeldRouteImport.update({
+  id: '/webhook/email/message-held',
+  path: '/webhook/email/message-held',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WebhookEmailMessageDeliveryFailedRoute =
+  WebhookEmailMessageDeliveryFailedRouteImport.update({
+    id: '/webhook/email/message-delivery-failed',
+    path: '/webhook/email/message-delivery-failed',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const WebhookEmailMessageDelayedRoute =
+  WebhookEmailMessageDelayedRouteImport.update({
+    id: '/webhook/email/message-delayed',
+    path: '/webhook/email/message-delayed',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const WebhookEmailMessageBouncedRoute =
+  WebhookEmailMessageBouncedRouteImport.update({
+    id: '/webhook/email/message-bounced',
+    path: '/webhook/email/message-bounced',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const WebhookEmailDomainDnsErrorRoute =
+  WebhookEmailDomainDnsErrorRouteImport.update({
+    id: '/webhook/email/domain-dns-error',
+    path: '/webhook/email/domain-dns-error',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGraphqlSplatRoute = ApiGraphqlSplatRouteImport.update({
   id: '/api/graphql/$',
   path: '/api/graphql/$',
@@ -101,7 +149,14 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthAuthSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
-  '/webhook/email/postal': typeof WebhookEmailPostalRoute
+  '/webhook/email/domain-dns-error': typeof WebhookEmailDomainDnsErrorRoute
+  '/webhook/email/message-bounced': typeof WebhookEmailMessageBouncedRoute
+  '/webhook/email/message-delayed': typeof WebhookEmailMessageDelayedRoute
+  '/webhook/email/message-delivery-failed': typeof WebhookEmailMessageDeliveryFailedRoute
+  '/webhook/email/message-held': typeof WebhookEmailMessageHeldRoute
+  '/webhook/email/message-link-clicked': typeof WebhookEmailMessageLinkClickedRoute
+  '/webhook/email/message-loaded': typeof WebhookEmailMessageLoadedRoute
+  '/webhook/email/message-sent': typeof WebhookEmailMessageSentRoute
   '/app/': typeof AppAppIndexRoute
   '/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/app/email/': typeof AppAppEmailIndexRoute
@@ -114,7 +169,14 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthAuthSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
-  '/webhook/email/postal': typeof WebhookEmailPostalRoute
+  '/webhook/email/domain-dns-error': typeof WebhookEmailDomainDnsErrorRoute
+  '/webhook/email/message-bounced': typeof WebhookEmailMessageBouncedRoute
+  '/webhook/email/message-delayed': typeof WebhookEmailMessageDelayedRoute
+  '/webhook/email/message-delivery-failed': typeof WebhookEmailMessageDeliveryFailedRoute
+  '/webhook/email/message-held': typeof WebhookEmailMessageHeldRoute
+  '/webhook/email/message-link-clicked': typeof WebhookEmailMessageLinkClickedRoute
+  '/webhook/email/message-loaded': typeof WebhookEmailMessageLoadedRoute
+  '/webhook/email/message-sent': typeof WebhookEmailMessageSentRoute
   '/app': typeof AppAppIndexRoute
   '/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/app/email': typeof AppAppEmailIndexRoute
@@ -131,7 +193,14 @@ export interface FileRoutesById {
   '/_auth/auth/signup': typeof AuthAuthSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/graphql/$': typeof ApiGraphqlSplatRoute
-  '/webhook/email/postal': typeof WebhookEmailPostalRoute
+  '/webhook/email/domain-dns-error': typeof WebhookEmailDomainDnsErrorRoute
+  '/webhook/email/message-bounced': typeof WebhookEmailMessageBouncedRoute
+  '/webhook/email/message-delayed': typeof WebhookEmailMessageDelayedRoute
+  '/webhook/email/message-delivery-failed': typeof WebhookEmailMessageDeliveryFailedRoute
+  '/webhook/email/message-held': typeof WebhookEmailMessageHeldRoute
+  '/webhook/email/message-link-clicked': typeof WebhookEmailMessageLinkClickedRoute
+  '/webhook/email/message-loaded': typeof WebhookEmailMessageLoadedRoute
+  '/webhook/email/message-sent': typeof WebhookEmailMessageSentRoute
   '/_app/app/': typeof AppAppIndexRoute
   '/_app/app/email/$thread_id': typeof AppAppEmailThread_idRouteWithChildren
   '/_app/app/email/': typeof AppAppEmailIndexRoute
@@ -147,7 +216,14 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/api/auth/$'
     | '/api/graphql/$'
-    | '/webhook/email/postal'
+    | '/webhook/email/domain-dns-error'
+    | '/webhook/email/message-bounced'
+    | '/webhook/email/message-delayed'
+    | '/webhook/email/message-delivery-failed'
+    | '/webhook/email/message-held'
+    | '/webhook/email/message-link-clicked'
+    | '/webhook/email/message-loaded'
+    | '/webhook/email/message-sent'
     | '/app/'
     | '/app/email/$thread_id'
     | '/app/email/'
@@ -160,7 +236,14 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/api/auth/$'
     | '/api/graphql/$'
-    | '/webhook/email/postal'
+    | '/webhook/email/domain-dns-error'
+    | '/webhook/email/message-bounced'
+    | '/webhook/email/message-delayed'
+    | '/webhook/email/message-delivery-failed'
+    | '/webhook/email/message-held'
+    | '/webhook/email/message-link-clicked'
+    | '/webhook/email/message-loaded'
+    | '/webhook/email/message-sent'
     | '/app'
     | '/app/email/$thread_id'
     | '/app/email'
@@ -176,7 +259,14 @@ export interface FileRouteTypes {
     | '/_auth/auth/signup'
     | '/api/auth/$'
     | '/api/graphql/$'
-    | '/webhook/email/postal'
+    | '/webhook/email/domain-dns-error'
+    | '/webhook/email/message-bounced'
+    | '/webhook/email/message-delayed'
+    | '/webhook/email/message-delivery-failed'
+    | '/webhook/email/message-held'
+    | '/webhook/email/message-link-clicked'
+    | '/webhook/email/message-loaded'
+    | '/webhook/email/message-sent'
     | '/_app/app/'
     | '/_app/app/email/$thread_id'
     | '/_app/app/email/'
@@ -190,7 +280,14 @@ export interface RootRouteChildren {
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiGraphqlSplatRoute: typeof ApiGraphqlSplatRoute
-  WebhookEmailPostalRoute: typeof WebhookEmailPostalRoute
+  WebhookEmailDomainDnsErrorRoute: typeof WebhookEmailDomainDnsErrorRoute
+  WebhookEmailMessageBouncedRoute: typeof WebhookEmailMessageBouncedRoute
+  WebhookEmailMessageDelayedRoute: typeof WebhookEmailMessageDelayedRoute
+  WebhookEmailMessageDeliveryFailedRoute: typeof WebhookEmailMessageDeliveryFailedRoute
+  WebhookEmailMessageHeldRoute: typeof WebhookEmailMessageHeldRoute
+  WebhookEmailMessageLinkClickedRoute: typeof WebhookEmailMessageLinkClickedRoute
+  WebhookEmailMessageLoadedRoute: typeof WebhookEmailMessageLoadedRoute
+  WebhookEmailMessageSentRoute: typeof WebhookEmailMessageSentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -223,11 +320,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/webhook/email/postal': {
-      id: '/webhook/email/postal'
-      path: '/webhook/email/postal'
-      fullPath: '/webhook/email/postal'
-      preLoaderRoute: typeof WebhookEmailPostalRouteImport
+    '/webhook/email/message-sent': {
+      id: '/webhook/email/message-sent'
+      path: '/webhook/email/message-sent'
+      fullPath: '/webhook/email/message-sent'
+      preLoaderRoute: typeof WebhookEmailMessageSentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhook/email/message-loaded': {
+      id: '/webhook/email/message-loaded'
+      path: '/webhook/email/message-loaded'
+      fullPath: '/webhook/email/message-loaded'
+      preLoaderRoute: typeof WebhookEmailMessageLoadedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhook/email/message-link-clicked': {
+      id: '/webhook/email/message-link-clicked'
+      path: '/webhook/email/message-link-clicked'
+      fullPath: '/webhook/email/message-link-clicked'
+      preLoaderRoute: typeof WebhookEmailMessageLinkClickedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhook/email/message-held': {
+      id: '/webhook/email/message-held'
+      path: '/webhook/email/message-held'
+      fullPath: '/webhook/email/message-held'
+      preLoaderRoute: typeof WebhookEmailMessageHeldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhook/email/message-delivery-failed': {
+      id: '/webhook/email/message-delivery-failed'
+      path: '/webhook/email/message-delivery-failed'
+      fullPath: '/webhook/email/message-delivery-failed'
+      preLoaderRoute: typeof WebhookEmailMessageDeliveryFailedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhook/email/message-delayed': {
+      id: '/webhook/email/message-delayed'
+      path: '/webhook/email/message-delayed'
+      fullPath: '/webhook/email/message-delayed'
+      preLoaderRoute: typeof WebhookEmailMessageDelayedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhook/email/message-bounced': {
+      id: '/webhook/email/message-bounced'
+      path: '/webhook/email/message-bounced'
+      fullPath: '/webhook/email/message-bounced'
+      preLoaderRoute: typeof WebhookEmailMessageBouncedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhook/email/domain-dns-error': {
+      id: '/webhook/email/domain-dns-error'
+      path: '/webhook/email/domain-dns-error'
+      fullPath: '/webhook/email/domain-dns-error'
+      preLoaderRoute: typeof WebhookEmailDomainDnsErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/graphql/$': {
@@ -357,7 +503,15 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRouteRoute: AuthRouteRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiGraphqlSplatRoute: ApiGraphqlSplatRoute,
-  WebhookEmailPostalRoute: WebhookEmailPostalRoute,
+  WebhookEmailDomainDnsErrorRoute: WebhookEmailDomainDnsErrorRoute,
+  WebhookEmailMessageBouncedRoute: WebhookEmailMessageBouncedRoute,
+  WebhookEmailMessageDelayedRoute: WebhookEmailMessageDelayedRoute,
+  WebhookEmailMessageDeliveryFailedRoute:
+    WebhookEmailMessageDeliveryFailedRoute,
+  WebhookEmailMessageHeldRoute: WebhookEmailMessageHeldRoute,
+  WebhookEmailMessageLinkClickedRoute: WebhookEmailMessageLinkClickedRoute,
+  WebhookEmailMessageLoadedRoute: WebhookEmailMessageLoadedRoute,
+  WebhookEmailMessageSentRoute: WebhookEmailMessageSentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
