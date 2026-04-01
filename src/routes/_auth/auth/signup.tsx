@@ -5,6 +5,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { authClient, TextInput } from "#/lib/auth/client";
 import { registerSchema } from "#/lib/auth/validation-schemas";
 import { buildPageMeta } from "#/lib/utils/seo";
+import { generateImagePlaceholder } from "#/lib/utils/users";
 
 import { Route as signInRoute } from "./signin";
 
@@ -34,10 +35,13 @@ function RouteComponent() {
 			name,
 			password,
 			email: `${username}@gebna.net`,
-			// @ts-expect-error don't worry about it
+			// @ts-expect-error
 			avatarPlaceholder: generateImagePlaceholder(name || username),
 		});
-		if (result.error) return;
+		if (result.error) {
+			console.error(result.error);
+			return;
+		}
 		location.reload();
 	};
 
