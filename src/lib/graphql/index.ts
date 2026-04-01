@@ -52,6 +52,7 @@ const yoga = createYoga<
 			...initContextCache(),
 			db,
 			viewer,
+			env,
 		} satisfies GraphQLResolverContext;
 	},
 });
