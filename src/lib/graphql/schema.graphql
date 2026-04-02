@@ -68,6 +68,12 @@ type EmailMessage implements Node {
   to: EmailAddressRef!
 }
 
+input EmailMessageRecipients {
+  bcc: [String!]
+  cc: [String!]
+  to: [String!]
+}
+
 type EmailThread implements Node {
   avatar: String
   id: ID!
@@ -91,7 +97,7 @@ type EmailThreadMessagesConnectionEdge {
 type Mutation {
   deleteEmailThread(id: ID!): Boolean!
   seeEmailThread(id: ID!): EmailThread
-  sendEmailMessage(body: String!, to: String!): Boolean!
+  sendEmailMessage(input: SendEmailMessageInput!): SendEmailMessagePayload
   updateEmailAddressRef(input: UpdateEmailAddressRefInput!): UpdateEmailAddressRefPayload
 }
 
@@ -110,6 +116,16 @@ type Query {
   node(id: ID!): Node
   nodes(ids: [ID!]!): [Node]!
   viewer: Viewer
+}
+
+input SendEmailMessageInput {
+  bodyInMarkdown: String
+  recipients: EmailMessageRecipients!
+  subject: String!
+}
+
+type SendEmailMessagePayload {
+  result: Boolean
 }
 
 input UpdateEmailAddressRefInput {

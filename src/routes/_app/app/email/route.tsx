@@ -182,23 +182,38 @@ function ComposeEmailModal({
 	onClose: () => void;
 }) {
 	const [to, setTo] = useState("");
+	const [subject, setSubject] = useState("");
 	const [body, setBody] = useState("");
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [commitSendEmailMessage, isSending] =
 		useMutation<routeSendEmailMessageMutation>(graphql`
-			mutation routeSendEmailMessageMutation($body: String!, $to: String!) {
-				sendEmailMessage(body: $body, to: $to)
+			mutation routeSendEmailMessageMutation(
+				$bodyInMarkdown: String!
+				$subject: String!
+				$to: String!
+			) {
+				sendEmailMessage(
+					input: {
+						bodyInMarkdown: $bodyInMarkdown
+						subject: $subject
+						recipients: { to: [$to] }
+					}
+				) {
+					result
+				}
 			}
 		`);
 	const trimmedTo = to.trim();
+	const trimmedSubject = subject.trim();
 	const trimmedBody = body.trim();
-	const canSubmit = !!trimmedTo && !!trimmedBody && !isSending;
+	const canSubmit = !!trimmedTo && !!trimmedSubject && !!trimmedBody && !isSending;
 
 	function handleClose() {
 		if (isSending) return;
 
 		setSubmitError(null);
 		setTo("");
+		setSubject("");
 		setBody("");
 		onClose();
 	}
@@ -211,6 +226,7 @@ function ComposeEmailModal({
 
 			setSubmitError(null);
 			setTo("");
+			setSubject("");
 			setBody("");
 			onClose();
 		}
@@ -262,11 +278,12 @@ function ComposeEmailModal({
 						setSubmitError(null);
 						commitSendEmailMessage({
 							variables: {
-								body,
+								bodyInMarkdown: body,
+								subject,
 								to,
 							},
 							onCompleted: (response, errors) => {
-								if (errors?.length || !response.sendEmailMessage) {
+								if (errors?.length || !response.sendEmailMessage?.result) {
 									setSubmitError(
 										errors?.[0]?.message ||
 											"Something went wrong while sending the email.",
@@ -294,6 +311,21 @@ function ComposeEmailModal({
 								setTo(event.target.value);
 							}}
 							placeholder="name@example.com"
+							className="input input-bordered w-full"
+							disabled={isSending}
+						/>
+					</label>
+					<label className="flex flex-col gap-2">
+						<span className="text-sm font-medium">Subject</span>
+						<input
+							type="text"
+							required
+							value={subject}
+							onChange={(event) => {
+								setSubmitError(null);
+								setSubject(event.target.value);
+							}}
+							placeholder="Subject"
 							className="input input-bordered w-full"
 							disabled={isSending}
 						/>

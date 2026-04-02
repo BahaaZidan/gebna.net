@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<91e63a928d31c849b47b532fd1c29924>>
+ * @generated SignedSource<<845bd8d5c3f366076151829a0d4bae43>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,11 +10,14 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type routeSendEmailMessageMutation$variables = {
-  body: string;
+  bodyInMarkdown: string;
+  subject: string;
   to: string;
 };
 export type routeSendEmailMessageMutation$data = {
-  readonly sendEmailMessage: boolean;
+  readonly sendEmailMessage: {
+    readonly result: boolean | null | undefined;
+  } | null | undefined;
 };
 export type routeSendEmailMessageMutation = {
   response: routeSendEmailMessageMutation$data;
@@ -26,7 +29,12 @@ var v0 = [
   {
     "defaultValue": null,
     "kind": "LocalArgument",
-    "name": "body"
+    "name": "bodyInMarkdown"
+  },
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "subject"
   },
   {
     "defaultValue": null,
@@ -39,18 +47,52 @@ v1 = [
     "alias": null,
     "args": [
       {
-        "kind": "Variable",
-        "name": "body",
-        "variableName": "body"
-      },
-      {
-        "kind": "Variable",
-        "name": "to",
-        "variableName": "to"
+        "fields": [
+          {
+            "kind": "Variable",
+            "name": "bodyInMarkdown",
+            "variableName": "bodyInMarkdown"
+          },
+          {
+            "fields": [
+              {
+                "items": [
+                  {
+                    "kind": "Variable",
+                    "name": "to.0",
+                    "variableName": "to"
+                  }
+                ],
+                "kind": "ListValue",
+                "name": "to"
+              }
+            ],
+            "kind": "ObjectValue",
+            "name": "recipients"
+          },
+          {
+            "kind": "Variable",
+            "name": "subject",
+            "variableName": "subject"
+          }
+        ],
+        "kind": "ObjectValue",
+        "name": "input"
       }
     ],
-    "kind": "ScalarField",
+    "concreteType": "SendEmailMessagePayload",
+    "kind": "LinkedField",
     "name": "sendEmailMessage",
+    "plural": false,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "result",
+        "storageKey": null
+      }
+    ],
     "storageKey": null
   }
 ];
@@ -72,16 +114,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "c88c6fba6efaa7b0e141ac70df7cf4bf",
+    "cacheID": "eed60780339132471fbf48353e2ac3b0",
     "id": null,
     "metadata": {},
     "name": "routeSendEmailMessageMutation",
     "operationKind": "mutation",
-    "text": "mutation routeSendEmailMessageMutation(\n  $body: String!\n  $to: String!\n) {\n  sendEmailMessage(body: $body, to: $to)\n}\n"
+    "text": "mutation routeSendEmailMessageMutation(\n  $bodyInMarkdown: String!\n  $subject: String!\n  $to: String!\n) {\n  sendEmailMessage(input: {bodyInMarkdown: $bodyInMarkdown, subject: $subject, recipients: {to: [$to]}}) {\n    result\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e46386f27b06070a8ce1a5fe3e6c9e4e";
+(node as any).hash = "2ea2ed92fffcc80f43f6a50c1882b0da";
 
 export default node;

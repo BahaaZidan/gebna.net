@@ -1,14 +1,20 @@
 import { createGraphQLError } from "graphql-yoga";
+import { convert } from "html-to-text";
 import rehypeParse from "rehype-parse";
 import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import { find } from "unist-util-find";
 import { visit } from "unist-util-visit";
 import * as v from "valibot";
 
 import { rehypeEnforcePalette } from "#/lib/email";
+import type { PostalSendEmailBody } from "#/lib/email/types";
 
 import { builder } from "../builder";
+import { EmailThreadRef } from "./thread";
 
 export const EmailMessageRef = builder.drizzleNode("emailMessages", {
 	name: "EmailMessage",
@@ -178,25 +184,58 @@ function isElementNodeWithProperties(
 	);
 }
 
-builder.mutationFields((t) => ({
-	sendEmailMessage: t.field({
-		type: "Boolean",
-		nullable: false,
-		args: {
-			body: t.arg.string({
+const EmailMessageRecipientsInput = builder.inputType(
+	"EmailMessageRecipients",
+	{
+		fields: (t) => ({
+			to: t.stringList({
+				validate: v.array(v.pipe(v.string(), v.trim(), v.email())),
+			}),
+			cc: t.stringList({
+				validate: v.array(v.pipe(v.string(), v.trim(), v.email())),
+			}),
+			bcc: t.stringList({
+				validate: v.array(v.pipe(v.string(), v.trim(), v.email())),
+			}),
+		}),
+	},
+);
+
+builder.relayMutationField(
+	"sendEmailMessage",
+	{
+		inputFields: (t) => ({
+			bodyInMarkdown: t.string({
+				validate: v.pipe(v.string(), v.trim()),
+			}),
+			recipients: t.field({
+				required: true,
+				type: EmailMessageRecipientsInput,
+			}),
+			subject: t.string({
 				required: true,
 				validate: v.pipe(v.string(), v.trim(), v.nonEmpty()),
 			}),
-			to: t.arg.string({
-				required: true,
-				validate: v.pipe(v.string(), v.trim(), v.nonEmpty(), v.email()),
-			}),
-		},
-		resolve: async (_parent, args, ctx) => {
+		}),
+	},
+	{
+		resolve: async (_root, { input }, ctx) => {
 			let from = ctx.viewer.email;
 			let apiUrl = new URL("api/v1/send/message", ctx.env.OUTBOUND_API_URL);
 
 			try {
+				const html_body =
+					input.bodyInMarkdown &&
+					(
+						await unified()
+							.use(remarkParse)
+							.use(remarkGfm)
+							.use(remarkRehype, { allowDangerousHtml: true })
+							.use(rehypeStringify, { allowDangerousHtml: true })
+							.process(input.bodyInMarkdown)
+					).toString();
+				const plain_body = html_body && convert(html_body);
+
 				await fetch(apiUrl, {
 					method: "POST",
 					headers: {
@@ -204,16 +243,18 @@ builder.mutationFields((t) => ({
 						"X-Server-API-Key": ctx.env.OUTBOUND_API_SECRET,
 					},
 					body: JSON.stringify({
-						from,
 						headers: {
-							// "Message-ID": messageId,
-							// "X-App": "gebna.net",
+							"X-App": "gebna.net",
 						},
+						from,
 						reply_to: from,
-						subject: args.body,
-						plain_body: args.body,
-						to: [args.to],
-					}),
+						to: input.recipients.to,
+						cc: input.recipients.cc,
+						bcc: input.recipients.bcc,
+						subject: input.subject,
+						html_body,
+						plain_body,
+					} satisfies PostalSendEmailBody),
 				});
 			} catch (error) {
 				console.error(error);
@@ -223,8 +264,16 @@ builder.mutationFields((t) => ({
 					},
 				});
 			}
-
-			return true;
 		},
-	}),
-}));
+	},
+	{
+		outputFields: (t) => ({
+			result: t.field({
+				type: "Boolean",
+				resolve: async (result, _root, ctx) => {
+					return true;
+				},
+			}),
+		}),
+	},
+);
